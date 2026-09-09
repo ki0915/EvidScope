@@ -9,9 +9,10 @@ import {createAuditWorkbench} from './audit-workbench.mjs';
 import {monitoring} from './monitoring.mjs';
 import {agentInventory} from './agent-inventory.mjs';
 import {createAssistance} from './assistance.mjs';
+import {createDevelopmentRuns} from './development-runs.mjs';
 
 export function createService({dataDir,config,key,requirements=[]}) {
- const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench);
+ const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  const principals=config.principals||[];
  const analysis=createAnalysis(store,principals);
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -54,6 +55,7 @@ export function createService({dataDir,config,key,requirements=[]}) {
   if(path==='/healthz'&&method==='GET'){store.db.prepare('SELECT 1').get();return {status:'ready',component:'vault'};}
   if(path.startsWith('/internal/assistance/')){const result=assistance.internal(method,url,headers,body);if(result!==undefined)return result;}
   const p=auth(headers);
+  const developmentResult=developmentRuns.handle(p,method,url,headers,body);if(developmentResult!==undefined)return developmentResult;
   if(path==='/api/ingest'&&method==='POST'){
    if(p.role!=='source')fail(403,'수집 출처 자격이 필요합니다');
    const ts=headers['x-evid-timestamp'],nonce=headers['x-evid-nonce'],signature=headers['x-evid-signature'];

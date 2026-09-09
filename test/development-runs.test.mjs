@@ -7,6 +7,16 @@ import {Store} from '../src/store.mjs';
 import {mac} from '../src/crypto.mjs';
 import {createDevelopmentRuns} from '../src/development-runs.mjs';
 import {collectCodexEvent,collectClaudeStreamEvent,collectClaudeStreamEvents} from '../src/development-collectors.mjs';
+import {harness} from './harness.mjs';
+
+test('development run HTTP boundary permits signed ingress and human audit reads only',async t=>{
+ const h=await harness();t.after(()=>h.close());const tool=h.principal('tool'),auditor=h.principal('auditor'),timestamp=String(Date.now()),nonce='http-boundary-nonce-0001',body=JSON.stringify({eventId:'http-event-1',eventName:'run.started',runId:'http-run-1',teamId:'team-http',roleId:'core',model:'gpt-5.6-sol',modelObserved:true,status:'running',occurredAt:new Date().toISOString(),toolName:'unknown'}),headers={'content-type':'application/json',authorization:`Bearer ${tool.token}`,'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,'x-evid-signature':mac(tool.hmacSecret,timestamp,nonce,body)};
+ let response=await fetch(`${h.ingress.url}/api/development-runs/events`,{method:'POST',headers,body});assert.equal(response.status,202);assert.equal((await response.json()).accepted,true);
+ response=await fetch(`${h.audit.url}/api/development-runs/events`,{method:'POST',headers,body});assert.equal(response.status,403,'audit gateway cannot proxy source writes');
+ response=await fetch(`${h.audit.url}/api/development-runs`,{headers:{authorization:`Bearer ${auditor.token}`}});assert.equal(response.status,200);const result=await response.json();assert.equal(result.items.length,1);assert.equal(result.items[0].modelEvidence,'actual_observed');
+ response=await fetch(`${h.audit.url}/api/development-runs`,{headers:{authorization:`Bearer ${tool.token}`}});assert.equal(response.status,403,'source cannot read human development view');
+ response=await fetch(`${h.ingress.url}/api/development-runs`,{headers:{authorization:`Bearer ${auditor.token}`}});assert.equal(response.status,403,'ingress gateway cannot proxy reads');
+});
 
 test('development runs: signed tenant source binding, duplicate/collision, unknowns and minimization',t=>{
  mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs/dev-runs-')),config=initialize(dir),store=new Store(join(dir,'data'),readFileSync(join(dir,'signing-private.pem'),'utf8')),now=Date.parse('2026-09-09T01:00:00Z'),runs=createDevelopmentRuns(store,{now:()=>now});t.after(()=>store.close());
