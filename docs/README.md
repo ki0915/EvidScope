@@ -1,4 +1,15 @@
+![EvidScope 문서](assets/document-cover.svg)
+
 # 문서 안내
+
+**[7쪽 설계·개발 요약서 PDF](../output/pdf/evidscope-design-handbook.pdf)** · **[시스템 구성도 원본 SVG](assets/system-architecture.svg)**
+
+| 구조를 이해하려면 | 개발을 시작하려면 | 현재 범위를 확인하려면 |
+|---|---|---|
+| [아키텍처 초안](architecture-draft.md) | [개발 가이드](development-guide.md) | [개선 계획](service-improvement-plan.md) |
+| 구성·흐름·신뢰 경계 | 실행·모듈·검증·배포 | 완료 조건·비용·다음 단계 |
+
+---
 
 2026-09-09 기준. 처음 읽는 개발자는 아래 순서로 확인한다.
 

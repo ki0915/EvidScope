@@ -1,6 +1,10 @@
+![EvidScope Architecture and Engineering](docs/assets/document-cover.svg)
+
 # EvidScope
 
 [아키텍처 초안](docs/architecture-draft.md) · [개발 가이드](docs/development-guide.md) · [전체 문서](docs/README.md) · [개선 계획](docs/service-improvement-plan.md)
+
+**[설계·개발 요약서 PDF 보기](output/pdf/evidscope-design-handbook.pdf)** — 구성도, 신뢰 경계, 개발 시작, 검증 범위와 개선 순서를 7쪽으로 정리했습니다.
 
 AI 행동·권한 가시성, SIEM 조사, 독립 증적, 인간 거버넌스 검토를 연결하는 실행 가능한 로컬 파일럿입니다. 실행 차단·도구 중개·AI 실행 승인 발급·감사 LLM 기능은 없습니다. 실제 공급자와 개인정보 없이 합성 사례를 실행합니다.
 

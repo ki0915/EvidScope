@@ -1,6 +1,17 @@
+![EvidScope Developer Handbook](assets/development-cover.svg)
+
 # EvidScope 개발 가이드
 
 작성일 2026-09-09 · 대상 버전 0.1 파일럿. 소스의 현재 동작을 기준으로 하며 운영 배포 승인을 대체하지 않는다.
+
+| 실행 환경 | 기본 실행 | 변경 검증 |
+|---|---|---|
+| Node.js 24.15 이상 25 미만 | `npm start` | `npm test` |
+| 외부 npm 런타임 의존성 없음 | 모델 없이 서비스 실행 | 실제 HTTP·TLS·SQLite 경계 포함 |
+
+**읽기 경로**　[문서 홈](README.md) · [아키텍처 초안](architecture-draft.md) · [PDF 요약서](../output/pdf/evidscope-design-handbook.pdf)
+
+---
 
 ## 1. 시작하기
 
@@ -132,3 +143,14 @@ docker build -t evidscope:local .
 6. 문서·API 계약·개선 계획을 최종 구현에 맞춰 수정한다. 런타임 비밀과 데이터는 업로드 대상에서 제외한다.
 
 현재 프로젝트는 `UNLICENSED`이며 별도 오픈소스 사용 허가를 부여한 상태가 아니다. 공개 배포·라이선스 변경은 소유자의 별도 결정이 필요하다.
+
+## 10. 시각 문서 재생성
+
+`scripts/build-design-handbook.py`는 SVG 표지·시스템 구성도와 PDF 요약서를 생성한다. 개발용 Python의 `reportlab` 및 한글 TrueType 글꼴이 필요하며 서비스 런타임 의존성과 분리된다. 기본은 Windows 맑은 고딕이고, 다른 환경에서는 `EVIDSCOPE_DOC_FONT`와 `EVIDSCOPE_DOC_FONT_BOLD`에 허용된 글꼴 파일 경로를 지정한다. 글꼴 원본은 저장소에 복사하지 않는다.
+
+```powershell
+python scripts/build-design-handbook.py
+node scripts/check-doc-links.mjs
+```
+
+PDF는 전체 명세를 대체하지 않는 요약서다. 내용 변경 시 Markdown 원문과 요약서를 함께 확인하고 PDF 전 페이지를 렌더링해 줄바꿈·도표·페이지 번호를 점검한다.

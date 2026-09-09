@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg width="1200" height="300" preserveAspectRatio="xMinYMin meet" viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg" version="1.0" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<title>Architecture Draft</title>
+	<desc>구성 · 데이터 흐름 · 신뢰 경계 · 배포 설계</desc>
+	<clipPath id="clip">
+		<rect x="0" y="0" width="1200" height="300"/>
+	</clipPath>
+	<g id="group" transform="scale(1,-1) translate(0,-300)" style="clip-path: url(#clip)">
+		<g transform="">
+			<rect x="0" y="0" width="1200" height="300" rx="20" ry="20" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(6%,15%,24%); fill-rule: evenodd;"/>
+			<circle cx="1110" cy="150" r="72" style="stroke: rgb(13%,27%,34%); stroke-linecap: butt; stroke-width: 1; fill: none; fill-rule: evenodd;"/>
+			<circle cx="1110" cy="150" r="110" style="stroke: rgb(13%,27%,34%); stroke-linecap: butt; stroke-width: 1; fill: none; fill-rule: evenodd;"/>
+			<circle cx="1110" cy="150" r="148" style="stroke: rgb(13%,27%,34%); stroke-linecap: butt; stroke-width: 1; fill: none; fill-rule: evenodd;"/>
+			<circle cx="1110" cy="150" r="186" style="stroke: rgb(13%,27%,34%); stroke-linecap: butt; stroke-width: 1; fill: none; fill-rule: evenodd;"/>
+			<rect x="48" y="211" width="42" height="42" rx="9" ry="9" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(25%,72%,65%); fill-rule: evenodd;"/>
+			<text x="59" y="219" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 27px;fill: rgb(6%,15%,24%); stroke:none;" transform="translate(0,438) scale(1,-1)">E</text>
+			<text x="107" y="222" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 31px;fill: rgb(100%,100%,100%); stroke:none;" transform="translate(0,444) scale(1,-1)">EvidScope</text>
+			<text x="51" y="130" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 43px;fill: rgb(100%,100%,100%); stroke:none;" transform="translate(0,260) scale(1,-1)">Architecture Draft</text>
+			<text x="52" y="81" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 21px;fill: rgb(74%,80%,85%); stroke:none;" transform="translate(0,162) scale(1,-1)">구성 · 데이터 흐름 · 신뢰 경계 · 배포 설계</text>
+			<text x="52" y="37" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 15px;fill: rgb(47%,78%,72%); stroke:none;" transform="translate(0,74) scale(1,-1)">DESIGN DRAFT  /  0.1  /  2026.09.09</text>
+		</g>
+	</g>
+</svg>

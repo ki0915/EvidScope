@@ -1,6 +1,16 @@
+![EvidScope Architecture Draft](assets/architecture-cover.svg)
+
 # EvidScope 아키텍처 초안
 
 문서 버전 0.1 · 작성일 2026-09-09 · 대상: 현재 실행 가능한 로컬 파일럿 및 다음 개발 단계. 운영 승인용 최종 설계가 아니다.
+
+| 문서 목적 | 현재 단계 | 설계 원칙 |
+|---|---|---|
+| 구조·책임·신뢰 경계 검토 | 실행 가능한 파일럿 | 근거 우선 · 인간 판단 · 최소수집 |
+
+**읽기 경로**　[문서 홈](README.md) · [개발 가이드](development-guide.md) · [PDF 요약서](../output/pdf/evidscope-design-handbook.pdf)
+
+---
 
 ## 1. 목적과 범위
 
@@ -9,6 +19,11 @@ EvidScope는 AI가 요청한 행동, 독립 도구의 실행·결과, 당시 권
 업무 도구 중개, 실행 허용·차단, 업무 승인 토큰 발급, 자동 대응은 제품 범위 밖이다. 감사 영역에 증거를 읽는 LLM이나 에이전트 실행기를 두지 않는다. 규정 매핑은 인간의 적용성·법률 검토를 지원한다.
 
 ## 2. 시스템 구성
+
+![업무 실행, 관측 및 감사, 사람의 검토를 구분한 EvidScope 구성도](assets/system-architecture.svg)
+
+<details>
+<summary>연결 관계 상세 · Mermaid 구성도</summary>
 
 ```mermaid
 flowchart LR
@@ -38,7 +53,17 @@ flowchart LR
   Vault --> Export[서명 증거 / 사건 보고서]
   Export --> Verify[독립 검증기]
   Anchor[별도 보관 공개키 / checkpoint] --> Verify
+  classDef workload fill:#F4F7F9,stroke:#B8C9D4,color:#183348
+  classDef gateway fill:#DDF2EC,stroke:#087F79,color:#183348
+  classDef trusted fill:#10283F,stroke:#10283F,color:#FFFFFF
+  classDef human fill:#FFF3DB,stroke:#A56C22,color:#183348
+  class AI,Tool,Auth workload
+  class Ingress,Audit,Worker gateway
+  class Vault,DB,Key trusted
+  class Human,Export,Verify,Anchor human
 ```
+
+</details>
 
 점선은 업무 실행 경로 밖의 비동기 관측이다. 현재 로컬 AI 파일럿은 에이전트와 도구가 서로 다른 source 자격을 사용하지만 같은 시험 프로세스에 있으므로 독립 호스트 격리를 입증하지 않는다. Codex 수집기는 아직 구현하지 않았다.
 
@@ -55,6 +80,7 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
+  autonumber
   participant S as 인증된 source
   participant G as 수집 gateway
   participant V as Vault
@@ -127,6 +153,10 @@ flowchart TB
   W[Worker replicas] --> VS
   VS --> V[Vault 1 replica]
   V --> PVC[(RWO PVC / SQLite)]
+  classDef gateway fill:#DDF2EC,stroke:#087F79,color:#183348
+  classDef vault fill:#10283F,stroke:#10283F,color:#FFFFFF
+  class IS,AS,I1,I2,A1,A2,W gateway
+  class VS,V,PVC vault
 ```
 
 수집·감사·worker는 확장 대상이며 vault는 단일 writer다. stateless replica 증가가 저장소 HA를 제공하지 않는다. 현재 실험은 Service 내부 분산이며 외부 LoadBalancer 제공자를 설치하지 않는다.

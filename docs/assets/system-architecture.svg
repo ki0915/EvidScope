@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg width="1160" height="625" preserveAspectRatio="xMinYMin meet" viewBox="0 0 1160 625" xmlns="http://www.w3.org/2000/svg" version="1.0" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<title>EvidScope 시스템 구성</title>
+	<desc>업무 실행, 관측 및 감사, 사람의 검토와 독립 검증을 연결한 구성도</desc>
+	<clipPath id="clip">
+		<rect x="0" y="0" width="1160" height="625"/>
+	</clipPath>
+	<g id="group" transform="scale(1,-1) translate(0,-625)" style="clip-path: url(#clip)">
+		<g transform="">
+			<rect x="0" y="0" width="1160" height="625" rx="18" ry="18" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(95%,96%,97%); fill-rule: evenodd;"/>
+			<text x="35" y="582" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 20px;fill: rgb(3%,49%,47%); stroke:none;" transform="translate(0,1164) scale(1,-1)">01  업무 실행</text>
+			<text x="325" y="582" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 20px;fill: rgb(3%,49%,47%); stroke:none;" transform="translate(0,1164) scale(1,-1)">02  관측 및 감사</text>
+			<text x="875" y="582" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 20px;fill: rgb(3%,49%,47%); stroke:none;" transform="translate(0,1164) scale(1,-1)">03  사람의 검토</text>
+			<rect x="40" y="422" width="225" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="60" y="497" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,994) scale(1,-1)">업무 AI / 에이전트</text>
+			<text x="60" y="445" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,890) scale(1,-1)">로컬 모델 시험 완료</text>
+			<rect x="40" y="222" width="225" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="60" y="297" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,594) scale(1,-1)">업무 도구 / API</text>
+			<text x="60" y="245" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,490) scale(1,-1)">독립 출처의 실행·결과</text>
+			<path d="M 150,422 L 150,332 Z" style="stroke: rgb(36%,44%,50%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="150 332, 146 342, 154 342" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(36%,44%,50%); fill-rule: evenodd;"/>
+			<text x="165" y="369" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,738) scale(1,-1)">업무 실행</text>
+			<rect x="335" y="422" width="220" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="355" y="497" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,994) scale(1,-1)">수집 gateway</text>
+			<text x="355" y="445" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,890) scale(1,-1)">이벤트 제출 전용</text>
+			<rect x="600" y="422" width="210" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="620" y="497" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,994) scale(1,-1)">감사 gateway</text>
+			<text x="620" y="445" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,890) scale(1,-1)">인간 인증 / 조회</text>
+			<rect x="470" y="222" width="250" height="110" rx="12" ry="12" style="stroke: rgb(6%,15%,24%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(6%,15%,24%); fill-rule: evenodd;"/>
+			<text x="490" y="297" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(100%,100%,100%); stroke:none;" transform="translate(0,594) scale(1,-1)">Vault</text>
+			<text x="490" y="245" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(72%,85%,85%); stroke:none;" transform="translate(0,490) scale(1,-1)">인증 · 서명 · 저장</text>
+			<rect x="335" y="50" width="210" height="100" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="355" y="115" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,230) scale(1,-1)">분석 worker</text>
+			<text x="355" y="73" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,146) scale(1,-1)">규칙 기반 분석</text>
+			<rect x="600" y="50" width="210" height="100" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="620" y="115" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,230) scale(1,-1)">SQLite / 키</text>
+			<text x="620" y="73" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,146) scale(1,-1)">단일 vault가 소유</text>
+			<rect x="885" y="422" width="235" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="905" y="497" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,994) scale(1,-1)">인간 감사자</text>
+			<text x="905" y="445" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,890) scale(1,-1)">근거 대조 / 판단 / 과제</text>
+			<rect x="885" y="222" width="235" height="110" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="905" y="297" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,594) scale(1,-1)">서명 보고서</text>
+			<text x="905" y="245" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,490) scale(1,-1)">사건·원장 내보내기</text>
+			<rect x="885" y="50" width="235" height="100" rx="12" ry="12" style="stroke: rgb(86%,89%,92%); stroke-linecap: butt; stroke-width: 1.4; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="905" y="115" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-weight: 700; font-size: 22px;fill: rgb(9%,20%,28%); stroke:none;" transform="translate(0,230) scale(1,-1)">독립 검증기</text>
+			<text x="905" y="73" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 17px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,146) scale(1,-1)">별도 공개키 / checkpoint</text>
+			<path d="M 265,477 L 335,477 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4; stroke-dasharray: 7, 5;"/>
+			<polygon points="335 477, 325 473, 325 481" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 265,277 L 300,277 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4; stroke-dasharray: 7, 5;"/>
+			<path d="M 300,277 L 300,440 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4; stroke-dasharray: 7, 5;"/>
+			<path d="M 300,440 L 335,440 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4; stroke-dasharray: 7, 5;"/>
+			<polygon points="335 440, 325 436, 325 444" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 445,422 L 445,365 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 445,365 L 525,365 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 525,365 L 525,332 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="525 332, 521 342, 529 342" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 705,422 L 705,365 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 705,365 L 660,365 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 660,365 L 660,332 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="660 332, 656 342, 664 342" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 885,477 L 810,477 Z" style="stroke: rgb(36%,44%,50%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="810 477, 820 481, 820 473" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(36%,44%,50%); fill-rule: evenodd;"/>
+			<path d="M 440,150 L 440,185 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 440,185 L 525,185 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<path d="M 525,185 L 525,222 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="525 222, 529 212, 521 212" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 665,222 L 665,150 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="665 150, 661 160, 669 160" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 720,277 L 885,277 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="885 277, 875 273, 875 281" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<path d="M 1002,222 L 1002,150 Z" style="stroke: rgb(3%,49%,47%); stroke-linecap: butt; stroke-width: 2.4;"/>
+			<polygon points="1002 150, 998 160, 1006 160" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(3%,49%,47%); fill-rule: evenodd;"/>
+			<text x="30" y="12" style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 15px;fill: rgb(36%,44%,50%); stroke:none;" transform="translate(0,24) scale(1,-1)">점선: 비동기 관측   /   실선: 업무 실행 또는 서비스 요청   /   Vault는 높은 신뢰 영역</text>
+		</g>
+	</g>
+</svg>
