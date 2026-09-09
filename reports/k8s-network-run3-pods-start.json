@@ -1,0 +1,50 @@
+{
+  "observedAt": "2026-09-08T08:02:21.5209934Z",
+  "context": "k3d-evidscope-lab-20260908",
+  "pods": [
+    {
+      "name": "network-probe-auditor-run3-nrzq6",
+      "uid": "7b2e1cd9-0af1-4c75-bbf4-116efa7b8844",
+      "labels": {
+        "batch.kubernetes.io/controller-uid": "6601cec6-4d68-4be9-a74d-da9259b47fb3",
+        "batch.kubernetes.io/job-name": "network-probe-auditor-run3",
+        "controller-uid": "6601cec6-4d68-4be9-a74d-da9259b47fb3",
+        "evidscope.io/client": "auditor",
+        "evidscope.io/network-probe": "dns-only",
+        "job-name": "network-probe-auditor-run3"
+      },
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "ip": "10.42.3.9",
+      "phase": "Running"
+    },
+    {
+      "name": "network-probe-collector-run3-4vdx7",
+      "uid": "a94065ca-7750-48a4-adcb-9aa3d0e8f0c7",
+      "labels": {
+        "batch.kubernetes.io/controller-uid": "3c05ba1d-0e9b-4b45-9d6a-ab2fddc1f32c",
+        "batch.kubernetes.io/job-name": "network-probe-collector-run3",
+        "controller-uid": "3c05ba1d-0e9b-4b45-9d6a-ab2fddc1f32c",
+        "evidscope.io/client": "collector",
+        "evidscope.io/network-probe": "dns-only",
+        "job-name": "network-probe-collector-run3"
+      },
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "ip": "10.42.3.10",
+      "phase": "Running"
+    },
+    {
+      "name": "network-probe-unlabeled-run3-25cwv",
+      "uid": "a79b766f-5005-4642-b150-67dc9d784653",
+      "labels": {
+        "batch.kubernetes.io/controller-uid": "1beb3772-239e-45d4-ad38-b920f4721b58",
+        "batch.kubernetes.io/job-name": "network-probe-unlabeled-run3",
+        "controller-uid": "1beb3772-239e-45d4-ad38-b920f4721b58",
+        "evidscope.io/network-probe": "dns-only",
+        "job-name": "network-probe-unlabeled-run3"
+      },
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "ip": "10.42.3.11",
+      "phase": "Running"
+    }
+  ]
+}

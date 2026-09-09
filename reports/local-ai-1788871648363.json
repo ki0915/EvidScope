@@ -1,0 +1,52 @@
+{
+  "run": "local-ai-1788871648363",
+  "model": "qwen3:0.6b",
+  "startedAt": "2026-09-08T12:47:28.363Z",
+  "inference": "responded",
+  "toolExecuted": false,
+  "citationMatches": false,
+  "events": [
+    {
+      "id": "local-ai-1788871648363-0",
+      "source": "alpha-agent",
+      "kind": "intent",
+      "status": "started"
+    },
+    {
+      "id": "local-ai-1788871648363-1",
+      "source": "alpha-agent",
+      "kind": "self_report",
+      "status": "failure"
+    }
+  ],
+  "limitations": [
+    "Real model, synthetic guide and local tool only; no external business operation",
+    "Source keys are distinct but the pilot harness is one trusted local process, not independently isolated hardware",
+    "The model receives no source/auditor credentials, ledger access or arbitrary execution tool",
+    "No hidden reasoning is collected; evidence notes retain hashes and reference metadata",
+    "No grant or human approval record is fabricated; missing authority remains visible"
+  ],
+  "modelDigest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+  "firstLatencyMs": 4570,
+  "firstDone": true,
+  "requestedTools": [],
+  "error": "Expected one actual model tool call, received 0",
+  "observers": {
+    "agent": {
+      "observed": 2,
+      "accepted": 2,
+      "dropped": 0,
+      "retries": 0,
+      "stillRunning": false
+    },
+    "tool": {
+      "observed": 0,
+      "accepted": 0,
+      "dropped": 0,
+      "retries": 0,
+      "stillRunning": false
+    }
+  },
+  "finishedAt": "2026-09-08T12:47:33.076Z",
+  "pass": false
+}

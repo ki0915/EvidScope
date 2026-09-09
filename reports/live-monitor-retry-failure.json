@@ -1,0 +1,22 @@
+{
+  "run": "live-chart-1788856668530",
+  "receipts": [],
+  "errors": [
+    {
+      "id": "live-chart-1788856668530-0-0",
+      "attempt": 1,
+      "error": "ECONNREFUSED"
+    },
+    {
+      "id": "live-chart-1788856668530-0-0",
+      "attempt": 2,
+      "error": "ECONNREFUSED"
+    },
+    {
+      "id": "live-chart-1788856668530-0-0",
+      "attempt": 3,
+      "error": "ECONNREFUSED"
+    }
+  ],
+  "pass": false
+}

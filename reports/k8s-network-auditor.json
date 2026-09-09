@@ -1,0 +1,76 @@
+{
+  "format": "evidscope-k8s-network-probe-v1",
+  "observedAt": "2026-09-08T07:57:54.157Z",
+  "profile": "auditor",
+  "namespace": "evidscope",
+  "pod": {
+    "name": "network-probe-auditor-run2-cv9rr",
+    "uid": "02fb1a30-3232-47b8-8fe3-65d158dc2d86",
+    "nodeName": "k3d-evidscope-lab-20260908-agent-1"
+  },
+  "timeoutMs": 3000,
+  "pass": false,
+  "results": [
+    {
+      "target": "ingress",
+      "url": "https://ingress.evidscope.svc:8080/healthz",
+      "dnsResolved": true,
+      "resolvedAddress": "10.43.223.167",
+      "tcpConnected": false,
+      "tlsAuthorized": false,
+      "httpStatus": null,
+      "healthMatches": false,
+      "instance": null,
+      "errorCode": "ECONNREFUSED",
+      "elapsedMs": 96,
+      "expected": "deny",
+      "classification": "connection_failure_ambiguous",
+      "pass": false,
+      "denialObservation": "not_established",
+      "cause": "DNS, TLS, rejected connection or post-connect failures do not establish the expected network drop."
+    },
+    {
+      "target": "audit",
+      "url": "https://audit.evidscope.svc:8080/healthz",
+      "dnsResolved": true,
+      "resolvedAddress": "10.43.22.16",
+      "tcpConnected": false,
+      "tlsAuthorized": false,
+      "httpStatus": null,
+      "healthMatches": false,
+      "instance": null,
+      "errorCode": "ECONNREFUSED",
+      "elapsedMs": 2,
+      "expected": "allow",
+      "classification": "connection_failure_ambiguous",
+      "pass": false,
+      "denialObservation": "not_established",
+      "cause": "DNS, TLS, rejected connection or post-connect failures do not establish the expected network drop."
+    },
+    {
+      "target": "vault",
+      "url": "https://vault.evidscope.svc:8080/healthz",
+      "dnsResolved": true,
+      "resolvedAddress": "10.43.180.222",
+      "tcpConnected": false,
+      "tlsAuthorized": false,
+      "httpStatus": null,
+      "healthMatches": false,
+      "instance": null,
+      "errorCode": "ECONNREFUSED",
+      "elapsedMs": 5,
+      "expected": "deny",
+      "classification": "connection_failure_ambiguous",
+      "pass": false,
+      "denialObservation": "not_established",
+      "cause": "DNS, TLS, rejected connection or post-connect failures do not establish the expected network drop."
+    }
+  ],
+  "limitations": [
+    "This probe sends only unauthenticated HTTPS GET /healthz requests, with CA and server hostname verification enabled. It does not test application authorization.",
+    "A DNS failure, HTTP denial, TLS failure, connection refusal or timeout after TCP connection is not counted as a successful network-denial test.",
+    "A pre-connect timeout after DNS resolution observes an unreachable TCP path, not the identity of the component that dropped it. Correlate with applied policies, independent target readiness and the paired allowed-client controls.",
+    "These three requests describe this Pod and point in time only, not every node, protocol, port or future state.",
+    "Collector and auditor connectivity uses existing client egress policies. The probe-specific policy adds DNS only and never grants gateway or vault egress."
+  ]
+}

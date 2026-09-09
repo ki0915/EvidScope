@@ -1,0 +1,230 @@
+[
+  {
+    "path": "Dockerfile",
+    "sha256": "10f6769fca00d2273468d5f3f37eb2edb59a3d635305ef5a676c73f8c360f8e8"
+  },
+  {
+    "path": "data\\governance-examples.json",
+    "sha256": "4ac5628db477ca7bd848bd27fed58a786715e17f2a09e8429b46a9f9030dbf0e"
+  },
+  {
+    "path": "data\\requirements.json",
+    "sha256": "20df270c68b41f3663489bb2345694aef2914b69bfeaf6941af564309e10dcc5"
+  },
+  {
+    "path": "data\\synthetic-knowledge-v1.json",
+    "sha256": "d5560eaa570f5be0f752783a789587cac162cba826e351dd557e2d16b7702fd7"
+  },
+  {
+    "path": "data\\synthetic-knowledge-v2.json",
+    "sha256": "1523ff45d66fe863db32747bc41feae7fa7b5097d912d662146be46a1490ec22"
+  },
+  {
+    "path": "deploy\\.gitignore",
+    "sha256": "8f3de1e507d277f725b13858f0c46932e42bed12a7aeaf6adc57fb7089023581"
+  },
+  {
+    "path": "deploy\\distribution-jobs.json",
+    "sha256": "f57bc5160e2bf9b815293392feeaabadae897ceb4ee540a6bbd2e942b64bc4cc"
+  },
+  {
+    "path": "deploy\\hpa-traffic-job.json",
+    "sha256": "264c71f4adc087425766a68174809f2556c7d82a8bb7f62a596695eef45f017c"
+  },
+  {
+    "path": "deploy\\kubernetes.json",
+    "sha256": "97194cf2943ed115b6ddf4390fd38b4717088570f4e5149ac7d5c94b5fe03c39"
+  },
+  {
+    "path": "deploy\\load-jobs.json",
+    "sha256": "b9895e0bfcabbb35497e8025355e411c21e07fa3084e2660ebbe246aa9fa2908"
+  },
+  {
+    "path": "deploy\\network-probe-jobs.json",
+    "sha256": "b65c5473ebb19d98b930ecf71d5180b4886546a6339b30f3a09ebc160a0e5793"
+  },
+  {
+    "path": "deploy\\render-manifests.mjs",
+    "sha256": "c1f8dc3b21c89753f1fcf980589dd85d82a1ff6fd75ea398c4de505fd6d87493"
+  },
+  {
+    "path": "public\\app.js",
+    "sha256": "3d88e79293bab21073f51e0ff2f654149cb79410c317bd6f0d04ae2e27501b61"
+  },
+  {
+    "path": "public\\index.html",
+    "sha256": "caed81d530a5ee796dcb2648ed8403bfa094f3eb7315be1bec6c26aeeb991ae4"
+  },
+  {
+    "path": "public\\style.css",
+    "sha256": "ec9c9e66fafac1b56dec4b200a90405ad4f205c14592a88e95abbe22046a562e"
+  },
+  {
+    "path": "scripts\\benchmark.mjs",
+    "sha256": "8d4bb23b79ab5f5ab0306f9b5eccc5bddb150f3ef35023c4600e2ff6e143b5f9"
+  },
+  {
+    "path": "scripts\\demo.mjs",
+    "sha256": "9ab9a79666f6813f2200845678179ab5c6fc70c68b2209e960a9d4c9f5648b92"
+  },
+  {
+    "path": "scripts\\docker-runtime-recovery.ps1",
+    "sha256": "29eb50c09a8506510f5c819ef0375eec404bd1a34f7d4aebf6c42d6ecce27709"
+  },
+  {
+    "path": "scripts\\init.mjs",
+    "sha256": "6c2676f7b12b82ba761da8973e7d28880b2c50f7708339aa29a213c8afed775b"
+  },
+  {
+    "path": "scripts\\k8s-distribution.mjs",
+    "sha256": "86cbc72a81a72c27af44c5201c4b6a322ce984d5c0cb182685896ff073297dee"
+  },
+  {
+    "path": "scripts\\k8s-hpa-traffic.mjs",
+    "sha256": "9e0c2c48ef145ddc88e5b2fdf173ec7e49b188c29182061a93c164da336bae1a"
+  },
+  {
+    "path": "scripts\\k8s-inspect.mjs",
+    "sha256": "05179d1face89197dea84dd4de054f7ec0e7990aeb2420385c0565caf2da22a8"
+  },
+  {
+    "path": "scripts\\k8s-lab-secrets.mjs",
+    "sha256": "2ed10dfa228864a8ffeb0a572ce61362227f0c757a66fbec4e7790ce10c7f097"
+  },
+  {
+    "path": "scripts\\k8s-load.mjs",
+    "sha256": "79f3731eb99c1cc96bcd98b8c33962fab9e5b6ac112b521f6f6cf986e9382c01"
+  },
+  {
+    "path": "scripts\\k8s-network-probe.mjs",
+    "sha256": "05db7874a64760c868adf3c36eddf86ef48b81b0ae939dba3f4b303dfac3a17a"
+  },
+  {
+    "path": "scripts\\k8s-reconcile.mjs",
+    "sha256": "4caaadf23eb992764303e8c50f42be11b7f9df0ae8db19a3b8f20a49f8f9c31f"
+  },
+  {
+    "path": "scripts\\k8s-static.mjs",
+    "sha256": "b7c11ef830778d1c8f0681453e74e4b461c19671886f6531ee9631db2ab5b83a"
+  },
+  {
+    "path": "scripts\\k8s-validate.ps1",
+    "sha256": "16ce053842b18c7ac0dcd68881fca6a55c9cf1364afae0013685f0907595a5df"
+  },
+  {
+    "path": "scripts\\local.mjs",
+    "sha256": "333becff6236784298a59e8194de6223c11971addd13994ff8bb28059041e613"
+  },
+  {
+    "path": "scripts\\ui-fixture.mjs",
+    "sha256": "92f6bb434b0dff0d9c1af1c78b3cceba3f98e2599401441ea0bdb0716dd76e15"
+  },
+  {
+    "path": "scripts\\validate.mjs",
+    "sha256": "a91d4000030f6733afb4ad8a60454bfab5ad4e6bd22f88f61195a18bdb92bd0a"
+  },
+  {
+    "path": "scripts\\verify-case-report.mjs",
+    "sha256": "360d861f0e9c33ba8cc800ca429d422966523a57724a347b25a8da2efd4764b5"
+  },
+  {
+    "path": "scripts\\verify.mjs",
+    "sha256": "b006b8a3ae46b8928cd1932b4c085b426309aa7c36647d13c01fe47eaa776fd1"
+  },
+  {
+    "path": "src\\analysis.mjs",
+    "sha256": "7ef2df817f55a20310baba8fe1d88d85c547a129e5199cafcba18b33bf35ee28"
+  },
+  {
+    "path": "src\\audit-workbench.mjs",
+    "sha256": "fb40f43b3fa7a3d6e869ed25dae4eed74a48861f550dacbc98fed28e36868622"
+  },
+  {
+    "path": "src\\client.mjs",
+    "sha256": "245e32a2ecdae3413cdc2b153e9da8184c6d8bef1d4a941bce813f0531a418f1"
+  },
+  {
+    "path": "src\\crypto.mjs",
+    "sha256": "90de5da5089d4735b74927e856aa41ff9d347b88fab97d3eb4bbfaf69f392eee"
+  },
+  {
+    "path": "src\\encryption.mjs",
+    "sha256": "e35db92bc4691bb8f6c00e5990b75c6e58e555e53c34fd486e6776a6bd360f46"
+  },
+  {
+    "path": "src\\model.mjs",
+    "sha256": "531b45c4a14f678fcc6a44cb0ab923a4e772308047d644a3be2601b46e015840"
+  },
+  {
+    "path": "src\\report-verifier.mjs",
+    "sha256": "bb7498169634be7a426c5056ba7d60d2a95e50c9dbbb688736756d2a2d27178d"
+  },
+  {
+    "path": "src\\retention.mjs",
+    "sha256": "d629bc99879aaab3d0ec134345eae178699766542b40756f576cf0bd4bfbe948"
+  },
+  {
+    "path": "src\\server.mjs",
+    "sha256": "efec41c712614d25e520fb85b6325ebc9d807308976a1bbf9e607d793e1be1ec"
+  },
+  {
+    "path": "src\\service.mjs",
+    "sha256": "f1c8b16bdea7b0587df41e11038ede7379b8b38ba8c5ff97e71a761f30bdd0b7"
+  },
+  {
+    "path": "src\\store.mjs",
+    "sha256": "b941e855ed4be32976c7775c3b88614adb9f54f5c1cb5cc875bb610a154c018a"
+  },
+  {
+    "path": "src\\worker.mjs",
+    "sha256": "5f197d84afb53805769ef1829a2da9558318d5964e94412243f1764b6b55d2e2"
+  },
+  {
+    "path": "test\\distribution.test.mjs",
+    "sha256": "bfe14eadd624c6e711d387742d8fb3514ce7f0ce32ab7dc7769413da6de510d9"
+  },
+  {
+    "path": "test\\harness.mjs",
+    "sha256": "143d9183320a4585aaa0edcecaa64c8038f129ad10e7462b1cfa259d008fb72b"
+  },
+  {
+    "path": "test\\integration.test.mjs",
+    "sha256": "e2782b5bc8b8f04c6f7c1b46262c79cdfc417fd8c8dfc0c3a0db0d1fadfd6ee5"
+  },
+  {
+    "path": "test\\k8s-inspect.test.mjs",
+    "sha256": "b7079998efd2117a95a404513272b0d94a8130b0fe520bab67cdcbb7c58f6ed4"
+  },
+  {
+    "path": "test\\load-balancing.test.mjs",
+    "sha256": "b763ac98d346a068f43f383ceee703881edc5b975a54042508c855c14ac4f962"
+  },
+  {
+    "path": "test\\lock-store.mjs",
+    "sha256": "7409a492070042fe719f87850fe54e4bb1161dc766990c1affc5dca510861b5a"
+  },
+  {
+    "path": "test\\model.test.mjs",
+    "sha256": "5b47a8df476f2ba2840a88e53a4ad444bb4ae6f748e7fce4e767282e2bb19245"
+  },
+  {
+    "path": "test\\retention.test.mjs",
+    "sha256": "f289081d3617cb8e6384262eae12b152c5edc723ba0ae46d809a9e2e02914088"
+  },
+  {
+    "path": "test\\tls.test.mjs",
+    "sha256": "aa36eaef22a26c1ecac4ec196af93bcf4db939ade2c032fd4c4e39a0d30d7e79"
+  },
+  {
+    "path": "test\\visibility.test.mjs",
+    "sha256": "ae3b715852d61f8908b199fa90cec7a433495d0220034eabf7b95ba046619a67"
+  },
+  {
+    "path": "test\\workbench.test.mjs",
+    "sha256": "9d62b37450784a4921f3a50d684ecbddd68b855c5606ca5f20410181d231828d"
+  },
+  {
+    "path": "test\\workers.test.mjs",
+    "sha256": "87ddabd78b98ed82209c13ac648bb03280134a026e4f7a829edd70d4b5b744ae"
+  }
+]

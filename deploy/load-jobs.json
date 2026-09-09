@@ -1,0 +1,369 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "load-collector-egress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "evidscope.io/client": "collector"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "ingress"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "load-auditor-egress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "evidscope.io/client": "auditor"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "audit"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "load-collector",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "activeDeadlineSeconds": 600,
+        "ttlSecondsAfterFinished": 86400,
+        "template": {
+          "metadata": {
+            "labels": {
+              "evidscope.io/client": "collector"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "automountServiceAccountToken": false,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "load",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                  "node",
+                  "scripts/k8s-load.mjs"
+                ],
+                "env": [
+                  {
+                    "name": "CONFIG_FILE",
+                    "value": "/identity/config.json"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "DURATION_SECONDS",
+                    "value": "30"
+                  },
+                  {
+                    "name": "INGEST_URL",
+                    "value": "https://ingress.evidscope.svc:8080"
+                  },
+                  {
+                    "name": "EPS",
+                    "value": "20"
+                  },
+                  {
+                    "name": "CONCURRENCY",
+                    "value": "20"
+                  },
+                  {
+                    "name": "SOURCE_COUNT",
+                    "value": "3"
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "identity",
+                    "mountPath": "/identity",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "identity",
+                "secret": {
+                  "secretName": "load-collector-config",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "load-auditor",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "activeDeadlineSeconds": 600,
+        "ttlSecondsAfterFinished": 86400,
+        "template": {
+          "metadata": {
+            "labels": {
+              "evidscope.io/client": "auditor"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "automountServiceAccountToken": false,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "load",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                  "node",
+                  "scripts/k8s-load.mjs"
+                ],
+                "env": [
+                  {
+                    "name": "CONFIG_FILE",
+                    "value": "/identity/config.json"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "DURATION_SECONDS",
+                    "value": "60"
+                  },
+                  {
+                    "name": "AUDIT_ONLY",
+                    "value": "1"
+                  },
+                  {
+                    "name": "AUDIT_URL",
+                    "value": "https://audit.evidscope.svc:8080"
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "identity",
+                    "mountPath": "/identity",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "identity",
+                "secret": {
+                  "secretName": "load-auditor-config",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
+

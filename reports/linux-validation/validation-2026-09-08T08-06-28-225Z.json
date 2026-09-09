@@ -1,0 +1,43 @@
+{
+  "started": "2026-09-08T08:06:28.225Z",
+  "finished": "2026-09-08T08:07:04.126Z",
+  "node": "v24.20.0",
+  "platform": "linux",
+  "results": [
+    {
+      "name": "regression",
+      "command": "/usr/local/bin/node",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/*.test.mjs"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 35854,
+      "output": "✔ local HTTP fixture observes two backend instances using fresh signed connections; not Kubernetes proof (39.817293ms)\n✔ one observed instance fails minimum two; missing header also fails (5.299772ms)\n✔ audit uses human credentials and investigation GET only (4.842773ms)\n✔ credential separation and unsafe origins refuse before network I/O (1.60746ms)\n✔ timeout is ambiguous without retry; redirect and failed receipt stay failures (44.735904ms)\n✔ opt-in readiness retains failed preflight then measures only after recovery (1004.66535ms)\n✔ permanent preflight failure skips every measurement and preserves readiness failure (121.401571ms)\n✔ both distribution Jobs opt into the same bounded readiness phase (0.598467ms)\n▶ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합\n  ✔ 원문/tenant/source 사칭, 임의 조회와 변조 HMAC 거부 (149.656278ms)\n  ✔ 접수 COMMIT, replay/duplicate/ID conflict, tenant 격리 (85.65844ms)\n  ✔ 자기보고/독립 결과, 자동검토/사람승인, 뒤늦은 권한 재평가 (184.452676ms)\n  ✔ 안전한 룰 DSL·시험·두 사람 승인·예외 만료 (887.462646ms)\n  ✔ 원본 참조 사건 담당·의견·종결 사유·tenant 접근 (41.623816ms)\n  ✔ 빈 증거 통과 금지, 시스템 변경·기한 재검토, 보완과제 쓰기 (76.356326ms)\n  ✔ 독립 신뢰키 검증·내용/누락/순서/키 대체 및 rollback 탐지 (30.001927ms)\n  ✔ 다중 실제 writer·worker 동시성: 중복·체인 분기 없음 (425.980597ms)\n  ✔ 강제 종료 이후 성공 접수 보존·조회 사본 재구축 (150.443143ms)\n  ✔ 실제 SQLite 쓰기 잠금 장애: 거짓 성공 없음·해제 뒤 재전송 (5057.036438ms)\n  ✔ 수집 실패가 업무 호출을 대기시키지 않는 유한 SDK (21.632171ms)\n  ✔ 합성 예제 end-to-end 실제 API 시드·규정 요구 20개 (416.298414ms)\n✔ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합 (7804.746468ms)\n✔ synthetic two-node gateway topology is linked by service label and Pod UID without asserting autoscaling (2.564973ms)\n✔ synthetic stale, terminating, wrong-service and wrong-UID endpoints cannot count as ready topology (1.942443ms)\n✔ synthetic duplicate EndpointSlices and same-node replicas do not fabricate node diversity (0.369745ms)\n✔ synthetic Pod UID matches do not validate unrelated or partly mismatched endpoint addresses (0.395601ms)\n✔ synthetic unknown endpoint readiness still requires a live Ready Pod and correct service binding (0.229657ms)\n✔ collector command contract is read-only and pins context and timeout on every command (0.538254ms)\n✔ fake kubectl runner failures remain failures and neither stderr nor raw Pod env reaches the report (0.617173ms)\n✔ gateway readiness follows vault loss and recovery while local liveness stays available (1532.332314ms)\n✔ serving gateway identity is bounded and cannot be replaced by request or upstream headers (393.523115ms)\n✔ readiness requests coalesce, cache briefly, validate the upstream result and time out (3799.263415ms)\n✔ worker liveness is local but readiness requires a successful analysis tick (601.704393ms)\n✔ shutdown cannot turn an in-flight dependency probe into a ready response (3331.356431ms)\n✔ authority uses issuance time and policy known at execution, including late-arriving evidence (1.635448ms)\n✔ human approval issued after execution or under another policy never satisfies prior review (0.499814ms)\n✔ self-reported delegation cannot substitute for independent parent-scoped authority (0.953409ms)\n✔ stop confirmation matches the requested target and follows the request (0.751328ms)\n✔ 보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 증명 (1748.977906ms)\n✔ 무단 키 누락·검색 사본 변조는 정당한 보존 종료로 위장할 수 없다 (361.489833ms)\n✔ 승인 이후 추가된 보존 hold는 파기 실행 시 재확인된다 (1464.784161ms)\n✔ 변경된 원장 head를 정상 조회가 재서명해 정당화하지 않는다 (369.845366ms)\n▶ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계\n  ✔ 신뢰하지 않은 CA는 클라이언트 TLS handshake 실패 (52.564172ms)\n  ✔ NODE_EXTRA_CA_CERTS로 신뢰한 CA와 IP·DNS SAN은 성공 (119.702815ms)\n  ✔ 신뢰한 CA도 SAN 불일치 서버는 거부 (50.1962ms)\n  ✔ gateway의 vault CA 미신뢰·SAN 불일치는 503 및 미접수 (210.288878ms)\n  ✔ 신뢰한 gateway → vault는 202 반환 및 지속성 조회 확인 (145.782675ms)\n  ✔ TLS에서도 source는 vault·audit·ingress 증거 조회 및 export 403 (379.13929ms)\n  ✔ TLS listener는 평문 HTTP로 API 응답을 제공하지 않음 (4.139126ms)\n✔ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계 (1666.794794ms)\n✔ 서비스 결과의 성공·실패 혼재를 성공 하나로 축약하지 않는다 (1.240675ms)\n✔ 참고 데이터 자기보고·서비스 참조·누락·비밀 비수집을 실제 HTTP에서 구분 (760.252152ms)\n✔ 현재 목적지 정책을 과거 행동에 소급하지 않고 시점별 정책과 불확실성을 표시 (0.588751ms)\n✔ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (456.80004ms)\n✔ 사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 연결하고 작성자 위조를 차단 (469.291315ms)\n✔ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (591.84045ms)\n✔ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (447.70212ms)\n✔ 검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존하며 재검토로 표시 (1679.821189ms)\n✔ worker leases distribute disjoint jobs and commit deterministic output once (133.825493ms)\n✔ worker identity, evidence references and tenant/action override cannot be supplied by caller (87.532126ms)\n✔ second vault connection observes durable leases and completed results (94.940247ms)\n✔ late evidence invalidates old results and expired leases recover after worker restart (113.062056ms)\n✔ query projection edits cannot alter worker source evidence or policy snapshot (111.891073ms)\n✔ evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure (98.55066ms)\n✔ findings are bounded with explicit total coverage, never reported as full analysis (370.763052ms)\n✔ oversized action quarantines explicitly and stays unanalyzed without looping duplicate evaluations (4260.93777ms)\n✔ analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies (259.545932ms)\n✔ oversized individual ledger rows are quarantined before parsing while checkpoint completeness remains mandatory (91.15389ms)\n✔ streaming snapshot distinguishes authorized erasure, missing keys and illegally retained erased keys (88.8526ms)\n✔ encrypted records without the new action header remain readable through bounded streaming (79.072292ms)\n✔ worker HTTP claim/complete runs computation in client and denies source and audit boundary access (348.561944ms)\nℹ tests 70\nℹ suites 0\nℹ pass 70\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 35819.38793\n"
+    },
+    {
+      "name": "kubernetes-static",
+      "command": "/usr/local/bin/node",
+      "args": [
+        "scripts/k8s-static.mjs"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 26,
+      "output": "{\"pass\":true,\"resources\":23,\"distributionJobs\":2,\"scope\":\"Read-only JSON security checks; not Kubernetes schema admission, CNI, TLS runtime, HPA or deployment verification\"}\n"
+    },
+    {
+      "name": "ui-syntax",
+      "command": "/usr/local/bin/node",
+      "args": [
+        "--check",
+        "public/app.js"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 20,
+      "output": ""
+    }
+  ],
+  "pass": true,
+  "scope": "Actual local HTTP/TLS/SQLite tests plus offline manifest checks. No Kubernetes runtime validation."
+}

@@ -1,0 +1,46 @@
+{
+  "format": "evidscope-k8s-reconciliation-v1",
+  "at": "2026-09-08T07:55:14.056Z",
+  "target": "https://127.0.0.1:49166",
+  "verification": {
+    "valid": true,
+    "count": 294,
+    "tenant": "alpha",
+    "rollbackChecked": false,
+    "disclosedEvents": 98,
+    "erasedEvents": 0,
+    "scope": "Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined."
+  },
+  "checkpoint": {
+    "format": "evidscope-checkpoint-v1",
+    "tenant": "alpha",
+    "count": 294,
+    "head": "d9e3f65bf41e1ad1309282b01ddfcf7540e2d63525a7819bfe629a460db7c6ed",
+    "signature": "Mt4zq9XaeAeup5/Y5tJP6pmW8ecQous+WzbUhPzGwl9qEB1SHNEM55Wo3AqxKVxADb1rPSUuN8wvS8pgSx0mCQ=="
+  },
+  "disclosedEvents": 98,
+  "receipts": [
+    {
+      "file": "reports/k8s-distribution-collector.json",
+      "runId": "distribution-1788853880425-6276005b",
+      "attempted": 60,
+      "accepted": 50,
+      "unconfirmed": 10,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    },
+    {
+      "file": "reports/k8s-distribution-collector-stable.json",
+      "runId": "distribution-1788853988055-361ff8d2",
+      "attempted": 60,
+      "accepted": 48,
+      "unconfirmed": 12,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "scope": "Independent trusted-key verification and accepted receipt reconciliation. Does not prove original event truth, complete attempted delivery, or load balancing."
+}

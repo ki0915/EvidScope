@@ -1,0 +1,482 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "network-probe-code",
+        "namespace": "evidscope"
+      },
+      "data": {
+        "k8s-network-probe.mjs": "// Network-only, unauthenticated /healthz observations. This script never reads\n// identity files, Kubernetes credentials, or private keys, and never mutates APIs.\nimport https from 'node:https';\nimport {realpathSync} from 'node:fs';\nimport {pathToFileURL} from 'node:url';\nimport {resolve} from 'node:path';\n\nconst timeoutMs=3000;\nconst preparationMs=10000,attemptsPerTarget=3,intervalMs=1000,postObservationHoldMs=30000;\nconst pause=ms=>new Promise(resolvePause=>setTimeout(resolvePause,ms));\nconst safe=value=>String(value||'').replace(/[^A-Za-z0-9._-]/g,'_').slice(0,120);\nexport function classifyProbe(observation,expected){\n let classification;\n if(observation.httpStatus!==null)classification='http_response';\n else if(!observation.dnsResolved)classification=['ENOTFOUND','EAI_AGAIN','EAI_FAIL'].includes(observation.errorCode)?'dns_failure':'dns_or_setup_failure';\n else if(!observation.tcpConnected&&['ETIMEDOUT','EVIDSCOPE_NETWORK_TIMEOUT'].includes(observation.errorCode))classification='connect_timeout_after_dns';\n else if(observation.tcpConnected&&observation.errorCode==='EVIDSCOPE_NETWORK_TIMEOUT')classification='post_connect_timeout';\n else if(observation.tcpConnected&&!observation.tlsAuthorized)classification='tls_or_post_connect_failure';\n else classification='connection_failure_ambiguous';\n const pass=expected==='allow'?classification==='http_response'&&observation.httpStatus===200&&observation.tlsAuthorized&&observation.healthMatches===true:expected==='deny'&&classification==='connect_timeout_after_dns';\n return {...observation,expected,classification,pass,denialObservation:classification==='connect_timeout_after_dns'?'resolved_target_not_tcp_reachable_within_deadline':'not_established',cause:classification==='connect_timeout_after_dns'?'TCP connection timed out after successful DNS resolution; consistent with a dropped network path. Correlate with NetworkPolicy and independently healthy target endpoints.':classification==='http_response'?'An HTTP response proves the network path was reachable, including 401/403/503 responses.':'DNS, TLS, rejected connection or post-connect failures do not establish the expected network drop.'};\n}\nexport async function probeTarget(target,namespace){\n return new Promise(resolveProbe=>{\n  const started=performance.now(),observation={target,url:`https://${target}.${namespace}.svc:8080/healthz`,dnsResolved:false,resolvedAddress:null,tcpConnected:false,tlsAuthorized:false,httpStatus:null,healthMatches:false,instance:null,errorCode:null};\n  let done=false,timer;\n  const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolveProbe({...observation,elapsedMs:Math.round(performance.now()-started)});};\n  const request=https.request(observation.url,{method:'GET',headers:{accept:'application/json'},agent:false,rejectUnauthorized:true},response=>{\n   observation.httpStatus=response.statusCode;observation.instance=response.headers['x-evidscope-instance']?safe(response.headers['x-evidscope-instance']):null;\n   const chunks=[];let size=0;\n   response.on('data',chunk=>{size+=chunk.length;if(size>4096){observation.errorCode='RESPONSE_TOO_LARGE';response.destroy();finish();return;}chunks.push(chunk);});\n   response.on('end',()=>{try{const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));observation.healthMatches=body.status==='ready'&&body.component===target;}catch{observation.errorCode='INVALID_HEALTH_JSON';}finish();});\n   response.on('error',error=>{observation.errorCode=error.code||'RESPONSE_ERROR';finish();});\n  });\n  request.on('socket',socket=>{\n   socket.once('lookup',(error,address)=>{if(!error&&address){observation.dnsResolved=true;observation.resolvedAddress=address;}});\n   socket.once('connect',()=>{observation.tcpConnected=true;});\n   socket.once('secureConnect',()=>{observation.tlsAuthorized=socket.authorized===true;});\n  });\n  request.on('error',error=>{observation.errorCode=error.code||'REQUEST_ERROR';finish();});\n  timer=setTimeout(()=>{const error=new Error('Probe network deadline');error.code='EVIDSCOPE_NETWORK_TIMEOUT';request.destroy(error);},timeoutMs);\n  request.end();\n });\n}\nexport async function runNetworkProbe({profile,namespace='evidscope',podName='',podUid='',nodeName=''}){\n if(!['collector','auditor','unlabeled'].includes(profile))throw Error('PROBE_PROFILE must be collector, auditor or unlabeled');\n if(!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(namespace))throw Error('Invalid probe namespace');\n const results=[],startedAt=new Date().toISOString();await pause(preparationMs);const observationStartedAt=new Date().toISOString();\n for(const target of ['ingress','audit','vault']){\n  const expected=profile==='collector'&&target==='ingress'||profile==='auditor'&&target==='audit'?'allow':'deny';\n  for(let attempt=1;attempt<=attemptsPerTarget;attempt++){\n   if(attempt>1)await pause(intervalMs);\n   results.push({...classifyProbe(await probeTarget(target,namespace),expected),attempt});\n  }\n }\n return {format:'evidscope-k8s-network-probe-v1',startedAt,observationStartedAt,observedAt:new Date().toISOString(),profile,namespace,pod:{name:safe(podName),uid:safe(podUid),nodeName:safe(nodeName)},timeoutMs,preparationMs,attemptsPerTarget,intervalMs,postObservationHoldMs,pass:results.every(result=>result.pass),results,limitations:[\n  'This probe sends only unauthenticated HTTPS GET /healthz requests, with CA and server hostname verification enabled. It does not test application authorization.',\n  'A DNS failure, HTTP denial, TLS failure, connection refusal or timeout after TCP connection is not counted as a successful network-denial test.',\n  'A pre-connect timeout after DNS resolution observes an unreachable TCP path, not the identity of the component that dropped it. Correlate with applied policies, independent target readiness and the paired allowed-client controls.',\n  'Three observations per target follow an explicit 10-second startup preparation and 1-second inter-attempt interval. Results describe this Pod and observation window only, not every node, protocol, port or future state.',\n  'After writing this report the process remains idle for 30 seconds without additional requests so an authorized external observer can capture live Pod network-policy rules and counters. Connection refusals remain unproven without that external evidence and paired allowed controls.',\n  'Collector and auditor connectivity uses existing client egress policies. The probe-specific policy adds DNS only and never grants gateway or vault egress.',\n ]};\n}\n// Kubernetes ConfigMap volumes are symlinks; Node resolves the module's URL to\n// the versioned real path, so compare the real CLI entrypoint as well.\nif(process.argv[1]&&pathToFileURL(realpathSync(resolve(process.argv[1]))).href===import.meta.url){\n try{const report=await runNetworkProbe({profile:process.env.PROBE_PROFILE,namespace:process.env.PROBE_NAMESPACE||'evidscope',podName:process.env.POD_NAME,podUid:process.env.POD_UID,nodeName:process.env.NODE_NAME});process.stdout.write(JSON.stringify(report)+'\\n');if(!report.pass)process.exitCode=1;await pause(postObservationHoldMs);}\n catch{process.stderr.write(JSON.stringify({format:'evidscope-k8s-network-probe-v1',pass:false,error:'invalid_configuration_or_probe_failure'})+'\\n');process.exitCode=1;}\n}\n"
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "network-probe-dns-only",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "evidscope.io/network-probe": "dns-only"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "network-probe-collector-run3",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "activeDeadlineSeconds": 90,
+        "ttlSecondsAfterFinished": 86400,
+        "template": {
+          "metadata": {
+            "labels": {
+              "evidscope.io/network-probe": "dns-only",
+              "evidscope.io/client": "collector"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 5,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "probe",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                  "node",
+                  "/probe/k8s-network-probe.mjs"
+                ],
+                "env": [
+                  {
+                    "name": "PROBE_PROFILE",
+                    "value": "collector"
+                  },
+                  {
+                    "name": "PROBE_NAMESPACE",
+                    "value": "evidscope"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_UID",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.uid"
+                      }
+                    }
+                  },
+                  {
+                    "name": "NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "25m",
+                    "memory": "64Mi"
+                  },
+                  "limits": {
+                    "cpu": "200m",
+                    "memory": "128Mi"
+                  }
+                },
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "code",
+                    "mountPath": "/probe",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "code",
+                "configMap": {
+                  "name": "network-probe-code",
+                  "defaultMode": 292
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "defaultMode": 288
+                }
+              }
+            ],
+            "nodeSelector": {
+              "kubernetes.io/hostname": "k3d-evidscope-lab-20260908-agent-0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "network-probe-auditor-run3",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "activeDeadlineSeconds": 90,
+        "ttlSecondsAfterFinished": 86400,
+        "template": {
+          "metadata": {
+            "labels": {
+              "evidscope.io/network-probe": "dns-only",
+              "evidscope.io/client": "auditor"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 5,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "probe",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                  "node",
+                  "/probe/k8s-network-probe.mjs"
+                ],
+                "env": [
+                  {
+                    "name": "PROBE_PROFILE",
+                    "value": "auditor"
+                  },
+                  {
+                    "name": "PROBE_NAMESPACE",
+                    "value": "evidscope"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_UID",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.uid"
+                      }
+                    }
+                  },
+                  {
+                    "name": "NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "25m",
+                    "memory": "64Mi"
+                  },
+                  "limits": {
+                    "cpu": "200m",
+                    "memory": "128Mi"
+                  }
+                },
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "code",
+                    "mountPath": "/probe",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "code",
+                "configMap": {
+                  "name": "network-probe-code",
+                  "defaultMode": 292
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "defaultMode": 288
+                }
+              }
+            ],
+            "nodeSelector": {
+              "kubernetes.io/hostname": "k3d-evidscope-lab-20260908-agent-0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "network-probe-unlabeled-run3",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "activeDeadlineSeconds": 90,
+        "ttlSecondsAfterFinished": 86400,
+        "template": {
+          "metadata": {
+            "labels": {
+              "evidscope.io/network-probe": "dns-only"
+            }
+          },
+          "spec": {
+            "restartPolicy": "Never",
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 5,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "probe",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                  "node",
+                  "/probe/k8s-network-probe.mjs"
+                ],
+                "env": [
+                  {
+                    "name": "PROBE_PROFILE",
+                    "value": "unlabeled"
+                  },
+                  {
+                    "name": "PROBE_NAMESPACE",
+                    "value": "evidscope"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_UID",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.uid"
+                      }
+                    }
+                  },
+                  {
+                    "name": "NODE_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "spec.nodeName"
+                      }
+                    }
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "25m",
+                    "memory": "64Mi"
+                  },
+                  "limits": {
+                    "cpu": "200m",
+                    "memory": "128Mi"
+                  }
+                },
+                "securityContext": {
+                  "readOnlyRootFilesystem": true,
+                  "allowPrivilegeEscalation": false,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "code",
+                    "mountPath": "/probe",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "code",
+                "configMap": {
+                  "name": "network-probe-code",
+                  "defaultMode": 292
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "defaultMode": 288
+                }
+              }
+            ],
+            "nodeSelector": {
+              "kubernetes.io/hostname": "k3d-evidscope-lab-20260908-agent-0"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

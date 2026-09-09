@@ -1,0 +1,951 @@
+{
+  "format": "evidscope-k8s-inspection-v1",
+  "collectedAt": "2026-09-08T08:05:02.674Z",
+  "collectionEndedAt": "2026-09-08T08:05:03.582Z",
+  "context": "k3d-evidscope-lab-20260908",
+  "namespace": {
+    "name": "evidscope",
+    "uid": "59ba3da2-fc46-4873-8cd2-ed7258050f74",
+    "resourceVersion": "607"
+  },
+  "collection": {
+    "complete": true,
+    "failures": [],
+    "resourceVersions": {
+      "namespace": "607",
+      "nodes": "",
+      "pods": "",
+      "endpointSlices": "",
+      "hpas": ""
+    }
+  },
+  "nodes": [
+    {
+      "name": "k3d-evidscope-lab-20260908-agent-0",
+      "uid": "b89f2c17-df28-4c4a-8ee2-feb359ccc355",
+      "resourceVersion": "1821",
+      "ready": true,
+      "capacity": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      },
+      "allocatable": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      }
+    },
+    {
+      "name": "k3d-evidscope-lab-20260908-agent-1",
+      "uid": "a1dfcfce-13cf-40d1-8820-bf5ecf696937",
+      "resourceVersion": "1815",
+      "ready": true,
+      "capacity": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      },
+      "allocatable": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      }
+    },
+    {
+      "name": "k3d-evidscope-lab-20260908-server-0",
+      "uid": "efcec72f-794b-411f-b43a-91a830dd71a8",
+      "resourceVersion": "1270",
+      "ready": true,
+      "capacity": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      },
+      "allocatable": {
+        "cpu": "20",
+        "memory": "2147483Ki"
+      }
+    }
+  ],
+  "pods": [
+    {
+      "name": "audit-86789b9bb9-2jsd9",
+      "uid": "5a0ae902-5dcb-491c-97cd-1a29dcab9722",
+      "resourceVersion": "812",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "audit",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.3"
+      ],
+      "containers": [
+        {
+          "name": "audit",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "audit-86789b9bb9-kmwcr",
+      "uid": "826c88c8-edd6-4836-b7fa-0363cfeb3f0f",
+      "resourceVersion": "820",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "audit",
+      "nodeName": "k3d-evidscope-lab-20260908-server-0",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.0.5"
+      ],
+      "containers": [
+        {
+          "name": "audit",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-auditor-prepared-j8fks",
+      "uid": "f2ed809c-970f-409a-a7ea-ce1191888954",
+      "resourceVersion": "1259",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.11"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-auditor-scaled-f558c",
+      "uid": "c4131887-8830-46be-b579-e0774bd417ca",
+      "resourceVersion": "1800",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.18"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-auditor-stable-dk45z",
+      "uid": "ced3154c-ba2a-4ac7-b1bd-b547da645092",
+      "resourceVersion": "1022",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.7"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-auditor-wr4s7",
+      "uid": "b3a28729-589c-41ae-8912-748cc63d0a90",
+      "resourceVersion": "919",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.6"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-collector-95ml9",
+      "uid": "57379789-ed1c-44db-91d2-c53b21b6f023",
+      "resourceVersion": "920",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.5"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-collector-fault-qbqwq",
+      "uid": "ff1a583a-fca8-497c-a6ac-a7f851fcaa61",
+      "resourceVersion": "1414",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.15"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-collector-prepared-ppdfk",
+      "uid": "aabdbed2-ab42-4c46-8eb6-886d2e77d1bd",
+      "resourceVersion": "1263",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.12"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-collector-recovered-bnt9p",
+      "uid": "190b1bf6-55fa-414c-a741-95a0f994a892",
+      "resourceVersion": "1631",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.8"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "distribution-collector-stable-44lbr",
+      "uid": "cc2d456e-3c75-4000-958e-58ba929fdaad",
+      "resourceVersion": "1026",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.8"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "hpa-audit-traffic-76xtd",
+      "uid": "b42d3f43-faa8-49dd-bf5e-95a2a50fb613",
+      "resourceVersion": "1620",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.16"
+      ],
+      "containers": [
+        {
+          "name": "load",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "ingress-7bc7bdbfdf-l5gsj",
+      "uid": "91e582fd-73a2-44fe-94f1-ac10dffbcdbf",
+      "resourceVersion": "844",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "ingress",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.3"
+      ],
+      "containers": [
+        {
+          "name": "ingress",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "ingress-7bc7bdbfdf-zgvgw",
+      "uid": "34fc072e-9a6f-426e-b5d7-a9c6a58d621a",
+      "resourceVersion": "1407",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "ingress",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.7"
+      ],
+      "containers": [
+        {
+          "name": "ingress",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-auditor-6qc77",
+      "uid": "9577f3a9-484b-423e-87e1-f49fe23d972d",
+      "resourceVersion": "1123",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.9"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-auditor-run2-cv9rr",
+      "uid": "02fb1a30-3232-47b8-8fe3-65d158dc2d86",
+      "resourceVersion": "1324",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.14"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-auditor-run3-nrzq6",
+      "uid": "7b2e1cd9-0af1-4c75-bbf4-116efa7b8844",
+      "resourceVersion": "1737",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.9"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-collector-run2-wwwz5",
+      "uid": "c92561c1-877d-4b47-a07a-ccfd4be26e9a",
+      "resourceVersion": "1328",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.13"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-collector-run3-4vdx7",
+      "uid": "a94065ca-7750-48a4-adcb-9aa3d0e8f0c7",
+      "resourceVersion": "1733",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.10"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-collector-x5rmj",
+      "uid": "ae4924d3-f767-4c3a-b593-677e3933707b",
+      "resourceVersion": "1127",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.5"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-unlabeled-786ck",
+      "uid": "d983e615-4d8a-4552-a106-fc62f0d4b8ce",
+      "resourceVersion": "1119",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.1.10"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-unlabeled-run2-t86c6",
+      "uid": "56bd4d78-83fa-4db1-a814-ccc73c0ea78c",
+      "resourceVersion": "1332",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.6"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "network-probe-unlabeled-run3-25cwv",
+      "uid": "a79b766f-5005-4642-b150-67dc9d784653",
+      "resourceVersion": "1729",
+      "namespace": "evidscope",
+      "application": null,
+      "component": null,
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Failed",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.11"
+      ],
+      "containers": [
+        {
+          "name": "probe",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "vault-6bc9868dc6-chlps",
+      "uid": "c6175d07-27f7-4bfa-9fc6-69e3f1d5074e",
+      "resourceVersion": "1862",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "vault",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Pending",
+      "ready": false,
+      "terminating": false,
+      "podIPs": [],
+      "containers": [
+        {
+          "name": "vault",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "vault-6bc9868dc6-lfmqg",
+      "uid": "42f31e4c-527d-4e2c-abe8-ba0bf170f53b",
+      "resourceVersion": "1864",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "vault",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+      "phase": "Succeeded",
+      "ready": false,
+      "terminating": true,
+      "podIPs": [
+        "10.42.1.4"
+      ],
+      "containers": [
+        {
+          "name": "vault",
+          "ready": false,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "worker-84b7d46d7c-jtd6f",
+      "uid": "6a369f1b-79c2-4e09-a6b6-6ad8ee187875",
+      "resourceVersion": "850",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "worker",
+      "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.3.4"
+      ],
+      "containers": [
+        {
+          "name": "worker",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    },
+    {
+      "name": "worker-84b7d46d7c-x7qzq",
+      "uid": "54083953-dfd8-4493-b849-9023068dd115",
+      "resourceVersion": "854",
+      "namespace": "evidscope",
+      "application": "evidscope",
+      "component": "worker",
+      "nodeName": "k3d-evidscope-lab-20260908-server-0",
+      "phase": "Running",
+      "ready": true,
+      "terminating": false,
+      "podIPs": [
+        "10.42.0.6"
+      ],
+      "containers": [
+        {
+          "name": "worker",
+          "ready": true,
+          "restarts": 0
+        }
+      ]
+    }
+  ],
+  "endpointSlices": [
+    {
+      "name": "audit-dp4pk",
+      "uid": "3620bd85-1189-4350-a02c-a9240c4830f4",
+      "resourceVersion": "1791",
+      "namespace": "evidscope",
+      "serviceName": "audit",
+      "addressType": "IPv4",
+      "endpoints": [
+        {
+          "addresses": [
+            "10.42.0.5"
+          ],
+          "ready": true,
+          "terminating": false,
+          "targetRef": {
+            "kind": "Pod",
+            "name": "audit-86789b9bb9-kmwcr",
+            "uid": "826c88c8-edd6-4836-b7fa-0363cfeb3f0f",
+            "namespace": "evidscope"
+          },
+          "podMapping": {
+            "name": "audit-86789b9bb9-kmwcr",
+            "uid": "826c88c8-edd6-4836-b7fa-0363cfeb3f0f",
+            "nodeName": "k3d-evidscope-lab-20260908-server-0",
+            "ready": true
+          },
+          "eligible": true,
+          "reasons": []
+        },
+        {
+          "addresses": [
+            "10.42.3.3"
+          ],
+          "ready": true,
+          "terminating": false,
+          "targetRef": {
+            "kind": "Pod",
+            "name": "audit-86789b9bb9-2jsd9",
+            "uid": "5a0ae902-5dcb-491c-97cd-1a29dcab9722",
+            "namespace": "evidscope"
+          },
+          "podMapping": {
+            "name": "audit-86789b9bb9-2jsd9",
+            "uid": "5a0ae902-5dcb-491c-97cd-1a29dcab9722",
+            "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+            "ready": true
+          },
+          "eligible": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "name": "ingress-7kqwt",
+      "uid": "fe30e5a3-f190-4ad1-8d10-600eb55a4137",
+      "resourceVersion": "1408",
+      "namespace": "evidscope",
+      "serviceName": "ingress",
+      "addressType": "IPv4",
+      "endpoints": [
+        {
+          "addresses": [
+            "10.42.1.3"
+          ],
+          "ready": true,
+          "terminating": false,
+          "targetRef": {
+            "kind": "Pod",
+            "name": "ingress-7bc7bdbfdf-l5gsj",
+            "uid": "91e582fd-73a2-44fe-94f1-ac10dffbcdbf",
+            "namespace": "evidscope"
+          },
+          "podMapping": {
+            "name": "ingress-7bc7bdbfdf-l5gsj",
+            "uid": "91e582fd-73a2-44fe-94f1-ac10dffbcdbf",
+            "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+            "ready": true
+          },
+          "eligible": true,
+          "reasons": []
+        },
+        {
+          "addresses": [
+            "10.42.3.7"
+          ],
+          "ready": true,
+          "terminating": false,
+          "targetRef": {
+            "kind": "Pod",
+            "name": "ingress-7bc7bdbfdf-zgvgw",
+            "uid": "34fc072e-9a6f-426e-b5d7-a9c6a58d621a",
+            "namespace": "evidscope"
+          },
+          "podMapping": {
+            "name": "ingress-7bc7bdbfdf-zgvgw",
+            "uid": "34fc072e-9a6f-426e-b5d7-a9c6a58d621a",
+            "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+            "ready": true
+          },
+          "eligible": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "name": "vault-cp87z",
+      "uid": "09fec319-a348-430f-b151-b72de5738bdd",
+      "resourceVersion": "1865",
+      "namespace": "evidscope",
+      "serviceName": "vault",
+      "addressType": "IPv4",
+      "endpoints": []
+    }
+  ],
+  "gateways": {
+    "ingress": {
+      "readyPodCount": 2,
+      "readyEndpointPodCount": 2,
+      "eligibleEndpointEntryCount": 2,
+      "readyPods": [
+        {
+          "name": "ingress-7bc7bdbfdf-l5gsj",
+          "uid": "91e582fd-73a2-44fe-94f1-ac10dffbcdbf",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-1"
+        },
+        {
+          "name": "ingress-7bc7bdbfdf-zgvgw",
+          "uid": "34fc072e-9a6f-426e-b5d7-a9c6a58d621a",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0"
+        }
+      ],
+      "endpointPods": [
+        {
+          "name": "ingress-7bc7bdbfdf-l5gsj",
+          "uid": "91e582fd-73a2-44fe-94f1-ac10dffbcdbf",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-1",
+          "ready": true
+        },
+        {
+          "name": "ingress-7bc7bdbfdf-zgvgw",
+          "uid": "34fc072e-9a6f-426e-b5d7-a9c6a58d621a",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+          "ready": true
+        }
+      ],
+      "distinctReadyEndpointNodes": [
+        "k3d-evidscope-lab-20260908-agent-0",
+        "k3d-evidscope-lab-20260908-agent-1"
+      ],
+      "topologyReady": true
+    },
+    "audit": {
+      "readyPodCount": 2,
+      "readyEndpointPodCount": 2,
+      "eligibleEndpointEntryCount": 2,
+      "readyPods": [
+        {
+          "name": "audit-86789b9bb9-2jsd9",
+          "uid": "5a0ae902-5dcb-491c-97cd-1a29dcab9722",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0"
+        },
+        {
+          "name": "audit-86789b9bb9-kmwcr",
+          "uid": "826c88c8-edd6-4836-b7fa-0363cfeb3f0f",
+          "nodeName": "k3d-evidscope-lab-20260908-server-0"
+        }
+      ],
+      "endpointPods": [
+        {
+          "name": "audit-86789b9bb9-kmwcr",
+          "uid": "826c88c8-edd6-4836-b7fa-0363cfeb3f0f",
+          "nodeName": "k3d-evidscope-lab-20260908-server-0",
+          "ready": true
+        },
+        {
+          "name": "audit-86789b9bb9-2jsd9",
+          "uid": "5a0ae902-5dcb-491c-97cd-1a29dcab9722",
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+          "ready": true
+        }
+      ],
+      "distinctReadyEndpointNodes": [
+        "k3d-evidscope-lab-20260908-agent-0",
+        "k3d-evidscope-lab-20260908-server-0"
+      ],
+      "topologyReady": true
+    }
+  },
+  "hpas": [
+    {
+      "name": "audit",
+      "uid": "f172a151-5515-46a4-a6fc-d3bbc86d38dd",
+      "resourceVersion": "1818",
+      "namespace": "evidscope",
+      "target": {
+        "kind": "Deployment",
+        "name": "audit"
+      },
+      "currentReplicas": 2,
+      "desiredReplicas": 2,
+      "minReplicas": 2,
+      "maxReplicas": 6,
+      "observedGeneration": null,
+      "generation": null,
+      "lastScaleTime": "2026-09-08T08:03:44Z",
+      "scalingActive": true,
+      "ableToScale": true,
+      "metricsAvailable": true,
+      "metrics": [
+        {
+          "type": "Resource",
+          "resource": "cpu",
+          "averageUtilization": 2,
+          "averageValue": "2m",
+          "value": null
+        }
+      ],
+      "autoscalingOccurred": null
+    },
+    {
+      "name": "ingress",
+      "uid": "8c17bd8f-e8da-4842-b615-f5a068ad5448",
+      "resourceVersion": "1838",
+      "namespace": "evidscope",
+      "target": {
+        "kind": "Deployment",
+        "name": "ingress"
+      },
+      "currentReplicas": 2,
+      "desiredReplicas": 2,
+      "minReplicas": 2,
+      "maxReplicas": 6,
+      "observedGeneration": null,
+      "generation": null,
+      "lastScaleTime": null,
+      "scalingActive": true,
+      "ableToScale": true,
+      "metricsAvailable": true,
+      "metrics": [
+        {
+          "type": "Resource",
+          "resource": "cpu",
+          "averageUtilization": 2,
+          "averageValue": "2m",
+          "value": null
+        }
+      ],
+      "autoscalingOccurred": null
+    },
+    {
+      "name": "worker",
+      "uid": "9c6e0636-c3db-408f-941a-a4a6b7a060af",
+      "resourceVersion": "1839",
+      "namespace": "evidscope",
+      "target": {
+        "kind": "Deployment",
+        "name": "worker"
+      },
+      "currentReplicas": 2,
+      "desiredReplicas": 2,
+      "minReplicas": 2,
+      "maxReplicas": 6,
+      "observedGeneration": null,
+      "generation": null,
+      "lastScaleTime": null,
+      "scalingActive": true,
+      "ableToScale": true,
+      "metricsAvailable": true,
+      "metrics": [
+        {
+          "type": "Resource",
+          "resource": "cpu",
+          "averageUtilization": 10,
+          "averageValue": "10m",
+          "value": null
+        }
+      ],
+      "autoscalingOccurred": null
+    }
+  ],
+  "topologyReady": true,
+  "autoscalingOccurred": null,
+  "limitations": [
+    "This is a read-only Kubernetes API observation, not a load-balancing, network isolation, recovery or autoscaling experiment.",
+    "Requests are sequential and not an atomic cross-resource snapshot. Namespace UID, Pod UID and resource versions identify the observed state.",
+    "Eligible endpoints match service label and live Pod name/UID, every EndpointSlice address matches an observed Pod.status.podIPs address, and Pod readiness and observed Ready nodes are required. Missing endpoint ready is treated as unknown/eligible by Kubernetes convention; Pod readiness is still required.",
+    "Two ready endpoint Pods on two nodes establish observed gateway topology only. Self-reported HTTP instance headers must be correlated with this evidence and a real traffic probe.",
+    "HPA replica counts, lastScaleTime and current metrics alone do not establish a measured scale-out or scale-in event. autoscalingOccurred remains null.",
+    "Pod environment values, volumes, Secret references, annotations, kubeconfig contents and kubectl error output are not included."
+  ]
+}

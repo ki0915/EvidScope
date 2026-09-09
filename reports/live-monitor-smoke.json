@@ -1,0 +1,107 @@
+{
+  "startedAt": "2026-09-08T12:35:19.293Z",
+  "finishedAt": "2026-09-08T12:35:49.470Z",
+  "scope": "12 real signed receipts from a synthetic local source; no external AI traffic; up to 3 attempts per event, same id and body on retry",
+  "run": "live-chart-1788870919266",
+  "receipts": [
+    {
+      "wave": 0,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 0,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 1,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 1,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 1,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 1,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 1,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 2,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 3,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 3,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 3,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    },
+    {
+      "wave": 3,
+      "status": 202,
+      "duplicate": false,
+      "attempt": 1
+    }
+  ],
+  "errors": [],
+  "before": 0,
+  "after": 12,
+  "delta": 12,
+  "pass": true,
+  "points": [
+    {
+      "at": "2026-09-08T12:35:00.000Z",
+      "end": "2026-09-08T12:35:30.000Z",
+      "partial": false,
+      "received": 7,
+      "success": 4,
+      "failure": 3,
+      "unknown": 0,
+      "gaps": 0
+    },
+    {
+      "at": "2026-09-08T12:35:30.000Z",
+      "end": "2026-09-08T12:35:49.470Z",
+      "partial": true,
+      "received": 5,
+      "success": 2,
+      "failure": 3,
+      "unknown": 0,
+      "gaps": 0
+    }
+  ]
+}

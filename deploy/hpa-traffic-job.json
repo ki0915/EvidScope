@@ -1,0 +1,151 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "hpa-audit-traffic",
+    "namespace": "evidscope"
+  },
+  "spec": {
+    "backoffLimit": 0,
+    "activeDeadlineSeconds": 180,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "metadata": {
+        "labels": {
+          "evidscope.io/client": "auditor"
+        }
+      },
+      "spec": {
+        "restartPolicy": "Never",
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 1000,
+          "runAsGroup": 1000,
+          "fsGroup": 1000,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "load",
+            "image": "evidscope:local",
+            "imagePullPolicy": "IfNotPresent",
+            "command": [
+              "node",
+              "/traffic/k8s-hpa-traffic.mjs"
+            ],
+            "env": [
+              {
+                "name": "CONFIG_FILE",
+                "value": "/identity/config.json"
+              },
+              {
+                "name": "CA_FILE",
+                "value": "/ca/ca.crt"
+              },
+              {
+                "name": "NODE_EXTRA_CA_CERTS",
+                "value": "/ca/ca.crt"
+              },
+              {
+                "name": "AUDIT_URL",
+                "value": "https://audit.evidscope.svc:8080"
+              },
+              {
+                "name": "DURATION_SECONDS",
+                "value": "120"
+              },
+              {
+                "name": "REQUESTS_PER_SECOND",
+                "value": "80"
+              },
+              {
+                "name": "CONCURRENCY",
+                "value": "20"
+              },
+              {
+                "name": "MAX_REQUESTS",
+                "value": "10000"
+              },
+              {
+                "name": "REQUEST_TIMEOUT_MS",
+                "value": "3000"
+              },
+              {
+                "name": "PREFLIGHT_TIMEOUT_MS",
+                "value": "30000"
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              },
+              "limits": {
+                "cpu": "1000m",
+                "memory": "512Mi"
+              }
+            },
+            "securityContext": {
+              "readOnlyRootFilesystem": true,
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "identity",
+                "mountPath": "/identity",
+                "readOnly": true
+              },
+              {
+                "name": "ca",
+                "mountPath": "/ca",
+                "readOnly": true
+              },
+              {
+                "mountPath": "/traffic",
+                "readOnly": true,
+                "name": "traffic-script"
+              }
+            ]
+          }
+        ],
+        "volumes": [
+          {
+            "name": "identity",
+            "secret": {
+              "secretName": "load-auditor-config",
+              "defaultMode": 288
+            }
+          },
+          {
+            "name": "ca",
+            "secret": {
+              "secretName": "vault-ca",
+              "defaultMode": 288
+            }
+          },
+          {
+            "name": "traffic-script",
+            "configMap": {
+              "items": [
+                {
+                  "path": "k8s-hpa-traffic.mjs",
+                  "key": "k8s-hpa-traffic.mjs"
+                }
+              ],
+              "defaultMode": 292,
+              "name": "hpa-traffic-script"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

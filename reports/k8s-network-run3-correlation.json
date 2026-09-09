@@ -1,0 +1,757 @@
+{
+  "format": "evidscope-k8s-network-correlation-v1",
+  "createdAt": "2026-09-08T08:07:05.444Z",
+  "run": 3,
+  "context": "k3d-evidscope-lab-20260908",
+  "namespace": "evidscope",
+  "node": "k3d-evidscope-lab-20260908-agent-0",
+  "pass": false,
+  "rawProbePass": false,
+  "classification": "connection_refusals_consistent_with_cni_reject_rules_packet_attribution_unproven",
+  "observationWindow": {
+    "from": "2026-09-08T08:02:29.541Z",
+    "to": "2026-09-08T08:02:35.622Z"
+  },
+  "observed": {
+    "totalRequests": 27,
+    "expectedAllowed": 6,
+    "verifiedAllowed": 6,
+    "expectedDenied": 21,
+    "dnsResolvedPreConnectRefusals": 21
+  },
+  "ruleEvidence": {
+    "capturedBeforeObservation": true,
+    "cniImplementationObserved": "kube-router network policy iptables chains",
+    "rejectBehavior": "REJECT --reject-with icmp-port-unreachable",
+    "podUidToSourceIpVerified": true,
+    "packetCounterDeltaAvailable": false,
+    "flowEvidence": [
+      {
+        "profile": "collector",
+        "pod": {
+          "name": "network-probe-collector-run3-4vdx7",
+          "uid": "a94065ca-7750-48a4-adcb-9aa3d0e8f0c7",
+          "labels": {
+            "batch.kubernetes.io/controller-uid": "3c05ba1d-0e9b-4b45-9d6a-ab2fddc1f32c",
+            "batch.kubernetes.io/job-name": "network-probe-collector-run3",
+            "controller-uid": "3c05ba1d-0e9b-4b45-9d6a-ab2fddc1f32c",
+            "evidscope.io/client": "collector",
+            "evidscope.io/network-probe": "dns-only",
+            "job-name": "network-probe-collector-run3"
+          },
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+          "ip": "10.42.3.10",
+          "phase": "Running"
+        },
+        "chain": "KUBE-POD-FW-RQWTECYINS4CY75L",
+        "sourceRoutingRules": [
+          {
+            "line": 190,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.10/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-collector-run3-4vdx7 namespace: evidscope to chain KUBE-POD-FW-RQWTECYINS4CY75L\" -j KUBE-POD-FW-RQWTECYINS4CY75L"
+          },
+          {
+            "line": 191,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.10/32 -m physdev --physdev-is-bridged -m comment --comment \"rule to jump traffic from POD name:network-probe-collector-run3-4vdx7 namespace: evidscope to chain KUBE-POD-FW-RQWTECYINS4CY75L\" -j KUBE-POD-FW-RQWTECYINS4CY75L"
+          },
+          {
+            "line": 209,
+            "text": "[0:0] -A KUBE-ROUTER-INPUT -s 10.42.3.10/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-collector-run3-4vdx7 namespace: evidscope to chain KUBE-POD-FW-RQWTECYINS4CY75L\" -j KUBE-POD-FW-RQWTECYINS4CY75L"
+          },
+          {
+            "line": 218,
+            "text": "[0:0] -A KUBE-ROUTER-OUTPUT -s 10.42.3.10/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-collector-run3-4vdx7 namespace: evidscope to chain KUBE-POD-FW-RQWTECYINS4CY75L\" -j KUBE-POD-FW-RQWTECYINS4CY75L"
+          }
+        ],
+        "podFirewallRules": [
+          {
+            "line": 171,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -m comment --comment \"common bi-directional traffic policy rules\" -j KUBE-NWPLCY-COMMON"
+          },
+          {
+            "line": 172,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -d 10.42.3.10/32 -m comment --comment \"rule to permit the traffic traffic to pods when source is the pod\\'s local node\" -m addrtype --src-type LOCAL -j ACCEPT"
+          },
+          {
+            "line": 173,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -s 10.42.3.10/32 -m comment --comment \"run through nw policy load-collector-egress\" -j KUBE-NWPLCY-HEOZOEOOTRIGT6NX"
+          },
+          {
+            "line": 174,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -m comment --comment \"run through nw policy deny-all\" -j KUBE-NWPLCY-SNOWN2YFOO536QD6"
+          },
+          {
+            "line": 175,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -s 10.42.3.10/32 -m comment --comment \"run through nw policy network-probe-dns-only\" -j KUBE-NWPLCY-SOWDTZ52LT6Y7HPC"
+          },
+          {
+            "line": 176,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -m comment --comment \"rule to log dropped traffic POD name:network-probe-collector-run3-4vdx7 namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -m limit --limit 10/min --limit-burst 10 -j NFLOG --nflog-group 100"
+          },
+          {
+            "line": 177,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -m comment --comment \"rule to REJECT traffic destined for POD name:network-probe-collector-run3-4vdx7 namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -j REJECT --reject-with icmp-port-unreachable"
+          },
+          {
+            "line": 178,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -j MARK --set-xmark 0x0/0x10000"
+          },
+          {
+            "line": 179,
+            "text": "[0:0] -A KUBE-POD-FW-RQWTECYINS4CY75L -m comment --comment \"set mark to ACCEPT traffic that comply to network policies\" -j MARK --set-xmark 0x20000/0x20000"
+          }
+        ],
+        "policyRules": [
+          {
+            "line": 79,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule to drop invalid state for pod\\\"\" -m conntrack --ctstate INVALID -j DROP"
+          },
+          {
+            "line": 80,
+            "text": "[56:24836] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule for stateful firewall for pod\\\"\" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
+          },
+          {
+            "line": 81,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp echo requests\" -m icmp --icmp-type 8 -j ACCEPT"
+          },
+          {
+            "line": 82,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp destination unreachable messages\" -m icmp --icmp-type 3 -j ACCEPT"
+          },
+          {
+            "line": 83,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp time exceeded messages\" -m icmp --icmp-type 11 -j ACCEPT"
+          },
+          {
+            "line": 85,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-PZAYO66JQ6SNQ4NX dst -m tcp --dport 8080 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 86,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-PZAYO66JQ6SNQ4NX dst -m tcp --dport 8080 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 87,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-D4YCSTDNVVDUR2ZR dst -m udp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 88,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-D4YCSTDNVVDUR2ZR dst -m udp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 89,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-D4YCSTDNVVDUR2ZR dst -m tcp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 90,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-collector-egress namespace evidscope\" -m set --match-set KUBE-SRC-T3YD2U4L3MNDOOFS src -m set --match-set KUBE-DST-D4YCSTDNVVDUR2ZR dst -m tcp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 91,
+            "text": "[0:0] -A KUBE-NWPLCY-HEOZOEOOTRIGT6NX -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/load-collector-egress\" --nflog-group 100"
+          },
+          {
+            "line": 105,
+            "text": "[0:0] -A KUBE-NWPLCY-SNOWN2YFOO536QD6 -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/deny-all\" --nflog-group 100"
+          },
+          {
+            "line": 106,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 107,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 108,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 109,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 110,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/network-probe-dns-only\" --nflog-group 100"
+          }
+        ],
+        "policySetMembers": [
+          {
+            "line": 69,
+            "text": "add KUBE-DST-D4YCSTDNVVDUR2ZR 10.42.0.3 timeout 0"
+          },
+          {
+            "line": 71,
+            "text": "add KUBE-DST-PZAYO66JQ6SNQ4NX 10.42.3.7 timeout 0"
+          },
+          {
+            "line": 72,
+            "text": "add KUBE-DST-PZAYO66JQ6SNQ4NX 10.42.1.3 timeout 0"
+          },
+          {
+            "line": 78,
+            "text": "add KUBE-SRC-T3YD2U4L3MNDOOFS 10.42.3.10 timeout 0"
+          },
+          {
+            "line": 80,
+            "text": "add KUBE-DST-FWXKYXRYYIMBVP4Y 10.42.0.3 timeout 0"
+          },
+          {
+            "line": 82,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.10 timeout 0"
+          },
+          {
+            "line": 83,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.11 timeout 0"
+          },
+          {
+            "line": 84,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.9 timeout 0"
+          }
+        ],
+        "observationSummary": [
+          {
+            "target": "ingress",
+            "expected": "allow",
+            "attempts": 3,
+            "verifiedHttp200": 3,
+            "dnsResolvedConnectionRefused": 0,
+            "rawPass": true
+          },
+          {
+            "target": "audit",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          },
+          {
+            "target": "vault",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          }
+        ]
+      },
+      {
+        "profile": "auditor",
+        "pod": {
+          "name": "network-probe-auditor-run3-nrzq6",
+          "uid": "7b2e1cd9-0af1-4c75-bbf4-116efa7b8844",
+          "labels": {
+            "batch.kubernetes.io/controller-uid": "6601cec6-4d68-4be9-a74d-da9259b47fb3",
+            "batch.kubernetes.io/job-name": "network-probe-auditor-run3",
+            "controller-uid": "6601cec6-4d68-4be9-a74d-da9259b47fb3",
+            "evidscope.io/client": "auditor",
+            "evidscope.io/network-probe": "dns-only",
+            "job-name": "network-probe-auditor-run3"
+          },
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+          "ip": "10.42.3.9",
+          "phase": "Running"
+        },
+        "chain": "KUBE-POD-FW-FQHGTNN2G7C3WHYT",
+        "sourceRoutingRules": [
+          {
+            "line": 202,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.9/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope to chain KUBE-POD-FW-FQHGTNN2G7C3WHYT\" -j KUBE-POD-FW-FQHGTNN2G7C3WHYT"
+          },
+          {
+            "line": 203,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.9/32 -m physdev --physdev-is-bridged -m comment --comment \"rule to jump traffic from POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope to chain KUBE-POD-FW-FQHGTNN2G7C3WHYT\" -j KUBE-POD-FW-FQHGTNN2G7C3WHYT"
+          },
+          {
+            "line": 212,
+            "text": "[0:0] -A KUBE-ROUTER-INPUT -s 10.42.3.9/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope to chain KUBE-POD-FW-FQHGTNN2G7C3WHYT\" -j KUBE-POD-FW-FQHGTNN2G7C3WHYT"
+          },
+          {
+            "line": 224,
+            "text": "[0:0] -A KUBE-ROUTER-OUTPUT -s 10.42.3.9/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope to chain KUBE-POD-FW-FQHGTNN2G7C3WHYT\" -j KUBE-POD-FW-FQHGTNN2G7C3WHYT"
+          }
+        ],
+        "podFirewallRules": [
+          {
+            "line": 144,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -m comment --comment \"common bi-directional traffic policy rules\" -j KUBE-NWPLCY-COMMON"
+          },
+          {
+            "line": 145,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -d 10.42.3.9/32 -m comment --comment \"rule to permit the traffic traffic to pods when source is the pod\\'s local node\" -m addrtype --src-type LOCAL -j ACCEPT"
+          },
+          {
+            "line": 146,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -m comment --comment \"run through nw policy deny-all\" -j KUBE-NWPLCY-SNOWN2YFOO536QD6"
+          },
+          {
+            "line": 147,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -s 10.42.3.9/32 -m comment --comment \"run through nw policy load-auditor-egress\" -j KUBE-NWPLCY-XO7APKZKQW6RAHD7"
+          },
+          {
+            "line": 148,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -s 10.42.3.9/32 -m comment --comment \"run through nw policy network-probe-dns-only\" -j KUBE-NWPLCY-SOWDTZ52LT6Y7HPC"
+          },
+          {
+            "line": 149,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -m comment --comment \"rule to log dropped traffic POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -m limit --limit 10/min --limit-burst 10 -j NFLOG --nflog-group 100"
+          },
+          {
+            "line": 150,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -m comment --comment \"rule to REJECT traffic destined for POD name:network-probe-auditor-run3-nrzq6 namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -j REJECT --reject-with icmp-port-unreachable"
+          },
+          {
+            "line": 151,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -j MARK --set-xmark 0x0/0x10000"
+          },
+          {
+            "line": 152,
+            "text": "[0:0] -A KUBE-POD-FW-FQHGTNN2G7C3WHYT -m comment --comment \"set mark to ACCEPT traffic that comply to network policies\" -j MARK --set-xmark 0x20000/0x20000"
+          }
+        ],
+        "policyRules": [
+          {
+            "line": 79,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule to drop invalid state for pod\\\"\" -m conntrack --ctstate INVALID -j DROP"
+          },
+          {
+            "line": 80,
+            "text": "[56:24836] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule for stateful firewall for pod\\\"\" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
+          },
+          {
+            "line": 81,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp echo requests\" -m icmp --icmp-type 8 -j ACCEPT"
+          },
+          {
+            "line": 82,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp destination unreachable messages\" -m icmp --icmp-type 3 -j ACCEPT"
+          },
+          {
+            "line": 83,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp time exceeded messages\" -m icmp --icmp-type 11 -j ACCEPT"
+          },
+          {
+            "line": 105,
+            "text": "[0:0] -A KUBE-NWPLCY-SNOWN2YFOO536QD6 -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/deny-all\" --nflog-group 100"
+          },
+          {
+            "line": 106,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 107,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 108,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 109,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 110,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/network-probe-dns-only\" --nflog-group 100"
+          },
+          {
+            "line": 114,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-5P757CCH32DCC3CT dst -m tcp --dport 8080 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 115,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-5P757CCH32DCC3CT dst -m tcp --dport 8080 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 116,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-YKLIJWUY5Y2CDNAM dst -m udp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 117,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-YKLIJWUY5Y2CDNAM dst -m udp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 118,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-YKLIJWUY5Y2CDNAM dst -m tcp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 119,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name load-auditor-egress namespace evidscope\" -m set --match-set KUBE-SRC-B5ETJTBAQ73VARWN src -m set --match-set KUBE-DST-YKLIJWUY5Y2CDNAM dst -m tcp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 120,
+            "text": "[0:0] -A KUBE-NWPLCY-XO7APKZKQW6RAHD7 -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/load-auditor-egress\" --nflog-group 100"
+          }
+        ],
+        "policySetMembers": [
+          {
+            "line": 65,
+            "text": "add KUBE-DST-5P757CCH32DCC3CT 10.42.3.3 timeout 0"
+          },
+          {
+            "line": 66,
+            "text": "add KUBE-DST-5P757CCH32DCC3CT 10.42.1.17 timeout 0"
+          },
+          {
+            "line": 67,
+            "text": "add KUBE-DST-5P757CCH32DCC3CT 10.42.0.5 timeout 0"
+          },
+          {
+            "line": 74,
+            "text": "add KUBE-DST-YKLIJWUY5Y2CDNAM 10.42.0.3 timeout 0"
+          },
+          {
+            "line": 76,
+            "text": "add KUBE-SRC-B5ETJTBAQ73VARWN 10.42.3.9 timeout 0"
+          },
+          {
+            "line": 80,
+            "text": "add KUBE-DST-FWXKYXRYYIMBVP4Y 10.42.0.3 timeout 0"
+          },
+          {
+            "line": 82,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.10 timeout 0"
+          },
+          {
+            "line": 83,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.11 timeout 0"
+          },
+          {
+            "line": 84,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.9 timeout 0"
+          }
+        ],
+        "observationSummary": [
+          {
+            "target": "ingress",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          },
+          {
+            "target": "audit",
+            "expected": "allow",
+            "attempts": 3,
+            "verifiedHttp200": 3,
+            "dnsResolvedConnectionRefused": 0,
+            "rawPass": true
+          },
+          {
+            "target": "vault",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          }
+        ]
+      },
+      {
+        "profile": "unlabeled",
+        "pod": {
+          "name": "network-probe-unlabeled-run3-25cwv",
+          "uid": "a79b766f-5005-4642-b150-67dc9d784653",
+          "labels": {
+            "batch.kubernetes.io/controller-uid": "1beb3772-239e-45d4-ad38-b920f4721b58",
+            "batch.kubernetes.io/job-name": "network-probe-unlabeled-run3",
+            "controller-uid": "1beb3772-239e-45d4-ad38-b920f4721b58",
+            "evidscope.io/network-probe": "dns-only",
+            "job-name": "network-probe-unlabeled-run3"
+          },
+          "nodeName": "k3d-evidscope-lab-20260908-agent-0",
+          "ip": "10.42.3.11",
+          "phase": "Running"
+        },
+        "chain": "KUBE-POD-FW-DUTMJ3JNUJIRHOYP",
+        "sourceRoutingRules": [
+          {
+            "line": 194,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.11/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope to chain KUBE-POD-FW-DUTMJ3JNUJIRHOYP\" -j KUBE-POD-FW-DUTMJ3JNUJIRHOYP"
+          },
+          {
+            "line": 195,
+            "text": "[0:0] -A KUBE-ROUTER-FORWARD -s 10.42.3.11/32 -m physdev --physdev-is-bridged -m comment --comment \"rule to jump traffic from POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope to chain KUBE-POD-FW-DUTMJ3JNUJIRHOYP\" -j KUBE-POD-FW-DUTMJ3JNUJIRHOYP"
+          },
+          {
+            "line": 210,
+            "text": "[0:0] -A KUBE-ROUTER-INPUT -s 10.42.3.11/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope to chain KUBE-POD-FW-DUTMJ3JNUJIRHOYP\" -j KUBE-POD-FW-DUTMJ3JNUJIRHOYP"
+          },
+          {
+            "line": 220,
+            "text": "[0:0] -A KUBE-ROUTER-OUTPUT -s 10.42.3.11/32 -m comment --comment \"rule to jump traffic from POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope to chain KUBE-POD-FW-DUTMJ3JNUJIRHOYP\" -j KUBE-POD-FW-DUTMJ3JNUJIRHOYP"
+          }
+        ],
+        "podFirewallRules": [
+          {
+            "line": 136,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -m comment --comment \"common bi-directional traffic policy rules\" -j KUBE-NWPLCY-COMMON"
+          },
+          {
+            "line": 137,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -d 10.42.3.11/32 -m comment --comment \"rule to permit the traffic traffic to pods when source is the pod\\'s local node\" -m addrtype --src-type LOCAL -j ACCEPT"
+          },
+          {
+            "line": 138,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -m comment --comment \"run through nw policy deny-all\" -j KUBE-NWPLCY-SNOWN2YFOO536QD6"
+          },
+          {
+            "line": 139,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -s 10.42.3.11/32 -m comment --comment \"run through nw policy network-probe-dns-only\" -j KUBE-NWPLCY-SOWDTZ52LT6Y7HPC"
+          },
+          {
+            "line": 140,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -m comment --comment \"rule to log dropped traffic POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -m limit --limit 10/min --limit-burst 10 -j NFLOG --nflog-group 100"
+          },
+          {
+            "line": 141,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -m comment --comment \"rule to REJECT traffic destined for POD name:network-probe-unlabeled-run3-25cwv namespace: evidscope\" -m mark ! --mark 0x10000/0x10000 -j REJECT --reject-with icmp-port-unreachable"
+          },
+          {
+            "line": 142,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -j MARK --set-xmark 0x0/0x10000"
+          },
+          {
+            "line": 143,
+            "text": "[0:0] -A KUBE-POD-FW-DUTMJ3JNUJIRHOYP -m comment --comment \"set mark to ACCEPT traffic that comply to network policies\" -j MARK --set-xmark 0x20000/0x20000"
+          }
+        ],
+        "policyRules": [
+          {
+            "line": 79,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule to drop invalid state for pod\\\"\" -m conntrack --ctstate INVALID -j DROP"
+          },
+          {
+            "line": 80,
+            "text": "[56:24836] -A KUBE-NWPLCY-COMMON -m comment --comment \"\\\"rule for stateful firewall for pod\\\"\" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
+          },
+          {
+            "line": 81,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp echo requests\" -m icmp --icmp-type 8 -j ACCEPT"
+          },
+          {
+            "line": 82,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp destination unreachable messages\" -m icmp --icmp-type 3 -j ACCEPT"
+          },
+          {
+            "line": 83,
+            "text": "[0:0] -A KUBE-NWPLCY-COMMON -p icmp -m comment --comment \"allow icmp time exceeded messages\" -m icmp --icmp-type 11 -j ACCEPT"
+          },
+          {
+            "line": 105,
+            "text": "[0:0] -A KUBE-NWPLCY-SNOWN2YFOO536QD6 -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/deny-all\" --nflog-group 100"
+          },
+          {
+            "line": 106,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 107,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p udp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m udp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 108,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -j MARK --set-xmark 0x10000/0x10000"
+          },
+          {
+            "line": 109,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -p tcp -m comment --comment \"rule to ACCEPT traffic from source pods to dest pods selected by policy name network-probe-dns-only namespace evidscope\" -m set --match-set KUBE-SRC-6OSE3RQWSL4UZNIP src -m set --match-set KUBE-DST-FWXKYXRYYIMBVP4Y dst -m tcp --dport 53 -m mark --mark 0x10000/0x10000 -j RETURN"
+          },
+          {
+            "line": 110,
+            "text": "[0:0] -A KUBE-NWPLCY-SOWDTZ52LT6Y7HPC -m comment --comment \"rule to log dropped traffic\" -m limit --limit 10/min --limit-burst 10 -m mark ! --mark 0x10000/0x10000 -j NFLOG --nflog-prefix \"DROP by policy evidscope/network-probe-dns-only\" --nflog-group 100"
+          }
+        ],
+        "policySetMembers": [
+          {
+            "line": 80,
+            "text": "add KUBE-DST-FWXKYXRYYIMBVP4Y 10.42.0.3 timeout 0"
+          },
+          {
+            "line": 82,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.10 timeout 0"
+          },
+          {
+            "line": 83,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.11 timeout 0"
+          },
+          {
+            "line": 84,
+            "text": "add KUBE-SRC-6OSE3RQWSL4UZNIP 10.42.3.9 timeout 0"
+          }
+        ],
+        "observationSummary": [
+          {
+            "target": "ingress",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          },
+          {
+            "target": "audit",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          },
+          {
+            "target": "vault",
+            "expected": "deny",
+            "attempts": 3,
+            "verifiedHttp200": 0,
+            "dnsResolvedConnectionRefused": 3,
+            "rawPass": false
+          }
+        ]
+      }
+    ],
+    "serviceDnatRules": [
+      {
+        "line": 282,
+        "text": "[0:0] -A KUBE-SEP-2DEA5CRUMDE56ETQ -s 10.42.1.17/32 -m comment --comment \"evidscope/audit:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 283,
+        "text": "[0:0] -A KUBE-SEP-2DEA5CRUMDE56ETQ -p tcp -m comment --comment \"evidscope/audit:https\" -m tcp -j DNAT --to-destination 10.42.1.17:8080"
+      },
+      {
+        "line": 286,
+        "text": "[0:0] -A KUBE-SEP-5I6E2X5HECKZZRHU -s 10.42.0.5/32 -m comment --comment \"evidscope/audit:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 287,
+        "text": "[0:0] -A KUBE-SEP-5I6E2X5HECKZZRHU -p tcp -m comment --comment \"evidscope/audit:https\" -m tcp -j DNAT --to-destination 10.42.0.5:8080"
+      },
+      {
+        "line": 290,
+        "text": "[0:0] -A KUBE-SEP-AHUWE6HMH4Y6LK2D -s 10.42.1.3/32 -m comment --comment \"evidscope/ingress:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 291,
+        "text": "[29:1740] -A KUBE-SEP-AHUWE6HMH4Y6LK2D -p tcp -m comment --comment \"evidscope/ingress:https\" -m tcp -j DNAT --to-destination 10.42.1.3:8080"
+      },
+      {
+        "line": 298,
+        "text": "[0:0] -A KUBE-SEP-MKXXD25Y7MYIPO4Y -s 10.42.1.4/32 -m comment --comment \"evidscope/vault:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 299,
+        "text": "[221:13260] -A KUBE-SEP-MKXXD25Y7MYIPO4Y -p tcp -m comment --comment \"evidscope/vault:https\" -m tcp -j DNAT --to-destination 10.42.1.4:8080"
+      },
+      {
+        "line": 300,
+        "text": "[0:0] -A KUBE-SEP-VC44KZLMZMCM75HL -s 10.42.3.7/32 -m comment --comment \"evidscope/ingress:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 301,
+        "text": "[33:1980] -A KUBE-SEP-VC44KZLMZMCM75HL -p tcp -m comment --comment \"evidscope/ingress:https\" -m tcp -j DNAT --to-destination 10.42.3.7:8080"
+      },
+      {
+        "line": 302,
+        "text": "[0:0] -A KUBE-SEP-YJTIVVULKTVUWPXQ -s 10.42.3.3/32 -m comment --comment \"evidscope/audit:https\" -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 303,
+        "text": "[0:0] -A KUBE-SEP-YJTIVVULKTVUWPXQ -p tcp -m comment --comment \"evidscope/audit:https\" -m tcp -j DNAT --to-destination 10.42.3.3:8080"
+      },
+      {
+        "line": 309,
+        "text": "[2:120] -A KUBE-SERVICES -d 10.43.180.222/32 -p tcp -m comment --comment \"evidscope/vault:https cluster IP\" -m tcp --dport 8080 -j KUBE-SVC-DUF4H3CKWTTFSHUM"
+      },
+      {
+        "line": 310,
+        "text": "[0:0] -A KUBE-SERVICES -d 10.43.223.167/32 -p tcp -m comment --comment \"evidscope/ingress:https cluster IP\" -m tcp --dport 8080 -j KUBE-SVC-QY7SHISHUJKIQVBQ"
+      },
+      {
+        "line": 311,
+        "text": "[0:0] -A KUBE-SERVICES -d 10.43.22.16/32 -p tcp -m comment --comment \"evidscope/audit:https cluster IP\" -m tcp --dport 8080 -j KUBE-SVC-N4CARDNF46WSQ45V"
+      },
+      {
+        "line": 313,
+        "text": "[0:0] -A KUBE-SVC-DUF4H3CKWTTFSHUM ! -s 10.42.0.0/16 -d 10.43.180.222/32 -p tcp -m comment --comment \"evidscope/vault:https cluster IP\" -m tcp --dport 8080 -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 314,
+        "text": "[221:13260] -A KUBE-SVC-DUF4H3CKWTTFSHUM -m comment --comment \"evidscope/vault:https -> 10.42.1.4:8080\" -j KUBE-SEP-MKXXD25Y7MYIPO4Y"
+      },
+      {
+        "line": 319,
+        "text": "[0:0] -A KUBE-SVC-N4CARDNF46WSQ45V ! -s 10.42.0.0/16 -d 10.43.22.16/32 -p tcp -m comment --comment \"evidscope/audit:https cluster IP\" -m tcp --dport 8080 -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 320,
+        "text": "[0:0] -A KUBE-SVC-N4CARDNF46WSQ45V -m comment --comment \"evidscope/audit:https -> 10.42.0.5:8080\" -m statistic --mode random --probability 0.33333333349 -j KUBE-SEP-5I6E2X5HECKZZRHU"
+      },
+      {
+        "line": 321,
+        "text": "[0:0] -A KUBE-SVC-N4CARDNF46WSQ45V -m comment --comment \"evidscope/audit:https -> 10.42.1.17:8080\" -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-2DEA5CRUMDE56ETQ"
+      },
+      {
+        "line": 322,
+        "text": "[0:0] -A KUBE-SVC-N4CARDNF46WSQ45V -m comment --comment \"evidscope/audit:https -> 10.42.3.3:8080\" -j KUBE-SEP-YJTIVVULKTVUWPXQ"
+      },
+      {
+        "line": 325,
+        "text": "[0:0] -A KUBE-SVC-QY7SHISHUJKIQVBQ ! -s 10.42.0.0/16 -d 10.43.223.167/32 -p tcp -m comment --comment \"evidscope/ingress:https cluster IP\" -m tcp --dport 8080 -j KUBE-MARK-MASQ"
+      },
+      {
+        "line": 326,
+        "text": "[29:1740] -A KUBE-SVC-QY7SHISHUJKIQVBQ -m comment --comment \"evidscope/ingress:https -> 10.42.1.3:8080\" -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-AHUWE6HMH4Y6LK2D"
+      },
+      {
+        "line": 327,
+        "text": "[33:1980] -A KUBE-SVC-QY7SHISHUJKIQVBQ -m comment --comment \"evidscope/ingress:https -> 10.42.3.7:8080\" -j KUBE-SEP-VC44KZLMZMCM75HL"
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "reports/k8s-network-collector-run3.json",
+      "sha256": "21fa76b0c43ab36c23b44794c7c141e78e3f4a3354f3841d4ee39c6d5121c490"
+    },
+    {
+      "path": "reports/k8s-network-auditor-run3.json",
+      "sha256": "6f43082de1e81c514697f4f271916322e14e433767a077256b370140f36ea13b"
+    },
+    {
+      "path": "reports/k8s-network-unlabeled-run3.json",
+      "sha256": "e8f2cd3020b0e77fd4cdb4c5ed671627d5f73a1e518303da6b5a735a0472113b"
+    },
+    {
+      "path": "reports/k8s-network-run3-pods-start.json",
+      "sha256": "89d7b52cc37ecc2a71ac1f06bd8aecfbf6c54a282a25576a8c85d52f1f7ace0d"
+    },
+    {
+      "path": "reports/k8s-network-run3-iptables-start.txt",
+      "sha256": "aada7730c98f872c518238bdf22063965d720067cee480d8ef14cde53247f547"
+    },
+    {
+      "path": "reports/k8s-network-run3-ipset-start.txt",
+      "sha256": "223217a79ff41e6043277afcf1cfb6419a52644b8040380e4ec40933d66037bf"
+    },
+    {
+      "path": "reports/k8s-network-run3-iptables-after.txt",
+      "sha256": "0d5a744a65f2d4914b7831df412b72f888d8bebefd03d54530666e7c92d3f875"
+    },
+    {
+      "path": "reports/k8s-network-run3-ipset-after.txt",
+      "sha256": "3a6b8c87357b059c4cbbeeb168f16b1b64dd72d65eb9482a83006a3fa5277f51"
+    }
+  ],
+  "priorRuns": {
+    "run1": "Preserved as k8s-network-{profile}-run1.json: empty logs caused by ConfigMap symlink CLI guard; no probe executed and no pass.",
+    "run2": "Preserved as k8s-network-{profile}.json: all nine connections refused immediately including allowed paths; pass false."
+  },
+  "limitations": [
+    "This is observed connectivity plus static CNI rule correlation, not proof that each failed request hit a specific REJECT rule. Raw reports remain pass:false and are not upgraded by this correlation.",
+    "The initial capture contains exact Pod UID/IP bindings, source routing into per-Pod firewall chains, DNS-only and role egress policy membership, unmatched REJECT rules and Service endpoint DNAT mappings. Their presence is consistent with observed pre-connect ECONNREFUSED failures.",
+    "The after capture occurred at 08:03:15 UTC after the 30-second post-observation hold ended at about 08:03:05 UTC; probe chains had been removed, so no matching post-request packet counter delta was preserved.",
+    "Contemporaneous collector-to-ingress and auditor-to-audit controls succeeded three times each with CA and hostname verification. Vault did not have a directly allowed probe control in this experiment.",
+    "Only three source Pods on one node, TCP port 8080, and unauthenticated HTTPS /healthz were tested. This does not establish all-node, all-port, all-protocol or future isolation, nor application authorization.",
+    "No additional run was performed after run3. Earlier failed rounds were retained. Only the probe ConfigMap, probe Jobs and DNS-only probe NetworkPolicy were applied; existing client egress rules were not broadened."
+  ]
+}

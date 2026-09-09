@@ -1,0 +1,43 @@
+{
+  "run": "local-ai-1788871723465",
+  "verifiedAt": "2026-09-08T12:50:28.521Z",
+  "pilotPass": true,
+  "verified": {
+    "valid": true,
+    "count": 1506,
+    "tenant": "alpha",
+    "rollbackChecked": false,
+    "disclosedEvents": 39,
+    "erasedEvents": 0,
+    "scope": "Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined."
+  },
+  "receivedEvents": 4,
+  "signedDisclosedEvents": 4,
+  "receiptsMatch": true,
+  "references": [
+    {
+      "id": "product-guide",
+      "version": "2",
+      "source": "alpha-tool",
+      "verification": "service_reported_reference"
+    },
+    {
+      "id": "product-guide",
+      "version": "2",
+      "source": "alpha-agent",
+      "verification": "self_reported_reference"
+    }
+  ],
+  "findings": [
+    "UNREGISTERED_ASSET",
+    "UNREGISTERED_ASSET",
+    "UNREGISTERED_ASSET",
+    "UNREGISTERED_ASSET",
+    "AUTHORITY_MISSING",
+    "HUMAN_APPROVAL_MISSING",
+    "AUTHORITY_MISSING",
+    "HUMAN_APPROVAL_MISSING"
+  ],
+  "pass": true,
+  "scope": "Human audit query plus signed ledger disclosure verification; does not prove the model used a reference causally or that an external business effect occurred"
+}

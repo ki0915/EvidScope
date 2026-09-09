@@ -1,0 +1,43 @@
+{
+  "started": "2026-09-08T07:06:01.820Z",
+  "finished": "2026-09-08T07:06:24.183Z",
+  "node": "v24.15.0",
+  "platform": "win32",
+  "results": [
+    {
+      "name": "regression",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/*.test.mjs"
+      ],
+      "exitCode": 1,
+      "elapsedMs": 22247,
+      "output": "▶ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합\n  ✔ 원문/tenant/source 사칭, 임의 조회와 변조 HMAC 거부 (98.3618ms)\n  ✔ 접수 COMMIT, replay/duplicate/ID conflict, tenant 격리 (39.2381ms)\n  ✔ 자기보고/독립 결과, 자동검토/사람승인, 뒤늦은 권한 재평가 (89.0707ms)\n  ✔ 안전한 룰 DSL·시험·두 사람 승인·예외 만료 (790.7847ms)\n  ✔ 원본 참조 사건 담당·의견·종결 사유·tenant 접근 (14.6261ms)\n  ✔ 빈 증거 통과 금지, 시스템 변경·기한 재검토, 보완과제 쓰기 (36.8422ms)\n  ✔ 독립 신뢰키 검증·내용/누락/순서/키 대체 및 rollback 탐지 (18.4702ms)\n  ✔ 다중 실제 writer·worker 동시성: 중복·체인 분기 없음 (262.6669ms)\n  ✔ 강제 종료 이후 성공 접수 보존·조회 사본 재구축 (157.0172ms)\n  ✔ 실제 SQLite 쓰기 잠금 장애: 거짓 성공 없음·해제 뒤 재전송 (5449.6831ms)\n  ✔ 수집 실패가 업무 호출을 대기시키지 않는 유한 SDK (22.4452ms)\n  ✔ 합성 예제 end-to-end 실제 API 시드·규정 요구 20개 (246.0382ms)\n✔ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합 (7547.8341ms)\n✔ authority uses issuance time and policy known at execution, including late-arriving evidence (1.3372ms)\n✔ human approval issued after execution or under another policy never satisfies prior review (0.2898ms)\n✔ self-reported delegation cannot substitute for independent parent-scoped authority (0.2634ms)\n✔ stop confirmation matches the requested target and follows the request (1.131ms)\n✔ 보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 증명 (1721.8926ms)\n✔ 무단 키 누락·검색 사본 변조는 정당한 보존 종료로 위장할 수 없다 (519.7276ms)\n✔ 승인 이후 추가된 보존 hold는 파기 실행 시 재확인된다 (1570.666ms)\n✔ 변경된 원장 head를 정상 조회가 재서명해 정당화하지 않는다 (451.9634ms)\n▶ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계\n  ✔ 신뢰하지 않은 CA는 클라이언트 TLS handshake 실패 (84.5714ms)\n  ✔ NODE_EXTRA_CA_CERTS로 신뢰한 CA와 IP·DNS SAN은 성공 (191.7912ms)\n  ✔ 신뢰한 CA도 SAN 불일치 서버는 거부 (81.6686ms)\n  ✔ gateway의 vault CA 미신뢰·SAN 불일치는 503 및 미접수 (313.3931ms)\n  ✔ 신뢰한 gateway → vault는 202 반환 및 지속성 조회 확인 (203.1537ms)\n  ✔ TLS에서도 source는 vault·audit·ingress 증거 조회 및 export 403 (552.2608ms)\n  ✔ TLS listener는 평문 HTTP로 API 응답을 제공하지 않음 (4.4129ms)\n✔ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계 (2420.4826ms)\n✔ 서비스 결과의 성공·실패 혼재를 성공 하나로 축약하지 않는다 (2.4337ms)\n✔ 참고 데이터 자기보고·서비스 참조·누락·비밀 비수집을 실제 HTTP에서 구분 (633.6141ms)\n✔ 현재 목적지 정책을 과거 행동에 소급하지 않고 시점별 정책과 불확실성을 표시 (0.363ms)\n✖ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (469.6836ms)\n✔ 사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 연결하고 작성자 위조를 차단 (470.0641ms)\n✖ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (594.3758ms)\n✔ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (468.1546ms)\n✔ 검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존하며 재검토로 표시 (1680.3945ms)\n✔ worker leases distribute disjoint jobs and commit deterministic output once (74.5472ms)\n✔ worker identity, evidence references and tenant/action override cannot be supplied by caller (47.1616ms)\n✔ second vault connection observes durable leases and completed results (51.0224ms)\n✔ late evidence invalidates old results and expired leases recover after worker restart (63.6252ms)\n✔ query projection edits cannot alter worker source evidence or policy snapshot (53.2637ms)\n✔ evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure (52.0281ms)\n✔ findings are bounded with explicit total coverage, never reported as full analysis (166.7852ms)\n✔ oversized action quarantines explicitly and stays unanalyzed without looping duplicate evaluations (1988.2095ms)\n✔ analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies (112.0842ms)\n✔ oversized individual ledger rows are quarantined before parsing while checkpoint completeness remains mandatory (48.6725ms)\n✔ streaming snapshot distinguishes authorized erasure, missing keys and illegally retained erased keys (54.7886ms)\n✔ encrypted records without the new action header remain readable through bounded streaming (44.4626ms)\n✔ worker HTTP claim/complete runs computation in client and denies source and audit boundary access (396.3205ms)\nℹ tests 50\nℹ suites 0\nℹ pass 48\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 22180.9844\n\n✖ failing tests:\n\ntest at test\\workbench.test.mjs:21:1\n✖ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (469.6836ms)\n  Error: 분석 결과 상태 오류\n      at post (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/worker.mjs:17:31)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async tick (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/worker.mjs:24:23)\n      at async Object.analyze (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:13:114)\n      at async TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/workbench.test.mjs:31:2)\n      at async Test.run (node:internal/test_runner/test:1208:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {\n    status: 400\n  }\n\ntest at test\\workbench.test.mjs:50:1\n✖ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (594.3758ms)\n  Error: 분석 결과 상태 오류\n      at post (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/worker.mjs:17:31)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async tick (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/worker.mjs:24:23)\n      at async Object.analyze (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:13:114)\n      at async TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/workbench.test.mjs:68:2)\n      at async Test.run (node:internal/test_runner/test:1208:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {\n    status: 400\n  }\n"
+    },
+    {
+      "name": "kubernetes-static",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "scripts/k8s-static.mjs"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 61,
+      "output": "{\"pass\":true,\"resources\":23,\"scope\":\"Read-only JSON security checks; not Kubernetes schema admission, CNI, TLS runtime, HPA or deployment verification\"}\n"
+    },
+    {
+      "name": "ui-syntax",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "--check",
+        "public/app.js"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 54,
+      "output": ""
+    }
+  ],
+  "pass": false,
+  "scope": "Actual local HTTP/TLS/SQLite tests plus offline manifest checks. No Kubernetes runtime validation."
+}

@@ -1,0 +1,18 @@
+node_modules/
+.local/
+.test-runs/
+*.db
+*.db-shm
+*.db-wal
+*.pem
+!test/fixtures/*.pem
+.env
+.env.*
+!.env.example
+*.key
+*.pfx
+*.p12
+*.sqlite
+*.sqlite3
+# Local task input is not product documentation.
+docs/user-request.ko.md

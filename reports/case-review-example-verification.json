@@ -1,0 +1,14 @@
+{
+  "valid": true,
+  "tenant": "alpha",
+  "caseId": "2ee6c647-6b29-4d78-aa65-539a1e343d35",
+  "actionId": "demo-ba8bc13a-action",
+  "exportedAt": "2026-09-08T07:14:52.573Z",
+  "reviewState": "inconclusive",
+  "reportHash": "e84dddab9e8e7e3c08b92b842e8823510462b904098773dc61e20ca1bfbb7b03",
+  "publicKeyFingerprint": "3bec468b710c63825a64abe73d447bffa09160c80a4771aacb0edb769c2ef024",
+  "rollbackChecked": false,
+  "scope": "서명된 사건 스냅샷과 체크포인트를 검증했습니다. 원본 전체 체인의 포함·완전성 검증은 별도 전체 증적 내보내기로 수행해야 합니다. 출처 주장의 진실성·외부 효과·법적 준수는 보증하지 않습니다.",
+  "browserDownload": true,
+  "markdownSnapshotMatches": true
+}

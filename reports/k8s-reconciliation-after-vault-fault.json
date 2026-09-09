@@ -1,0 +1,82 @@
+{
+  "format": "evidscope-k8s-reconciliation-v1",
+  "at": "2026-09-08T08:05:33.158Z",
+  "target": "https://127.0.0.1:49166",
+  "verification": {
+    "valid": true,
+    "count": 6454,
+    "tenant": "alpha",
+    "rollbackChecked": false,
+    "disclosedEvents": 515,
+    "erasedEvents": 0,
+    "scope": "Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined."
+  },
+  "continuity": {
+    "priorFile": "reports/k8s-reconciliation-before-vault-fault.json",
+    "priorCount": 6453,
+    "priorHead": "336a4bd413cc1f26d5b0a99b19f4a71f580dad26b60dba9cd9d1ebc77587852f",
+    "preserved": true
+  },
+  "checkpoint": {
+    "format": "evidscope-checkpoint-v1",
+    "tenant": "alpha",
+    "count": 6454,
+    "head": "d6551d073ad280b3abe2cb1bf3b9d36d62ae15a4f5f5826ee87afc9e29c11dc2",
+    "signature": "wRpOk2wscqmJHQDJTSP/VxIWHDgCggvvM2EoDfNbJE3H8E6GOuW3qp4KpCE1X0Nrh6S2B4m+uxi6bT0ULwlsAA=="
+  },
+  "disclosedEvents": 515,
+  "receipts": [
+    {
+      "file": "reports/k8s-distribution-collector.json",
+      "runId": "distribution-1788853880425-6276005b",
+      "attempted": 60,
+      "accepted": 50,
+      "unconfirmed": 10,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    },
+    {
+      "file": "reports/k8s-distribution-collector-stable.json",
+      "runId": "distribution-1788853988055-361ff8d2",
+      "attempted": 60,
+      "accepted": 48,
+      "unconfirmed": 12,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    },
+    {
+      "file": "reports/k8s-distribution-collector-prepared.json",
+      "runId": "distribution-1788854242015-74ea7c7c",
+      "attempted": 60,
+      "accepted": 60,
+      "unconfirmed": 0,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    },
+    {
+      "file": "reports/k8s-distribution-collector-fault.json",
+      "runId": "distribution-1788854317314-7aca66cd",
+      "attempted": 300,
+      "accepted": 297,
+      "unconfirmed": 3,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    },
+    {
+      "file": "reports/k8s-distribution-collector-recovered.json",
+      "runId": "distribution-1788854500622-0b53f22c",
+      "attempted": 60,
+      "accepted": 60,
+      "unconfirmed": 0,
+      "missing": [],
+      "duplicates": [],
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "scope": "Independent trusted-key verification and accepted receipt reconciliation. Does not prove original event truth, complete attempted delivery, or load balancing."
+}

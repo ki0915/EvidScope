@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-09-08T13:25:09.218Z",
+  "origin": "http://127.0.0.1:9082",
+  "window": {
+    "range": "7d",
+    "start": "2026-09-01T13:25:09.137Z",
+    "end": "2026-09-08T13:25:09.137Z",
+    "basis": "first_retained_agent_receipt",
+    "evaluation": "latest_with_all_retained_evidence"
+  },
+  "agents": 3,
+  "details": [
+    {
+      "actor": "support-agent",
+      "actions": 2,
+      "counts": {
+        "compliant": 0,
+        "violation": 2,
+        "unconfirmed": 0,
+        "pending": 0,
+        "exception": 0
+      },
+      "trendActions": 2
+    },
+    {
+      "actor": "local-qwen-pilot",
+      "actions": 3,
+      "counts": {
+        "compliant": 0,
+        "violation": 0,
+        "unconfirmed": 3,
+        "pending": 0,
+        "exception": 0
+      },
+      "trendActions": 3
+    },
+    {
+      "actor": "행위자 미수집",
+      "actions": 1,
+      "counts": {
+        "compliant": 0,
+        "violation": 0,
+        "unconfirmed": 1,
+        "pending": 0,
+        "exception": 0
+      },
+      "trendActions": 1
+    }
+  ],
+  "checks": {
+    "listDetailCounts": true,
+    "anchoredWindow": true,
+    "trendTotals": true,
+    "violationFilter": true,
+    "sourceReadRejected": 403,
+    "invalidRangeRejected": 400
+  },
+  "limitations": [
+    "기존 로컬 합성 자료와 이전 로컬 AI 시험 기록 기준",
+    "대규모 성능·Kubernetes 재배포 검증이 아님"
+  ]
+}

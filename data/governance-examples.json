@@ -1,0 +1,354 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "verifiedAt": "2026-09-08",
+  "reviewStatus": "draft_requires_human_review",
+  "warning": "모든 시스템·증거·담당자·기한은 합성 예제. 실제 법률 검토·기관 확인·운영 시험·준수 판정이 아니다.",
+  "systems": [
+    {
+      "id": "demo-gen-service",
+      "name": "합성 고객안내 생성형 서비스",
+      "facts": {
+        "purpose": "한국 고객에게 제품 사용 안내 문장을 생성한다.",
+        "owner": "서비스운영팀",
+        "role": "인공지능이용사업자",
+        "markets": [
+          "KR"
+        ],
+        "affectedPeople": [
+          "일반 고객"
+        ],
+        "sector": "고객지원",
+        "generative": true,
+        "realisticSyntheticMedia": false,
+        "highImpact": "undetermined",
+        "publicInstitution": false,
+        "dataCategories": [
+          "합성 고객문의",
+          "공개 제품설명"
+        ],
+        "modelVersion": "synthetic-model-1",
+        "policyVersion": "notice-v2",
+        "internalOnly": false,
+        "trainingCompute": "unknown",
+        "frontierTechnology": "unknown",
+        "broadSignificantRisk": "unknown",
+        "euProviderRole": "not_assessed"
+      },
+      "applicabilityRationale": "생성형 서비스 제공을 전제로 제31조제1·2항을 검토한다. 일반 고객지원이라는 설명만으로 고영향 비해당을 확정하지 않는다. EU 시장은 합성 입력에서 제외했으며 역외 적용 사실은 인간이 확인해야 한다.",
+      "controls": [
+        {
+          "id": "CTRL-NOTICE",
+          "requirementIds": [
+            "KR-31-1"
+          ],
+          "implementation": "첫 이용 화면에서 notice-v2 고지",
+          "evidenceIds": [
+            "EX-NOTICE-POLICY",
+            "EX-NOTICE-RENDER"
+          ],
+          "technicalStatus": "synthetic_evidence_only",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-LABEL",
+          "requirementIds": [
+            "KR-31-2"
+          ],
+          "implementation": "출력 하단에 생성형 AI 안내 문구",
+          "evidenceIds": [],
+          "technicalStatus": "not_tested",
+          "evidenceSufficiency": "missing",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-CLASSIFICATION",
+          "requirementIds": [
+            "KR-33"
+          ],
+          "implementation": "목적·역할·이용자·영향 사실을 근거로 제공 전 검토",
+          "evidenceIds": [
+            "EX-GEN-FACTS"
+          ],
+          "technicalStatus": "document_reference",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        }
+      ],
+      "remediation": [
+        {
+          "id": "REMEDIATION-GEN-1",
+          "requirementId": "KR-31-1",
+          "owner": "서비스운영팀",
+          "task": "notice-v2의 실제 클라이언트 렌더링과 제공 전 전달을 시험하고 버전 불일치를 해소",
+          "dueDate": "2026-09-15",
+          "status": "open"
+        },
+        {
+          "id": "REMEDIATION-GEN-2",
+          "requirementId": "KR-31-2",
+          "owner": "프론트엔드 책임자",
+          "task": "결과물 표시 시험과 접근성 자료를 연결",
+          "dueDate": "2026-09-15",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "id": "demo-high-impact",
+      "name": "합성 대출심사 보조 AI",
+      "facts": {
+        "purpose": "개인의 대출 적격성 평가를 지원하고 담당 심사자가 최종 판단한다.",
+        "owner": "여신위험관리팀",
+        "role": "인공지능이용사업자",
+        "markets": [
+          "KR"
+        ],
+        "affectedPeople": [
+          "대출 신청인",
+          "고령 신청인"
+        ],
+        "sector": "대출 심사",
+        "generative": false,
+        "realisticSyntheticMedia": false,
+        "highImpact": "candidate_requires_review",
+        "publicInstitution": false,
+        "dataCategories": [
+          "합성 신용특성",
+          "합성 소득범주"
+        ],
+        "modelVersion": "synthetic-score-1",
+        "policyVersion": "lending-risk-v1",
+        "internalOnly": false,
+        "trainingCompute": "unknown",
+        "frontierTechnology": "unknown",
+        "broadSignificantRisk": "unknown",
+        "euProviderRole": "not_assessed"
+      },
+      "applicabilityRationale": "법 제2조제4호의 대출 심사 영역 및 개인의 권리·의무에 대한 중대한 영향 가능성에 따라 고영향 후보로 검토한다. 사람이 최종 판단한다는 이유만으로 비해당 처리하지 않는다. 세 안전성 기준은 미확인 상태로 별도 평가한다.",
+      "controls": [
+        {
+          "id": "CTRL-HIGH-REVIEW",
+          "requirementIds": [
+            "KR-33"
+          ],
+          "implementation": "활용 영역·영향의 중대성·빈도·사전 검토서 작성",
+          "evidenceIds": [
+            "EX-LENDING-FACTS"
+          ],
+          "technicalStatus": "document_reference",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-HIGH-RISK",
+          "requirementIds": [
+            "KR-34-RISK",
+            "NIST-MAP",
+            "NIST-MEASURE",
+            "NIST-MANAGE"
+          ],
+          "implementation": "위험등록부와 성능·편향·안전성 시험을 대조하고 보완 담당자 배정",
+          "evidenceIds": [
+            "EX-RISK-REGISTER"
+          ],
+          "technicalStatus": "document_reference",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-HIGH-EXPLAIN",
+          "requirementIds": [
+            "KR-34-EXPLAIN"
+          ],
+          "implementation": "주요 기준·학습데이터 개요·결과 설명 절차 마련",
+          "evidenceIds": [],
+          "technicalStatus": "external_process",
+          "evidenceSufficiency": "missing",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-HIGH-PROTECT",
+          "requirementIds": [
+            "KR-34-PROTECT"
+          ],
+          "implementation": "이의 접수·피해 구제 등 보호 절차 운영",
+          "evidenceIds": [],
+          "technicalStatus": "external_process",
+          "evidenceSufficiency": "missing",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-HUMAN",
+          "requirementIds": [
+            "KR-34-OVERSIGHT"
+          ],
+          "implementation": "훈련받은 심사자의 관리·감독 및 개입 가능성 검토",
+          "evidenceIds": [
+            "EX-HUMAN-REVIEW"
+          ],
+          "technicalStatus": "synthetic_evidence_only",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-DOC",
+          "requirementIds": [
+            "KR-34-DOCUMENT",
+            "NIST-GOVERN"
+          ],
+          "implementation": "조치 근거 문서 보관과 공개 항목 관리",
+          "evidenceIds": [],
+          "technicalStatus": "external_process",
+          "evidenceSufficiency": "missing",
+          "humanAssessment": "not_reviewed"
+        },
+        {
+          "id": "CTRL-IMPACT",
+          "requirementIds": [
+            "KR-35-IMPACT"
+          ],
+          "implementation": "기본권·취약계층·개선 계획을 포함한 영향평가",
+          "evidenceIds": [
+            "EX-IMPACT-DRAFT"
+          ],
+          "technicalStatus": "document_reference",
+          "evidenceSufficiency": "partial",
+          "humanAssessment": "not_reviewed"
+        }
+      ],
+      "remediation": [
+        {
+          "id": "REMEDIATION-HIGH-1",
+          "requirementId": "KR-34-EXPLAIN",
+          "owner": "모델 책임자",
+          "task": "학습데이터 개요 및 설명 사례를 확보하고 기술 한계를 검토",
+          "dueDate": "2026-09-22",
+          "status": "open"
+        },
+        {
+          "id": "REMEDIATION-HIGH-2",
+          "requirementId": "KR-34-PROTECT",
+          "owner": "이용자보호 책임자",
+          "task": "이의 접수·피해 처리 절차와 담당자 검토 자료 연결",
+          "dueDate": "2026-09-22",
+          "status": "open"
+        },
+        {
+          "id": "REMEDIATION-HIGH-3",
+          "requirementId": "KR-35-IMPACT",
+          "owner": "인권·법무 검토자",
+          "task": "취약계층 특성과 기본권 영향의 누락을 검토하고 개선 계획 승인",
+          "dueDate": "2026-09-29",
+          "status": "open"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EX-NOTICE-POLICY",
+      "kind": "synthetic_document",
+      "title": "합성 고지 정책 v2",
+      "version": "notice-v2",
+      "content": "첫 이용 전에 '이 서비스는 생성형 AI를 사용합니다'를 화면에 표시하는 합성 정책.",
+      "limitations": "정책 존재만을 나타내며 실제 배포·이용자 이해를 입증하지 않음."
+    },
+    {
+      "id": "EX-NOTICE-RENDER",
+      "kind": "synthetic_test_record",
+      "title": "합성 고지 렌더링 기록 v1",
+      "version": "notice-v1",
+      "content": "합성 테스트 자료에는 notice-v1이 표시되어 요구 정책 v2와 불일치한다.",
+      "limitations": "의도적인 버전 불일치 예제. 실제 고객 서비스 시험 결과가 아님."
+    },
+    {
+      "id": "EX-GEN-FACTS",
+      "kind": "synthetic_document",
+      "title": "고객안내 서비스 개요",
+      "version": "1",
+      "content": "한국 일반 고객 대상으로 합성 문의에 제품 안내 답변 생성.",
+      "limitations": "활용 경로 확대·대상 역할과 고영향 분류 법률 검토 미완료."
+    },
+    {
+      "id": "EX-LENDING-FACTS",
+      "kind": "synthetic_document",
+      "title": "대출심사 AI 사실관계",
+      "version": "1",
+      "content": "합성 신청인 특성을 평가하여 대출 판단을 보조. 담당 심사자의 최종 판단을 전제.",
+      "limitations": "실제 금융기관·개인정보·신용 결정을 사용하지 않음. 관할기관 확인 미신청."
+    },
+    {
+      "id": "EX-RISK-REGISTER",
+      "kind": "synthetic_document",
+      "title": "합성 대출 위험등록부",
+      "version": "risk-v1",
+      "content": "대리변수 차별, 데이터 이동, 과신, 미관측을 위험으로 등록. 검증 시험은 미연결.",
+      "limitations": "위험 목록은 완전한 위험관리 운영·정량 시험 결과가 아님."
+    },
+    {
+      "id": "EX-HUMAN-REVIEW",
+      "kind": "synthetic_external_record",
+      "title": "사람 검토 기록 예시",
+      "version": "1",
+      "content": "합성 담당자 reviewer-demo가 신청 예제의 설명을 검토했다는 외부 기록 형식 예제.",
+      "limitations": "자동 승인과 구분. 실제 감독자의 교육·개입 권한·전수 감독을 입증하지 않음."
+    },
+    {
+      "id": "EX-IMPACT-DRAFT",
+      "kind": "synthetic_document",
+      "title": "영향평가 초안",
+      "version": "impact-v1",
+      "content": "신청인의 재산상 기회와 평등한 접근에 대한 영향을 검토 대상으로 기록. 고령 신청인 접근성 조사는 누락.",
+      "limitations": "취약계층 반영과 개선 계획이 부족한 합성 초안."
+    }
+  ],
+  "unmappedRequirements": [
+    {
+      "requirementId": "KR-31-3",
+      "status": "requires_applicability_review",
+      "reason": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 실제와 구분하기 어려운 가상 결과물을 제공."
+    },
+    {
+      "requirementId": "KR-32-RISK",
+      "status": "requires_applicability_review",
+      "reason": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템."
+    },
+    {
+      "requirementId": "KR-32-MONITOR",
+      "status": "requires_applicability_review",
+      "reason": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템."
+    },
+    {
+      "requirementId": "KR-32-SUBMIT",
+      "status": "requires_applicability_review",
+      "reason": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템."
+    },
+    {
+      "requirementId": "KR-35-PUBLIC",
+      "status": "requires_applicability_review",
+      "reason": "국가기관등이 고영향 AI 제품·서비스를 이용하려는 경우."
+    },
+    {
+      "requirementId": "EU-50-1",
+      "status": "requires_applicability_review",
+      "reason": "Article 2 관할과 provider 역할이 확인되고 자연인과 직접 상호작용하는 AI."
+    },
+    {
+      "requirementId": "EU-50-2",
+      "status": "requires_applicability_review",
+      "reason": "Article 2 관할과 합성 콘텐츠 생성 시스템의 provider 역할 확인."
+    }
+  ],
+  "sourceChangeExample": {
+    "previousVersion": "인공지능기본법 2026-01-22 / 시행령 2026-01-22",
+    "currentVersion": "인공지능기본법 2026-07-21 / 시행령 2026-08-20",
+    "affectedRequirementIds": [
+      "KR-35-IMPACT"
+    ],
+    "change": "취약계층 특성 반영 요구 확인",
+    "action": "기존 영향평가를 보존하고 새 인간 검토 과제를 생성",
+    "status": "human_review_required"
+  }
+}

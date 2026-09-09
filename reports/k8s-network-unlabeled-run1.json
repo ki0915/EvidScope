@@ -1,0 +1,42 @@
+{
+  "format": "evidscope-k8s-network-run-observation-v1",
+  "run": 1,
+  "observedAt": "2026-09-08T07:56:55.7430688Z",
+  "context": "k3d-evidscope-lab-20260908",
+  "namespace": "evidscope",
+  "profile": "unlabeled",
+  "pass": false,
+  "executed": false,
+  "reason": "Job completed with empty output; ConfigMap symlink caused CLI entrypoint guard mismatch",
+  "rawLog": "",
+  "job": {
+    "name": "network-probe-unlabeled",
+    "uid": "605eb217-491e-4704-84ba-3ef2a8e825c0",
+    "status": {
+      "completionTime": "2026-09-08T07:54:41Z",
+      "conditions": [
+        {
+          "lastProbeTime": "2026-09-08T07:54:41Z",
+          "lastTransitionTime": "2026-09-08T07:54:41Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-09-08T07:54:41Z",
+          "lastTransitionTime": "2026-09-08T07:54:41Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "ready": 0,
+      "startTime": "2026-09-08T07:54:36Z",
+      "succeeded": 1,
+      "terminating": 0,
+      "uncountedTerminatedPods": {}
+    }
+  }
+}

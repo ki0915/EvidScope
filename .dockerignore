@@ -1,0 +1,15 @@
+*
+!Dockerfile
+!src/
+!src/**
+!public/
+!public/**
+!data/
+!data/**
+!scripts/
+!scripts/k8s-load.mjs
+!scripts/k8s-distribution.mjs
+**/*.pem
+**/*.key
+**/*.sqlite*
+**/*config.local*

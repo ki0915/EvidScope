@@ -1,0 +1,94 @@
+{
+  "run": "local-ai-1788871723465",
+  "model": "qwen3:0.6b",
+  "startedAt": "2026-09-08T12:48:43.465Z",
+  "inference": "responded",
+  "toolExecuted": true,
+  "citationMatches": true,
+  "events": [
+    {
+      "id": "local-ai-1788871723465-0",
+      "source": "alpha-agent",
+      "kind": "intent",
+      "status": "started"
+    },
+    {
+      "id": "local-ai-1788871723465-1",
+      "source": "alpha-tool",
+      "kind": "execution",
+      "status": "started"
+    },
+    {
+      "id": "local-ai-1788871723465-2",
+      "source": "alpha-tool",
+      "kind": "result",
+      "status": "success"
+    },
+    {
+      "id": "local-ai-1788871723465-3",
+      "source": "alpha-agent",
+      "kind": "self_report",
+      "status": "success"
+    }
+  ],
+  "limitations": [
+    "Real model, synthetic guide and local tool only; no external business operation",
+    "Source keys are distinct but the pilot harness is one trusted local process, not independently isolated hardware",
+    "The model receives no source/auditor credentials, ledger access or arbitrary execution tool",
+    "No hidden reasoning is collected; evidence notes retain hashes and reference metadata",
+    "No grant or human approval record is fabricated; missing authority remains visible"
+  ],
+  "modelDigest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+  "firstLatencyMs": 3563,
+  "firstDone": true,
+  "firstAnswer": "",
+  "firstDoneReason": "stop",
+  "firstTokens": 21,
+  "requestedTools": [
+    {
+      "name": "read_product_guide",
+      "arguments": {
+        "version": "2"
+      }
+    }
+  ],
+  "toolReference": {
+    "id": "product-guide",
+    "kind": "document",
+    "role": "retrieved",
+    "version": "2",
+    "hash": "1523ff45d66fe863db32747bc41feae7fa7b5097d912d662146be46a1490ec22",
+    "locator": "workspace:data/synthetic-knowledge-v2.json",
+    "description": "Local tool read of a synthetic fixture; real model inference is tested separately"
+  },
+  "finalLatencyMs": 9301,
+  "finalDone": true,
+  "answer": "{\n  \"answer\": \"사람이 참조 버전과 해시를 비교하는 합성 자료입니다. 제공 전 고지와 출력 표시를 별도로 시험해야 합니다. (product-guide, version 2)\",\n  \"reference\": {\n    \"id\": \"product-guide\",\n    \"version\": \"2\"\n  }\n}",
+  "answerHash": "a5ec30b2497c8de6837a3561e23bba99069f82de155e83c73dbd5e5de011467b",
+  "outputTokens": 76,
+  "modelReference": {
+    "id": "product-guide",
+    "version": "2",
+    "kind": "document",
+    "role": "retrieved",
+    "description": "Reference explicitly named by the local model; actual use is not proven"
+  },
+  "observers": {
+    "agent": {
+      "observed": 2,
+      "accepted": 2,
+      "dropped": 0,
+      "retries": 0,
+      "stillRunning": false
+    },
+    "tool": {
+      "observed": 2,
+      "accepted": 2,
+      "dropped": 0,
+      "retries": 0,
+      "stillRunning": false
+    }
+  },
+  "finishedAt": "2026-09-08T12:48:56.468Z",
+  "pass": true
+}

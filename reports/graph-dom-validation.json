@@ -1,0 +1,136 @@
+{
+  "format": "evidscope-graph-dom-validation-v1",
+  "startedAt": "2026-09-08T12:37:29.318Z",
+  "source": "public/live-graphs.js",
+  "sourceSha256": "d025d5bbe7b5479568357c13ea4bf40d6b1e47ff38c5d02549d7a70935ecd958",
+  "method": "Node vm + minimal DOM fixture; no network or authentication",
+  "checks": [
+    {
+      "name": "empty_render_has_zero_counts_and_no_ratio_claim",
+      "pass": true,
+      "evidence": {
+        "emptyActionRows": 0,
+        "zeroWidthBars": 11
+      }
+    },
+    {
+      "name": "sample_scope_100_of_200_and_initial_list_20",
+      "pass": true,
+      "evidence": {
+        "sampleItems": 100,
+        "populationTotal": 200,
+        "initialListRows": 20
+      }
+    },
+    {
+      "name": "null_reference_count_and_zero_are_separate_filters",
+      "pass": true,
+      "evidence": {
+        "unknownReferences": 1,
+        "zeroReferences": 97,
+        "presentReferences": 2,
+        "zeroFilterDisplayedRows": 20
+      }
+    },
+    {
+      "name": "mixed_outcome_bar_filters_and_open_callback_uses_exact_action",
+      "pass": true,
+      "evidence": {
+        "mixedCount": 1,
+        "openedActionId": "action-mixed",
+        "independentSuccessCount": 1
+      }
+    },
+    {
+      "name": "review_filters_unknown_outcomes_and_reset",
+      "pass": true,
+      "evidence": {
+        "staleCount": 1,
+        "inconclusiveCount": 1,
+        "unknownOutcomeClassified": "unconfirmed",
+        "resetDisplayedRows": 20
+      }
+    },
+    {
+      "name": "untrusted_source_status_and_actor_remain_literal_text",
+      "pass": true,
+      "evidence": {
+        "literalLabelPreserved": true,
+        "injectedElements": 0,
+        "inlineEventAttributes": 0,
+        "literalAriaLabel": true
+      }
+    },
+    {
+      "name": "empty_action_counts_and_reference_gap",
+      "pass": true,
+      "evidence": {
+        "groups": [
+          {
+            "title": "요청·자기보고",
+            "count": 0
+          },
+          {
+            "title": "도구 실행",
+            "count": 0
+          },
+          {
+            "title": "독립 결과",
+            "count": 0
+          },
+          {
+            "title": "권한·승인·위임",
+            "count": 0
+          }
+        ],
+        "missingReferenceWarning": true
+      }
+    },
+    {
+      "name": "action_group_counts_and_exact_inspection_payloads",
+      "pass": true,
+      "evidence": {
+        "counts": {
+          "요청·자기보고": 2,
+          "도구 실행": 1,
+          "독립 결과": 2,
+          "권한·승인·위임": 3
+        },
+        "nonToolResultExcluded": true,
+        "referenceCount": 3,
+        "causalityDisclaimer": true
+      }
+    },
+    {
+      "name": "reference_versions_and_provenance_are_distinct_and_safe",
+      "pass": true,
+      "evidence": {
+        "versionsShown": [
+          "v1",
+          "v2"
+        ],
+        "callbackRetainsExactObjects": true,
+        "maliciousReferenceAsText": true
+      }
+    },
+    {
+      "name": "event_dataRefs_fallback_and_reference_display_cap_are_explicit",
+      "pass": true,
+      "evidence": {
+        "totalReferences": 14,
+        "displayedReferences": 12,
+        "omittedReferencesDisclosed": 2,
+        "fallbackSourceAndEventPreserved": true
+      }
+    }
+  ],
+  "limitations": [
+    "Pure DOM assertions do not verify browser layout, SVG painting, screen-reader behavior or click hit targets.",
+    "No live data, token, HTTP request, login or service API was used.",
+    "The minimal DOM throws on HTML parsing and records attributes/listeners; it is not a complete browser implementation."
+  ],
+  "finishedAt": "2026-09-08T12:37:29.339Z",
+  "pass": true,
+  "passed": 10,
+  "failed": 0
+}

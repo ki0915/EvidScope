@@ -1,0 +1,31 @@
+{
+  "context": "desktop-linux",
+  "containerName": "/evidscope-linux-validation-20260908",
+  "containerId": "9c55f4b3804a26795c553a90c2d96c1a041c2fd4e0bbeb547eb0b68ccaa7bd24",
+  "imageId": "sha256:850ecfeaec9666deb3eb16cdfab57547a5dc39b0ab0228dc428d3920a259fce9",
+  "imageTag": "evidscope-validation:local",
+  "user": "node",
+  "networkMode": "none",
+  "hostMounts": [],
+  "hostPortBindings": {},
+  "memoryBytes": 1073741824,
+  "nanoCpus": 2000000000,
+  "state": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-09-08T08:06:28.094306255Z",
+    "FinishedAt": "2026-09-08T08:07:04.130033896Z"
+  },
+  "command": [
+    "docker --context desktop-linux build --tag evidscope-validation:local .test-runs/linux-validation-context",
+    "docker --context desktop-linux run --detach --name evidscope-linux-validation-20260908 --network none --cpus 2 --memory 1g --cap-drop ALL --security-opt no-new-privileges evidscope-validation:local"
+  ],
+  "scope": "Isolated Linux regression only; Windows failures preserved and Kubernetes runtime claims excluded"
+}

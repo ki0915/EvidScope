@@ -1,0 +1,29 @@
+{
+  "at": "2026-09-08T07:56:28.114Z",
+  "authorization": "User explicitly approved Docker temporary runtime recovery",
+  "backups": [
+    "C:/Users/기민수/AppData/Local/Docker/run.evidscope-backup-20260908-164349",
+    "C:/Users/기민수/AppData/Local/docker-secrets-engine.evidscope-backup-20260908-164538",
+    "C:/Users/기민수/AppData/Local/Docker/run.evidscope-backup-20260908-164646"
+  ],
+  "preserved": true,
+  "deletedContainers": false,
+  "deletedVolumes": false,
+  "changedExistingKubeContext": false,
+  "docker": {
+    "desktop": "4.80.0",
+    "engine": "29.6.1",
+    "server": "linux/amd64",
+    "recovered": true
+  },
+  "lab": {
+    "name": "evidscope-lab-20260908",
+    "context": "k3d-evidscope-lab-20260908",
+    "kubernetes": "v1.35.5+k3s1",
+    "nodes": 3,
+    "k3d": "v5.9.0",
+    "api": "127.0.0.1:9645",
+    "nodeMemoryLimit": "2GiB each"
+  },
+  "imageManifest": "sha256:af9e06957632d2d21c7705d830dbbf02da3bb07196ab4d3128388f397aca8eba"
+}

@@ -1,0 +1,1433 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "evidscope",
+        "labels": {
+          "pod-security.kubernetes.io/enforce": "restricted",
+          "pod-security.kubernetes.io/audit": "restricted",
+          "pod-security.kubernetes.io/warn": "restricted"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "vault-data",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "10Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "vault"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "evidscope",
+              "app.kubernetes.io/component": "vault"
+            }
+          },
+          "spec": {
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "ScheduleAnyway",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "vault"
+                  }
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "vault",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "MODE",
+                    "value": "vault"
+                  },
+                  {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                  },
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  },
+                  {
+                    "name": "TLS_CERT_FILE",
+                    "value": "/tls/tls.crt"
+                  },
+                  {
+                    "name": "TLS_KEY_FILE",
+                    "value": "/tls/tls.key"
+                  },
+                  {
+                    "name": "DATA_DIR",
+                    "value": "/data"
+                  },
+                  {
+                    "name": "CONFIG_FILE",
+                    "value": "/secrets/config.json"
+                  },
+                  {
+                    "name": "SIGNING_KEY_FILE",
+                    "value": "/keys/signing-private.pem"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "https",
+                    "containerPort": 8080
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/secrets",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "signing",
+                    "mountPath": "/keys",
+                    "readOnly": true
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "2000m",
+                    "memory": "1Gi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/readyz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 3,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 2,
+                  "successThreshold": 1
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 15,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "periodSeconds": 2,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 30
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "vault-tls",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "vault-data"
+                }
+              },
+              {
+                "name": "config",
+                "secret": {
+                  "secretName": "vault-config",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "signing",
+                "secret": {
+                  "secretName": "vault-signing",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        },
+        "minReadySeconds": 3,
+        "progressDeadlineSeconds": 180
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app.kubernetes.io/name": "evidscope",
+          "app.kubernetes.io/component": "vault"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 8080,
+            "targetPort": "https"
+          }
+        ],
+        "sessionAffinity": "None",
+        "internalTrafficPolicy": "Cluster",
+        "publishNotReadyAddresses": false
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "minAvailable": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "vault"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "ingress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "replicas": 2,
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "ingress"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "evidscope",
+              "app.kubernetes.io/component": "ingress"
+            }
+          },
+          "spec": {
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "DoNotSchedule",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "ingress"
+                  }
+                },
+                "minDomains": 2
+              }
+            ],
+            "containers": [
+              {
+                "name": "ingress",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "MODE",
+                    "value": "ingress"
+                  },
+                  {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                  },
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  },
+                  {
+                    "name": "TLS_CERT_FILE",
+                    "value": "/tls/tls.crt"
+                  },
+                  {
+                    "name": "TLS_KEY_FILE",
+                    "value": "/tls/tls.key"
+                  },
+                  {
+                    "name": "VAULT_URL",
+                    "value": "https://vault.evidscope.svc:8080"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "https",
+                    "containerPort": 8080
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/readyz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 3,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 2,
+                  "successThreshold": 1
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 15,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "periodSeconds": 2,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 30
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "ingress-tls",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        },
+        "minReadySeconds": 3,
+        "progressDeadlineSeconds": 180
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "ingress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app.kubernetes.io/name": "evidscope",
+          "app.kubernetes.io/component": "ingress"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 8080,
+            "targetPort": "https"
+          }
+        ],
+        "sessionAffinity": "None",
+        "internalTrafficPolicy": "Cluster",
+        "publishNotReadyAddresses": false
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "ingress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "minAvailable": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "ingress"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "autoscaling/v2",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "ingress",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "scaleTargetRef": {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "ingress"
+        },
+        "minReplicas": 2,
+        "maxReplicas": 6,
+        "metrics": [
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "cpu",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 60
+              }
+            }
+          }
+        ],
+        "behavior": {
+          "scaleDown": {
+            "stabilizationWindowSeconds": 120
+          },
+          "scaleUp": {
+            "stabilizationWindowSeconds": 15
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "audit",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "replicas": 2,
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "audit"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "evidscope",
+              "app.kubernetes.io/component": "audit"
+            }
+          },
+          "spec": {
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "DoNotSchedule",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "audit"
+                  }
+                },
+                "minDomains": 2
+              }
+            ],
+            "containers": [
+              {
+                "name": "audit",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "MODE",
+                    "value": "audit"
+                  },
+                  {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                  },
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  },
+                  {
+                    "name": "TLS_CERT_FILE",
+                    "value": "/tls/tls.crt"
+                  },
+                  {
+                    "name": "TLS_KEY_FILE",
+                    "value": "/tls/tls.key"
+                  },
+                  {
+                    "name": "VAULT_URL",
+                    "value": "https://vault.evidscope.svc:8080"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "https",
+                    "containerPort": 8080
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/readyz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 3,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 2,
+                  "successThreshold": 1
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 15,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "periodSeconds": 2,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 30
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "audit-tls",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        },
+        "minReadySeconds": 3,
+        "progressDeadlineSeconds": 180
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "audit",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app.kubernetes.io/name": "evidscope",
+          "app.kubernetes.io/component": "audit"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 8080,
+            "targetPort": "https"
+          }
+        ],
+        "sessionAffinity": "None",
+        "internalTrafficPolicy": "Cluster",
+        "publishNotReadyAddresses": false
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "audit",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "minAvailable": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "audit"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "autoscaling/v2",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "audit",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "scaleTargetRef": {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "audit"
+        },
+        "minReplicas": 2,
+        "maxReplicas": 6,
+        "metrics": [
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "cpu",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 60
+              }
+            }
+          }
+        ],
+        "behavior": {
+          "scaleDown": {
+            "stabilizationWindowSeconds": 120
+          },
+          "scaleUp": {
+            "stabilizationWindowSeconds": 15
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "worker",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "replicas": 2,
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "worker"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "evidscope",
+              "app.kubernetes.io/component": "worker"
+            }
+          },
+          "spec": {
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "runAsGroup": 1000,
+              "fsGroup": 1000,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "DoNotSchedule",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "worker"
+                  }
+                },
+                "minDomains": 2
+              }
+            ],
+            "containers": [
+              {
+                "name": "worker",
+                "image": "evidscope:local",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "MODE",
+                    "value": "worker"
+                  },
+                  {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                  },
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  },
+                  {
+                    "name": "TLS_CERT_FILE",
+                    "value": "/tls/tls.crt"
+                  },
+                  {
+                    "name": "TLS_KEY_FILE",
+                    "value": "/tls/tls.key"
+                  },
+                  {
+                    "name": "VAULT_URL",
+                    "value": "https://vault.evidscope.svc:8080"
+                  },
+                  {
+                    "name": "NODE_EXTRA_CA_CERTS",
+                    "value": "/ca/ca.crt"
+                  },
+                  {
+                    "name": "WORKER_TOKEN",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "worker-identity",
+                        "key": "token"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POD_NAME",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "fieldPath": "metadata.name"
+                      }
+                    }
+                  }
+                ],
+                "ports": [
+                  {
+                    "name": "https",
+                    "containerPort": 8080
+                  }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "tls",
+                    "mountPath": "/tls",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "ca",
+                    "mountPath": "/ca",
+                    "readOnly": true
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/readyz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 3,
+                  "periodSeconds": 3,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 2,
+                  "successThreshold": 1
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "initialDelaySeconds": 15,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/healthz",
+                    "port": "https",
+                    "scheme": "HTTPS"
+                  },
+                  "periodSeconds": 2,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 30
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "tls",
+                "secret": {
+                  "secretName": "worker-tls",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "ca",
+                "secret": {
+                  "secretName": "vault-ca",
+                  "defaultMode": 288
+                }
+              }
+            ]
+          }
+        },
+        "minReadySeconds": 3,
+        "progressDeadlineSeconds": 180
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "worker",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "minAvailable": 1,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "worker"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "autoscaling/v2",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "worker",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "scaleTargetRef": {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "worker"
+        },
+        "minReplicas": 2,
+        "maxReplicas": 6,
+        "metrics": [
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "cpu",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 60
+              }
+            }
+          }
+        ],
+        "behavior": {
+          "scaleDown": {
+            "stabilizationWindowSeconds": 120
+          },
+          "scaleUp": {
+            "stabilizationWindowSeconds": 15
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "deny-all",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {},
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "vault-from-gateways-workers",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "vault"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "ingress"
+                  }
+                }
+              },
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "audit"
+                  }
+                }
+              },
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "worker"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "ingress-to-vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "ingress"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "vault"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "audit-to-vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "audit"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "vault"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "worker-to-vault",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "worker"
+          }
+        },
+        "policyTypes": [
+          "Egress"
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "evidscope",
+                    "app.kubernetes.io/component": "vault"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "ingress-approved-clients",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "ingress"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "evidscope.io/client": "collector"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "audit-approved-clients",
+        "namespace": "evidscope"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "evidscope",
+            "app.kubernetes.io/component": "audit"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {
+                  "matchLabels": {
+                    "evidscope.io/client": "auditor"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
