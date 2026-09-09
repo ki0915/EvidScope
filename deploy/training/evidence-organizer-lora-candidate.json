@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate_only_gate_blocked",
+  "roleId": "evidence-organizer",
+  "baseModel": "to-be-approved",
+  "method": "PEFT LoRA on a 4-bit quantized base model",
+  "rank": 8,
+  "maxSequenceLength": 2048,
+  "perDeviceBatchSize": 1,
+  "admissionGate": {"humanReviewedTune":300,"humanReviewedValidation":50,"humanReviewedTest":100,"sourceConsentRequired":true,"reviewerIdentityRequired":true,"familyIsolationRequired":true},
+  "trainingRunAllowed": false,
+  "qualityClaimAllowed": false,
+  "notes": ["No heavyweight training dependency is part of the product runtime.", "Run the deterministic admission gate before creating any training job.", "A passed admission gate does not establish quality; report held-out test measurements and limitations."]
+}

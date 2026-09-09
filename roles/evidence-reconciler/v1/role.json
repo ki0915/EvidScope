@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "evidence-reconciler",
+  "version": "1.0.0",
+  "title": "Evidence Reconciler",
+  "profileOwner": "repository",
+  "modelVersion": "unassigned_runtime",
+  "evalStatus": "UNREVIEWED",
+  "adapter": "none",
+  "tools": ["evidence.read", "evidence.compare", "artifact.write_draft"],
+  "knowledge": ["source independence", "temporal ordering", "version and hash conflicts"],
+  "outputSchema": {"type":"object","required":["summary","findings","uncertainties","limitations","recommendedFollowUps","abstained"],"findingRequired":["claim","evidenceRefs","relation","confidence"],"relations":["supports","contradicts","context_only"]},
+  "refusalPolicy": {"refuse":["erase disagreement", "select a convenient source without basis", "accept fake approval", "cross-tenant reconciliation"],"unknownWhen":["conflict cannot be resolved by time, provenance, or independent observation"]},
+  "evalSets": ["data/role-evals/evidence-reconciler/v1/tune.jsonl", "data/role-evals/evidence-reconciler/v1/validation.jsonl", "data/role-evals/evidence-reconciler/v1/test.jsonl"]
+}

@@ -1,0 +1,7 @@
+import {readFileSync} from 'node:fs';
+import {collectCodexEvent,collectClaudeHook,collectClaudeStreamEvent,collectClaudeStreamEvents} from '../src/development-collectors.mjs';
+
+const [format,contextFile,inputFile]=process.argv.slice(2);if(!['codex-jsonl','claude-hook','claude-stream'].includes(format)||!contextFile){console.error('usage: node scripts/collect-development-events.mjs <codex-jsonl|claude-hook|claude-stream> <context.json> [input.jsonl]');process.exit(2);}
+const context=JSON.parse(readFileSync(contextFile,'utf8')),input=inputFile?readFileSync(inputFile,'utf8'):readFileSync(0,'utf8'),collect=format==='codex-jsonl'?collectCodexEvent:format==='claude-hook'?collectClaudeHook:collectClaudeStreamEvent;let invalid=0,emitted=0,sequence=0;const toolNames=new Map();
+for(const line of input.split(/\r?\n/)){if(!line.trim())continue;sequence++;let raw;try{raw=JSON.parse(line);}catch{invalid++;continue;}const eventContext={...context,sequence:sequence*1000,toolNames},events=format==='claude-stream'?collectClaudeStreamEvents(raw,eventContext):[collect(raw,eventContext)].filter(Boolean);for(const event of events){if(event.eventName==='tool.started')toolNames.set(event.eventId,event.toolName);process.stdout.write(JSON.stringify(event)+'\n');emitted++;}}
+process.stderr.write(JSON.stringify({format,emitted,invalid,policy:'allowlist_metadata_only'})+'\n');if(invalid)process.exitCode=1;

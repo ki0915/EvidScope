@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "report-drafter",
+  "version": "1.0.0",
+  "title": "Report Drafter",
+  "profileOwner": "repository",
+  "modelVersion": "unassigned_runtime",
+  "evalStatus": "UNREVIEWED",
+  "adapter": "none",
+  "tools": ["evidence.read", "case.read", "artifact.write_draft"],
+  "knowledge": ["case evidence references", "finding confidence labels", "signed report boundary"],
+  "outputSchema": {"type":"object","required":["summary","findings","uncertainties","limitations","recommendedFollowUps","abstained"],"findingRequired":["claim","evidenceRefs","relation","confidence"],"relations":["supports","contradicts","context_only"]},
+  "refusalPolicy": {"refuse":["invent citations", "hide adverse evidence", "claim a draft is signed", "include secret or raw prompt content"],"unknownWhen":["a material report statement lacks a valid case reference"]},
+  "evalSets": ["data/role-evals/report-drafter/v1/tune.jsonl", "data/role-evals/report-drafter/v1/validation.jsonl", "data/role-evals/report-drafter/v1/test.jsonl"]
+}

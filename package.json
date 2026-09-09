@@ -1,6 +1,6 @@
 {
   "name": "evidscope", "version": "0.1.0", "private": true, "type": "module",
   "engines": {"node": ">=24.15.0 <25"},
-  "scripts": {"init": "node scripts/init.mjs", "start": "node scripts/local.mjs", "demo": "node scripts/demo.mjs", "test": "node --test --test-concurrency=1 test/*.test.mjs", "validate":"node scripts/validate.mjs", "bench": "node scripts/benchmark.mjs", "verify": "node scripts/verify.mjs"},
+  "scripts": {"init": "node scripts/init.mjs", "start": "node scripts/local.mjs", "demo": "node scripts/demo.mjs", "test": "node --test --test-concurrency=1 test/*.test.mjs", "test:development-agents": "node --test test/development-coordinator.test.mjs test/development-runs.test.mjs test/role-packages.test.mjs", "generate:role-evals": "node scripts/generate-role-evals.mjs", "validate":"node scripts/validate.mjs", "bench": "node scripts/benchmark.mjs", "verify": "node scripts/verify.mjs"},
   "license": "UNLICENSED"
 }

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "teamId": "replace-team-id",
+  "coordinatorWorktree": "C:/absolute/path/to/coordinator-worktree",
+  "maxConcurrentIncludingCoordinator": 3,
+  "maxDepth": 1,
+  "tasks": [
+    {
+      "taskId": "replace-task-id",
+      "teamId": "replace-team-id",
+      "roleId": "core",
+      "parentRunId": "replace-parent-run-id",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "high",
+      "worktree": "C:/absolute/path/to-distinct-linked-worktree",
+      "baseCommit": "replace-with-git-commit",
+      "allowedPaths": ["src/example.mjs", "test/example.test.mjs"],
+      "completionCriteria": ["implementation", "targeted deterministic tests"],
+      "depth": 1,
+      "maxReviewRounds": 2,
+      "noFallback": true
+    }
+  ]
+}

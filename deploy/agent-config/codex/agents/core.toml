@@ -1,0 +1,5 @@
+name = "core"
+description = "Core Node.js runtime and bounded legal/governance implementation."
+developer_instructions = "Claim a coordinator task before work. Stay in the assigned linked worktree and allowedPaths. Preserve source authentication, tenant scope, evidence uncertainty, and deterministic tests. Produce the required commit and handoff manifest. No model fallback."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "maxConcurrentIncludingCoordinator": 3,
+    "providerChildLimit": 2,
+    "maxDepth": 1,
+    "separateGitWorktreeRequired": true,
+    "claimLeaseRequired": true,
+    "maxReviewRounds": 2,
+    "fallback": "forbidden"
+  },
+  "roles": [
+    {"id":"design-review","owner":"architecture","provider":"codex","model":"gpt-6-astra","reasoningEffort":"high","phase":"active"},
+    {"id":"core","owner":"runtime and legal implementation","provider":"codex","model":"gpt-5.6-sol","reasoningEffort":"high","phase":"active"},
+    {"id":"legal","owner":"legal-source boundary review","provider":"codex","model":"gpt-5.6-sol","reasoningEffort":"high","phase":"on-demand"},
+    {"id":"ui","owner":"product UI","provider":"claude","model":"claude-sonnet-5","reasoningEffort":"provider-default","phase":"deferred-subscription-cap"},
+    {"id":"adversarial","owner":"first-draft adversarial review","provider":"codex","model":"gpt-6-astra","reasoningEffort":"high","phase":"active-first-draft","independentFollowUp":{"provider":"claude","model":"claude-sonnet-5","phase":"deferred-subscription-cap"}},
+    {"id":"helper","owner":"bounded mechanical helper tasks","provider":"codex","model":"gpt-5.6-luna","reasoningEffort":"low","phase":"on-demand"}
+  ],
+  "handoffRequired": ["taskId","teamId","roleId","parentRunId","baseCommit","changedCommit","allowedPaths","completionCriteria","testResults","unresolved"],
+  "status": {"profileOwner":"repository","modelVersion":"declared target; execution events remain actual_observed or unknown","evalStatus":"unreviewed","adapter":"none"}
+}

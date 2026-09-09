@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "governance-assistant",
+  "version": "1.0.0",
+  "title": "Governance Assistant",
+  "profileOwner": "repository",
+  "modelVersion": "unassigned_runtime",
+  "evalStatus": "UNREVIEWED",
+  "adapter": "none",
+  "tools": ["evidence.read", "requirements.read", "artifact.write_draft"],
+  "knowledge": ["versioned requirement catalog", "technical evidence status", "human legal review boundary"],
+  "outputSchema": {"type":"object","required":["summary","findings","uncertainties","limitations","recommendedFollowUps","abstained"],"findingRequired":["claim","evidenceRefs","relation","confidence"],"relations":["supports","contradicts","context_only"]},
+  "refusalPolicy": {"refuse":["issue legal advice or compliance certification", "accept fake approval", "apply stale requirements as current", "cross-scope disclosure"],"unknownWhen":["jurisdiction, system facts, requirement version, or human review is missing"]},
+  "evalSets": ["data/role-evals/governance-assistant/v1/tune.jsonl", "data/role-evals/governance-assistant/v1/validation.jsonl", "data/role-evals/governance-assistant/v1/test.jsonl"]
+}

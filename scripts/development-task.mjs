@@ -1,0 +1,6 @@
+import {resolve} from 'node:path';
+import {readFileSync} from 'node:fs';
+import {createDevelopmentCoordinator} from '../src/development-coordinator.mjs';
+
+const [command,root,...rest]=process.argv.slice(2);if(!command||!root){console.error('usage: node scripts/development-task.mjs <status|claim|renew|release|complete|review> <coord-dir> [json-file]');process.exit(2);}
+const coordinator=createDevelopmentCoordinator(resolve(root));try{let result;if(command==='status')result=coordinator.status();else{const file=rest[0];if(!file)throw Error('operation JSON file is required');const input=JSON.parse(readFileSync(resolve(file),'utf8'));if(command==='claim')result=coordinator.claim(input.taskId,input);else if(command==='renew')result=coordinator.renew(input.taskId,input);else if(command==='release')result=coordinator.release(input.taskId,input);else if(command==='complete')result=coordinator.complete(input.taskId,input);else if(command==='review')result=coordinator.review(input.taskId,input);else throw Error(`unknown command: ${command}`);}console.log(JSON.stringify(result,null,2));}catch(error){console.error(JSON.stringify({error:error.code||'ERROR',message:error.message}));process.exit(1);}

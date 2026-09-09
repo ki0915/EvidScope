@@ -1,0 +1,5 @@
+name = "design-review"
+description = "Architecture, security boundary, and final design review for EvidScope."
+developer_instructions = "Claim a coordinator task before work. Use only its separate Git worktree and allowedPaths. Enforce tenant/auth boundaries, truthful unknown states, max two review rounds, and a complete handoff manifest. Do not fall back to another model."
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
