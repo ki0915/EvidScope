@@ -2,6 +2,8 @@
 
 # 문서 안내
 
+**1차 결과물:** [개발 보고서 PDF](../output/pdf/evidscope-first-development-report.pdf) · [포트폴리오 PDF](../output/pdf/evidscope-portfolio.pdf) · [보고서 Markdown](../reports/first-development-report-20260909.md) · [포트폴리오 Markdown](portfolio.md). 실제 화면과 시험 결과, AI 협업의 역할, 미완료 항목을 구분했습니다. 기능 검증 기준은 `300c07f`입니다.
+
 **[클릭하며 읽는 문서 뷰어](viewer.html)** — 서비스 개요 → 구성요소 → 행동 추적 예시 → 개발 → 현재 상태 순서로 읽습니다. 구성요소를 누르면 역할과 한계가 펼쳐지고, 예시는 네 단계로 이동합니다.
 
 저장소를 받은 뒤 `node scripts/preview-docs.mjs`를 실행하고 [로컬 문서 뷰어](http://127.0.0.1:9097/docs/viewer.html)를 여세요. `docs/viewer.html`을 브라우저에서 직접 열어도 됩니다. GitHub의 HTML 링크는 소스 파일을 표시합니다. 뷰어는 외부 라이브러리·API·AI 추론 없이 실행되는 설명용 문서이며, 실제 운영 화면과 구분됩니다. 상세 Markdown 링크는 원문을 엽니다.

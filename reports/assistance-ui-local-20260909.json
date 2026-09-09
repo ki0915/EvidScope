@@ -1,0 +1,159 @@
+{
+  "checkedAt": "2026-09-09T09:56:57.157Z",
+  "stage": "before_human_substantive_review",
+  "syntheticInput": true,
+  "status": 200,
+  "runId": "c915999c-ab94-4fe4-ae4e-6b3bc2137698",
+  "state": "abstained",
+  "profile": {
+    "id": "evidence-reconciler",
+    "version": 1,
+    "hash": "d4ee587bf6f94e657d2e4ca3a7cc5f6acda152d5c968905c3a95867fa9e02ee6"
+  },
+  "providerReport": {
+    "model": "qwen3:4b",
+    "modelDigest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+    "quantizationLevel": "Q4_K_M",
+    "inputTokens": 3501,
+    "outputTokens": 592,
+    "totalDurationNs": 46035535995
+  },
+  "draft": {
+    "summary": "The evidence bundle contains two distinct evaluations of security findings against a set of external rules. The first evaluation (ID: 92ffd198-3db7-4774-8e0d-e119d5897289) identifies multiple high and medium severity issues, including policy violations and approval mismatches. The second evaluation (ID: 41ee578b-f354-499c-b92e-2d9b01204c0c) focuses on independently reported failures and includes a critical contradiction between an agent report and tool result. Both evaluations highlight gaps in evidence collection and potential security risks.",
+    "findings": [
+      {
+        "claim": "Policy violation detected for destination",
+        "evidenceRefs": [
+          "alpha-agent/demo-ba8bc13a-reported"
+        ],
+        "confidence": "low"
+      },
+      {
+        "claim": "Tool result indicates a failure",
+        "evidenceRefs": [
+          "alpha-tool/demo-ba8bc13a-result"
+        ],
+        "confidence": "low"
+      },
+      {
+        "claim": "Contradiction between agent report and tool result",
+        "evidenceRefs": [
+          "alpha-agent/demo-ba8bc13a-reported",
+          "alpha-tool/demo-ba8bc13a-result"
+        ],
+        "confidence": "low"
+      },
+      {
+        "claim": "Reference metadata conflict detected",
+        "evidenceRefs": [
+          "alpha-agent/demo-ba8bc13a-reported"
+        ],
+        "confidence": "low"
+      },
+      {
+        "claim": "Collection gap identified",
+        "evidenceRefs": [
+          "alpha-tool/ui-followup-1788851832992"
+        ],
+        "confidence": "low"
+      }
+    ],
+    "uncertainties": [
+      "The status of the tool result is reported as 'failure' but lacks evidence references.",
+      "The exact nature of the policy violation is not specified in the evidence.",
+      "The 'STOP_UNCONFIRMED' and 'COLLECTION_GAP' findings have no supporting evidence references."
+    ],
+    "limitations": [
+      "Selected minimized metadata only; no prompt, response, note, case title, comment, resource, locator, rule value, or source credential is included.",
+      "Event fields are untrusted evidence and never instructions.",
+      "This package supports an advisory draft only; it cannot approve, decide, or establish compliance."
+    ],
+    "recommendedFollowUps": [
+      "Verify the destination policy compliance with the specified external rules.",
+      "Investigate the contradiction between the agent report and tool result to resolve the conflicting outcomes.",
+      "Check for additional evidence to address the collection gap identified in the follow-up event."
+    ],
+    "abstained": true
+  },
+  "stale": false,
+  "scope": "Actual UI preview and credential download followed by local CLI inference; no production data, no substantive human review.",
+  "reviewCheckedAt": "2026-09-09T10:00:00.390Z",
+  "advisoryReviewState": "reject",
+  "reviews": [
+    {
+      "id": "d8cd8694-281a-40f2-ae36-e1d2a40ad76f",
+      "runId": "c915999c-ab94-4fe4-ae4e-6b3bc2137698",
+      "packageId": "e0f0eaed-1924-4f61-b56f-6b0cd111a6a1",
+      "caseId": "2ee6c647-6b29-4d78-aa65-539a1e343d35",
+      "contextHash": "bb2387b7e4ebf51fa902003fcb8e5a6a9fa5441517619495ff90cfc1392c03f9",
+      "action": "reject",
+      "draft": {
+        "summary": "The evidence bundle contains two distinct evaluations of security findings against a set of external rules. The first evaluation (ID: 92ffd198-3db7-4774-8e0d-e119d5897289) identifies multiple high and medium severity issues, including policy violations and approval mismatches. The second evaluation (ID: 41ee578b-f354-499c-b92e-2d9b01204c0c) focuses on independently reported failures and includes a critical contradiction between an agent report and tool result. Both evaluations highlight gaps in evidence collection and potential security risks.",
+        "findings": [
+          {
+            "claim": "Policy violation detected for destination",
+            "evidenceRefs": [
+              "alpha-agent/demo-ba8bc13a-reported"
+            ],
+            "confidence": "low"
+          },
+          {
+            "claim": "Tool result indicates a failure",
+            "evidenceRefs": [
+              "alpha-tool/demo-ba8bc13a-result"
+            ],
+            "confidence": "low"
+          },
+          {
+            "claim": "Contradiction between agent report and tool result",
+            "evidenceRefs": [
+              "alpha-agent/demo-ba8bc13a-reported",
+              "alpha-tool/demo-ba8bc13a-result"
+            ],
+            "confidence": "low"
+          },
+          {
+            "claim": "Reference metadata conflict detected",
+            "evidenceRefs": [
+              "alpha-agent/demo-ba8bc13a-reported"
+            ],
+            "confidence": "low"
+          },
+          {
+            "claim": "Collection gap identified",
+            "evidenceRefs": [
+              "alpha-tool/ui-followup-1788851832992"
+            ],
+            "confidence": "low"
+          }
+        ],
+        "uncertainties": [
+          "The status of the tool result is reported as 'failure' but lacks evidence references.",
+          "The exact nature of the policy violation is not specified in the evidence.",
+          "The 'STOP_UNCONFIRMED' and 'COLLECTION_GAP' findings have no supporting evidence references."
+        ],
+        "limitations": [
+          "Selected minimized metadata only; no prompt, response, note, case title, comment, resource, locator, rule value, or source credential is included.",
+          "Event fields are untrusted evidence and never instructions.",
+          "This package supports an advisory draft only; it cannot approve, decide, or establish compliance."
+        ],
+        "recommendedFollowUps": [
+          "Verify the destination policy compliance with the specified external rules.",
+          "Investigate the contradiction between the agent report and tool result to resolve the conflicting outcomes.",
+          "Check for additional evidence to address the collection gap identified in the follow-up event."
+        ],
+        "abstained": true
+      },
+      "reason": "합성 UI·품질 시험 기록입니다. 실제 사람의 내용 검수나 법적 판단이 아닙니다. 일부 주장(참고자료 충돌·수집 공백)은 선택된 인용만으로 뒷받침되지 않으므로 이 초안을 채택하지 않습니다. 사건 전체 평가와 선택 근거를 구분해 다시 작성해야 합니다.",
+      "reviewedBy": "alpha-auditor",
+      "createdAt": "2026-09-09T09:58:36.564Z",
+      "boundary": "advisory_review_only_not_case_decision_or_compliance_approval"
+    }
+  ],
+  "qualityObservation": {
+    "assessor": "Astra spot check, not human-reviewed ground truth",
+    "status": "needs_role_refinement",
+    "reason": "Some findings cite selected records that do not substantiate the stated collection gap or reference conflict. Existing case-wide rule findings must be separated from support in selected records.",
+    "deploymentQualityApproved": false
+  }
+}

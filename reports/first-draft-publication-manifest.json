@@ -1,0 +1,17 @@
+{
+  "format": "evidscope-publication-snapshot-v1",
+  "cutoff": "2026-09-09T19:00:00+09:00",
+  "reviewedCommit": "300c07f",
+  "outputs": [
+    "evidscope-first-development-report.pdf",
+    "evidscope-portfolio.pdf"
+  ],
+  "pendingChangesExcluded": true,
+  "humanAuthorshipShareUnmeasured": true,
+  "sources": [
+    "reports/assistance-local-20260909.json",
+    "reports/assistance-ui-local-20260909.json",
+    "reports/astra-adversarial-20260909.md",
+    "reports/kubernetes-runtime-20260908.md"
+  ]
+}

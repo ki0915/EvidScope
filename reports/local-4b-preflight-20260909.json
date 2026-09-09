@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "kind": "connectivity_only_not_audit_quality",
+  "at": "2026-09-09T09:22:54.354Z",
+  "configuredModel": "qwen3:4b",
+  "providerReportedModel": "qwen3:4b",
+  "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+  "quantization": "Q4_K_M",
+  "durationMs": 39649,
+  "promptTokens": 28,
+  "outputTokens": 10,
+  "output": "{\n  \"status\": \"ready\"\n}"
+}

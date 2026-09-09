@@ -8,7 +8,11 @@
 
 **[설계·개발 요약서 PDF 보기](output/pdf/evidscope-design-handbook.pdf)** — 구성도, 신뢰 경계, 개발 시작, 검증 범위와 개선 순서를 7쪽으로 정리했습니다.
 
-AI 행동·권한 가시성, SIEM 조사, 독립 증적, 인간 거버넌스 검토를 연결하는 실행 가능한 로컬 파일럿입니다. 실행 차단·도구 중개·AI 실행 승인 발급·감사 LLM 기능은 없습니다. 실제 공급자와 개인정보 없이 합성 사례를 실행합니다.
+**[1차 개발 보고서 PDF](output/pdf/evidscope-first-development-report.pdf)** · **[포트폴리오 PDF](output/pdf/evidscope-portfolio.pdf)** — 실제 화면, 로컬 모델 시험, 적대적 감사와 Kubernetes 실측을 정리했습니다. [보고서 원문](reports/first-development-report-20260909.md)과 [포트폴리오 원문](docs/portfolio.md)은 수정 가능한 Markdown입니다. 검증 기준은 `300c07f`이며 이후 수정·통합 완료를 미리 주장하지 않습니다.
+
+AI 행동·권한 가시성, SIEM 조사, 독립 증적, 인간 거버넌스 검토를 연결하는 실행 가능한 로컬 파일럿입니다. 선택한 합성 사건 자료를 실제 로컬 Qwen3 4B로 검토하는 초안 지원 기능이 추가됐습니다. 실행 차단·도구 중개·AI 실행 승인 발급 기능은 없습니다. AI 초안은 정책 점수나 인간 사건 판단을 대체하지 않습니다.
+
+**시험 자원 운영:** 테스트할 때만 모델·시험 워커를 실행하고, 종료 후 중지합니다. 2026-09-09에 전용 모델 컨테이너·실험 클러스터·로컬 시험 서버를 중지했습니다. 볼륨과 증거는 보존하며, 문서 PDF는 시스템을 켜지 않고 볼 수 있습니다.
 
 **상태:** 로컬 구현과 실제 HTTP 검증, 전용 Kubernetes의 Service 분산·HPA·Pod 복구 관측을 제공합니다. 부하 timeout·장애 중 실패·CNI 검증 한계는 [실행 결과](reports/kubernetes-runtime-20260908.md)에 보존했습니다. 외부 LoadBalancer·저장소 HA·운영 적합성 인증 완료를 주장하지 않습니다.
 

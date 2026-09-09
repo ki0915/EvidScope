@@ -1,0 +1,12 @@
+{
+  "format": "evidscope-runtime-stop-observation-v1",
+  "observedAt": "2026-09-09T19:14:00+09:00",
+  "reason": "User requested runtime agents to be off outside explicit tests.",
+  "modelContainer": {"name": "evidscope-ollama-assistance-20260909", "running": false, "restartPolicy": "no"},
+  "cluster": {"name": "evidscope-lab-20260908", "serverRunning": false, "agentsRunning": 0, "loadBalancerContainerRunning": false},
+  "localFixtureSession": {"sessionId": 1898, "terminated": true},
+  "checkedPortsWithoutListeners": [9080, 9081, 9082, 9083, 11434],
+  "dataAndVolumesDeleted": false,
+  "otherProjectContainersModified": false,
+  "scope": "Point-in-time observation after explicit stop. Automated test lifecycle controls were still being implemented. Development-time Codex collaboration and temporary test harnesses are separate from deployed runtime agents."
+}
