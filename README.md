@@ -6,6 +6,8 @@
 
 [아키텍처 초안](docs/architecture-draft.md) · [개발 가이드](docs/development-guide.md) · [전체 문서](docs/README.md) · [개선 계획](docs/service-improvement-plan.md)
 
+**[기능 설명과 비용 설계](docs/feature-guide.md)** — 개발팀과 운영 전문 역할의 차이, 검증 역할, 규칙·경량 모델 우선 처리와 중요 사건의 고급 검토 방향을 설명합니다. 현재는 로컬 단일 역할 실행이며 자동 고급 모델 배정과 운영 역할 간 자율 협업은 후속 단계입니다.
+
 **[설계·개발 요약서 PDF 보기](output/pdf/evidscope-design-handbook.pdf)** — 구성도, 신뢰 경계, 개발 시작, 검증 범위와 개선 순서를 7쪽으로 정리했습니다.
 
 **[1차 개발 보고서 PDF](output/pdf/evidscope-first-development-report.pdf)** · **[포트폴리오 PDF](output/pdf/evidscope-portfolio.pdf)** — 실제 화면, 로컬 모델 시험, 적대적 감사와 Kubernetes 실측을 정리했습니다. [보고서 원문](reports/first-development-report-20260909.md)과 [포트폴리오 원문](docs/portfolio.md)은 수정 가능한 Markdown입니다. 검증 기준은 `300c07f`이며 이후 수정·통합 완료를 미리 주장하지 않습니다.

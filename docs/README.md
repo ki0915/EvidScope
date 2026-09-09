@@ -26,6 +26,7 @@
 
 ## 제품 사용과 지표
 
+- [기능 설명과 경량 모델 중심 비용 설계](feature-guide.md)
 - [다중 에이전트 개발·감사·역할 전문화](multi-agent-development.md)
 - [로컬 AI 검토 지원의 권한 경계 결정](adr/0004-local-advisory-boundary.md)
 - [인간 감사 흐름](audit-workbench.md)
