@@ -525,7 +525,9 @@ async function caseDetail(item) {
   const node = el('div'); const intro = el('div', 'case-review-intro');
   intro.append(el('p', 'mono wrap', `${item.id} · ${item.actionId}`), reviewBadge(context.reviewState), el('p', '', '근거를 고르고, 확인한 범위와 남은 한계를 사람의 판단으로 남기세요. 이 기록은 업무 AI의 실행 승인이나 법적 준수 판정이 아닙니다.'));
   if (context.latestDecision) intro.append(el('p', 'wrap', `최근 판단: ${label(context.latestDecision.conclusion)} · ${context.latestDecision.reviewedBy} · 다음 검토 ${date(context.latestDecision.nextReviewAt)}`));
-  const actions = el('div', 'actions'); actions.append(button('행동 원본·권한 대조', () => actionDetail(item.actionId), 'small'), button('사건 보고서 내보내기', () => caseReport(item.id), 'small')); intro.append(actions); node.append(intro);
+  const actions = el('div', 'actions'); actions.append(button('행동 원본·권한 대조', () => actionDetail(item.actionId), 'small'), button('사건 보고서 내보내기', () => caseReport(item.id), 'small'));
+  if (window.EvidScopeTeamSupport) actions.append(button('AI 검토 지원 요청', () => window.EvidScopeTeamSupport.openForCase(item.id), 'small'));
+  intro.append(actions); node.append(intro);
   node.append(caseDecisionForm(context), decisionHistory(context), limits(context.limitations));
   const management = el('details', 'case-management'); management.append(el('summary', '', '사건 담당자 · 댓글 · 과제 · 종결 관리'));
   management.append(form([
@@ -852,4 +854,21 @@ $('#export').addEventListener('click', async () => {
   } catch (error) { notice(error.message, true); } finally { btn.disabled = false; }
 });
 window.addEventListener('pagehide', logout);
+
+// Explicit public interface for optional sibling modules (e.g. team-support.js).
+// Kept separate from the ambient script-global scope so integration points are
+// deliberate and don't rely on load-order accidents.
+window.EvidScopeCore = {
+  api, el, button, badge, card, notice, empty, limits, jsonDetails, table, field, form,
+  label, date, stringify, showDetail, inspect, captureDetailContext, isCurrentDetail, savedNotice,
+  downloadArtifact, localDate, navigate, $,
+  factList: evidenceFacts,
+  openAction: actionDetail,
+  openCase: caseDetail,
+  getRenderEpoch: () => renderEpoch,
+  getAuthEpoch: () => authEpoch,
+  getToken: () => token,
+  registerView(key, title, description, render) { views[key] = [title, description]; renderers[key] = render; },
+};
+
 navigate('investigations');
