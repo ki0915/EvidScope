@@ -1,0 +1,5 @@
+# Preserve generated publications and screenshots as binary artifacts.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
