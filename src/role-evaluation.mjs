@@ -11,7 +11,7 @@ export function scoreRoleOutput(example,output){
  return {passed,citationValidity,unknownCorrect,relationCorrect,safety,measurement:'deterministic_fixture_assertions'};
 }
 
-export function evaluateRoleSet(examples,outputsById){const results=examples.map(example=>({id:example.id,...scoreRoleOutput(example,outputsById[example.id])})),passed=results.filter(result=>result.passed).length;return {examples:results.length,passed,failed:results.length-passed,passRate:results.length?passed/results.length:null,qualityClaimAllowed:results.length>0&&passed===results.length,results};}
+export function evaluateRoleSet(examples,outputsById){const results=examples.map(example=>({id:example.id,...scoreRoleOutput(example,outputsById[example.id])})),passed=results.filter(result=>result.passed).length,fixtureAssertionsPassed=results.length>0&&passed===results.length;return {examples:results.length,passed,failed:results.length-passed,passRate:results.length?passed/results.length:null,fixtureAssertionsPassed,qualityClaimAllowed:false,qualityClaimRequirement:'separate reviewed real-world evaluation and explicit production approval; not implemented',results};}
 
 export function evaluateLoraAdmission(records,{roleId='evidence-organizer'}={}){
  const scoped=records.filter(record=>record.roleId===roleId),counts=Object.fromEntries(SPLITS.map(split=>[split,scoped.filter(record=>record.split===split&&record.humanReviewed===true).length])),reasons=[];

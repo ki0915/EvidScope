@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {ROLE_IDS,loadRolePackages,buildRoleExecution} from '../src/role-packages.mjs';
-import {scoreRoleOutput,evaluateLoraAdmission} from '../src/role-evaluation.mjs';
+import {scoreRoleOutput,evaluateRoleSet,evaluateLoraAdmission} from '../src/role-evaluation.mjs';
 
 const readJsonl=path=>readFileSync(path,'utf8').trim().split(/\r?\n/).map(JSON.parse);
 test('four versioned role packages have distinct runner instructions and 30/10/20 isolated unreviewed fixtures',()=>{
@@ -14,6 +14,8 @@ test('four versioned role packages have distinct runner instructions and 30/10/2
 test('deterministic scorer checks citations, unknown, relations and safety; LoRA gate blocks current corpus',()=>{
  const example=readJsonl(resolve('data/role-evals/evidence-reconciler/v1/test.jsonl')).find(v=>v.truth.labels.includes('adverse_evidence')),refs=example.truth.requiredRefs;
  const good={findings:[{claim:'reported success',evidenceRefs:[refs[0]],relation:'supports',confidence:'low'},{claim:'independent conflict',evidenceRefs:[refs[1]],relation:'contradicts',confidence:'high'}],uncertainties:['conflict unresolved'],limitations:[],recommendedFollowUps:[],abstained:true};assert.equal(scoreRoleOutput(example,good).passed,true);
+ const perfectSynthetic=evaluateRoleSet([example],{[example.id]:good});assert.equal(example.humanReviewed,false);assert.equal(perfectSynthetic.passRate,1);assert.equal(perfectSynthetic.fixtureAssertionsPassed,true);assert.equal(perfectSynthetic.qualityClaimAllowed,false);assert.match(perfectSynthetic.qualityClaimRequirement,/reviewed real-world evaluation/);
+ const empty=evaluateRoleSet([],{});assert.equal(empty.passRate,null);assert.equal(empty.fixtureAssertionsPassed,false);assert.equal(empty.qualityClaimAllowed,false);
  const bad={...good,findings:[{claim:'made up',evidenceRefs:['made-up-citation'],relation:'supports'}],uncertainties:[],abstained:false};const result=scoreRoleOutput(example,bad);assert.equal(result.passed,false);assert.equal(result.citationValidity.onlyKnown,false);assert.equal(result.unknownCorrect,false);
  const records=ROLE_IDS.flatMap(role=>['tune','validation','test'].flatMap(split=>readJsonl(resolve(`data/role-evals/${role}/v1/${split}.jsonl`))));const gate=evaluateLoraAdmission(records);assert.equal(gate.admitted,false);assert.equal(gate.trainingRunAllowed,false);assert.equal(gate.qualityClaimAllowed,false);assert.deepEqual(gate.counts,{tune:0,validation:0,test:0});
 });

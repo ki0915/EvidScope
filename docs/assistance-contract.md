@@ -24,6 +24,8 @@ The response contains `id`, `status: "prepared"`, `caseId`, `actionId`, `context
 
 `GET /api/assistance/packages` returns `{items}`; `GET /api/assistance/packages/:id` returns one preview.
 
+Packages and runs created before the canonical v1 role-execution snapshot was introduced do not have `roleExecutionSnapshot`/`roleExecutionHash` and fail current integrity validation with `409`. This release does not migrate those records; prepare and dispatch a new package from the current case context.
+
 `POST /api/assistance/packages/:id/dispatch` with `{"contextHash":"64_HEX"}` rechecks the current evidence/analysis context and trusted catalog hash, permits one dispatch per package, and returns:
 
 ```json
