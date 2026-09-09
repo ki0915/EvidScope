@@ -2,6 +2,10 @@
 
 # 문서 안내
 
+**[클릭하며 읽는 문서 뷰어](viewer.html)** — 서비스 개요 → 구성요소 → 행동 추적 예시 → 개발 → 현재 상태 순서로 읽습니다. 구성요소를 누르면 역할과 한계가 펼쳐지고, 예시는 네 단계로 이동합니다.
+
+저장소를 받은 뒤 `node scripts/preview-docs.mjs`를 실행하고 [로컬 문서 뷰어](http://127.0.0.1:9097/docs/viewer.html)를 여세요. `docs/viewer.html`을 브라우저에서 직접 열어도 됩니다. GitHub의 HTML 링크는 소스 파일을 표시합니다. 뷰어는 외부 라이브러리·API·AI 추론 없이 실행되는 설명용 문서이며, 실제 운영 화면과 구분됩니다. 상세 Markdown 링크는 원문을 엽니다.
+
 **[7쪽 설계·개발 요약서 PDF](../output/pdf/evidscope-design-handbook.pdf)** · **[시스템 구성도 원본 SVG](assets/system-architecture.svg)**
 
 | 구조를 이해하려면 | 개발을 시작하려면 | 현재 범위를 확인하려면 |

@@ -2,6 +2,8 @@
 
 # EvidScope
 
+**[클릭하며 읽는 문서 뷰어](docs/viewer.html)** — 구성도와 네 단계 행동 추적 예시로 이해하기. `node scripts/preview-docs.mjs` 실행 후 [로컬 뷰어 열기](http://127.0.0.1:9097/docs/viewer.html). GitHub에서는 HTML 소스가 표시되며, 자세한 실행 안내는 [문서 안내](docs/README.md)에 있습니다.
+
 [아키텍처 초안](docs/architecture-draft.md) · [개발 가이드](docs/development-guide.md) · [전체 문서](docs/README.md) · [개선 계획](docs/service-improvement-plan.md)
 
 **[설계·개발 요약서 PDF 보기](output/pdf/evidscope-design-handbook.pdf)** — 구성도, 신뢰 경계, 개발 시작, 검증 범위와 개선 순서를 7쪽으로 정리했습니다.
