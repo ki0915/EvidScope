@@ -58,7 +58,7 @@ async function route(req,res){
   if(url.pathname==='/readyz'&&req.method==='GET'){
    const ready=await checkReadiness();res.statusCode=ready&&!stopping?200:503;res.end(JSON.stringify({status:res.statusCode===200?'ready':'not_ready',component:mode}));return;
   }
-  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css'].includes(url.pathname)){
+  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   if(mode==='ingress'&&(url.pathname!=='/api/ingest'||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
@@ -66,7 +66,7 @@ async function route(req,res){
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
-  const body=await requestBody(req,mode==='vault'&&url.pathname==='/internal/complete'?1024*1024:16384);
+  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:16384);
   if(mode==='vault'){
    const output=await service.handle(req.method,url,req.headers,body);res.statusCode=url.pathname==='/api/ingest'?202:200;res.end(JSON.stringify(output));
   }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;if(url.pathname==='/api/export')res.setHeader('Content-Disposition','attachment; filename="evidscope-evidence.json"');res.end(output.body);}

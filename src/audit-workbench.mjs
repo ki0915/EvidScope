@@ -126,5 +126,5 @@ export function createAuditWorkbench(store,key){
   if(operation==='report'&&method==='GET')return report(p,id);
   fail(405,'검토 이력은 수정할 수 없으며 지원하는 조회·추가 메서드만 사용할 수 있습니다');
  }
- return {handle};
+ return {handle,verifyContext};
 }

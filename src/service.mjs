@@ -8,9 +8,10 @@ import {createAnalysis} from './analysis.mjs';
 import {createAuditWorkbench} from './audit-workbench.mjs';
 import {monitoring} from './monitoring.mjs';
 import {agentInventory} from './agent-inventory.mjs';
+import {createAssistance} from './assistance.mjs';
 
 export function createService({dataDir,config,key,requirements=[]}) {
- const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key);
+ const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench);
  const principals=config.principals||[];
  const analysis=createAnalysis(store,principals);
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -51,6 +52,7 @@ export function createService({dataDir,config,key,requirements=[]}) {
  async function handle(method,url,headers,body=''){
   const path=url.pathname;
   if(path==='/healthz'&&method==='GET'){store.db.prepare('SELECT 1').get();return {status:'ready',component:'vault'};}
+  if(path.startsWith('/internal/assistance/')){const result=assistance.internal(method,url,headers,body);if(result!==undefined)return result;}
   const p=auth(headers);
   if(path==='/api/ingest'&&method==='POST'){
    if(p.role!=='source')fail(403,'수집 출처 자격이 필요합니다');
@@ -77,6 +79,7 @@ export function createService({dataDir,config,key,requirements=[]}) {
   if(!path.startsWith('/api/'))fail(404,'경로 없음');
   let x={};if(body){try{x=safeObject(JSON.parse(body));}catch(e){if(e.status)throw e;fail(400,'JSON 객체 필요');}}
   if(method==='GET'&&path!=='/api/integrity')store.audit(p,'read',path);
+  if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
   if(path==='/api/investigations'||path.startsWith('/api/cases/')){const result=workbench.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/overview'&&method==='GET'){
@@ -148,5 +151,5 @@ export function createService({dataDir,config,key,requirements=[]}) {
   if(path.startsWith('/api/governance/tasks/')&&method==='POST'){return store.transaction(()=>{const id=path.split('/').pop(),t=obj(p,'governance_task',id);t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
- return {store,handle,analysis};
+ return {store,handle,analysis,assistance};
 }

@@ -1,0 +1,25 @@
+{
+  "format": "evidscope-assistance-local-verification-v1",
+  "verifiedAt": "2026-09-09T18:41:49+09:00",
+  "actualModelRun": true,
+  "runId": "6c7a2c70-f397-4d03-99c9-886d62f572dd",
+  "state": "completed",
+  "configuredModel": "qwen3:4b",
+  "providerReportedModel": "qwen3:4b",
+  "modelDigest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+  "quantizationLevel": "Q4_K_M",
+  "inputTokens": 1207,
+  "outputTokens": 478,
+  "totalDurationNs": 10904484093,
+  "responsesUsed": 1,
+  "findingCount": 3,
+  "advisoryReview": "accept",
+  "caseDecisionCount": 0,
+  "credentialPrinted": false,
+  "scope": "Actual local model inference over synthetic minimized event metadata. The advisory review was submitted by the automated test's human-role credential and is not a real person's substantive review.",
+  "limitations": [
+    "The fixture contains no production data and proves no production-model quality.",
+    "Provider model identity, digest, quantization, token counts, and duration are provider-reported visibility metadata, not an independent attestation.",
+    "The accepted advisory record verifies API separation only; it is not a legal, compliance, case, or human approval decision."
+  ]
+}
