@@ -1,6 +1,6 @@
 # EvidScope local assistance contract
 
-All `/api/assistance/*` routes require an existing human `auditor`, `reviewer`, or `admin` bearer token. Profile writes require `reviewer` or `admin`. All reads are audited. Packages, profile snapshots, run inputs, results, and advisory reviews are append-only ledger records. An advisory review is separate from `/api/cases/:id/decisions` and cannot change case, legal, governance, exception, or compliance state.
+All `/api/assistance/*` routes require an existing human `auditor`, `reviewer`, or `admin` bearer token. Profile writes require `reviewer` or `admin`. All reads are audited. Packages, profile snapshots, run inputs, results, and advisory reviews are append-only ledger records. Before use, the service reconstructs each assistance object from the authenticated signed ledger and rejects any changed, missing, or injected database projection. Package and run records also bind the immutable package hash and known profile snapshot hash. An advisory review is separate from `/api/cases/:id/decisions` and cannot change case, legal, governance, exception, or compliance state.
 
 ## Profiles
 
@@ -36,7 +36,7 @@ Only a SHA-256 token digest is stored. The credential is returned once for an ex
 
 These routes accept only the matching run credential. Human, source, analysis-worker, and other run credentials cannot substitute for it.
 
-`GET /internal/assistance/runs/:id/package` claims the frozen package once. A database-wide lock permits one running assistance job across tenants. The response contains `{run:{id,packageId,packageHash,expiresAt,limits},package}`.
+`GET /internal/assistance/runs/:id/package` claims the frozen package once. A database-wide lock permits one running assistance job across tenants. The response contains `{run:{id,packageId,packageHash,profileHash,expiresAt,limits},package}`. The CLI independently recomputes the package and profile hashes before contacting Ollama.
 
 `POST /internal/assistance/runs/:id/result` accepts exactly one terminal result:
 
@@ -48,7 +48,7 @@ These routes accept only the matching run credential. Human, source, analysis-wo
 
 ## Human run review
 
-`GET /api/assistance/runs` returns `{items}` and `GET /api/assistance/runs/:id` returns detail. Each includes computed `stale`, `currentContextHash`, `staleReason`, `reviewState`, and preserved `reviews`. Queued/running credentials become `timed_out` after five minutes.
+`GET /api/assistance/runs` returns `{items}` and `GET /api/assistance/runs/:id` returns detail. Each includes computed `stale`, `currentContextHash`, `currentCaseSnapshotHash`, `currentCatalogHash`, `staleReason`, `reviewState`, preserved `reviews`, and the display aliases `profileId`, `profileVersion`, and `updatedAt`. The independent case snapshot hash catches case metadata or scope changes without changing the existing review-context `contextHash` contract. Queued/running credentials become durably `timed_out` after five minutes; expiry reconciliation appends the terminal transition once before returning `410`.
 
 `POST /api/assistance/runs/:id/review` accepts or rejects the draft after rechecking evidence/analysis context and the catalog hash. Accept may supply a complete `editedDraft`; reject requires a reason. A catalog version change makes every older run stale even when its event context is unchanged.
 
