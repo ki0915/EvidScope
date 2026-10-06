@@ -1,4 +1,5 @@
-// Operator helper for the vault transparency log.
+// Operator helper for the vault transparency log. Starting config: deploy/transparency/transparency.example.json (fill in
+// the witness vkeys and URLs; keep pinFile on a volume outside the data directory).
 //   node scripts/transparency.mjs vkeys      --config TRANSPARENCY.json --key VAULT_KEY.pem
 //   node scripts/transparency.mjs witnessctl --config TRANSPARENCY.json --key VAULT_KEY.pem [--db litewitness.db] [--witness-dir DIR]
 //   node scripts/transparency.mjs status     --config TRANSPARENCY.json --key VAULT_KEY.pem --data-dir DIR [--probe]

@@ -275,3 +275,17 @@ test('startupProbe defaults to required in enforce mode and best_effort in monit
   assert.equal(at({mode: 'monitor', startupProbe: 'required'}).startupProbe, 'required');
   assert.throws(() => at({mode: 'enforce', startupProbe: 'maybe'}), /startupProbe must be required or best_effort/);
 });
+
+test('the shipped transparency example is strict about its placeholders and valid once they are filled in', () => {
+  const example = JSON.parse(readFileSync(new URL('../deploy/transparency/transparency.example.json', import.meta.url), 'utf8'));
+  assert.equal(example.mode, 'monitor');
+  assert.equal(example.quorum, 1);
+  assert.equal(example.witnesses.length, 2);
+  assert.throws(() => normalizeTransparencyConfig(example, {dataDir: '/tmp/evs'}), /vkey/);
+  const vkeys = ['witness-1.example.org', 'witness-2.example.org'].map(name => T.vkeyString(name, T.SIG_COSIG_ED25519, Buffer.alloc(32, name.length)));
+  const filled = {...example, witnesses: example.witnesses.map((w, i) => ({...w, vkey: vkeys[i]}))};
+  const config = normalizeTransparencyConfig(filled, {dataDir: '/tmp/evs'});
+  assert.deepEqual([config.mode, config.quorum, config.witnesses.length, config.startupProbe, config.pinFile],
+    ['monitor', 1, 2, 'best_effort', '/var/lib/evidscope-transparency/pin.json']);
+  assert.throws(() => normalizeTransparencyConfig({...filled, witnessQuorum: 1}, {dataDir: '/tmp/evs'}), /Unknown transparency config field: witnessQuorum/);
+});
