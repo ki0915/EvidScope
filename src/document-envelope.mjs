@@ -13,13 +13,17 @@ const PURPOSE_NAMES={governanceDocument:'governance-document',financeDocument:'f
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const b64=value=>typeof value==='string'&&Buffer.from(value,'base64').toString('base64')===value;
 const exactKeys=(value,names)=>Object.keys(value).length===names.length&&names.every(name=>Object.hasOwn(value,name));
-const aad=(version,purpose,kid,tenant,hash)=>Buffer.from(version===1?`${tenant}:${hash}`:canonical({format:DOCUMENT_ENVELOPE_V2,purpose:PURPOSE_NAMES[purpose],kid,tenant,sha256:hash}));
+const aad=(version,purpose,kid,tenant,hash)=>Buffer.from(version===1
+ ?`${tenant}:${hash}`
+ :canonical({format:DOCUMENT_ENVELOPE_V2,purpose:PURPOSE_NAMES[purpose],kid,tenant,sha256:hash}));
 
 export function parseDocumentEnvelope(saved){
  if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Invalid encrypted document envelope');
  let version,kid;
  if(exactKeys(saved,['iv','tag','data'])){version=1;kid=LEGACY_KEY_ID;}
- else if(exactKeys(saved,['format','kid','iv','tag','data'])&&saved.format===DOCUMENT_ENVELOPE_V2&&typeof saved.kid==='string'&&KEY_ID_PATTERN.test(saved.kid)){version=2;kid=saved.kid;}
+ else if(exactKeys(saved,['format','kid','iv','tag','data'])&&saved.format===DOCUMENT_ENVELOPE_V2&&typeof saved.kid==='string'&&KEY_ID_PATTERN.test(saved.kid)){
+  version=2;kid=saved.kid;
+ }
  else throw Error('Invalid encrypted document envelope');
  if(!['iv','tag','data'].every(name=>b64(saved[name])))throw Error('Invalid encrypted document envelope');
  const iv=Buffer.from(saved.iv,'base64'),tag=Buffer.from(saved.tag,'base64'),data=Buffer.from(saved.data,'base64');
@@ -27,9 +31,13 @@ export function parseDocumentEnvelope(saved){
  return {version,kid,iv,tag,data};
 }
 
-export function createEncryptedDocumentStore({root,purpose,keyring,maxEnvelopeBytes,maxPlaintextBytes,invalidHash=()=>{throw Error('Invalid document digest');},verifyAfterWrite=true}){
+export function createEncryptedDocumentStore({root,purpose,keyring,maxEnvelopeBytes,maxPlaintextBytes,
+ invalidHash=()=>{throw Error('Invalid document digest');},verifyAfterWrite=true}){
  if(!Object.hasOwn(PURPOSE_NAMES,purpose))throw Error('Unknown document purpose');
- const location=(tenant,hash)=>{if(typeof hash!=='string'||!/^[a-f0-9]{64}$/.test(hash))invalidHash();return join(root,sha256(Buffer.from(tenant)),hash+'.json');};
+ const location=(tenant,hash)=>{
+  if(typeof hash!=='string'||!/^[a-f0-9]{64}$/.test(hash))invalidHash();
+  return join(root,sha256(Buffer.from(tenant)),hash+'.json');
+ };
  function open(tenant,hash){
   const envelope=parseDocumentEnvelope(JSON.parse(readBoundedRegularFile(location(tenant,hash),maxEnvelopeBytes).toString('utf8')));
   const decipher=createDecipheriv('aes-256-gcm',keyring.key(purpose,envelope.kid),envelope.iv);
@@ -41,7 +49,9 @@ export function createEncryptedDocumentStore({root,purpose,keyring,maxEnvelopeBy
  function seal(tenant,hash,bytes,path){
   const {kid,key}=keyring.writeKey(purpose),version=kid===LEGACY_KEY_ID?1:2,iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);
   cipher.setAAD(aad(version,purpose,kid,tenant,hash));
-  const data=Buffer.concat([cipher.update(bytes),cipher.final()]),body={...(version===2?{format:DOCUMENT_ENVELOPE_V2,kid}:{}),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:data.toString('base64')};
+  const data=Buffer.concat([cipher.update(bytes),cipher.final()]);
+  const body={...(version===2?{format:DOCUMENT_ENVELOPE_V2,kid}:{}),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),
+   data:data.toString('base64')};
   const temporary=path+'.'+randomUUID()+'.tmp';
   writeFileSync(temporary,JSON.stringify(body),{flag:'wx',mode:0o600});renameSync(temporary,path);
   return kid;

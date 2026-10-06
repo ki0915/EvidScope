@@ -11,15 +11,19 @@ import {mac} from '../src/crypto.mjs';
 // in SQLite free space or in older WAL frames while the vault keeps running.
 test('retention erasure leaves no event key bytes or plaintext in evidence.db or its WAL',async t=>{
  const dir=mkdtempSync(join(tmpdir(),'evidscope-erasure-')),token=s=>s.repeat(40).slice(0,40);
- const principals=[{id:'alpha-tool',tenant:'alpha',role:'source',kind:'tool',token:token('t1'),hmacSecret:token('h1')},{id:'alpha-reviewer',tenant:'alpha',role:'reviewer',token:token('r1')},{id:'alpha-admin',tenant:'alpha',role:'admin',token:token('m1')}];
+ const principals=[{id:'alpha-tool',tenant:'alpha',role:'source',kind:'tool',token:token('t1'),hmacSecret:token('h1')},{id:'alpha-reviewer',tenant:'alpha',
+  role:'reviewer',token:token('r1')},{id:'alpha-admin',tenant:'alpha',role:'admin',token:token('m1')}];
  const service=createService({dataDir:dir,key:generateKeyPairSync('ed25519').privateKey,config:{principals}});
  t.after(()=>{try{service.store.close();}catch{}rmSync(dir,{recursive:true,force:true});});
  const principal=id=>principals.find(p=>p.id===id);
- const call=(path,id,body)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principal(id).token},body===undefined?'':JSON.stringify(body));
+ const call=(path,id,body)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principal(id).token},
+  body===undefined?'':JSON.stringify(body));
  await call('/api/retention/policy','alpha-reviewer',{retentionSeconds:1,purpose:'synthetic erasure test',reason:'S4 regression'});
- const marker='ERASURE-MARKER-900101-1234567',body=JSON.stringify({id:'e1',kind:'execution',occurredAt:new Date().toISOString(),traceId:'t',actionId:'a1',status:'success',note:marker});
+ const marker='ERASURE-MARKER-900101-1234567',body=JSON.stringify({id:'e1',kind:'execution',occurredAt:new Date().toISOString(),traceId:'t',actionId:'a1',
+  status:'success',note:marker});
  const stamp=String(Date.now()),nonce=randomUUID(),tool=principal('alpha-tool');
- const accepted=await service.handle('POST',new URL('/api/ingest','http://local'),{authorization:'Bearer '+tool.token,'x-evid-timestamp':stamp,'x-evid-nonce':nonce,'x-evid-signature':mac(tool.hmacSecret,stamp,nonce,body)},body);
+ const accepted=await service.handle('POST',new URL('/api/ingest','http://local'),{authorization:'Bearer '+tool.token,'x-evid-timestamp':stamp,
+  'x-evid-nonce':nonce,'x-evid-signature':mac(tool.hmacSecret,stamp,nonce,body)},body);
  assert.equal(accepted.accepted,true);
  const db=service.store.db,eventKey=Buffer.from(db.prepare('SELECT key FROM event_keys WHERE tenant=?').get('alpha').key);assert.equal(eventKey.length,32);
  // Move the key page into the main file while older frames stay in the WAL (as a running vault would).
