@@ -50,10 +50,10 @@ function inspectDatabase(file,dataDir,key,expectedCheckpoints){
  const store=readonlyStore(file,key),documents=new Map(),tenants=[];
  try{
   if(store.db.prepare('PRAGMA integrity_check').all().some(r=>r.integrity_check!=='ok'))throw Error('SQLite integrity check failed');
-  const hasDevelopment=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='development_run_events'").get(),hasGovernanceDocuments=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='governance_documents'").get();
+  const hasDevelopment=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='development_run_events'").get(),hasGovernanceDocuments=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='governance_documents'").get(),hasTlog=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='tlog_state'").get();
   // Include every evidence projection, even when its tenant has no signed history.
   // Otherwise an orphan actions row can survive a falsely verified whole-vault restore.
-  const names=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts UNION SELECT tenant FROM evaluations'+(hasDevelopment?' UNION SELECT tenant FROM development_run_events':'')+(hasGovernanceDocuments?' UNION SELECT tenant FROM governance_documents':'')+' ORDER BY tenant').all().map(r=>r.tenant);
+  const names=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts UNION SELECT tenant FROM evaluations'+(hasDevelopment?' UNION SELECT tenant FROM development_run_events':'')+(hasGovernanceDocuments?' UNION SELECT tenant FROM governance_documents':'')+(hasTlog?' UNION SELECT tenant FROM tlog_state':'')+' ORDER BY tenant').all().map(r=>r.tenant);
   if(expectedCheckpoints&&canonical(names)!==canonical(Object.keys(expectedCheckpoints).sort()))throw Error('Tenant set differs from independent checkpoints');
   for(const tenant of names){
    // Exhaust the iterator to authenticate the SQL tenant/sequence columns too.

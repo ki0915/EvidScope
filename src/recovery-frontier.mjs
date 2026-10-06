@@ -119,7 +119,7 @@ export function verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey,
 export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,config}){
  const statement=verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey:store.publicKey,config}),frontierHash=digest(frontier);
  return store.transaction(()=>{
-  const actualTenants=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts ORDER BY tenant').all().map(row=>row.tenant);
+  const actualTenants=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts UNION SELECT tenant FROM tlog_state ORDER BY tenant').all().map(row=>row.tenant);
   requireValue(same(actualTenants,Object.keys(archiveAnchor.checkpoints).sort()),'restored tenant set mismatch');
   let identities=0,erased=0,plansApplied=0;
   for(const entry of statement.tenants){
