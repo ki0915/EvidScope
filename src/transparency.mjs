@@ -7,6 +7,8 @@ import {DatabaseSync} from 'node:sqlite';
 import * as T from './tlog.mjs';
 
 export const TRANSPARENCY_MODES = ['off', 'monitor', 'enforce'];
+// required: the vault does not start until the witness quorum answered the startup probe (default in enforce mode).
+const STARTUP_PROBES = ['required', 'best_effort'], PROBE_ANSWERS = new Set(['consistent', 'rollback', 'fork']);
 export const UNANCHORED = ['rollback', 'truncation', 'tenant_removal'];
 const PIN_FORMAT = 'evidscope-transparency-pin-v1';
 const OFF = Object.freeze({mode: 'off', witnesses: [], quorum: 0});
@@ -32,7 +34,7 @@ const isMountPoint = dir => {
 export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   if (raw === undefined || raw === null) return OFF;
   if (typeof raw !== 'object' || Array.isArray(raw)) throw Error('Transparency config must be a JSON object');
-  const allowed = ['origin', 'witnesses', 'quorum', 'intervalMs', 'maxStalenessSeconds', 'refreshSeconds', 'timeoutMs', 'mode', 'pinFile'];
+  const allowed = ['origin', 'witnesses', 'quorum', 'intervalMs', 'maxStalenessSeconds', 'refreshSeconds', 'timeoutMs', 'mode', 'pinFile', 'startupProbe'];
   for (const k of Object.keys(raw)) if (!allowed.includes(k)) throw Error('Unknown transparency config field: ' + k);
   const mode = raw.mode ?? 'monitor';
   if (!TRANSPARENCY_MODES.includes(mode)) throw Error('Transparency mode must be off, monitor or enforce');
@@ -56,6 +58,8 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   };
   const maxStalenessSeconds = int(raw.maxStalenessSeconds, 3600, 1, 30 * 86400, 'maxStalenessSeconds');
   if (raw.pinFile !== undefined && typeof raw.pinFile !== 'string') throw Error('Transparency pinFile must be a path');
+  const startupProbe = raw.startupProbe ?? (mode === 'enforce' ? 'required' : 'best_effort');
+  if (!STARTUP_PROBES.includes(startupProbe)) throw Error('Transparency startupProbe must be required or best_effort');
   if (!env.TRANSPARENCY_PIN_FILE && raw.pinFile === undefined && dataDir && isMountPoint(resolve(dataDir))) {
     throw Error(`Transparency pinFile (or TRANSPARENCY_PIN_FILE) is required: the data directory ${resolve(dataDir)} is a mount point, `
       + 'so the default pin path beside it would live on another (often read-only or ephemeral) filesystem');
@@ -68,6 +72,7 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
     refreshSeconds: int(raw.refreshSeconds, Math.max(1, Math.min(300, Math.floor(maxStalenessSeconds / 2))), 1, maxStalenessSeconds, 'refreshSeconds'),
     timeoutMs: int(raw.timeoutMs, 5000, 100, 60000, 'timeoutMs'),
     pinFile: resolve(env.TRANSPARENCY_PIN_FILE || raw.pinFile || transparencyPinPath(dataDir)),
+    startupProbe,
   });
 }
 // Lives outside config.json so witness changes never alter the restore-bound config hash.
@@ -259,7 +264,7 @@ export async function probeTransparency({dataDir, key, config, fetchImpl = fetch
 // once the quorum cosigned it in `probe` (which submits that checkpoint).
 export function bootstrapPin({dataDir, key, config, probe = null}) {
   if (!config || config.mode === 'off') throw Error('Transparency mode is off in this config');
-  const report = assertTransparencyAnchors({dataDir, key, config: {...config, mode: 'monitor'}, probe, inspectOnly: true});
+  const report = assertTransparencyAnchors({dataDir, key, config: {...config, mode: 'monitor', startupProbe: 'best_effort'}, probe, inspectOnly: true});
   if (report.pin) throw Error(`A transparency pin for ${config.headsOrigin} already exists at ${config.pinFile}; refusing to replace it`);
   const blocking = report.violations.filter(v => !v.missingPin);
   if (blocking.length) throw Error('Transparency pin bootstrap refused: ' + blocking.map(v => v.message).join('; '));
@@ -277,9 +282,16 @@ export function bootstrapPin({dataDir, key, config, probe = null}) {
   const pin = openPin(readPinFile(config.pinFile), hOrigin, createPublicKey(key), config.witnesses);
   return {pinFile: config.pinFile, origin: hOrigin, size: pin.size, cosignatures: pin.cosignatures};
 }
-export async function prepareTransparency({dataDir, key, env = process.env, fetchImpl}) {
+// With startupProbe required, a witness that is still starting gets a few short retries before the vault refuses.
+export async function prepareTransparency({dataDir, key, env = process.env, fetchImpl, attempts = 3, retryMs = 1000}) {
   const config = loadTransparencyConfig({dataDir, env});
-  return {config, probe: config.mode !== 'off' && config.witnesses.length ? await probeTransparency({dataDir, key, config, fetchImpl}) : null};
+  if (config.mode === 'off' || !config.witnesses.length) return {config, probe: null};
+  for (let attempt = 1; ; attempt++) {
+    const probe = await probeTransparency({dataDir, key, config, fetchImpl});
+    const answered = probe.witnesses.filter(w => PROBE_ANSWERS.has(w.status)).length;
+    if (config.startupProbe !== 'required' || probe.error || answered >= config.quorum || attempt >= attempts) return {config, probe};
+    await new Promise(r => setTimeout(r, retryMs));
+  }
 }
 
 // ---------- synchronous startup anchors (read-only, before Store opens a writer) ----------
@@ -327,6 +339,14 @@ function checkAnchors({db, key, config, probe}) {
   try { rawPin = readPinFile(config.pinFile); } catch (error) { rawPinError = true; violate('pin', error.message); }
   if (probe?.error) violate('inconsistent', probe.error);
   for (const w of probe?.witnesses || []) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
+  if (config.startupProbe === 'required' && config.witnesses.length && !probe?.error) {
+    const answered = (probe?.witnesses || []).filter(w => PROBE_ANSWERS.has(w.status));
+    if (answered.length < config.quorum) {
+      const seen = (probe?.witnesses || []).map(w => `${w.name}: ${w.status}`).join(', ') || 'no probe ran';
+      violate('probe', `Transparency startup probe: ${answered.length} of ${config.quorum} required witnesses answered (${seen}); `
+        + 'refusing to start without them (startupProbe required)', true);
+    }
+  }
   try {
     if (rawPin?.origin === hOrigin) {
       try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses); } catch (error) { rawPinError = true; violate('pin', error.message); }

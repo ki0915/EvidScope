@@ -157,9 +157,11 @@ test('a history re-signed with the host key is rejected by the witness (422) and
   await s.transparency.pump();
   const witnessed = f.w.logs()[0].size;
   await f.close(s);
-  // The key holder continues the stale copy while the witness is unreachable, then the witness returns.
+  // The key holder continues the stale copy while the witness is unreachable, then the witness returns. The default
+  // startup probe refuses to start without the witness, so the key holder lowers it to best_effort.
   f.w.setAvailable(false);
-  const forked = await f.open('enforce', {dir: forkDir});
+  await assert.rejects(f.open('enforce', {dir: forkDir}), /Transparency startup probe: 0 of 1 required witnesses answered \(witness\.test\/w1: unreachable\)/);
+  const forked = await f.open('enforce', {dir: forkDir, cfg: f.config('enforce', {dir: forkDir, startupProbe: 'best_effort'})});
   assert.equal(forked.transparency.status().witnesses[0].status, 'unreachable');
   for (let i = 0; i <= witnessed + 1; i++) { f.write(forked, 'alpha', 1); await forked.transparency.pump(); }
   assert.ok(forked.transparency.status().heads.size > witnessed);

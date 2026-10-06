@@ -18,8 +18,9 @@ async function waitFor(check, what, ms = 8000) {
   for (const end = Date.now() + ms; Date.now() < end; await delay(50)) if (await check()) return;
   throw Error('Timed out waiting for ' + what);
 }
-// The vault reads TRANSPARENCY_CONFIG_FILE from its environment; the witness learns the vault key after first start.
-async function transparentHarness(t, mode, options) {
+// The vault reads TRANSPARENCY_CONFIG_FILE from its environment; the witness learns the vault key before the first start
+// (register: 'later' registers it shortly after the vault started probing, false never).
+async function transparentHarness(t, mode, options, {register = true} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'evidscope-transparency-server-'));
   const w = createWitness({dir: join(root, 'witness'), name: 'witness.test/server'}), ws = await w.listen();
   const configFile = join(root, 'transparency.json'), previous = process.env.TRANSPARENCY_CONFIG_FILE;
@@ -33,8 +34,11 @@ async function transparentHarness(t, mode, options) {
     w.close();
     rmSync(root, {recursive: true, force: true});
   });
-  h = await harness(options);
-  w.addLog(T.headsOrigin(BASE), T.logVkey(T.headsOrigin(BASE), h.publicKey));
+  const add = publicKey => w.addLog(T.headsOrigin(BASE), T.logVkey(T.headsOrigin(BASE), publicKey));
+  h = await harness({...options, beforeStart: ({publicKey}) => {
+    if (register === true) add(publicKey);
+    else if (register === 'later') setTimeout(() => add(publicKey), 300);
+  }});
   const witnessed = () => w.logs()[0].size;
   return {root, w, h, witnessed, dataDir: join(h.dir, 'data')};
 }
@@ -53,6 +57,15 @@ test('vault process refuses to start on an older database copy in enforce mode (
   rmSync(transparencyPinPath(dataDir), {force: true});
   replaceDatabase(dataDir, join(root, 'older.db'));
   await assert.rejects(h.start('vault', {PORT: String(vault.port)}), /Transparency startup check failed[\s\S]*rollback/);
+});
+
+test('enforce mode does not start until the witness quorum answered the startup probe', async t => {
+  await assert.rejects(transparentHarness(t, 'enforce', {vaultOnly: true}, {register: false}),
+    /Transparency startup probe: 0 of 1 required witnesses answered \(witness\.test\/server: unregistered\); refusing to start/);
+  // A witness that becomes available while the vault retries its probe lets it start.
+  const {h, witnessed} = await transparentHarness(t, 'enforce', {vaultOnly: true}, {register: 'later'});
+  assert.equal((await h.api('/api/overview')).status, 200);
+  await waitFor(() => witnessed() > 0, 'first cosigned heads checkpoint');
 });
 
 test('case reports carry inclusion proofs that the offline verifier checks against the witness quorum', async t => {

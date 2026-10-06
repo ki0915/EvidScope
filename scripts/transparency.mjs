@@ -41,7 +41,8 @@ export function newEpochConfig(raw, origin) {
 // Read-only: never raises in enforce mode, so operators can inspect a refused vault.
 export async function transparencyStatus({config, key, dataDir, probe = false}) {
   const p = probe ? await probeTransparency({dataDir, key, config}) : null;
-  const anchors = assertTransparencyAnchors({dataDir, key, config: {...config, mode: 'monitor'}, probe: p, inspectOnly: true});
+  const anchors = assertTransparencyAnchors({dataDir, key, config: {...config, mode: 'monitor', ...(p ? {} : {startupProbe: 'best_effort'})}, probe: p,
+    inspectOnly: true});
   const file = join(dataDir, 'evidence.db'), cosignatures = [];
   if (existsSync(file)) {
     const db = new DatabaseSync(file, {readOnly: true});

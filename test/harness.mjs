@@ -8,9 +8,11 @@ import {rmSync} from 'node:fs';
 // Fixtures hold bearer tokens and private keys: remove them when this test file passes, unless a harness diagnostic was
 // written for them or EVIDSCOPE_KEEP_TEST_RUNS=1. A failing file keeps every fixture for diagnosis.
 const fixtures=new Set();process.on('exit',code=>{if(code===0&&process.env.EVIDSCOPE_KEEP_TEST_RUNS!=='1')for(const dir of fixtures)try{rmSync(dir,{recursive:true,force:true});}catch{}});
-export async function harness({vaultOnly=false}={}){
+// beforeStart({dir,publicKey}) runs after the keys exist and before any server starts (e.g. to register a witness).
+export async function harness({vaultOnly=false,beforeStart}={}){
  mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','run-')),config=initialize(dir),children=[],servers=[];let vault;
  fixtures.add(dir);
+ if(beforeStart)await beforeStart({dir,publicKey:readFileSync(join(dir,'trust-anchor.pem'),'utf8')});
  const host=process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1';if(!['127.0.0.1','::1'].includes(host))throw Error('Tests require numeric loopback host');const urlHost=host==='::1'?'[::1]':host;
  const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),DATA_KEY_FILE:join(dir,'data-encryption.key'),HOST:host,PORT:'0'};
  const redact=value=>{

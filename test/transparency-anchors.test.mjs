@@ -266,3 +266,12 @@ test('every heads row after the pin keeps each tenant log monotone', async t => 
   await assert.rejects(g.open('enforce'), new RegExp(`Witness witness.test/w1: Heads log row ${witnessed} shrinks tenant log ${alpha}`));
   assert.equal(g.w.logs()[0].size, witnessed);
 });
+
+test('startupProbe defaults to required in enforce mode and best_effort in monitor mode, and is validated', () => {
+  const at = (raw, dataDir = '/tmp/evs') => normalizeTransparencyConfig({origin: BASE, ...raw}, {dataDir});
+  assert.equal(at({mode: 'enforce'}).startupProbe, 'required');
+  assert.equal(at({mode: 'monitor'}).startupProbe, 'best_effort');
+  assert.equal(at({mode: 'enforce', startupProbe: 'best_effort'}).startupProbe, 'best_effort');
+  assert.equal(at({mode: 'monitor', startupProbe: 'required'}).startupProbe, 'required');
+  assert.throws(() => at({mode: 'enforce', startupProbe: 'maybe'}), /startupProbe must be required or best_effort/);
+});
