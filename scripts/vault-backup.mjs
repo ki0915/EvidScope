@@ -26,7 +26,8 @@ try{
  const shared={privateKey:readFileSync(keyFile),publicKey:readFileSync(publicFile),...dataKeys};
  if(mode==='create'){
   if(existsSync(anchorFile))throw Error('External recovery anchor already exists; refusing overwrite');
-  const anchor=await createVaultBackup({dataDir:first,backupDir:second,...shared});
+  // CONFIG_FILE (optional, as for the server) lets an enterprise-profile vault refuse a signing-key-sealed backup before its first start.
+  const anchor=await createVaultBackup({dataDir:first,backupDir:second,...shared,config:process.env.CONFIG_FILE?json(resolve(process.env.CONFIG_FILE)):undefined});
   writeFileSync(anchorFile,JSON.stringify(anchor,null,2)+'\n',{flag:'wx',mode:0o600});
   console.log(JSON.stringify({created:true,backupDirectory:second,externalAnchor:anchorFile,manifestSha256:anchor.manifestSha256,privateKeyIncluded:false,dataKeyIncluded:false,backupEncryption:dataKeys.dataKey?'data_key_hkdf':'legacy_signing_key_derived'}));
  }else{

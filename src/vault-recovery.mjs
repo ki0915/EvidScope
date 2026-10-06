@@ -45,6 +45,17 @@ function files(root,prefix=''){
   if(entry.isDirectory())return files(path,name+'/');if(!entry.isFile())throw Error('Non-regular backup member');return [name];
  }).sort();
 }
+// A vault that recorded a data key must never be sealed or certified with the signing key alone: the legacy backup key is
+// derived from the signing key, and the backup holds every retained event key. Retired key ids no longer bind.
+function assertSeparationKept(file,keyring,config,operation){
+ const db=new DatabaseSync(file,{readOnly:true,timeout:5000});
+ try{
+  const table=db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='data_key_usage'").get();
+  const missing=(table?db.prepare('SELECT kid FROM data_key_usage WHERE retired_at IS NULL ORDER BY kid').all():[]).map(r=>r.kid).filter(kid=>!keyring.keyIds.includes(kid));
+  if(missing.length)throw Error(`Vault key separation is active: data key(s) ${missing.join(',')} are not configured; refusing a ${operation} without DATA_KEY_FILE`);
+  if(!keyring.separated&&config?.profile==='enterprise')throw Error(`Enterprise profile requires DATA_KEY_FILE for a ${operation}`);
+ }finally{db.close();}
+}
 function readonlyStore(file,key){const store=Object.create(Store.prototype);store.key=key;store.publicKey=createPublicKey(key);store.db=new DatabaseSync(file,{readOnly:true,timeout:5000});return store;}
 
 // Examine a fixed SQLite snapshot, never the source while it is still changing.
@@ -84,7 +95,7 @@ function inspectDatabase(file,dataDir,key,keyring,expectedCheckpoints){
  }finally{store.close();}
 }
 
-export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,dataKey,previousDataKeys}){
+export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,dataKey,previousDataKeys,config}){
  const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),format=keyring.separated?FORMAT_V2:FORMAT,keyId=keyring.writeKeyId,encryption=keyring.key('vaultBackup',keyId),source=noLinks(dataDir),output=noLinks(backupDir);
  if(existsSync(output)||contained(source,output))throw Error('Backup requires a new directory outside the source');
  const sourceFile=member(source,'evidence.db');if(!lstatSync(sourceFile).isFile())throw Error('Missing vault database');
@@ -93,6 +104,7 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,
  try{
   sourceDb=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});
   await backup(sourceDb,temporary);sourceDb.close();sourceDb=null;chmodSync(temporary,0o600);
+  assertSeparationKept(temporary,keyring,config,'backup');
   const snapshot=inspectDatabase(temporary,source,key,keyring);
   const inventory=[];
   for(const path of snapshot.documents){const input=member(source,path),target=member(output,path);mkdirSync(dirname(target),{recursive:true,mode:0o700});copyFileSync(input,target);chmodSync(target,0o600);inventory.push({path,bytes:lstatSync(target).size,sha256:await hashFile(target)});}
@@ -132,6 +144,7 @@ export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,
  const stage=mkdtempSync(join(dirname(source),'.recovery-frontier-')),snapshotFile=join(stage,'snapshot.db');let db,store;
  try{
   db=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});await backup(db,snapshotFile);db.close();db=null;
+  assertSeparationKept(snapshotFile,keyring,config,'recovery frontier');
   const checked=inspectDatabase(snapshotFile,source,key,keyring);store=readonlyStore(snapshotFile,key);
   return signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
  }finally{

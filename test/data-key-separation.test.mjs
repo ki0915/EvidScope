@@ -10,7 +10,7 @@ import {parseDocumentEnvelope} from '../src/document-envelope.mjs';
 import {canonical,digest} from '../src/crypto.mjs';
 import {createGovernanceDocumentStorage} from '../src/governance-documents.mjs';
 import {createDocumentAdapter} from '../src/finance-evidence.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {initialize} from '../scripts/init.mjs';
 
 const sha=b=>createHash('sha256').update(b).digest('hex');
@@ -247,4 +247,40 @@ test('an interrupted migration still makes a vault without the new data key refu
  assert.throws(()=>migrateDocuments({dataDir,signingKey:f.privateKey,dataKey:a}),/Invalid encrypted document envelope/);
  assert.equal(JSON.parse(readFileSync(alpha,'utf8')).kid,dataKeyId(a),'alpha was already re-encrypted');
  assert.throws(()=>f.boot({config:{principals}}),new RegExp(`not configured: ${dataKeyId(a)}`));
+});
+
+test('separation starts at the first start with DATA_KEY_FILE: restart, backup and frontier without the key are refused',async t=>{
+ const {migrateDocuments}=await import('../scripts/data-key.mjs');
+ const f=fixture(t),a=randomBytes(32),b=randomBytes(32),dataDir=join(f.dir,'data'),shared={privateKey:f.privateKey,publicKey:f.publicKey};
+ const config={principals:[{id:'alpha-reviewer',role:'reviewer',tenant:'alpha',token:'a'.repeat(40)}]};
+ let s=f.boot({dataKey:a});await f.call(s,'/api/governance/systems',system); // signed history, but no document sealed by the data key
+ const active=()=>s.store.db.prepare('SELECT kid FROM data_key_usage WHERE retired_at IS NULL ORDER BY kid').all().map(r=>r.kid);
+ assert.deepEqual(active(),[dataKeyId(a)]);s.store.close();
+ assert.throws(()=>f.boot(),new RegExp(`not configured: ${dataKeyId(a)}`));
+ const out=mkdtempSync(join(tmpdir(),'evidscope-separation-start-'));t.after(()=>rmSync(out,{recursive:true,force:true}));
+ const refused=new RegExp(`key separation is active: data key\\(s\\) ${dataKeyId(a)} are not configured; refusing a backup`);
+ await assert.rejects(createVaultBackup({dataDir,backupDir:join(out,'legacy'),...shared}),refused);
+ assert.deepEqual(readdirSync(join(out,'legacy')),[],'nothing sealed');
+ const anchor=await createVaultBackup({dataDir,backupDir:join(out,'v2'),...shared,dataKey:a});
+ assert.equal(JSON.parse(readFileSync(join(out,'v2','manifest.json'),'utf8')).database.keyId,dataKeyId(a));
+ await assert.rejects(createVaultRecoveryFrontier({dataDir,...shared,anchor,config}),/key separation is active.*refusing a recovery frontier/);
+ const latest=await createVaultRecoveryFrontier({dataDir,...shared,dataKey:a,anchor,config});
+ const restored=await restoreVaultBackup({backupDir:join(out,'v2'),restoreDir:join(out,'restored'),...shared,dataKey:a,anchor,frontier:latest.frontier,
+  frontierAnchor:latest.anchor,config});
+ assert.equal(restored.activationAccepted,true);
+ assert.throws(()=>createService({dataDir:join(out,'restored'),key:f.privateKey,config,requirements}),/not configured/,'restored vault keeps separation');
+ // A retired key id no longer binds: after rotation to b, b alone opens, backs up and certifies the vault.
+ assert.equal(migrateDocuments({dataDir,signingKey:f.privateKey,dataKey:b,previousDataKeys:[a]}).retiredKeyIds[0],dataKeyId(a));
+ s=f.boot({dataKey:b});assert.deepEqual(active(),[dataKeyId(b)]);s.store.close();
+ const rotated=await createVaultBackup({dataDir,backupDir:join(out,'rotated'),...shared,dataKey:b});
+ assert.ok(await createVaultRecoveryFrontier({dataDir,...shared,dataKey:b,anchor:rotated,config}));
+ // Enterprise profile: even a vault that never ran with a data key gets no signing-key-sealed backup or frontier.
+ const legacy=fixture(t),ls=legacy.boot();await legacy.call(ls,'/api/governance/systems',system);ls.store.close();
+ const legacyShared={dataDir:join(legacy.dir,'data'),privateKey:legacy.privateKey,publicKey:legacy.publicKey};
+ await assert.rejects(createVaultBackup({...legacyShared,backupDir:join(out,'enterprise'),config:{profile:'enterprise'}}),
+  /Enterprise profile requires DATA_KEY_FILE for a backup/);
+ const legacyAnchor=await createVaultBackup({...legacyShared,backupDir:join(out,'local-profile')});
+ assert.equal(JSON.parse(readFileSync(join(out,'local-profile','manifest.json'),'utf8')).format,'evidscope-vault-backup-v1','legacy local vaults keep v1');
+ await assert.rejects(createVaultRecoveryFrontier({...legacyShared,anchor:legacyAnchor,config:{...config,profile:'enterprise'}}),
+  /Enterprise profile requires DATA_KEY_FILE for a recovery frontier/);
 });

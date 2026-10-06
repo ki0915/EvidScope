@@ -21,6 +21,11 @@
 `enterprise` 프로필은 데이터 키 없이 시작하지 않습니다. 로컬 프로필은 새로 설치하면 `.local/data-encryption.key`를 자동으로 만들고,
 이미 있는 설치는 아래 업그레이드로 옮깁니다.
 
+vault가 `DATA_KEY_FILE`로 한 번 시작하면(문서가 아직 없어도) 그 키 ID를 `evidence.db`에 기록합니다. 그 뒤로는 키 없이
+vault를 시작하거나, 백업(`vault-backup.mjs create`)·복구 frontier를 만들 수 없습니다. 서명 키에서 유도한 v1 백업 키는 보관된
+모든 이벤트 키를 풀 수 있기 때문입니다. `migrate`로 은퇴한 키 ID는 더 이상 요구하지 않습니다. `enterprise` 프로필은 백업 시
+`CONFIG_FILE`을 주면 데이터 키 없는 백업을 처음부터 거부합니다. 이미 만든 v1 백업은 계속 검증·복구할 수 있습니다.
+
 ## 기존 로컬 설치 옮기기
 
 `npm start`를 멈춘 뒤 실행합니다. 바꾸는 파일은 먼저 `.local/upgrade-backup-<시각>/`에 복사합니다.
