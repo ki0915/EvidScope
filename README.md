@@ -4,23 +4,25 @@
 
 # EvidScope
 
-**AI가 무엇을 했는지, 그 근거가 충분한지 사람이 검토하도록 돕는 감사 증거·AI 거버넌스 로컬 파일럿**
+**AI 에이전트의 행동을 OpenTelemetry로 받아 권한·정책·사람 판단과 묶고, 외부 위트니스가 공동서명한 로그로 남겨 운영자를 믿지 않고도 검증하게 하는 증거 계층**
 
-**Node.js 24 · SQLite · Signed evidence · Human review**
+**Node.js 24 · SQLite · OpenTelemetry · C2SP transparency log · OCSF · Human review**
 
-[제품 소개·구현 이야기](docs/product-overview.md) · [아키텍처](docs/architecture.md) · [검증 현황](docs/verification-status.md) · [전체 문서](docs/README.md)
+[증거 계층·차별점](docs/evidence-layer.md) · [제품 소개·구현 이야기](docs/product-overview.md) · [아키텍처](docs/architecture.md) · [검증 현황](docs/verification-status.md) · [전체 문서](docs/README.md)
 
 </div>
 
 ---
 
 > **2026-10-06 기준:** 개발 소스 **v0.1.2**, 검증된 이전 로컬 설치본 **v0.1.1**. 현재 소스의 반복 검증은 미완료이며 아래에 실패 범위를 보존합니다.
+>
+> **개선 1라운드(2026-10-06):** 적대적 감사 결과에 따라 "SIEM" 표현을 내리고 증거 계층으로 재정의했습니다. 수집은 OpenTelemetry 표준으로, 변조 증거는 C2SP 투명성 로그와 독립 위트니스로, 경보는 OCSF로 바꿨습니다. 변경 내용과 다음 라운드 후보는 [개선 라운드 기록](docs/improvement-rounds.md)에 있습니다.
 
 ## 목적과 대상
 
 실행 로그만으로는 AI가 실제로 무엇을 했고, 당시 권한이 있었으며, 어떤 근거를 검토했는지 설명하기 어렵습니다. EvidScope는 **AI 행동 → 독립 도구 결과 → 당시 권한·정책 버전 → 원본 문서 → 사람 판단**을 연결하고 서로 대조합니다.
 
-실행을 승인하거나 차단하는 엔진이 아닙니다. 내부감사, AI 거버넌스 담당자, 보안 운영팀이 근거를 확인하고 판단을 기록하는 도구입니다. 등록된 AI 자산, 실제로 받은 기록, 증거 커버리지를 분리해서 "등록됨"과 "확인됨"을 혼동하지 않도록 설계했습니다.
+SIEM이나 실행을 승인·차단하는 엔진이 아닙니다. 상관분석·대량 검색은 기존 SIEM과 관측 도구에 맡기고, 이 제품은 "그 행동이 권한 안에서 일어났고 기록이 사후에 바뀌지 않았다"는 증거에 집중합니다. 내부감사, AI 거버넌스 담당자, 보안 운영팀이 근거를 확인하고 판단을 기록하는 도구입니다. 등록된 AI 자산, 실제로 받은 기록, 증거 커버리지를 분리해서 "등록됨"과 "확인됨"을 혼동하지 않도록 설계했습니다.
 
 > 법률 준수 인증과 실제 금융기관 연동은 완료되지 않았습니다.
 
@@ -28,11 +30,14 @@
 
 | 영역 | 내용 |
 |---|---|
-| 수집 | 앱 SDK·HTTP·OTLP의 지원 속성·Zeek 메타데이터를 수집하고 AI 자산을 조회합니다. 출처에서 본문을 일시 검사한 뒤 허용된 메타데이터만 중앙으로 보냅니다. |
+| 수집 | 이미 쓰는 OpenTelemetry SDK·Collector가 GenAI span을 OTLP/HTTP `/v1/traces`(JSON·protobuf, gzip·deflate·zstd)로 보내면 허용 목록 메타데이터만 증거로 남깁니다. 본문 속성은 고객망 Collector와 ingress에서 지웁니다. 기존 HMAC 출처(권한·도구·안전)와 Zeek 메타데이터 경로도 유지합니다. [Collector 설정](deploy/otel-collector/README.ko.md) |
+| 변조 증거 | tenant별 RFC 6962 Merkle 트리와 C2SP 체크포인트, 모든 tenant를 묶은 heads 로그를 독립 위트니스(litewitness 등)가 공동서명합니다. enforce 모드에서는 DB 되돌리기·이력 분기·tenant 삭제를 탐지해 시작을 거부하거나 격리합니다. [운영 가이드](docs/transparency-log.md) |
+| 오프라인 검증 | 내보낸 묶음과 사례 보고서를 공개키·위트니스 정족수로 검증하고, `--replay`로 서명된 분석 결과를 원장 순서대로 다시 계산해 숨긴·지어낸 발견사항을 찾습니다. |
+| SIEM 연동 | 발견사항을 OCSF Detection Finding(1.3.0 기본, 1.9.0 선택)으로 내보내고 Splunk HEC로 보낼 수 있습니다. 1.9.0은 원장 레코드 해시와 투명성 로그 origin을 attestation에 담습니다. |
 | 근거 문서 | 일반 문서는 최대 4MiB 실파일을 암호화 보관·복구하며, 버전이 바뀌면 재검토합니다. 공급사 묶음은 별도 상한과 계약을 따릅니다. |
 | 요구사항 | 요구사항 31개(한국 18개), 기술검사 23종(공급사 대체 근거 3종 포함), 시스템 schema 버전 4를 다룹니다. 미확인 사실은 `unknown`으로 보존하고 적용 후보와 사람의 최종 판단을 구분합니다. |
 | 검토·보고 | 보완 과제를 관리하고 근거 없는 종결을 거부합니다. 보고서는 서명으로 고정합니다. |
-| 보안·운영 | OIDC 세션 회수, tenant 격리, 암호화 백업과 새 경로 복구를 지원합니다. |
+| 보안·운영 | OIDC 세션 회수, tenant 격리, 암호화 백업과 새 경로 복구를 지원합니다. 문서·백업 암호화 키는 서명 키와 분리했습니다. [키 분리 가이드](docs/data-key-separation.md) |
 
 법적 지원 범위는 코드에 정의된 목록이며, 법률상 완결성을 뜻하지 않습니다.
 
@@ -45,6 +50,9 @@ flowchart LR
   W[worker<br/>claim·lease·version] <--> V
   U[인간 검토 UI] --> A[audit] --> V
   V --> E[export] -->|별도 공개키·checkpoint·hash| X[독립 검증]
+  O[OTel SDK·Collector] -->|OTLP/HTTP| I
+  V -->|heads 체크포인트| T[독립 위트니스] -->|공동서명| V
+  V -->|OCSF| SIEM[기존 SIEM]
 ```
 
 ![증거 흐름](docs/assets/evidence-flow.svg)
@@ -98,7 +106,8 @@ Foundation-Sec-8B-Reasoning을 기반으로 공개 인간 주석 KLUE QA를 학�
 
 ## 발전 방향 (미완료)
 
-- 실제 조직 IdP, 외부 SIEM, 정책·업무 결과 연동
+- 실제 조직 IdP, 정책·업무 결과 연동, Sentinel·Security Lake 전송
+- 독립 운영 위트니스 확보와 공개 위트니스 네트워크 등록
 - 원격 DMS·KMS·WORM·HA 검증
 - 실제 운영 부하와 복구 목표 측정
 - 미관측 평가와 사람 검토를 거친 모델 승격
@@ -118,7 +127,9 @@ npm start
 
 기본 감사 화면은 **http://127.0.0.1:8082**입니다. `.local/config.json`의 역할별 토큰을 화면에 입력합니다. 조회는 `alpha-auditor`, 거버넌스 변경·검토는 `alpha-reviewer`, 별도 승인은 `alpha-admin`을 사용합니다. 자격 파일은 공개하거나 공유하지 않습니다.
 
-별도 터미널에서 `npm run demo`를 실행하면 합성 사례가 추가됩니다. Windows에서 IPv4 loopback 오류가 있다면 서버·데모 양쪽에 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정하고 **http://[::1]:8082**로 접속합니다. `Ctrl+C`로 실행기가 시작한 자식 프로세스를 종료합니다. [설치·백업·복구 상세](docs/first-release-20261006.md), [권한 패치](docs/first-release-security-patch-20261006.md).
+별도 터미널에서 `npm run demo`를 실행하면 합성 사례가 추가됩니다. Windows에서 IPv4 loopback 오류가 있다면 서버·데모 양쪽에 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정하고 **http://[::1]:8082**로 접속합니다. `Ctrl+C`로 실행기가 시작한 자식 프로세스를 종료합니다.
+
+2026-10-06 이전에 만든 `.local`이 있다면 `npm start`를 멈추고 `npm run upgrade:local -- --transparency`를 한 번 실행하세요. OTLP 출처 자격 추가, 데이터 키 분리와 문서 재암호화, 투명성 로그(monitor) 설정을 하며 바꾸는 파일은 먼저 `.local/upgrade-backup-<시각>/`에 복사합니다. `--dry-run`으로 미리 확인할 수 있습니다. [설치·백업·복구 상세](docs/first-release-20261006.md), [권한 패치](docs/first-release-security-patch-20261006.md).
 
 ## 검증
 
