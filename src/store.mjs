@@ -426,8 +426,11 @@ export class Store {
  }
  _tlogHeadPeaks(tenant,head){
   const row=this._tlogRow(tenant);
+  // Only the startup syncTlog rebuilds lost state; at runtime a missing row or a head below its witnessed heads entry is a tamper.
+  const floor=this.tlogHeadsFloor?.(this._tlogOrigin(tenant))||0;
+  if(head.seq<floor)throw Error(`Ledger head (size ${head.seq}) is behind its heads log entry (size ${floor}) (rollback); refusing to re-seal`);
   if(!head.seq){if(row?.size)throw Error('Ledger is missing beneath an existing tlog checkpoint');return [];}
-  if(!row)return this._tlogRebuild(tenant).peaks;
+  if(!row)throw Error('Truncated or inconsistent tlog state: the tenant checkpoint is missing beneath existing history; refusing to re-seal');
   if(row.size!==head.seq)throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');
   const peaks=this._tlogVerifiedPeaks(tenant,row);
   if(row.size%2===1&&!peaks.at(-1).equals(recordLeaf(head.hash)))throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');

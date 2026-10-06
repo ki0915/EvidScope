@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync, mkdirSync, readFileSync, rmSync} from 'node:fs';
+import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {createService} from '../src/service.mjs';
 import {verifyBundle} from '../src/crypto.mjs';
@@ -150,6 +150,8 @@ test('a history re-signed with the host key is rejected by the witness (422) and
   const forkDir = join(f.root, 'fork');
   mkdirSync(forkDir);
   snapshot(f.dataDir, join(forkDir, 'evidence.db'));
+  // The stale copy includes the pin of that time (an enforce vault refuses a non-empty heads log without its pin).
+  copyFileSync(transparencyPinPath(f.dataDir), transparencyPinPath(forkDir));
   s = await f.open('enforce');
   f.write(s, 'alpha', 3);
   await s.transparency.pump();

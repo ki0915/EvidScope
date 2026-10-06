@@ -10,12 +10,14 @@ export const TRANSPARENCY_MODES = ['off', 'monitor', 'enforce'];
 export const UNANCHORED = ['rollback', 'truncation', 'tenant_removal'];
 const PIN_FORMAT = 'evidscope-transparency-pin-v1';
 const OFF = Object.freeze({mode: 'off', witnesses: [], quorum: 0});
-const QUARANTINE_KINDS = new Set(['rollback', 'fork', 'tenant_removal', 'inconsistent']);
+const QUARANTINE_KINDS = new Set(['rollback', 'fork', 'tenant_removal', 'inconsistent']), PIN_FREEZE_KINDS = QUARANTINE_KINDS;
 export const transparencyPinPath = dataDir => join(dirname(resolve(dataDir)), '.' + basename(resolve(dataDir)) + '-transparency-pin.json');
 
+// lstat, not existsSync: a dangling symlink at the pin path must not read as a missing pin.
+const lexists = path => !!lstatSync(path, {throwIfNoEntry: false});
 function noLinks(path) {
   for (let current = resolve(path); ;) {
-    if (existsSync(current) && lstatSync(current).isSymbolicLink()) throw Error('Transparency pin path must not contain symlinks');
+    if (lstatSync(current, {throwIfNoEntry: false})?.isSymbolicLink()) throw Error('Transparency pin path must not contain symlinks');
     const parent = dirname(current);
     if (parent === current) return;
     current = parent;
@@ -24,6 +26,9 @@ function noLinks(path) {
 const kinded = (kind, message) => Object.assign(Error(message), {kind});
 
 // ---------- config ----------
+const isMountPoint = dir => {
+  try { return dirname(dir) === dir || statSync(dir).dev !== statSync(dirname(dir)).dev; } catch { return false; }
+};
 export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   if (raw === undefined || raw === null) return OFF;
   if (typeof raw !== 'object' || Array.isArray(raw)) throw Error('Transparency config must be a JSON object');
@@ -51,6 +56,10 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   };
   const maxStalenessSeconds = int(raw.maxStalenessSeconds, 3600, 1, 30 * 86400, 'maxStalenessSeconds');
   if (raw.pinFile !== undefined && typeof raw.pinFile !== 'string') throw Error('Transparency pinFile must be a path');
+  if (!env.TRANSPARENCY_PIN_FILE && raw.pinFile === undefined && dataDir && isMountPoint(resolve(dataDir))) {
+    throw Error(`Transparency pinFile (or TRANSPARENCY_PIN_FILE) is required: the data directory ${resolve(dataDir)} is a mount point, `
+      + 'so the default pin path beside it would live on another (often read-only or ephemeral) filesystem');
+  }
   return Object.freeze({
     mode, base, headsOrigin: T.headsOrigin(base), witnesses,
     quorum: int(raw.quorum, witnesses.length ? 1 : 0, 0, witnesses.length, 'quorum'),
@@ -73,7 +82,7 @@ export function loadTransparencyConfig({dataDir, env = process.env} = {}) {
 // ---------- pin file ----------
 function readPinFile(file) {
   noLinks(file);
-  if (!existsSync(file)) return null;
+  if (!lexists(file)) return null;
   const st = lstatSync(file);
   if (!st.isFile() || st.size > 1024 * 1024) throw Error('Transparency pin file invalid');
   const pin = JSON.parse(readFileSync(file, 'utf8'));
@@ -94,14 +103,28 @@ export function openPin(pin, origin, publicKey, witnesses = []) {
   }
   return {size: c.size, root: c.root, note: pin.checkpoint, cosignatures: opened.sigs.length - 1};
 }
+const fsCode = error => error.code || error.message;
+// Proves at startup that the pin can be rewritten later (the probe file name never reaches a message).
+function assertPinWritable(config) {
+  const probe = `${config.pinFile}.${process.pid}.${randomBytes(6).toString('hex')}.probe`;
+  noLinks(config.pinFile);
+  try { closeSync(openSync(probe, 'wx', 0o600)); } catch (error) {
+    throw Error(`Transparency pin file ${config.pinFile} is not writable (${fsCode(error)})`);
+  }
+  rmSync(probe, {force: true});
+}
 function writePin(config, size, checkpoint) {
   const file = config.pinFile, tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
   noLinks(file);
   const body = JSON.stringify({format: PIN_FORMAT, origin: config.headsOrigin, size, checkpoint, updatedAt: new Date().toISOString()}, null, 2) + '\n';
   const fd = openSync(tmp, 'wx', 0o600);
-  try { writeSync(fd, body); fsyncSync(fd); } finally { closeSync(fd); }
+  try { writeSync(fd, body); fsyncSync(fd); } catch (error) { closeSync(fd); rmSync(tmp, {force: true}); throw error; }
+  closeSync(fd);
   try { renameSync(tmp, file); } catch (error) { rmSync(tmp, {force: true}); throw error; }
 }
+const writePinOrExplain = (config, size, checkpoint) => {
+  try { writePin(config, size, checkpoint); } catch (error) { throw Error(`Transparency pin write to ${config.pinFile} failed (${fsCode(error)})`); }
+};
 
 // ---------- heads log rows (also used by transparency-epoch.mjs on restore archives) ----------
 export const hasTable = (db, name) => !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name);
@@ -139,6 +162,21 @@ function* headsLeaves(db, origin, from = 0, to = Infinity) {
     yield Buffer.from(r.leaf);
   }
 }
+// The heads log at `size` (root `root`) must extend the pinned checkpoint: the row at the pin folds to the pinned root and
+// the stored leaves after it fold to `root`. Returns the verified pinned row or the violation.
+function foldFromPin(db, origin, logV, pin, size, root) {
+  if (size < pin.size) {
+    return {error: {kind: 'rollback', message: `Ledger heads log (size ${size}) is behind the pinned heads checkpoint (size ${pin.size}) (rollback)`}};
+  }
+  const at = verifyHeadsRow(headsRow(db, origin, pin.size - 1), origin, logV);
+  if (!at.root.equals(pin.root)) return {error: {kind: 'fork', message: 'Ledger heads log conflicts with the pinned heads checkpoint (fork)'}};
+  let peaks = at.peaks, n = pin.size;
+  for (const leaf of headsLeaves(db, origin, pin.size, size)) peaks = T.frontierAppend(peaks, n++, leaf);
+  if (n !== size || !T.frontierRoot(peaks).equals(root)) {
+    return {error: {kind: 'inconsistent', message: 'Truncated or inconsistent heads log after the pinned checkpoint'}};
+  }
+  return {at};
+}
 // Proof m -> n built from the verified frontier at m plus stored leaves, checked locally before it leaves the vault.
 export function headsConsistencyProof(db, origin, logV, m, n, rootN) {
   const at = verifyHeadsRow(headsRow(db, origin, m - 1), origin, logV), leaves = [...headsLeaves(db, origin, m, n)];
@@ -146,6 +184,11 @@ export function headsConsistencyProof(db, origin, logV, m, n, rootN) {
   const proof = T.consistencyProofFromFrontier(m, at.peaks, leaves);
   if (!T.verifyConsistency(m, n, at.root, rootN, proof)) throw kinded('inconsistent', 'Truncated or inconsistent heads log: stored history is not consistent');
   return proof;
+}
+// Never ask a witness to cosign rows that regress a tenant log since the size it cosigned before.
+function witnessProof(db, origin, logV, m, n, rootN) {
+  checkHeadsMonotone(db, origin, m, n, (kind, message) => { throw kinded(kind, message); });
+  return headsConsistencyProof(db, origin, logV, m, n, rootN);
 }
 export function* ledgerLeaves(db, tenant) {
   let expected = 0;
@@ -170,7 +213,7 @@ export async function exchange({w, size, note, old, proofFor, logV, config, fetc
         if (!sig) throw Error('no cosignature from the configured key');
         const timestamp = T.cosignatureTimestamp(sig.raw);
         if (timestamp > Math.floor(now() / 1000) + 300) throw Error('cosignature timestamp is in the future');
-        return {status: 'consistent', size, timestamp, line: sig.line};
+        return {status: 'consistent', size, previousSize: old, timestamp, line: sig.line};
       } catch (error) { return {status: 'invalid_response', message: error.message}; }
     }
     if (r.status === 409 && attempt === 0) {
@@ -203,13 +246,36 @@ export async function probeTransparency({dataDir, key, config, fetchImpl = fetch
       }
     } catch (e) { error = e.message; }
     if (error) return {checkedAt: new Date(now()).toISOString(), headsSize: null, error, witnesses: []};
+    const proofFor = m => witnessProof(db, hOrigin, logV, m, local.size, local.root);
     const witnesses = await Promise.all(config.witnesses.map(async w => ({
       name: w.name, keyId: w.keyId,
-      ...await exchange({w, size: local.size, note: local.note, old: 0, proofFor: m => headsConsistencyProof(db, hOrigin, logV, m, local.size, local.root),
-        logV, config, fetchImpl, now}),
+      ...await exchange({w, size: local.size, note: local.note, old: 0, proofFor, logV, config, fetchImpl, now}),
     })));
-    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, witnesses};
+    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, headsRoot: local.root.toString('hex'), witnesses};
   } finally { db?.close(); }
+}
+// Explicit operator decision for a non-empty heads log without a pin (lost pin volume, upgrade from a build that never
+// wrote one): the latest heads checkpoint becomes the pin once the read-only startup check passes and, with witnesses,
+// once the quorum cosigned it in `probe` (which submits that checkpoint).
+export function bootstrapPin({dataDir, key, config, probe = null}) {
+  if (!config || config.mode === 'off') throw Error('Transparency mode is off in this config');
+  const report = assertTransparencyAnchors({dataDir, key, config: {...config, mode: 'monitor'}, probe, inspectOnly: true});
+  if (report.pin) throw Error(`A transparency pin for ${config.headsOrigin} already exists at ${config.pinFile}; refusing to replace it`);
+  const blocking = report.violations.filter(v => !v.missingPin);
+  if (blocking.length) throw Error('Transparency pin bootstrap refused: ' + blocking.map(v => v.message).join('; '));
+  if (!report.headsSize) throw Error('The heads log is empty; the vault writes its first pin when it starts');
+  const hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, createPublicKey(key)));
+  const db = new DatabaseSync(join(dataDir, 'evidence.db'), {readOnly: true, timeout: 5000});
+  let latest;
+  try { latest = verifyHeadsRow(headsRow(db, hOrigin, report.headsSize - 1), hOrigin, logV); } finally { db.close(); }
+  const lines = (probe?.witnesses || []).filter(w => w.status === 'consistent' && w.size === report.headsSize).map(w => w.line);
+  const quorum = config.witnesses.length ? Math.max(1, config.quorum) : 0;
+  if (lines.length < quorum) {
+    throw Error(`Transparency pin bootstrap needs ${quorum} witness cosignature(s) on heads size ${report.headsSize}; got ${lines.length}`);
+  }
+  writePinOrExplain(config, latest.size, latest.note + lines.join(''));
+  const pin = openPin(readPinFile(config.pinFile), hOrigin, createPublicKey(key), config.witnesses);
+  return {pinFile: config.pinFile, origin: hOrigin, size: pin.size, cosignatures: pin.cosignatures};
 }
 export async function prepareTransparency({dataDir, key, env = process.env, fetchImpl}) {
   const config = loadTransparencyConfig({dataDir, env});
@@ -222,43 +288,102 @@ export async function prepareTransparency({dataDir, key, env = process.env, fetc
 // violations (the vault would sign a fork of an origin) refuse startup in every mode; inspectOnly only reports them.
 export function assertTransparencyAnchors({dataDir, key, config, probe = null, inspectOnly = false}) {
   if (!config || config.mode === 'off') return {mode: 'off'};
+  const file = join(dataDir, 'evidence.db'), db = existsSync(file) ? new DatabaseSync(file, {readOnly: true, timeout: 5000}) : null;
+  let checked;
+  try { checked = checkAnchors({db, key, config, probe}); } finally { db?.close(); }
+  const {report, pin} = checked, violations = report.violations, hOrigin = config.headsOrigin;
+  // A started vault must be able to move its pin. An empty heads log gets a size-0 pin at once (bootstrap), so a later
+  // missing pin is always a violation.
+  if (!inspectOnly) {
+    try {
+      if (!violations.length && !pin && !report.headsSize) {
+        writePinOrExplain(config, 0, T.signNote(T.formatCheckpoint({origin: hOrigin, size: 0, root: T.EMPTY_ROOT}), T.noteSigner(hOrigin, key)));
+        report.pin = {size: 0, root: T.EMPTY_ROOT.toString('hex'), cosignatures: 0, bootstrapped: true};
+      } else assertPinWritable(config);
+    } catch (error) { violations.push({kind: 'pin', message: error.message}); }
+  }
+  report.ok = !violations.length;
+  if (inspectOnly) return report;
+  refuseFatal(config, violations);
+  // The writer re-runs the check inside the startup transaction, before syncTlog can extend or re-seal anything: the
+  // database may have been replaced after the read-only check above or after the witness probe.
+  Object.defineProperty(report, 'recheck', {value: writer => {
+    const again = checkAnchors({db: writer, key, config, probe}).report.violations;
+    for (const v of again) if (!violations.some(x => x.kind === v.kind && x.message === v.message)) violations.push(v);
+    report.ok = !violations.length;
+    refuseFatal(config, again);
+  }});
+  return report;
+}
+function refuseFatal(config, violations) {
+  const fatal = config.mode === 'enforce' ? violations : violations.filter(v => v.hard);
+  if (fatal.length) throw Error('Transparency startup check failed: ' + fatal.map(v => v.message).join('; '));
+}
+function checkAnchors({db, key, config, probe}) {
   const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
   const violations = [], violate = (kind, message, hard = false) => violations.push(hard ? {kind, message, hard} : {kind, message});
   const report = {mode: config.mode, checkedAt: new Date().toISOString(), pin: null, headsSize: 0, probe, violations};
-  let rawPin = null, pin = null;
-  try { rawPin = readPinFile(config.pinFile); } catch (error) { violate('pin', error.message); }
+  let rawPin = null, pin = null, rawPinError = false;
+  try { rawPin = readPinFile(config.pinFile); } catch (error) { rawPinError = true; violate('pin', error.message); }
   if (probe?.error) violate('inconsistent', probe.error);
   for (const w of probe?.witnesses || []) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
-  const file = join(dataDir, 'evidence.db'), db = existsSync(file) ? new DatabaseSync(file, {readOnly: true, timeout: 5000}) : null;
   try {
     if (rawPin?.origin === hOrigin) {
-      try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses); } catch (error) { violate('pin', error.message); }
+      try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses); } catch (error) { rawPinError = true; violate('pin', error.message); }
     }
     const ledger = !!db && hasTable(db, 'ledger'), retiredPin = rawPin && rawPin.origin !== hOrigin ? rawPin : null;
     if (retiredPin && !ledger) violate('pin', 'Transparency pin file invalid or bound to another origin');
     const epochs = ledger ? checkEpochs({db, config, publicKey, violate, retiredPin, report}) : {requirements: []};
-    if (pin) report.pin = {size: pin.size, cosignatures: pin.cosignatures};
+    if (pin) report.pin = {size: pin.size, root: pin.root.toString('hex'), cosignatures: pin.cosignatures};
     const size = db && hasTable(db, 'tlog_heads') ? headsSize(db, hOrigin) : 0, anchors = [];
     report.headsSize = size;
     const latest = size ? verifyHeadsRow(headsRow(db, hOrigin, size - 1), hOrigin, logV) : null;
     if (latest) anchors.push(latest.entries);
-    if (pin && size < pin.size) violate('rollback', `Ledger heads log (size ${size}) is behind the pinned heads checkpoint (size ${pin.size}) (rollback)`);
-    else if (pin && pin.size) {
-      const at = verifyHeadsRow(headsRow(db, hOrigin, pin.size - 1), hOrigin, logV);
-      let peaks = at.peaks, n = pin.size;
-      for (const leaf of headsLeaves(db, hOrigin, pin.size, size)) peaks = T.frontierAppend(peaks, n++, leaf);
-      if (!at.root.equals(pin.root)) violate('fork', 'Ledger heads log conflicts with the pinned heads checkpoint (fork)');
-      else if (n !== size || !T.frontierRoot(peaks).equals(latest.root)) {
-        violate('inconsistent', 'Truncated or inconsistent heads log after the pinned checkpoint');
-      }
-      else if (pin.size < size) anchors.push(at.entries);
+    // Witness answers describe the heads log the probe read; they say nothing about a database swapped in since.
+    if (probe && !probe.error && (probe.headsSize !== size || probe.headsRoot !== (latest?.root ?? T.EMPTY_ROOT).toString('hex'))) {
+      violate('inconsistent', `Truncated or inconsistent heads log: the database (heads size ${size}) differs from the one the witnesses were `
+        + `probed with (heads size ${probe.headsSize}); it changed after the probe`);
     }
+    if (!pin && size && !rawPinError) {
+      violations.push({kind: 'pin', missingPin: true, message: `Transparency pin for ${hOrigin} is missing although the heads log has size ${size}; `
+        + 'restore the pin file or create one explicitly with scripts/transparency.mjs pin-bootstrap'});
+    }
+    let monotoneFrom = null;
+    if (pin && pin.size) {
+      const folded = foldFromPin(db, hOrigin, logV, pin, size, latest?.root);
+      if (folded.error) violate(folded.error.kind, folded.error.message);
+      else if (pin.size < size) { anchors.push(folded.at.entries); monotoneFrom = pin.size; }
+    } else {
+      const seen = (probe?.witnesses || []).filter(w => w.status === 'consistent' && w.size === size).map(w => w.previousSize ?? 0);
+      if (seen.length) monotoneFrom = Math.min(...seen);
+    }
+    if (monotoneFrom !== null && monotoneFrom < size) checkHeadsMonotone(db, hOrigin, monotoneFrom, size, violate);
     if (ledger) checkTenants(db, config.base, anchors, violate, epochs.requirements);
-  } catch (error) { violate(error.kind || 'inconsistent', error.message); } finally { db?.close(); }
-  report.ok = !violations.length;
-  const fatal = inspectOnly ? [] : config.mode === 'enforce' ? violations : violations.filter(v => v.hard);
-  if (fatal.length) throw Error('Transparency startup check failed: ' + fatal.map(v => v.message).join('; '));
-  return report;
+  } catch (error) { violate(error.kind || 'inconsistent', error.message); }
+  return {report, pin};
+}
+// Every heads row after the anchor (the pin, or what a witness had cosigned before) keeps each tenant log monotone:
+// sizes never decrease, logs never disappear and an unchanged size keeps its root. The leaves themselves were already
+// folded to the signed latest root, so each row's entries only have to hash to its leaf.
+function checkHeadsMonotone(db, origin, from, to, violate) {
+  const rows = db.prepare('SELECT idx,leaf,entries FROM tlog_heads WHERE origin=? AND idx>=? AND idx<? ORDER BY idx');
+  let previous = null, expected = Math.max(0, from - 1);
+  for (const row of rows.iterate(origin, expected, to)) {
+    if (row.idx !== expected++) throw kinded('inconsistent', 'Truncated or inconsistent heads log');
+    const entries = JSON.parse(row.entries);
+    if (!Array.isArray(entries) || !entries.every(validEntry) || T.canonicalJson(T.sortHeadsEntries(entries)) !== row.entries
+      || !T.headsLeafHash(T.headsLeafContent(entries)).equals(Buffer.from(row.leaf))) {
+      throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} entries differ from its leaf`);
+    }
+    const current = new Map(entries.map(e => [e.log, e]));
+    for (const [log, e] of previous || []) {
+      const next = current.get(log);
+      if (!next) violate('tenant_removal', `Heads log row ${row.idx} drops tenant log ${log} (tenant removal)`);
+      else if (next.size < e.size) violate('rollback', `Heads log row ${row.idx} shrinks tenant log ${log} from ${e.size} to ${next.size} (rollback)`);
+      else if (next.size === e.size && next.root !== e.root) violate('fork', `Heads log row ${row.idx} changes tenant log ${log} at size ${e.size} (fork)`);
+    }
+    previous = current;
+  }
 }
 const ledgerTenants = db => db.prepare('SELECT DISTINCT tenant FROM ledger').all().map(r => r.tenant);
 // Each requirement names a tenant tree size and root that the ledger prefix must reproduce.
@@ -446,7 +571,11 @@ export function createTransparency({store, config, key, startup = null, probe = 
     const v = verifyHeadsRow(headsRow(db, hOrigin, n - 1), hOrigin, logV);
     return {size: n, root: v.root, peaks: v.peaks, entries: new Map(v.entries.map(e => [e.log, e])), note: v.note};
   };
-  let heads = loadLatest(), pinSize = startup?.pin?.size ?? 0, busy = null, timer = null, stopped = false;
+  let heads = loadLatest(), busy = null, timer = null, stopped = false;
+  // The pin only ever moves forward along a heads log that extends it, and never after a rollback, fork, tenant removal or
+  // inconsistency was seen (in monitor mode the vault keeps running, but its pin stays the last trustworthy anchor).
+  let pinned = startup?.pin?.root ? {size: startup.pin.size, root: Buffer.from(startup.pin.root, 'hex')} : null;
+  let pinFrozen = violations.find(v => PIN_FREEZE_KINDS.has(v.kind))?.message ?? null, pinFreezeReported = false;
   const witnessState = new Map(config.witnesses.map(w => {
     const last = db.prepare('SELECT MAX(size) s FROM tlog_cosignatures WHERE origin=? AND key_id=? AND name=?').get(hOrigin, w.keyId, w.name).s;
     const p = probe?.witnesses?.find(x => x.name === w.name && x.keyId === w.keyId);
@@ -454,13 +583,14 @@ export function createTransparency({store, config, key, startup = null, probe = 
       message: p?.message || null, size: p?.size ?? null, timestamp: null, lastSuccessAt: null, lastAttemptAt: probe?.checkedAt || null}];
   }));
 
-  function violation(kind, message) {
+  function violation(kind, message, quarantine = QUARANTINE_KINDS.has(kind)) {
     const last = violations.at(-1);
     if (last?.kind === kind && last.message === message) return;
     violations.push({kind, message, at: iso()});
     if (violations.length > 50) violations.shift();
     process.stderr.write(JSON.stringify({component: 'transparency', mode: config.mode, violation: kind, message}) + '\n');
-    if (config.mode === 'enforce' && QUARANTINE_KINDS.has(kind) && !store.quarantine) store.quarantine = {reason: message, kind, at: iso()};
+    if (PIN_FREEZE_KINDS.has(kind)) pinFrozen ??= message;
+    if (config.mode === 'enforce' && quarantine && !store.quarantine) store.quarantine = {reason: message, kind, at: iso()};
   }
   function recordCosignature(size, w, r) {
     const sql = `INSERT INTO tlog_cosignatures VALUES(?,?,?,?,?,?,?) ON CONFLICT(origin,size,key_id)
@@ -519,16 +649,31 @@ export function createTransparency({store, config, key, startup = null, probe = 
       .filter(r => config.witnesses.some(w => w.keyId === r.key_id && w.name === r.name));
     return {row, checkpoint: row.note + lines.map(r => r.line).join(''), count: lines.length};
   }
-  function maybeWritePin(size, checkpoint) {
-    if (size <= pinSize) return;
-    try { writePin(config, size, checkpoint); pinSize = size; } catch (error) { violation('pin', 'Transparency pin write failed: ' + error.message); }
+  function maybeWritePin(target, checkpoint) {
+    if (target.size <= (pinned?.size ?? 0)) return;
+    if (pinFrozen) {
+      if (!pinFreezeReported) violation('pin', `Transparency pin not advanced past size ${pinned?.size ?? 0} after: ${pinFrozen}`);
+      pinFreezeReported = true;
+      return;
+    }
+    if (pinned?.size) {
+      let folded;
+      try { folded = foldFromPin(db, hOrigin, logV, pinned, target.size, target.root); } catch (error) {
+        folded = {error: {kind: error.kind || 'inconsistent', message: error.message}};
+      }
+      if (folded.error) return violation(folded.error.kind, folded.error.message);
+    }
+    // In enforce mode a pin that cannot move leaves rollbacks undetectable, so the vault stops instead.
+    try { writePinOrExplain(config, target.size, checkpoint); pinned = {size: target.size, root: target.root}; } catch (error) {
+      violation('pin', error.message, true);
+    }
   }
   async function submit(w, target) {
     const st = witnessState.get(witnessId(w)), nowSeconds = Math.floor(now() / 1000);
     if (st.old === target.size && st.timestamp && nowSeconds - st.timestamp < config.refreshSeconds) return;
     st.lastAttemptAt = iso();
     const r = await exchange({w, size: target.size, note: target.note, old: st.old ?? 0, logV, config, fetchImpl, now,
-      proofFor: m => headsConsistencyProof(db, hOrigin, logV, m, target.size, target.root)});
+      proofFor: m => witnessProof(db, hOrigin, logV, m, target.size, target.root)});
     const previous = st.status;
     Object.assign(st, {status: r.status, message: r.message || null, size: r.size ?? null});
     if (r.status === 'consistent') {
@@ -551,11 +696,11 @@ export function createTransparency({store, config, key, startup = null, probe = 
     }
     if (!heads.size) return;
     const target = heads;
-    if (!config.witnesses.length) return maybeWritePin(target.size, target.note);
+    if (!config.witnesses.length) return maybeWritePin(target, target.note);
     await Promise.all(config.witnesses.map(w => submit(w, target)));
     if (stopped) return;
     const cosigned = cosignedCheckpoint(target.size);
-    if (cosigned && cosigned.count >= config.quorum) maybeWritePin(target.size, cosigned.checkpoint);
+    if (cosigned && cosigned.count >= config.quorum) maybeWritePin(target, cosigned.checkpoint);
   }
   // Single flight: overlapping timer ticks share the running round.
   function pump() {
@@ -578,6 +723,8 @@ export function createTransparency({store, config, key, startup = null, probe = 
     return {origin: hOrigin, checkpoint: c.checkpoint, leafIndex: size - 1, leafProof: v.peaksBefore.slice().reverse().map(T.b64), leaf: v.content,
       entry: v.entries[i], entryIndex: i, entryProof: T.inclusionProof(v.entries.map(T.headsEntryLeaf), i).map(T.b64)};
   }
+  // Appends refuse to extend a tenant log below the size the in-memory heads log already committed to.
+  store.tlogHeadsFloor = origin => heads.entries.get(origin)?.size ?? 0;
   // records: the export's records; their tlog_epoch chain is summarised additively (verifiers recompute it).
   store.tlogEvidence = (tenant, records = []) => {
     const row = store._tlogRow(tenant);
@@ -601,7 +748,8 @@ export function createTransparency({store, config, key, startup = null, probe = 
   };
   function status() {
     const nowSeconds = Math.floor(now() / 1000);
-    return {mode: config.mode, origin: hOrigin, heads: {size: heads.size, root: T.b64(heads.root)}, quorum: config.quorum, pinSize,
+    return {mode: config.mode, origin: hOrigin, heads: {size: heads.size, root: T.b64(heads.root)}, quorum: config.quorum,
+      pinSize: pinned?.size ?? 0, ...(pinFrozen ? {pinFrozen: true} : {}),
       witnesses: [...witnessState.values()].map(s => ({...s, ageSeconds: s.timestamp ? Math.max(0, nowSeconds - s.timestamp) : null})),
       quarantine: store.quarantine, violations: violations.slice(),
       startup: startup ? {checkedAt: startup.checkedAt, ok: startup.ok, headsSize: startup.headsSize} : null};

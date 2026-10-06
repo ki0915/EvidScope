@@ -7,13 +7,16 @@
 // registration of its heads origin; then restore with scripts/vault-backup.mjs restore ... --transparency-config NEW.json.
 // Only the heads origin is registered at witnesses; tenant origins are covered by heads leaves.
 // --probe submits the vault's latest heads checkpoint, which advances a witness that has not seen it yet.
+//   node scripts/transparency.mjs pin-bootstrap --config TRANSPARENCY.json --key VAULT_KEY.pem --data-dir DIR
+// pin-bootstrap is the explicit decision to pin a non-empty heads log that has no pin (enforce refuses to start without
+// one); it runs the startup check and, with witnesses, needs the quorum to cosign the latest heads checkpoint.
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {DatabaseSync} from 'node:sqlite';
 import * as T from '../src/tlog.mjs';
-import {assertTransparencyAnchors, normalizeTransparencyConfig, probeTransparency} from '../src/transparency.mjs';
+import {assertTransparencyAnchors, bootstrapPin, normalizeTransparencyConfig, probeTransparency} from '../src/transparency.mjs';
 
 const quote = s => (/^[A-Za-z0-9_./:+=@-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
 
@@ -58,9 +61,9 @@ async function main(argv) {
   const [command, ...rest] = argv;
   const {values} = parseArgs({args: rest, options: {config: {type: 'string'}, key: {type: 'string'}, 'data-dir': {type: 'string'}, db: {type: 'string'},
     'witness-dir': {type: 'string'}, probe: {type: 'boolean'}, origin: {type: 'string'}, out: {type: 'string'}}});
-  if (!['vkeys', 'witnessctl', 'status', 'new-epoch'].includes(command) || !values.config || !values.key || command === 'status' && !values['data-dir']
-    || command === 'new-epoch' && (!values.origin || !values.out)) {
-    throw Error('Usage: node scripts/transparency.mjs vkeys|witnessctl|status|new-epoch --config TRANSPARENCY.json --key VAULT_KEY.pem'
+  if (!['vkeys', 'witnessctl', 'status', 'new-epoch', 'pin-bootstrap'].includes(command) || !values.config || !values.key
+    || ['status', 'pin-bootstrap'].includes(command) && !values['data-dir'] || command === 'new-epoch' && (!values.origin || !values.out)) {
+    throw Error('Usage: node scripts/transparency.mjs vkeys|witnessctl|status|new-epoch|pin-bootstrap --config TRANSPARENCY.json --key VAULT_KEY.pem'
       + ' [--data-dir DIR] [--probe] [--origin NEW_BASE --out NEW.json]');
   }
   const key = readFileSync(values.key, 'utf8'), dataDir = values['data-dir'] ? resolve(values['data-dir']) : resolve('.local', 'data');
@@ -73,6 +76,10 @@ async function main(argv) {
   const config = normalizeTransparencyConfig(raw, {dataDir, env: process.env});
   if (config.mode === 'off') throw Error('Transparency mode is off in this config');
   if (command === 'vkeys') console.log(JSON.stringify(transparencyKeys({config, key}), null, 2));
+  else if (command === 'pin-bootstrap') {
+    const probe = config.witnesses.length ? await probeTransparency({dataDir, key, config}) : null;
+    console.log(JSON.stringify(bootstrapPin({dataDir, key, config, probe}), null, 2));
+  }
   else if (command === 'witnessctl' || command === 'new-epoch') {
     for (const line of witnessCommands({config, key, db: values.db, witnessDir: values['witness-dir']})) console.log(line);
   }

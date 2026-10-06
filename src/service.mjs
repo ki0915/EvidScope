@@ -123,7 +123,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  let transparency;
  try{
   store.transaction(()=>{
-   store.syncTlog();
+   tlogStartup.recheck?.(store.db);store.syncTlog();
    const states=[];
    for(const tenant of tenants){
     const p={id:'startup-governance-initializer',tenant};
