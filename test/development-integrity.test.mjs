@@ -45,7 +45,15 @@ test('unsigned run reassignment cannot alter development views or admit new sign
  const rebuilt=await h.call('/api/rebuild',{role:'admin',method:'POST',body:'{}'});assert.equal(rebuilt.developmentEvents,1);assert.equal((await h.call('/api/development-runs')).items[0].runId,'run-one');assert.equal((await h.call('/api/integrity')).valid,true);
 });
 
-test('development verification and query share one writer-excluding snapshot',async t=>{
- const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.checkDevelopmentRunProjection.bind(h.store);let attempted=false,changed=false,blocked;
- try{h.store.checkDevelopmentRunProjection=(...args)=>{const result=original(...args);if(!attempted){attempted=true;try{other.prepare("UPDATE development_run_events SET run_id='changed' WHERE tenant='alpha'").run();changed=true;}catch(error){blocked=error;}}return result;};const result=await h.call('/api/development-runs');assert.equal(result.items.length,1);assert.equal(attempted,true);assert.equal(changed,false);assert.equal(blocked?.errcode,5);assert.match(blocked?.message||'',/locked|busy/i);}finally{other.close();}
+test('development verification and query share one read snapshot; a concurrent write is not served and fails the next read',async t=>{
+ const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.checkDevelopmentRunProjection.bind(h.store),checkpoint=h.store.checkpoint('alpha');
+ let attempted=false,changed=false;
+ try{
+  h.store.checkDevelopmentRunProjection=(...args)=>{const result=original(...args);if(!attempted){attempted=true;other.prepare("UPDATE development_run_events SET run_id='changed' WHERE tenant='alpha'").run();changed=true;}return result;};
+  const result=await h.call('/api/development-runs');assert.equal(result.items.length,1);assert.equal(attempted,true);assert.equal(changed,true,'the read did not hold the write lock');
+  assert.equal(result.items[0].runId,'run-one','the query comes from the verified snapshot');
+  h.store.checkDevelopmentRunProjection=original;
+  await assert.rejects(h.call('/api/development-runs'),error=>error.status===409);
+  assert.deepEqual(h.store.checkpoint('alpha'),checkpoint,'no ledger row was appended or re-signed');
+ }finally{other.close();}
 });

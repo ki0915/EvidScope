@@ -6,7 +6,8 @@ import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {harness} from './harness.mjs';
 import {submit,Observer} from '../src/client.mjs';
-import {verifyBundle} from '../src/crypto.mjs';
+import {canonical,verifyBundle} from '../src/crypto.mjs';
+import {verifyAccessBatches,verifyAccessInclusion} from '../src/access-log.mjs';
 import {demo} from '../scripts/demo.mjs';
 import {tick} from '../src/worker.mjs';
 
@@ -97,7 +98,18 @@ test('실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합',async t=>{
   const reorder=structuredClone(bundle);[reorder.records[0],reorder.records[1]]=[reorder.records[1],reorder.records[0]];assert.throws(()=>verifyBundle(reorder,h.publicKey));
   assert.throws(()=>verifyBundle(bundle,generateKeyPairSync('ed25519').publicKey));
   const newer=(await h.api('/api/export')).body;assert.throws(()=>verifyBundle(bundle,h.publicKey,newer.checkpoint));
-  assert.ok(bundle.records.some(r=>r.type==='audit_access'));assert.ok(!JSON.stringify(bundle).includes('secret raw content'));
+  assert.ok(!JSON.stringify(bundle).includes('secret raw content'));
+  // Reads are no longer individual ledger rows: the export sealed every earlier read, including its own, into a signed
+  // audit_access_batch whose Merkle root and chain head cover the exported access entries.
+  assert.ok(!bundle.records.some(r=>r.type==='audit_access'));
+  const batches=bundle.records.filter(r=>r.type==='audit_access_batch'),sealed=batches.at(-1).payload;assert.ok(batches.length>=1);
+  const reads=(await h.api('/api/audit/reads?limit=500')).body.items.filter(r=>r.seq<=sealed.toSeq);
+  const rows=reads.map(r=>({seq:r.seq,body:canonical(r.entry),hash:r.hash}));
+  assert.equal(reads.length,sealed.toSeq);assert.deepEqual(verifyAccessBatches('alpha',bundle.records,rows),{valid:true,batches:batches.length,sealedEntries:sealed.toSeq,unsealedEntries:0});
+  const own=reads.filter(r=>r.entry.target==='/api/export').at(-1);assert.equal(own.entry.principal,h.principal('auditor').id);assert.ok(own.seq>=sealed.fromSeq);
+  const proof=(await h.api('/api/audit/reads/proof?seq='+own.seq)).body,batch=batches.find(r=>r.seq===proof.batch.seq);
+  assert.equal(proof.batch.hash,batch.hash);assert.equal(verifyAccessInclusion(proof.body,own.seq,batch.payload,proof.proof),true);
+  assert.equal(verifyAccessInclusion(proof.body.replace('/api/export','/api/exporx'),own.seq,batch.payload,proof.proof),false);
  });
  await t.test('다중 실제 writer·worker 동시성: 중복·체인 분기 없음',async()=>{
   const second=await h.start('vault');const shared=event('simultaneous');

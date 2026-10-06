@@ -1,5 +1,8 @@
 import {fail} from './model.mjs';
 
+// One index probe per registered source on events(tenant,source,received); test/read-path-indexes.test.mjs pins the plan.
+export const SOURCE_LAST_SEEN_SQL='SELECT MAX(received) lastSeen FROM events WHERE tenant=? AND source=?';
+
 // Operational projection only: no raw evidence or cross-tenant process counters.
 export function monitoring(store, principals, tenant, params, now = Date.now()) {
  // Purpose-based defaults, not a universal incident detection SLA.
@@ -22,8 +25,8 @@ export function monitoring(store, principals, tenant, params, now = Date.now()) 
  const points=Array.from({length:duration/step},(_,i)=>{
   const row=byBucket.get(i);return {at:new Date(start+i*step).toISOString(),end:new Date(Math.min(start+(i+1)*step,now)).toISOString(),partial:i===duration/step-1,...Object.fromEntries(['received','success','failure','unknown','gaps','telemetryFailures'].map(key=>[key,row?.[key]||0]))};
  });
- const seen=store.db.prepare('SELECT source, MAX(received) lastSeen FROM events WHERE tenant=? GROUP BY source').all(tenant);
- const sources=registered.map(p=>{const lastSeen=seen.find(s=>s.source===p.id)?.lastSeen||null;return {id:p.id,kind:p.kind,lastSeen,status:!lastSeen?'not_connected':now-Date.parse(lastSeen)>300000?'stale':'receiving'};});
+ const seen=store.db.prepare(SOURCE_LAST_SEEN_SQL);
+ const sources=registered.map(p=>{const lastSeen=seen.get(tenant,p.id).lastSeen||null;return {id:p.id,kind:p.kind,lastSeen,status:!lastSeen?'not_connected':now-Date.parse(lastSeen)>300000?'stale':'receiving'};});
  return {range,source,generatedAt:new Date(now).toISOString(),bucketMs:step,refreshMs,points,sources,
  scope:'tenant_retained_event_projection_by_received_time',
  limitations:['수신 시각 기준 현재 보존 중인 조회 사본 집계; 파기 후 과거 수치가 줄 수 있습니다',

@@ -68,7 +68,15 @@ test('변경된 원장 head를 정상 조회가 재서명해 정당화하지 않
  const db=new DatabaseSync(join(h.dir,'data','evidence.db'));t.after(()=>db.close());
  const head=db.prepare('SELECT * FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get('alpha'),checkpoint=db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body;
  const altered=JSON.parse(head.body);altered.principal='attacker';db.exec('DROP TRIGGER immutable_update');db.prepare('UPDATE ledger SET body=?,hash=? WHERE tenant=? AND seq=?').run(canonical(altered),digest(altered),'alpha',head.seq);
- assert.equal((await h.api('/api/events')).status,503);assert.equal(db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body,checkpoint);
+ // The read is recorded in the access log with the signed state it observed, then refused (409) without serving data,
+ // appending a ledger row or re-signing the altered head.
+ const ledgerRows=()=>db.prepare('SELECT COUNT(*) n FROM ledger WHERE tenant=?').get('alpha').n,rows=ledgerRows();
+ assert.equal((await h.api('/api/events')).status,409);assert.equal(db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body,checkpoint);
+ assert.equal(ledgerRows(),rows);
+ const access=new DatabaseSync(join(h.dir,'data','access-log.db'),{readOnly:true});t.after(()=>access.close());
+ const attempt=JSON.parse(access.prepare("SELECT body FROM access_log WHERE tenant='alpha' ORDER BY seq DESC LIMIT 1").get().body);
+ assert.equal(attempt.target,'/api/events');assert.match(attempt.fault,/Ledger head differs from previously signed checkpoint/);
+ assert.deepEqual(attempt.observed,{count:JSON.parse(checkpoint).count,head:JSON.parse(checkpoint).head});
  const integrity=(await h.api('/api/integrity')).body;assert.equal(integrity.valid,false);assert.equal(integrity.requiresExternalIncidentRecord,true);
 });
 

@@ -605,7 +605,7 @@ const offController = Object.freeze({
   mode: 'off', start() {}, async stop() {}, async pump() {}, bundleOptions: () => ({}), integrity: result => result, quarantined: () => null,
   status: () => ({mode: 'off'}),
 });
-export function createTransparency({store, config, key, startup = null, probe = null, fetchImpl = fetch, now = () => Date.now()}) {
+export function createTransparency({store, config, key, startup = null, probe = null, fetchImpl = fetch, now = () => Date.now(), beforePublish = null}) {
   if (!config || config.mode === 'off') return offController;
   if (!store.tlog) throw Error('Store was opened without transparency state');
   const db = store.db, hOrigin = config.headsOrigin, publicKey = createPublicKey(key), logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
@@ -740,8 +740,17 @@ export function createTransparency({store, config, key, startup = null, probe = 
       if (previous !== r.status || config.mode === 'enforce') violation(r.status, `Witness ${w.name}: ${r.message}`);
     } else st.old = null;
   }
+  // A tenant head moved since the last heads leaf, so this round will publish a new checkpoint.
+  function headsPending() {
+    const prefix = config.base + '/t/';
+    return db.prepare('SELECT origin,size FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix)
+      .some(r => heads.entries.get(r.origin)?.size !== r.size);
+  }
   async function round() {
     if (store.quarantine || stopped) return;
+    // Seal pending reads first so each published checkpoint covers every read up to that moment; reads alone do not
+    // start a round (the access-log timer seals them). A seal failure is logged by the sealer and reported by integrity.
+    if (beforePublish && headsPending()) beforePublish();
     try {
       const next = appendHeads();
       if (next) heads = next;
