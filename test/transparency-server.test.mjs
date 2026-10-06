@@ -97,4 +97,12 @@ test('case reports carry inclusion proofs that the offline verifier checks again
   assert.equal(integrity.body.transparency.mode, 'monitor');
   assert.equal(integrity.body.transparency.heads.quorumMet, true);
   assert.ok(existsSync(transparencyPinPath(join(h.dir, 'data'))));
+  // OCSF findings name the tenant's witnessed log, and each attestation hash is a leaf of that tree.
+  const findings = (await h.api('/api/export/ocsf?version=1.9.0')).body, bundle = (await h.api('/api/export')).body;
+  assert.ok(findings.length > 0);
+  for (const f of findings) {
+    const [att] = f.attestation_list, seq = Number(att.uid.split(':').at(-1));
+    assert.equal(att.chain_uid, bundle.transparency.origin);
+    assert.equal(att.fingerprint.value, bundle.records.find(row => row.seq === seq).hash);
+  }
 });

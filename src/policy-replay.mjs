@@ -181,7 +181,7 @@ export function replayEvaluations(bundle, {engine = EVALUATION_ENGINE} = {}) {
   };
 }
 
-export function verifyAndReplay(bundle, publicKey, expectedCheckpoint) {
-  const verification = verifyBundle(bundle, publicKey, expectedCheckpoint);
+export function verifyAndReplay(bundle, publicKey, expectedCheckpoint, options = {}) {
+  const verification = verifyBundle(bundle, publicKey, expectedCheckpoint, options);
   return {verification, ...replayEvaluations(bundle)};
 }

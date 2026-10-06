@@ -7,6 +7,7 @@ import {createHash, createPublicKey, KeyObject} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {verifyBundle} from './crypto.mjs';
 import {fail} from './model.mjs';
+import {tenantLogId} from './tlog.mjs';
 
 export const OCSF_VERSIONS = Object.freeze(['1.3.0', '1.9.0']);
 export const OCSF_DEFAULT_VERSION = '1.3.0';
@@ -47,19 +48,20 @@ function evidence(ref, event, v19) {
   return item;
 }
 
-function attestation(tenant, ledger, keyId) {
+function attestation(tenant, ledger, keyId, chainUid) {
   // The fingerprint is the EvidScope ledger record hash, not a hash of this OCSF event: serialization_id 99 names the
   // record serialization. prev_event links the previous ledger record by position (evidscope:<tenant>:<seq>).
+  // With the transparency log on, chain_uid is the tenant's C2SP origin and this hash is leaf seq-1 of that tree.
   return {
     uid: `evidscope:${tenant}:${ledger.seq}`,
-    chain_uid: `evidscope-ledger-v1:${tenant}`,
+    chain_uid: chainUid || `evidscope-ledger-v1:${tenant}`,
     ...(keyId ? {authority_uid: `ed25519-spki-sha256:${keyId}`} : {}),
     fingerprint: sha256(ledger.hash),
     ...(ledger.seq > 1 ? {prev_event: {uid: `evidscope:${tenant}:${ledger.seq - 1}`, fingerprint: sha256(ledger.previous)}} : {}),
   };
 }
 
-function findingEvent({tenant, ledger, finding, index, events, version, checkpoint, keyId}) {
+function findingEvent({tenant, ledger, finding, index, events, version, checkpoint, keyId, chainUid}) {
   const v19 = version === '1.9.0', evaluation = ledger.payload, uid = `${evaluation.id}:${index}`, time = Date.parse(evaluation.createdAt);
   const [severityId, severity] = SEVERITY[finding.severity] || [0, 'Unknown'], suppressed = typeof finding.suppressedBy === 'string';
   const refs = Array.isArray(finding.evidence) ? finding.evidence : [], found = refs.map(ref => events.get(ref)).filter(Boolean);
@@ -84,7 +86,7 @@ function findingEvent({tenant, ledger, finding, index, events, version, checkpoi
     },
     evidences: refs.slice(0, 50).map(ref => evidence(ref, events.get(ref), v19)),
     ...(resources.length ? {resources: resources.map(name => ({name, ...(v19 ? {role_id: 1, role: 'Target'} : {})}))} : {}),
-    ...(v19 ? {is_alert: !suppressed, attestation_list: [attestation(tenant, ledger, keyId)]} : {}),
+    ...(v19 ? {is_alert: !suppressed, attestation_list: [attestation(tenant, ledger, keyId, chainUid)]} : {}),
     unmapped: {evidscope: {
       format: 'evidscope-ocsf-reference-v1', tenant, actionId: evaluation.actionId, evaluationId: evaluation.id, evaluationVersion: evaluation.version,
       findingIndex: index, code: finding.code, evidence: refs, ...(suppressed ? {suppressedBy: finding.suppressedBy} : {}), engine,
@@ -101,7 +103,7 @@ function findingEvent({tenant, ledger, finding, index, events, version, checkpoi
 
 // evaluations: [{seq, hash, previous, payload}] of authenticated evaluation ledger records in ledger order.
 // eventsFor(actionId) returns that action's retained (verified) events. Only each action's latest evaluation is mapped.
-export function ocsfFindings({tenant, evaluations, eventsFor = () => [], checkpoint = null, publicKey, version}) {
+export function ocsfFindings({tenant, evaluations, eventsFor = () => [], checkpoint = null, publicKey, version, chainUid}) {
   const selected = version ?? OCSF_DEFAULT_VERSION;
   if (!OCSF_VERSIONS.includes(selected)) fail(400, `지원하지 않는 OCSF 버전입니다 (${OCSF_VERSIONS.join(' 또는 ')})`);
   const keyId = publicKey ? signingKeyId(publicKey) : null, latest = new Map();
@@ -110,7 +112,7 @@ export function ocsfFindings({tenant, evaluations, eventsFor = () => [], checkpo
     const findings = Array.isArray(ledger.payload.findings) ? ledger.payload.findings : [];
     if (!findings.length) return [];
     const events = new Map(eventsFor(ledger.payload.actionId).map(e => [`${e.source}/${e.id}`, e]));
-    return findings.map((finding, index) => findingEvent({tenant, ledger, finding, index, events, version: selected, checkpoint, keyId}));
+    return findings.map((finding, index) => findingEvent({tenant, ledger, finding, index, events, version: selected, checkpoint, keyId, chainUid}));
   });
 }
 
@@ -138,8 +140,11 @@ export function ocsfFromBundle(bundle, publicKey, {version, expectedCheckpoint} 
   }
   const evaluations = bundle.records.filter(row => row.type === 'evaluation')
     .map(row => ({seq: row.seq, hash: row.hash, previous: row.previous, payload: row.payload}));
-  return ocsfFindings({tenant: bundle.checkpoint.tenant, evaluations, eventsFor: actionId => byAction.get(actionId) || [],
-    checkpoint: bundle.checkpoint, publicKey, version});
+  // A transparency origin is only a label here; it is used when it names this tenant's log.
+  const tenant = bundle.checkpoint.tenant, origin = bundle.transparency?.origin;
+  const chainUid = typeof origin === 'string' && origin.endsWith('/t/' + tenantLogId(tenant)) ? origin : undefined;
+  return ocsfFindings({tenant, evaluations, eventsFor: actionId => byAction.get(actionId) || [], checkpoint: bundle.checkpoint, publicKey, version,
+    chainUid});
 }
 
 // Splunk HTTP Event Collector envelopes (sourcetype picked up by the Splunk OCSF-CIM add-on's ocsf:* convention).

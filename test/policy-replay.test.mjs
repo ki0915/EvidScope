@@ -30,11 +30,11 @@ function resign(bundle, privateKey) {
 const vaultKey = h => createPrivateKey(readFileSync(join(h.dir, 'signing-private.pem')));
 const evaluationsOf = (bundle, actionId) => bundle.records.filter(r => r.type === 'evaluation' && r.payload.actionId === actionId);
 const byId = (report, id) => report.evaluations.find(e => e.id === id);
-const replayCli = (h, bundle) => {
+const replayCli = (h, bundle, script = 'scripts/replay-findings.mjs', extra = []) => {
   const dir = tempDir('evidscope-replay-'), file = join(dir, 'export.json');
   writeFileSync(file, JSON.stringify(bundle));
   try {
-    return {status: 0, report: JSON.parse(execFileSync(process.execPath, ['scripts/replay-findings.mjs', file, join(h.dir, 'trust-anchor.pem')],
+    return {status: 0, report: JSON.parse(execFileSync(process.execPath, [script, file, join(h.dir, 'trust-anchor.pem'), ...extra],
       {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}))};
   } catch (error) {
     return {status: error.status, report: error.stdout ? JSON.parse(error.stdout) : null, stderr: error.stderr};
@@ -93,6 +93,14 @@ test('demo scenario replays exactly; a re-signed altered finding is a mismatch',
   const cli = replayCli(h, tampered);
   assert.equal(cli.status, 1);
   assert.equal(cli.report.summary.mismatch, 1);
+  // The general verifier runs the same replay on request and fails the same way.
+  const verifyCli = (b, extra) => replayCli(h, b, 'scripts/verify.mjs', extra);
+  const plain = verifyCli(tampered, []);
+  assert.equal(plain.status, 0); assert.equal(plain.report.replay, undefined);
+  const replayed = verifyCli(tampered, ['--replay']);
+  assert.equal(replayed.status, 1); assert.equal(replayed.report.valid, true); assert.equal(replayed.report.replay.summary.mismatch, 1);
+  const honest = verifyCli(bundle, ['--replay']);
+  assert.equal(honest.status, 0); assert.equal(honest.report.replay.valid, true);
 
   // A fabricated finding is equally a mismatch.
   const fabricated = structuredClone(bundle), fake = fabricated.records.find(r => r.seq === last.seq);
