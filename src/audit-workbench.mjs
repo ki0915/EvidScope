@@ -13,6 +13,9 @@ const sortEvents=events=>events.sort((a,b)=>a.receivedAt.localeCompare(b.receive
 const contextHash=(tenant,actionId,events,evaluations,version)=>digest({tenant,actionId,events,evaluations,analysis:{version:version?.version??null,analyzed:version?.analyzed??null}});
 const state=(decision,hash,now=Date.now())=>!decision?'unreviewed':decision.contextHash!==hash||Date.parse(decision.nextReviewAt)<=now?'stale':decision.conclusion==='inconclusive'?'inconclusive':'reviewed';
 const outcome=events=>{const results=events.filter(e=>e.sourceKind==='tool'&&e.kind==='result');const success=results.some(e=>e.status==='success'),failure=results.some(e=>e.status==='failure');return success&&failure?'mixed_results':success?'independently_reported_success':failure?'independently_reported_failure':'unconfirmed';};
+// The correlated MAX(received) needs events(tenant,action_id,received); test/read-path-indexes.test.mjs pins the plan.
+export const INVESTIGATION_ROWS_SQL=`SELECT a.*, (SELECT MAX(received) FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id) AS last_seen FROM actions a WHERE a.tenant=? AND
+ (?='' OR a.id LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id AND e.body LIKE ? ESCAPE '\\')) ORDER BY last_seen DESC,a.id`;
 const distinct=(events,key)=>{const values=[...new Set(events.map(e=>e[key]).filter(Boolean))];return values.length>1?'multiple':values[0]||'unknown';};
 
 export function createAuditWorkbench(store,key){
@@ -94,8 +97,7 @@ export function createAuditWorkbench(store,key){
   const q=cleanText(params.get('q')||'',200).trim(),filter=params.get('state')||'all';if(!['needs_review','reviewed','all'].includes(filter))fail(400,'검토 상태 필터 오류');
   const pageNumber=(name,fallback,max)=>{const s=params.get(name);if(s===null)return fallback;const n=Number(s);if(!Number.isSafeInteger(n)||n<0||(name==='limit'&&n<1)||n>max)fail(400,'목록 페이지 범위 오류');return n;};
   const limit=pageNumber('limit',50,100),offset=pageNumber('offset',0,10000000),pattern=`%${q.replace(/[\\%_]/g,'\\$&')}%`;
-  const rows=store.db.prepare(`SELECT a.*, (SELECT MAX(received) FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id) AS last_seen FROM actions a WHERE a.tenant=? AND
-   (?='' OR a.id LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id AND e.body LIKE ? ESCAPE '\\')) ORDER BY last_seen DESC,a.id`);
+  const rows=store.db.prepare(INVESTIGATION_ROWS_SQL);
   const latestDecisions=new Map(),caseIdsByAction=new Map(),caseOverflowActions=new Set();for(const value of store.cachedSignedObjects(p.tenant,['case','case_decision'])){if(value.type==='case_decision'){if(bytes(value.body)>limits.rowBytes)fail(413,'사람 판단 기록 크기 한도 초과');latestDecisions.set(value.body.actionId,value.body);}else if(value.type==='case'){const ids=caseIdsByAction.get(value.body.actionId)||[];if(ids.length>=1000){caseOverflowActions.add(value.body.actionId);continue;}ids.push(value.id);caseIdsByAction.set(value.body.actionId,ids);}}
   const items=[],counts={needsReview:0,reviewed:0,analysisPending:0};let total=0,itemBytes=4096;
   for(const row of rows.iterate(p.tenant,q,pattern,pattern)){

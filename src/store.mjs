@@ -36,8 +36,10 @@ export class Store {
    CREATE TABLE IF NOT EXISTS ledger(tenant TEXT, seq INTEGER, body TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(tenant,seq));
    CREATE TABLE IF NOT EXISTS checkpoints(tenant TEXT PRIMARY KEY, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS events(tenant TEXT, source TEXT, id TEXT, fingerprint TEXT, action_id TEXT, trace_id TEXT, kind TEXT, received TEXT, body TEXT, PRIMARY KEY(tenant,source,id));
-   CREATE INDEX IF NOT EXISTS event_action ON events(tenant,action_id);
    CREATE INDEX IF NOT EXISTS event_received ON events(tenant,received);
+   CREATE INDEX IF NOT EXISTS event_action_received ON events(tenant,action_id,received);
+   CREATE INDEX IF NOT EXISTS event_source_received ON events(tenant,source,received);
+   DROP INDEX IF EXISTS event_action;
    CREATE TABLE IF NOT EXISTS nonces(source TEXT, nonce TEXT, expires INTEGER, PRIMARY KEY(source,nonce));
    CREATE TABLE IF NOT EXISTS actions(tenant TEXT, id TEXT, version INTEGER NOT NULL, analyzed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(tenant,id));
    CREATE TABLE IF NOT EXISTS evaluations(id INTEGER PRIMARY KEY AUTOINCREMENT, tenant TEXT, action_id TEXT, version INTEGER, body TEXT);

@@ -7,7 +7,7 @@ import {fail,cleanText,identifier,date,validateEvent,validateRule,matches} from 
 import {createRetention} from './retention.mjs';
 import {createAnalysis} from './analysis.mjs';
 import {createAuditWorkbench} from './audit-workbench.mjs';
-import {monitoring} from './monitoring.mjs';
+import {monitoring,SOURCE_LAST_SEEN_SQL} from './monitoring.mjs';
 import {agentInventory} from './agent-inventory.mjs';
 import {createAssistance} from './assistance.mjs';
 import {createDevelopmentRuns} from './development-runs.mjs';
@@ -214,7 +214,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p)),events=store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n;
    const actions=store.db.prepare('SELECT * FROM actions WHERE tenant=?').all(p.tenant);
    const alerts=actions.flatMap(a=>evaluations.get(a.id)?.findings||[]);
-   const sources=principals.filter(s=>s.tenant===p.tenant&&s.role==='source').map(s=>{const row=store.db.prepare('SELECT MAX(received) lastSeen FROM events WHERE tenant=? AND source=?').get(p.tenant,s.id);return {id:s.id,tenant:s.tenant,kind:s.kind,lastSeen:row.lastSeen,status:!row.lastSeen?'not_connected':Date.now()-Date.parse(row.lastSeen)>300000?'stale':'receiving'};});
+   const sources=principals.filter(s=>s.tenant===p.tenant&&s.role==='source').map(s=>{const row=store.db.prepare(SOURCE_LAST_SEEN_SQL).get(p.tenant,s.id);return {id:s.id,tenant:s.tenant,kind:s.kind,lastSeen:row.lastSeen,status:!row.lastSeen?'not_connected':Date.now()-Date.parse(row.lastSeen)>300000?'stale':'receiving'};});
    return {counts:{events,alerts:alerts.length,cases:verifiedPolicyObjects(p,'case').size,backlog:actions.filter(a=>a.analyzed<a.version).length},sources,limitations:['등록된 출처 기준 상태이며 전체 AI 사용의 가시성 비율은 산출하지 않습니다','미연결·수집 공백은 무사고를 의미하지 않습니다','연동 수집기는 운영자가 배치·등록해야 하며, 합성 시험 기록을 실제 공급자 연결로 해석하지 않습니다']};});
   }
   if(path==='/api/monitoring'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);return monitoring(store,principals,p.tenant,url.searchParams);});
