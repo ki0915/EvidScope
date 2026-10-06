@@ -1,11 +1,14 @@
 import {randomUUID} from 'node:crypto';
 import {digest} from './crypto.mjs';
-import {fail,cleanText} from './model.mjs';
+import {fail,cleanText,EVALUATION_ENGINE} from './model.mjs';
 
 export const analysisLimits=Object.freeze({jobs:5,snapshotBytes:10*1024*1024,events:1000,assets:5000,rules:100,exceptions:5000,findings:100,resultBytes:1024*1024,leaseMs:30000});
 const bytes=x=>Buffer.byteLength(JSON.stringify(x));
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const keys=(x,allowed)=>{if(!object(x)||Object.keys(x).some(k=>!allowed.includes(k)))fail(400,'분석 결과의 객체 또는 필드가 유효하지 않습니다');};
+// Signed evaluations name their engine, bounds and inputs so src/policy-replay.mjs can recompute them offline.
+const replayInputs=data=>({engine:EVALUATION_ENGINE,limits:{findings:analysisLimits.findings,resultBytes:analysisLimits.resultBytes},inputs:{events:data.events.map(e=>e.seq),assets:data.assets.length,rules:data.rules.map(r=>({id:r.id,version:r.version})),exceptions:data.exceptions.length}});
+const quarantineInputs=()=>({engine:EVALUATION_ENGINE,limits:{events:analysisLimits.events,assets:analysisLimits.assets,rules:analysisLimits.rules,exceptions:analysisLimits.exceptions,snapshotBytes:analysisLimits.snapshotBytes}});
 
 // The vault owns leases and durable commits. Evaluation CPU runs in worker.mjs.
 // Leases persist identifiers and a snapshot digest, never an extra plaintext event copy.
@@ -40,7 +43,7 @@ export function createAnalysis(store,principals){
    const over=data.resourceLimit?.reasons||Object.entries({events:analysisLimits.events,assets:analysisLimits.assets,rules:analysisLimits.rules,exceptions:analysisLimits.exceptions}).filter(([k,n])=>data[k].length>n).map(([k])=>k);
    if(size>analysisLimits.snapshotBytes-4096)over.push('snapshotBytes');
    if(over.length){
-    const reason=`resource_limit:${over.join(',')}`,evaluation={id:randomUUID(),actionId:a.id,version:a.version,createdAt:new Date(now).toISOString(),status:'quarantined_resource_limit',findings:[],authority:'unverified_or_mismatch',effect:'unconfirmed',coverage:{evaluated:false,reason,observedEvents:data.observedEvents??data.events.length,observedEventsComplete:data.resourceLimit?.observedEventsComplete??true,snapshotBytesAtLeast:size,totalFindings:null,returnedFindings:0,truncated:false},limitations:['리소스 한도를 초과하여 분석하지 않았습니다. 관측 공백이며 무사고 판정이 아닙니다.']};
+    const reason=`resource_limit:${over.join(',')}`,evaluation={id:randomUUID(),actionId:a.id,version:a.version,createdAt:new Date(now).toISOString(),status:'quarantined_resource_limit',findings:[],authority:'unverified_or_mismatch',effect:'unconfirmed',coverage:{evaluated:false,reason,observedEvents:data.observedEvents??data.events.length,observedEventsComplete:data.resourceLimit?.observedEventsComplete??true,snapshotBytesAtLeast:size,totalFindings:null,returnedFindings:0,truncated:false},limitations:['리소스 한도를 초과하여 분석하지 않았습니다. 관측 공백이며 무사고 판정이 아닙니다.'],replay:quarantineInputs()};
     store.append(a.tenant,'evaluation',evaluation,p.id);
      store.projectionMutation(()=>store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(a.tenant,a.id,a.version,JSON.stringify(evaluation)));
     store.db.prepare('INSERT INTO analysis_quarantine VALUES(?,?,?,?)').run(a.tenant,a.id,a.version,reason);continue;
@@ -83,7 +86,7 @@ export function createAnalysis(store,principals){
   if(data.resourceLimit)fail(409,'분석 snapshot이 리소스 한도를 초과했습니다');
   if(digest(data)!==lease.snapshot_hash)fail(409,'분석 snapshot이 변경되었습니다');
   validateResult(body.result,data);
-  const evaluation={...body.result,id:randomUUID(),actionId:lease.action_id,version:lease.version,createdAt:new Date().toISOString(),analysisTime:new Date(lease.analysis_time).toISOString(),status:'evaluated',worker:p.id,snapshotHash:lease.snapshot_hash};
+  const evaluation={...body.result,id:randomUUID(),actionId:lease.action_id,version:lease.version,createdAt:new Date().toISOString(),analysisTime:new Date(lease.analysis_time).toISOString(),status:'evaluated',worker:p.id,snapshotHash:lease.snapshot_hash,replay:replayInputs(data)};
   store.append(lease.tenant,'evaluation',evaluation,p.id);
    store.projectionMutation(()=>store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(lease.tenant,lease.action_id,lease.version,JSON.stringify(evaluation)));
   store.projectionMutation(()=>store.db.prepare('UPDATE actions SET analyzed=? WHERE tenant=? AND id=? AND version=?').run(lease.version,lease.tenant,lease.action_id,lease.version));
