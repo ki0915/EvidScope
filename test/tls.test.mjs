@@ -1,3 +1,5 @@
+const fixtureHost=process.env.EVIDSCOPE_TEST_HOST==='::1'?'::1':'127.0.0.1';
+const fixtureUrlHost=fixtureHost==='::1'?'[::1]':fixtureHost;
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork,spawn,spawnSync} from 'node:child_process';
@@ -29,7 +31,7 @@ test('실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계'
  writeFileSync(opensslConfig,'[req]\ndistinguished_name=dn\nx509_extensions=root_ca\n[dn]\n[root_ca]\nbasicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n');
  generate(['req','-config',opensslConfig,'-x509','-newkey','rsa:2048','-nodes','-sha256','-days','1','-subj','/CN=EvidScope Synthetic TLS Test CA','-keyout',join(dir,'ca.key'),'-out',ca]);
  generate(['req','-config',opensslConfig,'-new','-newkey','rsa:2048','-nodes','-sha256','-subj','/CN=localhost','-keyout',key,'-out',join(dir,'server.csr')]);
- for(const [filename,san,serial]of [[cert,'DNS:localhost,IP:127.0.0.1','10'],[wrongCert,'DNS:wrong-host.invalid','11']]){
+ for(const [filename,san,serial]of [[cert,'DNS:localhost,IP:127.0.0.1,IP:::1','10'],[wrongCert,'DNS:wrong-host.invalid','11']]){
   const ext=filename+'.ext';writeFileSync(ext,`basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=${san}\n`);
   generate(['x509','-req','-in',join(dir,'server.csr'),'-CA',ca,'-CAkey',join(dir,'ca.key'),'-set_serial',serial,'-days','1','-sha256','-extfile',ext,'-out',filename]);
   generate(['verify','-CAfile',ca,filename]);
@@ -45,10 +47,10 @@ test('실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계'
  })));});
  async function start(mode,{trust=false,certificate=cert,vault}={}){
   return new Promise((resolveStart,reject)=>{
-   const child=fork('src/server.mjs',[],{env:{...cleanEnv,MODE:mode,HOST:'127.0.0.1',PORT:'0',DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),TLS_CERT_FILE:certificate,TLS_KEY_FILE:key,...(trust?{NODE_EXTRA_CA_CERTS:ca}:{}),...(vault?{VAULT_URL:vault}:{})},execArgv:[],stdio:['ignore','pipe','pipe','ipc'],windowsHide:true});
+   const child=fork('src/server.mjs',[],{env:{...cleanEnv,MODE:mode,HOST:fixtureHost,PORT:'0',DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),TLS_CERT_FILE:certificate,TLS_KEY_FILE:key,...(trust?{NODE_EXTRA_CA_CERTS:ca}:{}),...(vault?{VAULT_URL:vault}:{})},execArgv:[],stdio:['ignore','pipe','pipe','ipc'],windowsHide:true});
    children.push(child);let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
    const timer=setTimeout(()=>reject(Error(`${mode} TLS startup timeout: ${logs}`)),10000);
-   child.once('message',m=>{if(m.ready){clearTimeout(timer);resolveStart({url:`https://127.0.0.1:${m.port}`,port:m.port});}});
+   child.once('message',m=>{if(m.ready){clearTimeout(timer);resolveStart({url:`https://${fixtureUrlHost}:${m.port}`,port:m.port});}});
    child.once('error',e=>{clearTimeout(timer);reject(e);});
    child.once('exit',code=>{clearTimeout(timer);reject(Error(`${mode} startup/exit ${code}: ${logs}`));});
   });
@@ -71,7 +73,7 @@ test('실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계'
   assert.ok(['UNABLE_TO_VERIFY_LEAF_SIGNATURE','UNABLE_TO_GET_ISSUER_CERT_LOCALLY','SELF_SIGNED_CERT_IN_CHAIN'].includes(result.code),JSON.stringify(result));assert.equal(result.status,undefined);
  });
  await t.test('NODE_EXTRA_CA_CERTS로 신뢰한 CA와 IP·DNS SAN은 성공',async()=>{
-  for(const base of [vault.url,vault.url.replace('127.0.0.1','localhost')]){
+  for(const base of [vault.url,vault.url.replace(fixtureUrlHost,'localhost')]){
    const result=await request(base+'/healthz');assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.body.component,'vault');
   }
  });
@@ -96,7 +98,7 @@ test('실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계'
  });
  await t.test('TLS listener는 평문 HTTP로 API 응답을 제공하지 않음',async()=>{
   const result=await new Promise((resolvePlain,reject)=>{
-   const req=http.get({host:'127.0.0.1',port:vault.port,path:'/healthz',timeout:3000},res=>{let body='';res.on('data',b=>body+=b);res.on('end',()=>resolvePlain({status:res.statusCode,body}));});
+   const req=http.get({host:fixtureHost,port:vault.port,path:'/healthz',timeout:3000},res=>{let body='';res.on('data',b=>body+=b);res.on('end',()=>resolvePlain({status:res.statusCode,body}));});
    req.on('timeout',()=>{req.destroy();reject(Error('Plaintext rejection timed out'));});req.on('error',e=>resolvePlain({code:e.code}));
   });
   assert.ok(result.code==='ECONNRESET'||result.status===400,JSON.stringify(result));assert.ok(!result.body?.includes('ready'));

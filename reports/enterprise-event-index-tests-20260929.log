@@ -1,0 +1,25 @@
+EvidScope event index integrity verification, 2026-09-29
+
+Focused command:
+node --test --test-concurrency=1 test/event-integrity.test.mjs test/action-integrity.test.mjs test/action-projection-integration.test.mjs test/retention.test.mjs test/vault-recovery.test.mjs
+Result: 46 tests, 46 pass, 0 fail.
+
+Worker and projection regression command:
+node --test --test-concurrency=1 test/workers.test.mjs test/event-integrity.test.mjs test/evaluation-integrity.test.mjs test/object-integrity.test.mjs
+Result: 69 tests, 69 pass, 0 fail.
+
+Full host command:
+npm test
+Result: 522 tests, 515 pass, 7 fail. Every failure was Windows listen EFAULT before the relevant assertion.
+
+Restricted Linux image command covered event-integrity, load-balancing, oidc-tls, retention, visibility and workers.
+Image: evidscope:enterprise-20260929-r5
+Digest: sha256:ff593026fd86e03cb75f3a7701f35e5103c37a1f4d82f5b36002bc325c423f35
+Limits: network none, read-only root, CPU 2, RAM 1 GiB, pids 256, all capabilities dropped, no-new-privileges, UID 1000:1000.
+Result: 42 tests, 41 pass, 1 fail. The only failure occurred before product execution because the production image intentionally lacks the test-only openssl command.
+
+Host isolated follow-up:
+node --test --test-concurrency=1 test/oidc-tls.test.mjs
+Result: 1 test, 1 pass, 0 fail.
+
+No product assertion failure remained in the rechecked Windows EFAULT set.

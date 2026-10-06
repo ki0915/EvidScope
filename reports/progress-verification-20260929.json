@@ -1,0 +1,21 @@
+{
+  "recordedAt": "2026-09-29T09:05:04.450Z",
+  "files": {
+    "scripts/train-public-qa.py": "635b3530cd4c15de2476d6251e2da92d0effb3b2fc0d13ef8c2222a18214be37",
+    "src/finance-evidence.mjs": "34550757a1461ee4fd306f42018398b29659e832b89b0c6fe7f239596d78a68a",
+    "test/finance-evaluation-binding.test.mjs": "b7139550099934fa4bb669d2bed43bc04a7a515d5fee1ab67ac69137210edefb",
+    "test/test_public_qa_training.py": "a7de99fbbef372caf3beb878dc0f56a15777c020a56f27fba60af687969d5925",
+    "test/test_public_qa_collator_runtime.py": "c6c423ffd0f1edd675ac78519f8da5e93093bd05b6920ea9e6fba82c9c9d21cc"
+  },
+  "unitTests": 10,
+  "cpuRuntimeTests": 2,
+  "actualEncodingRows": 384,
+  "fullSuite": {
+    "tests": 467,
+    "passed": 467,
+    "log": "reports/enterprise-tests-final-20260929.log"
+  },
+  "gpuBackwardAfterPaddingChangeMeasured": false,
+  "additionalTrainingExecutedThisTurn": false,
+  "promotionAllowed": false
+}

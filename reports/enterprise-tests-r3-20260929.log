@@ -1,0 +1,746 @@
+
+> evidscope@0.1.0 test
+> node --test --test-concurrency=1 test/*.test.mjs
+
+✔ agent explorer: all 105 actions reachable, chart drilldown, review/state filters and hostile text stay literal (20.843ms)
+✔ agent policy: missing/pending/partial/exception cannot become compliant; tool failure is separate (0.8034ms)
+✔ agent inventory: identities, full denominator, zero-data source, tenant and human access boundaries (169.1351ms)
+✔ agent operations: time boundaries, complete evidence, exact trend totals, focus and pagination (1229.5293ms)
+✔ pinned AGT request, resolution and human entry become minimized authority records (6.3249ms)
+✔ context and trusted collector scope cannot be widened or borrowed across attempts and models (1.0977ms)
+✔ unresolved, denied, malformed and incorrectly linked approval records produce no authority (0.6661ms)
+✔ service approval and LLM advice never become human review or let advisory votes authorize alone (0.6932ms)
+✔ explicit cancellation/revocation invalidates both prior grant and human approval during evaluation (2.7183ms)
+✔ SDK/local observations allow metadata only and preserve token zero without making up missing counts (2.3653ms)
+✔ HTTP adapter removes URL query credentials fragments headers and body, retaining destination metadata (0.3754ms)
+✔ OTLP extracts approved gen_ai/span attributes while content events and arbitrary keys are excluded (0.3435ms)
+✔ Zeek never claims TLS content observation, AI model attribution, or exact flow-to-user identity (0.2699ms)
+✔ v2 schema is a strict nested allowlist and rejects raw payloads without echoing keys or values (1.2457ms)
+✔ collector gaps and invalid input leave minimal audit evidence, not an invented successful audit (2.4539ms)
+✔ source times survive adapters and absent timestamps are explicitly collector received (0.6969ms)
+✔ stdin collector emits minimized events including malformed records without source text in stdout/stderr (80.0832ms)
+✔ stdin screening requires explicit Pod TLS configuration and remains fail-closed when unavailable (252.7739ms)
+✔ signed AI observations drive tenant-scoped visibility without retaining source content (941.7728ms)
+✔ runner rejects DNS aliases and decorated loopback URLs before reading a credential scope (3.1598ms)
+✔ runner rejects missing, malformed, and expired credential deadlines before network access (0.9725ms)
+✔ synthetic fixture output is visibly distinct from actual model output (0.2696ms)
+✔ runner independently rejects a package whose content no longer matches its bound hash (15.4426ms)
+✔ assistance profiles are versioned and fixed to local-only model policy (340.9523ms)
+✔ packages minimize adversarial fields, bind real refs and preserve governance semantics (68.3942ms)
+✔ run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result (318.167ms)
+✔ human advisory reviews are separate, preserved, and drafts become stale on evidence change (276.3962ms)
+✔ expired run credential records timeout and cannot claim (150.8407ms)
+✔ assistance projections must match signed original ledger records (324.8792ms)
+✔ script measurement samples only allowed text fields and distinguishes Unicode scripts without guessing language (4.0879ms)
+✔ screening is off by default, body absent is unobserved, errors preserve no input or server error (1.5813ms)
+✔ full tail reaches the tokenizer owner and partial chunks never become a safe verdict (1.0894ms)
+✔ deadline aborts local transport and unknown differs from a safe result (25.446ms)
+✔ classifier metadata rejects false complete coverage, invented categories, text spans and numeric anomalies (0.8322ms)
+✔ production transport must be injected explicitly and no host model endpoint is opened (0.337ms)
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+Preparing worktree (new branch 'task-one')
+Preparing worktree (new branch 'task-two')
+Preparing worktree (new branch 'task-three')
+warning: in the working copy of 'allowed.txt', LF will be replaced by CRLF the next time Git touches it
+✔ coordinator enforces linked worktrees, fixed model, global slots, lease reconciliation, handoff scope and review cap (11635.177ms)
+✔ development run HTTP boundary permits signed ingress and human audit reads only (783.2732ms)
+✔ development runs: signed tenant source binding, duplicate/collision, unknowns and minimization (84.5572ms)
+✔ collectors ignore content and preserve external status, order, model and cached usage metadata (0.7941ms)
+✖ local HTTP fixture observes two backend instances using fresh signed connections; not Kubernetes proof (38.9346ms)
+✔ one observed instance fails minimum two; missing header also fails (30.1372ms)
+✔ audit uses human credentials and investigation GET only (16.6252ms)
+✔ credential separation and unsafe origins refuse before network I/O (6.0542ms)
+✔ timeout is ambiguous without retry; redirect and failed receipt stay failures (60.1221ms)
+✔ opt-in readiness retains failed preflight then measures only after recovery (1030.3746ms)
+✔ permanent preflight failure skips every measurement and preserves readiness failure (7.6775ms)
+✔ both distribution Jobs opt into the same bounded readiness phase (0.821ms)
+✔ disk queue survives reopen; acknowledgement removes body and duplicate acknowledgement is idempotent (59.9668ms)
+✔ retry uses same event ID and fresh nonce; 503 exhausts finite budget then requires explicit retry (53.2676ms)
+✔ permanent 400 is retained without automatic retries or loss (39.247ms)
+✔ expired crash lease resumes at least once and preserves attempt budget (55.9959ms)
+✔ crash at retry limit retains failed metadata and cannot restart an infinite delivery loop (56.505ms)
+✔ queue bounds include failed records, accepted receipts stay finite, ID collision is rejected (63.0493ms)
+✔ raw fields and secret-bearing errors never enter spool or aggregate output (48.9453ms)
+✔ spool is bound to source identity and credentials may rotate without being stored (39.9108ms)
+✔ disk unavailable and disk write failure report fixed outcomes, not paths or raw exceptions (34.6053ms)
+✔ shutdown waits only bounded in-flight attempt and starts no following record (78.2016ms)
+✔ pending retry delay is bounded and stop wakes a sender waiting for its next attempt (59.0048ms)
+✔ CLI rejects unsanitized records and prints aggregate-only errors without credentials (114.2562ms)
+✔ integrity rejects body evaluation projection tampering without affecting another tenant (85.6731ms)
+✔ integrity rejects malformed evaluation projection tampering without affecting another tenant (75.1484ms)
+✔ integrity rejects action evaluation projection tampering without affecting another tenant (74.7045ms)
+✔ integrity rejects version evaluation projection tampering without affecting another tenant (75.5376ms)
+✔ integrity rejects missing evaluation projection tampering without affecting another tenant (73.3053ms)
+✔ integrity rejects extra evaluation projection tampering without affecting another tenant (74.5087ms)
+✔ integrity rejects ordering evaluation projection tampering without affecting another tenant (72.9489ms)
+✔ overview, action and alert reads reject a forged evaluation instead of rendering it (81.0225ms)
+✔ valid reads preserve latest-first behavior and the integrity scope remains explicit (75.6431ms)
+✔ evaluation verification and response use one writer-excluding snapshot (74.6451ms)
+✔ finance view keeps verification and consumption in one writer-excluding snapshot (95.8897ms)
+✔ finance export keeps verification and consumption in one writer-excluding snapshot (83.2339ms)
+✔ finance import keeps verification and consumption in one writer-excluding snapshot (88.7477ms)
+✔ finance report keeps verification and consumption in one writer-excluding snapshot (83.103ms)
+✔ finance saved-report keeps verification and consumption in one writer-excluding snapshot (85.0372ms)
+✔ successful nested savepoints remain subject to complete outer rollback (62.7115ms)
+✔ caught inner failure rolls back its ledger, checkpoint and objects while outer work commits (64.793ms)
+✔ an existing transaction started outside Store uses a savepoint and is not committed by the helper (59.9185ms)
+✔ transaction callbacks must be synchronous and never commit a returned promise (62.5812ms)
+✔ finance refuses evaluation move SQL tampering before reading or signing a mismatched operation (107.6021ms)
+✔ finance refuses evaluation swap SQL tampering before reading or signing a mismatched operation (86.1134ms)
+✔ finance refuses evaluation version SQL tampering before reading or signing a mismatched operation (90.2781ms)
+✔ finance refuses evaluation ordering SQL tampering before reading or signing a mismatched operation (87.1723ms)
+✔ finance preserves signed latest evaluation selection and tenant separation for valid history (94.2501ms)
+✔ verified supplier bytes, role isolation, immutable signed review and changed model invalidation (167.071ms)
+✔ same private key representation can restore encrypted document bytes (5.7562ms)
+▶ unknown or changed supplied model and purpose require review even when current bundle matches
+  ✔ SUPPLIED_MODEL_VERSION_UNKNOWN (83.9031ms)
+  ✔ SUPPLIED_PURPOSE_UNKNOWN (81.1887ms)
+  ✔ SUPPLIED_MODEL_VERSION_MISMATCH (82.0299ms)
+  ✔ SUPPLIED_PURPOSE_MISMATCH (82.5101ms)
+✔ unknown or changed supplied model and purpose require review even when current bundle matches (330.6148ms)
+✔ newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history (137.4665ms)
+✔ corrupt or missing document never remains verified; hashes and measure bounds are enforced (103.6474ms)
+✔ bundle replacement invalidates only linked snapshots and cannot move between systems (106.03ms)
+✔ altered system or supplier projection cannot be legitimized by a new signed report (76.8596ms)
+✔ legacy system facts migrate once to unknown without rewriting historical assessments (79.9976ms)
+✔ finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report (1123.4716ms)
+✔ finance rejects renamed system SQL identities before exporting or signing another target (165.7938ms)
+✔ finance rejects swapped system SQL identities before exporting or signing another target (157.4968ms)
+✔ finance rejects renamed supplier_bundle SQL identities before exporting or signing another target (147.3846ms)
+✔ finance rejects swapped supplier_bundle SQL identities before exporting or signing another target (151.1266ms)
+✔ same-tenant object contents cannot be read through a foreign-tenant bundle ID (127.8334ms)
+✔ finance view keeps hostile names, findings and refs literal and labels model/document gaps (4.0133ms)
+✔ empty finance evidence remains missing and signed report is explicitly posted before download (2.3883ms)
+✔ supplier JSON import rejects malformed or wrong-system payloads and accepts a verified API roundtrip (2.1103ms)
+✔ approval-only records do not hide the absence of actual execution evidence (2.0822ms)
+✔ supplier file chooser enforces its size bound and exports only the selected bundle (4.0851ms)
+✔ approval policy editor preserves false, true and unknown and omits blank end dates (3.8943ms)
+✔ Korean fact payload preserves tri-state values and distinct legal roles through the rendered editor (2.1062ms)
+✔ automatic finance examples bind no-approval policy at execution without treating absent approval as a failure (1.9875ms)
+✔ late-received approval examples preserve occurrence ordering, uncertainty bounds and unreviewed provenance (34.5979ms)
+✔ assessment signs a server-computed applicability snapshot and ignores client provenance fields (81.8675ms)
+✔ legacy catalog and assessment provenance trigger a signed re-review task without replacing the human conclusion (86.9388ms)
+✔ signed finance reports freeze policy provenance while a later fact change only marks the live review stale (89.9086ms)
+✔ assessment does not seal body system projection (82.283ms)
+✔ assessment does not seal id system projection (70.5519ms)
+✔ assessment does not seal missing system projection (70.5121ms)
+✔ assessment does not seal injected system projection (69.7581ms)
+✔ unsigned event projection cannot become signed assessment evidence (70.2245ms)
+✔ signed event content determines evidence hash; projection changes cannot certify different bytes (75.8743ms)
+✔ governance report refuses forged system projection (75.9059ms)
+✔ governance report refuses forged assessment projection (75.3438ms)
+✔ governance report refuses forged governance_task projection (75.9523ms)
+✔ KR-34-DOCUMENT keeps missing document technically insufficient and its task open (94.346ms)
+✔ KR-34-DOCUMENT keeps unhashed external document technically insufficient and its task open (78.5294ms)
+✔ KR-34-DOCUMENT keeps unretrievable externally hashed document technically insufficient and its task open (77.71ms)
+✔ non-document requirements and verified event evidence retain their existing status (80.2845ms)
+✔ reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot (108.6726ms)
+✔ intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment (90.6384ms)
+✔ assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable (140.6722ms)
+✔ new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot (143.1318ms)
+✔ governance document projection tampering is rejected and cannot create a verified assessment (81.0287ms)
+✔ HTTP boundary accepts the bounded 64 KiB governance document payload (434.7599ms)
+✔ vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention (320.8835ms)
+✔ unknown system facts remain unknown and never become an automatic non-applicability decision (2.9062ms)
+✔ Korean high-impact and frontier thresholds are evaluated as separate review candidates (0.2535ms)
+✔ EU transparency candidates require market, role and feature facts and preserve amendment warning (0.2777ms)
+✔ NIST remains voluntary and ISO remains readiness-only (0.1326ms)
+✔ Korean article 31 distinguishes high-impact notice, generated output and realistic synthetic media (0.2142ms)
+✔ legacy and financial system facts require review without inferring high-impact or a legal role (0.7522ms)
+✔ signed access state is tenant scoped, ignores unsigned projections and cannot be mutated by its caller (59.7826ms)
+✔ initial verification streams bounded chunks; unchanged state and deltas do not rescan historical rows (270.4548ms)
+✔ tampered suffix fails before any tentative identity state is published (56.3161ms)
+✔ same-checkpoint anchor tampering is detected (49.6845ms)
+✔ a valid older signed checkpoint cannot roll back an established cache (53.7564ms)
+✔ a differently signed head at the same count cannot replace an established cache (52.2908ms)
+✔ checkpoint tenant changes and missing checkpoints are rejected (57.5452ms)
+✔ SQL tenant relocation and sequence gaps cannot authenticate signed records under another scope (60.7883ms)
+✔ cached anchor SQL sequence binding and missing anchors are rejected (54.4428ms)
+✔ restart re-verifies historical bytes while an established cache retains its authenticated state (54.0689ms)
+✔ oversized or malformed signed access records fail closed (49.5499ms)
+✔ checkpoint failure leaves no open read transaction and state reads can nest in the access-write transaction (53.5247ms)
+✖ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합 (596.7648ms)
+✔ primary client fixes endpoint, generation limits and tokenizes the rendered multilingual prompt (2.2067ms)
+✔ context budget includes512 output tokens and refuses overflow before generation (1.4323ms)
+✔ only one system instruction followed by one user data message is accepted (0.2773ms)
+✔ wrong model, tools, truncated output and invalid accounting cannot be accepted as completed advice (0.6058ms)
+✔ one request per client and lock release after a transport failure (0.4824ms)
+✔ missing TLS or a request to an alternate destination fails without opening a connection (0.4522ms)
+✔ training config binds model, pinned image, data, host, context and fresh measured template (11.393ms)
+✔ dataset bytes must match config, and synthetic unreviewed data cannot pass admission (5.4555ms)
+✔ check-only collects independent failed gates and never builds an execution session (0.8214ms)
+✔ existing inference lease prevents all training creation and is never taken over (1.0746ms)
+✔ single exact training Job gets pinned inputs and cleanup waits for owned Pods too (1.3602ms)
+✔ a different Job UID is never deleted even when the name matches (0.8707ms)
+✔ cancelled or busy pre-create host releases reservation without creating Job (1.1693ms)
+✔ ambiguous create recovers only its run, cleans it, and quarantines shared lease (1.244ms)
+✔ ambiguous create with immediate absence retains quarantine because late commit remains possible (0.8748ms)
+✔ session runs admission again and cannot claim training completion before cleanup (2.5089ms)
+✔ complete Job cannot claim success without verified candidate files (1.5986ms)
+✔ session refuses dataset changes before acquiring lease (0.6977ms)
+✔ kubectl subprocess pins explicit context and refuses oversized responses (1.1311ms)
+✔ synthetic two-node gateway topology is linked by service label and Pod UID without asserting autoscaling (2.566ms)
+✔ synthetic stale, terminating, wrong-service and wrong-UID endpoints cannot count as ready topology (1.687ms)
+✔ synthetic duplicate EndpointSlices and same-node replicas do not fabricate node diversity (0.3322ms)
+✔ synthetic Pod UID matches do not validate unrelated or partly mismatched endpoint addresses (0.2726ms)
+✔ synthetic unknown endpoint readiness still requires a live Ready Pod and correct service binding (0.1637ms)
+✔ collector command contract is read-only and pins context and timeout on every command (0.6111ms)
+✔ fake kubectl runner failures remain failures and neither stderr nor raw Pod env reaches the report (2.5094ms)
+✔ gateway readiness follows vault loss and recovery while local liveness stays available (2289.4531ms)
+✔ serving gateway identity is bounded and cannot be replaced by request or upstream headers (1141.0713ms)
+✔ readiness requests coalesce, cache briefly, validate the upstream result and time out (4344.9344ms)
+✖ worker liveness is local but readiness requires a successful analysis tick (416.1664ms)
+✖ shutdown cannot turn an in-flight dependency probe into a ready response (592.5778ms)
+✔ local pilot: model cannot choose arbitrary tools/paths and references are explicit reports (2.1397ms)
+✔ model policy defaults OFF and current bounds replace historical runtime settings (1.1092ms)
+✔ observed state expires and declared ready does not attest isolation (0.3461ms)
+✔ lifecycle rejects unresolved artifacts and unmeasured isolation; excludes concurrent starts (0.9568ms)
+✔ delete success is not termination and unknown cleanup keeps slot quarantined (0.9371ms)
+✔ finally cleanup runs for normal, failed and cancelled sessions (1.3469ms)
+✔ observation mismatch after create requests cleanup of the created UID (0.2902ms)
+✔ orphan reconciler addresses every matching job including duplicate model IDs (1.0697ms)
+✔ Kubernetes deletion binds UID and absence of Job is insufficient while a Pod remains (0.5653ms)
+✔ inference and training templates stay suspended, no egress or ambient credentials (0.7346ms)
+✔ review imports bind original content, require explicit review, and current corpus remains blocked (1.6221ms)
+✔ explicit reviews admit synthetic training scenarios, reject later edits and split leakage (36.8831ms)
+✔ promotion demands independent human review and preserves rollback pointer (8.0849ms)
+✔ Python classifier and training gate behavioral tests (no model download/inference) (334.1967ms)
+✔ export retains candidate output separately and cannot itself approve training data (7.4987ms)
+✔ completed exported packets and deliberate raw review arrays have identical bound imports (6.2629ms)
+✔ source mutations, wrapper mismatch, missing source and duplicate identities fail closed (6.5392ms)
+✔ malformed packet and review schemas, incomplete or unsafe approvals are rejected (5.7036ms)
+✔ CLI exported packet imports after explicit test approval; unapproved packet writes no output (273.0848ms)
+✔ historical policy determines whether a per-action human approval is required (3.2449ms)
+✔ approvals bind the model and attempt and preserve uncertainty instead of inventing ordering (1.9792ms)
+✔ block and success evidence only conflict for the same attempt with determinable order (0.4546ms)
+✔ event metadata validates context identifiers and bounded or explicitly unknown clock error (4.4294ms)
+✔ authority uses issuance time and policy known at execution, including late-arriving evidence (0.6516ms)
+✔ human approval issued after execution or under another policy never satisfies prior review (0.5133ms)
+✔ self-reported delegation cannot substitute for independent parent-scoped authority (0.5219ms)
+✔ stop confirmation matches the requested target and follows the request (1.181ms)
+✔ monitor UI: refresh, range/source queries, pause/resume, errors keep prior series and auth stops retries (52.5153ms)
+✔ monitor UI: navigation and visibility discard in-flight responses and remove timers/listeners (1.6167ms)
+✔ stock scale: zoom/pan stay bounded, preserve historical window and reset to latest (22.7585ms)
+✔ monitoring: receipt buckets, tenant/source boundaries, missing statuses and partial bucket (107.6992ms)
+✔ monitoring API: human-only, tenant isolated, signed ingest and dedup reflected without audit-read inflation (84.7195ms)
+✔ candidate pool has deterministic unique rows and keeps every translation family in one split (65.1316ms)
+✔ eight audit scenarios have coherent advisory schemas and citations, without claiming candidate correctness (31.1999ms)
+✔ all candidates remain unreviewed, have no approved output, and admission stays blocked (29.3491ms)
+✔ Cipher triads cover twelve categories, false positives, ambiguous instructions and full long tails (19.6839ms)
+✔ writer produces reproducible artifacts and refuses to overwrite human-reviewed work (150.7095ms)
+✔ integrity rejects rule forged projection (82.3004ms)
+✔ integrity rejects rule missing projection (70.7496ms)
+✔ integrity rejects rule extra projection (73.2056ms)
+✔ integrity rejects rule sql-id projection (71.8184ms)
+✔ integrity rejects rule body-id projection (71.1425ms)
+✔ integrity rejects assessment forged projection (71.3915ms)
+✔ integrity rejects assessment missing projection (73.8711ms)
+✔ integrity rejects assessment extra projection (69.5676ms)
+✔ integrity rejects assessment sql-id projection (73.8725ms)
+✔ integrity rejects assessment body-id projection (85.909ms)
+✔ integrity rejects governance_task forged projection (70.729ms)
+✔ integrity rejects governance_task missing projection (68.0497ms)
+✔ integrity rejects governance_task extra projection (67.5008ms)
+✔ integrity rejects governance_task sql-id projection (69.1955ms)
+✔ integrity rejects governance_task body-id projection (68.5682ms)
+✔ integrity rejects identity_access forged projection (72.8346ms)
+✔ integrity rejects identity_access missing projection (69.1569ms)
+✔ integrity rejects identity_access extra projection (70.1162ms)
+✔ integrity rejects identity_access sql-id projection (68.9507ms)
+✔ integrity rejects identity_access body-id projection (68.5537ms)
+✔ integrity rejects catalog forged projection (65.2643ms)
+✔ integrity rejects catalog missing projection (65.9134ms)
+✔ integrity rejects catalog extra projection (66.8293ms)
+✔ integrity rejects catalog sql-id projection (65.8841ms)
+✔ integrity rejects catalog body-id projection (66.8752ms)
+✔ integrity rejects assistance_profile forged projection (67.8081ms)
+✔ integrity rejects assistance_profile missing projection (69.1557ms)
+✔ integrity rejects assistance_profile extra projection (67.9289ms)
+✔ integrity rejects assistance_profile sql-id projection (69.3324ms)
+✔ integrity rejects assistance_profile body-id projection (68.2901ms)
+✔ valid latest objects and every assistance profile version survive API verification and backup recovery (463.3398ms)
+✔ unknown unsigned object types are rejected by API and backup with the same comparison (97.8556ms)
+▶ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation
+  ✔ server-owned issuer/subject mapping ignores injected role and tenant claims (137.5877ms)
+  ✔ invalid token claims, signature, authentication strength and response state never create sessions (110.3054ms)
+  ✔ callback replay and swapped browser flow cookies cannot issue sessions (15.0399ms)
+  ✔ cookie mutations require fixed Origin and CSRF; role and tenant checks still apply (67.82ms)
+  ✔ collector HMAC and worker service credentials remain usable (38.5019ms)
+  ✔ revocation is immediate, disable blocks new login, enable does not revive old sessions (55.0793ms)
+  ✔ logout ends only the app session and verifies CSRF (24.4067ms)
+  ✖ restart invalidates sessions; signed access state survives projection tampering and backup recovery (198.2759ms)
+  ✖ audit exports, database files and process logs contain no authentication secrets (4.1779ms)
+  ✔ absolute and idle expiration are enforced on the server; expired login flow is never exchanged (72.4104ms)
+  ✔ untrusted discovery issuer or endpoint origins are rejected before authorization redirect (50.1577ms)
+✖ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation (1729.6661ms)
+✔ enterprise transport and principal binding fail closed at configuration time (0.7701ms)
+✖ enterprise OIDC over trusted HTTPS issues Secure host cookies and binds mutations to public origin (370.9668ms)
+✔ OIDC session uses same-origin cookies and CSRF without exposing the session marker as bearer credentials (19.9452ms)
+✔ anonymous OIDC login selects only the fixed SSO path and never opens the local token form (3.9524ms)
+✔ local token workflow keeps credentials in memory and preserves a visible failed-login message (2.0975ms)
+✔ late local login responses cannot clear a newer login or reopen its dialog (1.3271ms)
+✔ logout clears visible evidence immediately, rejects late API responses and revokes with the old CSRF only (1.6346ms)
+✔ 401 revokes browser state and a late session lookup cannot restore a cleared authentication epoch (2.2014ms)
+✔ page cache entry clears evidence and restoration requires a fresh server session (1.4448ms)
+✔ admin access manager keeps hostile account names literal and sends scoped changes with a reason (2.5051ms)
+✔ non-admins have no account management action and failed logout does not claim server revocation (2.9234ms)
+✔ rule create-version cannot re-sign forged history, authorship or test evidence (94.9241ms)
+✔ rule test cannot re-sign forged history, authorship or test evidence (78.3906ms)
+✔ rule approve cannot re-sign forged history, authorship or test evidence (76.4257ms)
+✔ exception approval cannot sign forged scope, expiry or two-person identities (75.4911ms)
+✔ governance task updates preserve signed target and prior evidence (77.7951ms)
+✔ rule: missing projection is rejected without a new signed record (66.0302ms)
+✔ rule: extra projection is rejected without a new signed record (66.9518ms)
+✔ rule: body-id projection is rejected without a new signed record (68.2501ms)
+✔ rule: sql-id projection is rejected without a new signed record (70.4778ms)
+✔ exception: missing projection is rejected without a new signed record (65.1931ms)
+✔ exception: extra projection is rejected without a new signed record (66.1141ms)
+✔ exception: body-id projection is rejected without a new signed record (64.8405ms)
+✔ exception: sql-id projection is rejected without a new signed record (68.6421ms)
+✔ governance_task: missing projection is rejected without a new signed record (76.2335ms)
+✔ governance_task: extra projection is rejected without a new signed record (65.4252ms)
+✔ governance_task: body-id projection is rejected without a new signed record (66.6601ms)
+✔ governance_task: sql-id projection is rejected without a new signed record (65.7044ms)
+✔ rule tests use signed decrypted events despite tampered, missing and extra event projections (86.4677ms)
+✔ projection checks preserve tenant isolation and do not retire or rewrite previous versions on rejection (85.9047ms)
+✔ large unrelated signed records are fully hashed without blocking policy edits; oversized policy history fails closed (350.1064ms)
+✔ bound stage1 candidate verifies without claiming quality or promotion (54.1612ms)
+✔ changed adapter bytes or an unlisted file fails exact inventory (37.6204ms)
+✔ partial or symlinked artifacts cannot be sealed into an acceptable run (22.6645ms)
+✔ resealed wrong stage, step, or promotion flag still fails (48.274ms)
+✔ successful exit without confirmed cleanup and resource pilots cannot pass (22.5372ms)
+✔ resealed candidate with another runtime or base is rejected (46.816ms)
+✔ changed original data or runtime sidecar fails execution binding (40.6945ms)
+✔ step numbers cannot conceal skipped optimizer updates or missing counters (42.8799ms)
+✔ missing, repeated, reordered, malformed, and truncated optimizer records fail (49.5464ms)
+✔ resealed candidate requires a finite baseline evaluation loss (36.7934ms)
+✔ sealed five-step parent plus fifteen actual resumed updates verifies twenty total (86.6489ms)
+✔ resume rejects provenance byte changes and a false parent marker (77.8108ms)
+✔ resume rejects unapproved identity changes even with mutually matching receipts (92.2017ms)
+✔ resume requires unchanged parent optimizer bytes and verified five Adam updates (90.9672ms)
+✔ resume rejects wrong source step, missing updates, skipped updates, and extra records (149.4299ms)
+✔ fresh executions cannot conceal resume arguments or a resume lineage (47.1139ms)
+✔ resume verifies applied provenance bytes and actual optimizer, scheduler, and RNG restoration (153.2219ms)
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (3.1179ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.2206ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.1487ms)
+✔ successful telemetry does not query another Pod or change the sample (0.122ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.3757ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.1901ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.2984ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.1647ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.1766ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.1983ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.1745ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.1542ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.219ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.1065ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.2086ms)
+✔ complete persisted synthetic evidence with BOM verifies consistency without claiming actual execution or quality (503.4232ms)
+✔ all 64 admitted rows require 128 paired calls and raw partials (468.1523ms)
+✔ production CLI rejects fixture pins and writes a failure receipt without overwriting controller evidence (370.2289ms)
+✔ rejects exit zero without successful controller (295.1043ms)
+✔ rejects missing termination confirmation (303.4187ms)
+✔ rejects nonzero process exit (306.3222ms)
+✔ rejects admission denied (339.546ms)
+✔ rejects training mode passed as diagnostic (321.2686ms)
+✔ rejects controller cannot mask generation error (367.7025ms)
+✔ rejects different Pod UID (379.1453ms)
+✔ rejects different Job owner UID (397.9994ms)
+✔ rejects different generation Pod UID (392.2563ms)
+✔ rejects missing response file (393.8667ms)
+✔ rejects response bytes changed (388.2648ms)
+✔ rejects raw row differs despite recomputed response hash (380.6651ms)
+✔ rejects missing response ID despite recomputed hash (394.2415ms)
+✔ rejects invalid raw elapsed time (389.4706ms)
+✔ rejects negative token measurement (404.1216ms)
+✔ rejects excluded sample lacks error flag (522.4676ms)
+✔ rejects admission crops full context (393.7292ms)
+✔ rejects model call total inconsistent (377.511ms)
+✔ rejects stdout call omitted (527.3579ms)
+✔ rejects runtime code changed (377.4799ms)
+✔ rejects source failed controller overwritten (432.566ms)
+✔ rejects candidate adapter changed (380.3336ms)
+✔ rejects unexpected candidate file (363.5442ms)
+✔ rejects writable candidate live mount (368.8423ms)
+✔ rejects writable outputs escape diagnostic subtree (369.6947ms)
+✔ rejects manifest mismatch (349.3521ms)
+✔ rejects source path escape (347.9808ms)
+✔ rejects missing raw row (373.7724ms)
+✔ rejects extra raw row (572.6311ms)
+✔ diagnostic Job fixes the dataset, same base and immutable candidate while limiting writes to diagnostics (4.5378ms)
+✔ live mount admission rejects writable candidates, root checkpoint mounts and foreign PVC aliases (7.1254ms)
+✔ diagnostic runtime is immutable, content-addressed and contains only curated inference helpers (4.1165ms)
+✔ diagnostic Job rejects changed provenance, data, promotion flags and arbitrary paths (21.9507ms)
+✔ controller diagnostic mode is explicit and cannot combine with resume or pilot (1.0108ms)
+✔ selection is deterministic and preserves full original context and annotation truth (3.4185ms)
+✔ reject heldout overlap by id before subset filtering (0.5248ms)
+✔ reject heldout overlap by familyId before subset filtering (0.1587ms)
+✔ reject heldout overlap by contextSha256 before subset filtering (0.0989ms)
+✔ reject original answer forgery even if context hash is updated (0.1964ms)
+✔ reject forged original answer span and context modification (0.1933ms)
+✔ a long full context is excluded rather than answer-centered cropping (0.166ms)
+✔ duplicate IDs and fake local review are rejected (0.1603ms)
+✔ privacy patterns exclude the entire row without claiming comprehensive review (0.171ms)
+✔ pinned preparation refuses changed manifest before creating any output (6.1015ms)
+✔ source artifact verification rejects altered bytes and path escapes (3.3775ms)
+✔ exact answer with full context quote passes; an answer without supporting quote fails (0.7321ms)
+✔ forged quote and quote about another answer cannot pass grounding (0.1764ms)
+✔ correct abstention requires both fields empty and flag true (0.1205ms)
+✔ JSON failure and unsupported legal approval field count as failures (0.3472ms)
+✔ timeout, token exhaustion and inference error fail even with correct content (0.1942ms)
+✔ normalization is NFC and whitespace only, not semantic equivalence (0.1413ms)
+✔ all original human answer alternatives are accepted (0.2093ms)
+✔ missing outputs count as failures with unchanged denominator; no model execution claim (0.875ms)
+✔ scorer rejects swapped data hash or extra response IDs (0.4764ms)
+✔ measured model loading headroom blocks a repeat of the 11GiB commit failure (2.7525ms)
+✔ explicit interactive approval changes input and graphics concurrency only, preserving memory and thermal stops (0.9843ms)
+✔ three stable readings admit only explicit manual profile without interpreting WDDM graphics as ML (0.189ms)
+✔ one fresh sample or stale/missing guest observation cannot claim stable admission (0.2155ms)
+✔ Windows and guest memory are never summed to cover Windows pressure (0.1193ms)
+✔ new input after admission pauses but elapsed idle baseline does not (0.1641ms)
+✔ continue requires actual cgroup telemetry and immediately stops OOM and commit pressure (0.2313ms)
+✔ sustained cgroup and guest PSI pressure stops without blocking normal busy training GPU (0.2059ms)
+✔ stage two job binds the exact completed step-20 parent and a new 40-step target (8.3789ms)
+✔ stage two manifest rejects target substitution and arbitrary parent steps (12.1797ms)
+✔ KLUE normalization uses Unicode code points, preserves originals and never claims local human approval (2.0455ms)
+✔ KLUE malformed QA, duplicate identity and inconsistent unanswerable labels fail closed (0.3936ms)
+✔ document/context components cannot cross derived splits or touch official heldout (4.0645ms)
+✔ duplicate training questions are excluded while distinct questions remain in the same family (0.23ms)
+✖ 보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 증명 (665.7695ms)
+✔ 무단 키 누락·검색 사본 변조는 정당한 보존 종료로 위장할 수 없다 (763.219ms)
+✔ 승인 이후 추가된 보존 hold는 파기 실행 시 재확인된다 (1901.7191ms)
+✔ 변경된 원장 head를 정상 조회가 재서명해 정당화하지 않는다 (768.5656ms)
+✔ 서명되지 않은 파기 승인·hold·사건 사본 변경은 키 파기 전에 거부된다 (1876.8052ms)
+✔ 사본만 변경한 승인 작성자·hold 작성자·보존 정책은 새 서명으로 정당화하지 않는다 (1881.4707ms)
+✔ four versioned role packages have distinct runner instructions and 30/10/20 isolated unreviewed fixtures (13.6989ms)
+✔ deterministic scorer checks citations, unknown, relations and safety; LoRA gate blocks current corpus (4.9492ms)
+✔ moving signed rows to another SQL tenant cannot turn valid signatures into tenant authority (65.2032ms)
+✔ SQL sequence changes are detected even when record bodies and checkpoint still verify internally (52.0598ms)
+✔ an empty tenant cannot inherit another tenant checkpoint (51.0194ms)
+{"cleanup":"complete","leaseId":"e30ac8ab-5c48-40b9-94bc-23e77329f933","stopped":["ollama"],"deleted":false,"volumesPreserved":true}
+{"cleanup":"complete","leaseId":"ab5c2781-9a96-4e0b-8a58-c603d5fbb6d0","stopped":["ollama"],"deleted":false,"volumesPreserved":true}
+{"cleanup":"complete","leaseId":"8593ce86-2ffc-4511-ae33-871f6218229c","stopped":["ollama"],"deleted":false,"volumesPreserved":true}
+✔ test runtime refuses pre-existing resources and never adopts another owner (5.0386ms)
+✔ explicit lease starts and stops only exact EvidScope names without delete commands (12.6651ms)
+✔ partial start failure cleans its own attempted resource and removes lease (9.2514ms)
+✔ manual idle and dead wrapper require explicit reconcile before cleanup (19.8995ms)
+✔ owned wrapper cleans resources after normal exit, child error, and interrupt (25.7602ms)
+▶ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계
+  ✔ 신뢰하지 않은 CA는 클라이언트 TLS handshake 실패 (108.987ms)
+  ✔ NODE_EXTRA_CA_CERTS로 신뢰한 CA와 IP·DNS SAN은 성공 (266.6878ms)
+  ✔ 신뢰한 CA도 SAN 불일치 서버는 거부 (109.6191ms)
+  ✔ gateway의 vault CA 미신뢰·SAN 불일치는 503 및 미접수 (405.969ms)
+  ✔ 신뢰한 gateway → vault는 202 반환 및 지속성 조회 확인 (266.0166ms)
+✖ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계 (2928.7097ms)
+✔ image build cannot run when Docker readiness is unavailable (1.3354ms)
+✔ running training yields when less than 1GiB of GPU memory remains (1.8134ms)
+✔ preparation has suspended explicit PVC and probe paths without forged formal receipts (1.612ms)
+✔ financial candidates separate requested prose language, bind supplied law, keep families together and never approve (21.9837ms)
+✔ training starts only with a fresh idle low-load host receipt (2.8904ms)
+✔ blocked preflight creates no workload (0.3197ms)
+✔ user activity stops the owned training workload and confirms absence (0.3123ms)
+✔ completed work is still deleted and unknown cleanup cannot report success (1.2792ms)
+✔ pre-aborted or probe-time cancellation never starts training (0.249ms)
+✔ cleanup retries an ambiguous delete and requires explicit disappearance confirmation (0.2622ms)
+✔ training template is background-only, bounded and initially suspended (0.7746ms)
+✔ Windows probe wrapper accepts only the bounded receipt schema (0.8604ms)
+✔ visibility distinguishes complete, partial and absent content with missing values kept unknown (16.9058ms)
+✔ default OFF is separate from unavailable runtime and UI reads never start models (4.6844ms)
+✔ script signals and screening counts do not imply English proficiency or safety (2.6742ms)
+✔ asset drilldown renders hostile names and evidence as text, never executable DOM (2.7048ms)
+✔ frozen package preview exposes full governance and role contracts, including beyond display summaries (2.9632ms)
+✔ human adopted drafts and sequential changes preserve machine original and rejected history (2.8849ms)
+✔ six primary task groups retain all existing destinations and local-only assets (0.9488ms)
+✔ governance requirement selection caps at three and changes invalidate package preview (3.4952ms)
+✔ only governance requests include explicitly selected requirements; manual question is optional and bounded (2.792ms)
+✔ system facts preserve unknown and explicit false, numeric compute and independently selected EU roles (3.7025ms)
+✔ request builder sends latest profile and selected scope, invalidates frozen preview and rejects late responses (5.1784ms)
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (373.2075ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (398.072ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (195.2151ms)
+✔ forged object projections cannot be certified by a new backup (118.6814ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (219.4391ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (240.3932ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (288.7627ms)
+  ✔ delete (288.3294ms)
+  ✔ index (280.397ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (858.7007ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (260.5235ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (201.7399ms)
+✔ deleted event keys stay deleted after snapshot recovery (288.1005ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (1081.6647ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (632.2897ms)
+✔ 서비스 결과의 성공·실패 혼재를 성공 하나로 축약하지 않는다 (2.9598ms)
+✔ 참고 데이터 자기보고·서비스 참조·누락·비밀 비수집을 실제 HTTP에서 구분 (1007.5914ms)
+✔ 현재 목적지 정책을 과거 행동에 소급하지 않고 시점별 정책과 불확실성을 표시 (0.4429ms)
+✔ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (842.9754ms)
+✔ 사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 연결하고 작성자 위조를 차단 (776.6632ms)
+✔ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (1247.3629ms)
+✖ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (618.8314ms)
+✔ 검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존하며 재검토로 표시 (2006.7653ms)
+✔ worker leases distribute disjoint jobs and commit deterministic output once (88.2719ms)
+✔ worker identity, evidence references and tenant/action override cannot be supplied by caller (53.5003ms)
+✔ second vault connection observes durable leases and completed results (61.8359ms)
+✔ late evidence invalidates old results and expired leases recover after worker restart (74.5149ms)
+✔ query projection edits cannot alter worker source evidence or policy snapshot (65.4767ms)
+✔ evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure (61.1274ms)
+✔ findings are bounded with explicit total coverage, never reported as full analysis (194.7941ms)
+✔ oversized action quarantines explicitly and stays unanalyzed without looping duplicate evaluations (2348.0912ms)
+✔ analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies (140.6857ms)
+✔ oversized individual ledger rows are quarantined before parsing while checkpoint completeness remains mandatory (62.9942ms)
+✔ streaming snapshot distinguishes authorized erasure, missing keys and illegally retained erased keys (63.5646ms)
+✔ encrypted records without the new action header remain readable through bounded streaming (55.2582ms)
+✔ worker HTTP claim/complete runs computation in client and denies source and audit boundary access (723.1641ms)
+ℹ tests 479
+ℹ suites 0
+ℹ pass 468
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91306.2663
+
+✖ failing tests:
+
+test at test\distribution.test.mjs:24:1
+✖ local HTTP fixture observes two backend instances using fresh signed connections; not Kubernetes proof (38.9346ms)
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at test\integration.test.mjs:13:1
+✖ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합 (596.7648ms)
+  Error: audit exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\load-balancing.test.mjs:51:1
+✖ worker liveness is local but readiness requires a successful analysis tick (416.1664ms)
+  Error: ingress exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\load-balancing.test.mjs:61:1
+✖ shutdown cannot turn an in-flight dependency probe into a ready response (592.5778ms)
+  Error: audit exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\oidc-http.test.mjs:96:10
+✖ restart invalidates sessions; signed access state survives projection tampering and backup recovery (198.2759ms)
+  Error: vault exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1:56119
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1',
+    port: 56119
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\oidc-http.test.mjs:110:10
+✖ audit exports, database files and process logs contain no authentication secrets (4.1779ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  503 !== 200
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/oidc-http.test.mjs:111:58)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/oidc-http.test.mjs:110:2)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\oidc-tls.test.mjs:10:1
+✖ enterprise OIDC over trusted HTTPS issues Secure host cookies and binds mutations to public origin (370.9668ms)
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at test\retention.test.mjs:9:1
+✖ 보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 증명 (665.7695ms)
+  Error: audit exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\tls.test.mjs:23:1
+✖ 실제 TLS 인증서·호스트 검증과 gateway → vault 신뢰 경계 (2928.7097ms)
+  Error: audit startup/exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/tls.test.mjs:55:56)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test\workbench.test.mjs:76:1
+✖ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (618.8314ms)
+  Error: audit exit 1: node:events:487
+        throw er; // Unhandled 'error' event
+        ^
+  
+  Error: listen EFAULT: bad address in system call argument 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+      at listenInCluster (node:net:2065:12)
+      at node:net:2274:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+  Emitted 'error' event on Server instance at:
+      at emitErrorNT (node:net:2044:8)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EFAULT',
+    errno: -4074,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+npm notice
+npm notice New major version of npm available! 11.12.1 -> 12.1.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.1.0
+npm notice To update run: npm install -g npm@12.1.0
+npm notice

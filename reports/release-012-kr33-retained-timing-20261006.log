@@ -1,0 +1,966 @@
+{
+  "readOnly": true,
+  "scanned": 160,
+  "found": [
+    {
+      "directory": "run-La6liJ",
+      "mtime": "2026-10-06T06:11:26.783Z",
+      "assessmentCount": 4,
+      "latest": {
+        "id": "1584189e-c872-4e07-aebc-1edfa8c70361",
+        "createdAt": "2026-10-06T06:11:27.583Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/3250755a-8dd5-455a-ad72-7224e7a0ff78",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_evidence_insufficient",
+              "supportsRequestReceipt": false,
+              "missingChecks": [
+                "high_impact_confirmation"
+              ],
+              "reasons": [
+                "high_impact_confirmation:observation_after_fixed_receipt"
+              ],
+              "matchedChecks": [],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/3250755a-8dd5-455a-ad72-7224e7a0ff78",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:11:27.346Z",
+            "receivedAt": "2026-10-06T06:11:27.354Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:10:27.200Z",
+            "reviewedAt": "2026-10-06T06:09:27.199Z"
+          },
+          {
+            "ref": "alpha-authority/ce7548d2-9d65-491f-b7e7-ff1d1ca896d9",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:11:27.568Z",
+            "receivedAt": "2026-10-06T06:11:27.565Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:11:26.502Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-RDaXnk",
+      "mtime": "2026-10-06T06:11:01.494Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "51728ae1-d592-400d-ab3a-292c33a4e8c1",
+        "createdAt": "2026-10-06T06:11:02.457Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/a71069db-5422-4b7f-8bee-b83baaf69118",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/daf77dec-47c2-4a48-9992-bbdd17e442e6",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/a71069db-5422-4b7f-8bee-b83baaf69118",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:11:02.038Z",
+            "receivedAt": "2026-10-06T06:11:02.052Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:10:01.896Z",
+            "reviewedAt": "2026-10-06T06:09:01.895Z"
+          },
+          {
+            "ref": "alpha-authority/daf77dec-47c2-4a48-9992-bbdd17e442e6",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:11:02.238Z",
+            "receivedAt": "2026-10-06T06:11:02.242Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:11:01.171Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-HWimb0",
+      "mtime": "2026-10-06T06:10:36.668Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "45f966d4-65ee-48d1-af99-7379c2bb7548",
+        "createdAt": "2026-10-06T06:10:37.694Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/63885f5d-e13c-4e70-9bee-591f7760c42d",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/963148cd-963f-42a2-800a-b6206fc9f01f",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/63885f5d-e13c-4e70-9bee-591f7760c42d",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:10:37.230Z",
+            "receivedAt": "2026-10-06T06:10:37.245Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:09:37.073Z",
+            "reviewedAt": "2026-10-06T06:08:37.072Z"
+          },
+          {
+            "ref": "alpha-authority/963148cd-963f-42a2-800a-b6206fc9f01f",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:10:37.464Z",
+            "receivedAt": "2026-10-06T06:10:37.468Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:10:36.388Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-HHPZRN",
+      "mtime": "2026-10-06T06:10:10.618Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "1c825ad5-d76b-4f0e-b25b-afdc1a8f7687",
+        "createdAt": "2026-10-06T06:10:11.613Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/f6b81832-4323-4607-bea7-a90f28f5bd0c",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/0aedb2f8-9c07-4fca-9998-3a8acd798d21",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/f6b81832-4323-4607-bea7-a90f28f5bd0c",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:10:11.193Z",
+            "receivedAt": "2026-10-06T06:10:11.217Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:09:11.011Z",
+            "reviewedAt": "2026-10-06T06:08:11.010Z"
+          },
+          {
+            "ref": "alpha-authority/0aedb2f8-9c07-4fca-9998-3a8acd798d21",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:10:11.390Z",
+            "receivedAt": "2026-10-06T06:10:11.402Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:10:10.326Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-Sp9YhH",
+      "mtime": "2026-10-06T06:09:45.093Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "d5e9f77e-769e-414d-a992-ec0e8aea470c",
+        "createdAt": "2026-10-06T06:09:46.090Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/18575a03-bad5-4331-b6d5-f65dbc0fd3de",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/c3241a43-06f1-47c6-be2a-1ab80d83404a",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/18575a03-bad5-4331-b6d5-f65dbc0fd3de",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:09:45.661Z",
+            "receivedAt": "2026-10-06T06:09:45.673Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:08:45.506Z",
+            "reviewedAt": "2026-10-06T06:07:45.505Z"
+          },
+          {
+            "ref": "alpha-authority/c3241a43-06f1-47c6-be2a-1ab80d83404a",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:09:45.852Z",
+            "receivedAt": "2026-10-06T06:09:45.854Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:09:44.790Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-QVW4Yr",
+      "mtime": "2026-10-06T06:09:19.438Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "a37d913d-da25-43a0-8080-2327df42644a",
+        "createdAt": "2026-10-06T06:09:20.410Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/d87d031b-ccc8-44e4-bee2-d7f25227bcd9",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/1d0c0cac-2ea5-4461-9a42-31e291695ccd",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/d87d031b-ccc8-44e4-bee2-d7f25227bcd9",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:09:19.997Z",
+            "receivedAt": "2026-10-06T06:09:20.013Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:08:19.842Z",
+            "reviewedAt": "2026-10-06T06:07:19.841Z"
+          },
+          {
+            "ref": "alpha-authority/1d0c0cac-2ea5-4461-9a42-31e291695ccd",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:09:20.192Z",
+            "receivedAt": "2026-10-06T06:09:20.197Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:09:19.128Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-MKATli",
+      "mtime": "2026-10-06T06:08:53.227Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "c37071c3-bef5-4d50-b161-4850388ceb6d",
+        "createdAt": "2026-10-06T06:08:54.330Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/729b6f1f-e29f-456c-96c6-7ada0318e982",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/c64be225-8a0c-4872-9e68-826fea93bad8",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/729b6f1f-e29f-456c-96c6-7ada0318e982",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:08:53.919Z",
+            "receivedAt": "2026-10-06T06:08:53.932Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:07:53.744Z",
+            "reviewedAt": "2026-10-06T06:06:53.743Z"
+          },
+          {
+            "ref": "alpha-authority/c64be225-8a0c-4872-9e68-826fea93bad8",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:08:54.113Z",
+            "receivedAt": "2026-10-06T06:08:54.114Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:08:53.050Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-svmPC7",
+      "mtime": "2026-10-06T06:08:27.754Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "35118cd7-3830-4c46-824b-b13848bedb2e",
+        "createdAt": "2026-10-06T06:08:28.838Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/69194886-5866-414b-b232-ce4980bdb8d5",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/ed99a894-f756-4728-b284-f57e8b1adaa5",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/69194886-5866-414b-b232-ce4980bdb8d5",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:08:28.350Z",
+            "receivedAt": "2026-10-06T06:08:28.362Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:07:28.179Z",
+            "reviewedAt": "2026-10-06T06:06:28.178Z"
+          },
+          {
+            "ref": "alpha-authority/ed99a894-f756-4728-b284-f57e8b1adaa5",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:08:28.568Z",
+            "receivedAt": "2026-10-06T06:08:28.568Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:08:27.502Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-vxmIcI",
+      "mtime": "2026-10-06T06:08:01.848Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "41a18ccd-4418-414e-b85f-c38e1a0fafe3",
+        "createdAt": "2026-10-06T06:08:02.864Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/24175228-cdba-493e-a3f7-75bef0a1a09c",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/d6e0a4ff-d48f-4d32-b656-b5278e5d0f65",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/24175228-cdba-493e-a3f7-75bef0a1a09c",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:08:02.439Z",
+            "receivedAt": "2026-10-06T06:08:02.453Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:07:02.266Z",
+            "reviewedAt": "2026-10-06T06:06:02.265Z"
+          },
+          {
+            "ref": "alpha-authority/d6e0a4ff-d48f-4d32-b656-b5278e5d0f65",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:08:02.655Z",
+            "receivedAt": "2026-10-06T06:08:02.657Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:08:01.592Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-qUbDBJ",
+      "mtime": "2026-10-06T06:04:25.224Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "baa0bede-0efb-496b-ad16-79be747e4acb",
+        "createdAt": "2026-10-06T06:04:26.366Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/01951d8b-e5a0-4de8-bf3b-367405f66590",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/34fbb656-f2ee-4583-8f67-051d59c0b8ee",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/01951d8b-e5a0-4de8-bf3b-367405f66590",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:04:25.879Z",
+            "receivedAt": "2026-10-06T06:04:25.896Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:03:25.691Z",
+            "reviewedAt": "2026-10-06T06:02:25.690Z"
+          },
+          {
+            "ref": "alpha-authority/34fbb656-f2ee-4583-8f67-051d59c0b8ee",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:04:26.113Z",
+            "receivedAt": "2026-10-06T06:04:26.119Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:04:25.036Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-QTVbxy",
+      "mtime": "2026-10-06T06:03:25.113Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "7ad1d066-ed7b-4c63-a0a6-3c8a73b8a033",
+        "createdAt": "2026-10-06T06:03:26.225Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/39dfda72-034b-430f-8570-503b2d5e789e",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/4acdf091-ee32-4e3e-9d45-d911edf4d336",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/39dfda72-034b-430f-8570-503b2d5e789e",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:03:25.739Z",
+            "receivedAt": "2026-10-06T06:03:25.753Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:02:25.587Z",
+            "reviewedAt": "2026-10-06T06:01:25.586Z"
+          },
+          {
+            "ref": "alpha-authority/4acdf091-ee32-4e3e-9d45-d911edf4d336",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:03:25.980Z",
+            "receivedAt": "2026-10-06T06:03:25.982Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:03:24.915Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-WtZQzj",
+      "mtime": "2026-10-06T06:01:44.183Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "2e4320dc-fb35-4b4e-88cc-99f196240cea",
+        "createdAt": "2026-10-06T06:01:45.353Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/23306714-9f0f-4dfb-8e3f-fff122390da9",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/8fca00d1-fcab-463c-8b62-d4e243ed3592",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/23306714-9f0f-4dfb-8e3f-fff122390da9",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T06:01:44.829Z",
+            "receivedAt": "2026-10-06T06:01:44.840Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T06:00:44.648Z",
+            "reviewedAt": "2026-10-06T05:59:44.647Z"
+          },
+          {
+            "ref": "alpha-authority/8fca00d1-fcab-463c-8b62-d4e243ed3592",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T06:01:45.087Z",
+            "receivedAt": "2026-10-06T06:01:45.087Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T06:01:44.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "directory": "run-0KJtGv",
+      "mtime": "2026-10-06T05:55:29.651Z",
+      "assessmentCount": 6,
+      "latest": {
+        "id": "df57153d-25fc-45e3-8eba-dc16f5ce7877",
+        "createdAt": "2026-10-06T05:55:30.761Z",
+        "result": {
+          "supportsHumanAssessment": true,
+          "status": "authenticated_reported_measurement_supported",
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_pre_review",
+              "ref": "alpha-telemetry/bfbfc486-3bde-4fcf-909f-ec4928f5a62b",
+              "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false,
+          "limitations": [
+            "출처 인증·원장·파일 검증과 측정값의 관계를 검증합니다. 측정값·문서 내용·정부 접수 보고의 진실성을 독립적으로 보증하지 않습니다.",
+            "시험에 포함된 범위의 보고된 결과이며 서비스의 전체 이용자·출력을 시험하거나 법적 충분성·준수·인증을 자동 판정하지 않습니다.",
+            "노력 기록은 완료된 검·인증이나 영향평가가 아니며, 내부 업무·영업비밀 등 법률 예외와 공급사 간주는 사람이 별도로 검토합니다.",
+            "5년 보관 정책·복구 시험은 경과한 5년의 보존 실적을 입증하지 않습니다. 자연어 문서의 내용 충분성과 적용성은 사람의 판단입니다.",
+            "providedAt·deadline의 미래 값은 예정 경계로만 사용합니다. 실제 제품·서비스 제공과 업무 결과는 별도 운영 기록과 대조해야 합니다."
+          ],
+          "optionalWorkflows": [
+            {
+              "checkType": "high_impact_confirmation",
+              "required": false,
+              "requested": true,
+              "status": "request_receipt_supported",
+              "supportsRequestReceipt": true,
+              "missingChecks": [],
+              "reasons": [],
+              "matchedChecks": [
+                {
+                  "checkType": "high_impact_confirmation",
+                  "ref": "alpha-authority/9b0ef66b-20d6-4bda-8371-6b03218609ae",
+                  "documentHash": "bd3aa2155dd8b63f6f0d0953b1eba0d03a7c68fef6823b1a86b842e2f8d55896"
+                }
+              ],
+              "limitations": [
+                "선택적 요청의 인증된 접수 보고를 검증하며 정부의 회신·고영향 해당 여부 결정 또는 법적 준수를 확정하지 않습니다."
+              ]
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ref": "alpha-telemetry/bfbfc486-3bde-4fcf-909f-ec4928f5a62b",
+            "sourceKind": "telemetry",
+            "occurredAt": "2026-10-06T05:55:30.276Z",
+            "receivedAt": "2026-10-06T05:55:30.299Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_pre_review",
+            "providedAt": "2026-10-06T05:54:30.102Z",
+            "reviewedAt": "2026-10-06T05:53:30.101Z"
+          },
+          {
+            "ref": "alpha-authority/9b0ef66b-20d6-4bda-8371-6b03218609ae",
+            "sourceKind": "authority",
+            "occurredAt": "2026-10-06T05:55:30.483Z",
+            "receivedAt": "2026-10-06T05:55:30.487Z",
+            "clockUncertaintyMs": 0,
+            "checkType": "high_impact_confirmation",
+            "requestedAt": "2026-10-06T05:55:29.416Z"
+          }
+        ]
+      }
+    }
+  ]
+}

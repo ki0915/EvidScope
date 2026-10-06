@@ -1,0 +1,26 @@
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (103.950125ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (44.4092ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (27.403535ms)
+✔ forged object projections cannot be certified by a new backup (15.803421ms)
+✔ actions-only tenants cannot be omitted from whole-vault backup verification (19.31983ms)
+✔ a signed legacy archive omitting an actions-only tenant fails restore before publication (7.883598ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (34.037932ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (33.039822ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (38.108593ms)
+  ✔ delete (37.319107ms)
+  ✔ index (36.405173ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (112.510606ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (33.696703ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (27.985857ms)
+✔ deleted event keys stay deleted after snapshot recovery (34.362656ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (395.541246ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (199.159112ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1170.522045

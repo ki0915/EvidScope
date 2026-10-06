@@ -1,0 +1,18 @@
+✔ all eighteen Korean requirements keep an unfetched attestation insufficient and block closure (629.3825ms)
+✔ HMAC source ingestion, retained file and fixed versions support a measured notice review (187.4532ms)
+✔ notice after provision cannot clear a review task (163.7564ms)
+✔ notice unknown clock cannot clear a review task (150.0563ms)
+✔ notice wrong model cannot clear a review task (148.4594ms)
+✔ notice failed test cannot clear a review task (143.0588ms)
+✔ an AI self-report cannot issue a governance check, nor can a caller inject a frozen snapshot (135.959ms)
+✔ current report and closure both reject changed purpose, expired review, pending legal review and changed law (286.9873ms)
+✔ human non-applicability is recorded separately and needs a recoverable basis before closure (146.2918ms)
+✔ the existing vault document alone cannot imply publication or a qualified human oversight plan (204.5935ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2367.5159

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "verified": false,
+  "trainingRunCompleted": false,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "error": "controller_execution_not_verified"
+}

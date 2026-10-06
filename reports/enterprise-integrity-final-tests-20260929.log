@@ -1,0 +1,25 @@
+2026-09-29 enterprise integrity final verification
+
+node --test focused development/integrity/vault suites: 86/86 PASS
+node --test document/governance/finance/vault focused suites: 93/93 PASS
+npm test before final bounded-read regression: 539/539 PASS
+independent review finding: false-positive backup path fixed; single-descriptor cap+1 bounded read added
+node --test bounded document/governance/finance/vault suites after review fix: 39/39 PASS
+npm test final: 540/540 PASS
+restricted Linux image core integrity suites: 106/106 PASS
+
+image=evidscope:enterprise-20260929-r8
+digest=sha256:1a21b0a9f8c537d3c9c814afd9e28d7992da2c164110c5444e35e525f7136789
+runtime=uid 1000:1000, linux/amd64, network none, read-only root, cpu 2, memory 1GiB, cap-drop ALL, no-new-privileges
+
+training preflight run=public-qa-stage2-lowmem-20260929-r3
+provenance_sha256=ad8e43a9f8dd7e174ccca31a3aa4e6c8bb6556c4119b083866e6a8f5887d791d
+windows_commit_free_gib=5.804,5.582,7.556
+state=blocked_resources
+reason=windows_memory_start_pressure
+job_created=false
+pod_created=false
+candidate_created=false
+lease_created=false
+dlp_restored_exact_ids=true
+

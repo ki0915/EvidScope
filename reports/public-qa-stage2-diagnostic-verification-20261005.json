@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "verificationPassed": true,
+  "evaluationExecutionVerified": true,
+  "syntheticFixture": false,
+  "runId": "public-qa-diag-stage2-20261005-r1",
+  "jobUid": "30edc4d5-7dbf-4fa0-a6b5-6c70e7af7e21",
+  "podUid": "8acd24ec-1a69-4152-b39a-46e062721828",
+  "controllerReceiptSha256": "8e15a3c4d512905976f3de78b9adfe62c810a1ea23245017736126720cda6b80",
+  "responsesSha256": "5f080bd286c92a564de11bc98584e354df37ad14e0a7e423a4908de2215c5fa9",
+  "preAdmissionSha256": "d416b1c655e7ae44e5b4401a2aaa92c36713f3b9c459ab3898cf7f8bfa2b0664",
+  "datasetSha256": "50561634095f758781c4695fcc30e2d7bd7cf7d9b937d8c10174a3e927c837f9",
+  "modelCalls": 128,
+  "admittedRows": 64,
+  "excludedRows": 0,
+  "sourceTrainingExecutionVerified": true,
+  "trainingRunCompleted": false,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "limitations": [
+    "Local persisted execution evidence and hashes; not independent hardware attestation.",
+    "Output quality scoring and human semantic review remain separate."
+  ]
+}

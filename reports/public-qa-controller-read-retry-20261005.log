@@ -1,0 +1,13 @@
+✔ grounding is an explicit training mode with the approved interactive override (0.5671ms)
+✔ transient Windows socket read failure has a bounded retry and preserves fresh result (0.723ms)
+✔ persistent socket errors stop after three reads and non-socket errors never retry (0.4216ms)
+✔ grounding generation diagnosis cannot train or restore optimizer state (0.7409ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.1782ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.825

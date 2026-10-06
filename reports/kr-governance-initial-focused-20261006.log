@@ -1,0 +1,90 @@
+✖ assessment signs a server-computed applicability snapshot and ignores client provenance fields (155.6291ms)
+✔ legacy catalog and assessment provenance trigger a signed re-review task without replacing the human conclusion (151.5921ms)
+✔ signed finance reports freeze policy provenance while a later fact change only marks the live review stale (150.296ms)
+✔ unknown system facts remain unknown and never become an automatic non-applicability decision (2.9139ms)
+✔ Korean high-impact and frontier thresholds are evaluated as separate review candidates (0.2662ms)
+✔ EU transparency candidates require market, role and feature facts and preserve amendment warning (0.3091ms)
+✔ NIST remains voluntary and ISO remains readiness-only (0.1393ms)
+✔ Korean article 31 distinguishes high-impact notice, generated output and realistic synthetic media (0.303ms)
+✔ legacy and financial system facts require review without inferring high-impact or a legal role (0.7734ms)
+✔ Korean expanded scope facts migrate to unknown without inferring operator, exemption or presence (0.2066ms)
+✔ domestic impact supports extraterritorial triage and does not depend only on a KR market label (0.1821ms)
+✔ realistic synthetic media triage follows article 31 paragraph 3 independently of generative classification (0.2307ms)
+✔ domestic representative thresholds are four OR branches with exact boundaries and foreign-presence AND (0.5338ms)
+✔ public procurement duties do not require the institution to supply AI as a business operator (0.2094ms)
+✔ government order is a distinct fact and lack of a current order never becomes automatic compliance (0.1853ms)
+✔ Korean catalog states verified legal scope, publication items, seven impact contents and unverified notices (0.2131ms)
+✔ the schema covers the eighteen Korean governance requirements without importing supplier recognition (0.9914ms)
+✔ notice_pre_delivery: scoped measurement and retrievable document support a human review without issuing a legal verdict (4.1292ms)
+✔ generated_output_marking: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.4088ms)
+✔ realistic_media_disclosure: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.3444ms)
+✔ safety_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.3579ms)
+✔ safety_incident_monitoring: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2383ms)
+✔ safety_submission_receipt: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.4146ms)
+✔ high_impact_pre_review: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.3261ms)
+✔ high_impact_confirmation: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.5077ms)
+✔ high_impact_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.4539ms)
+✔ explanation_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2535ms)
+✔ user_protection: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2487ms)
+✔ oversight_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2969ms)
+✔ document_publication_retention: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2116ms)
+✔ impact_assessment: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2514ms)
+✔ impact_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.9708ms)
+✔ public_impact_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.1653ms)
+✔ certification_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.2441ms)
+✔ public_certification_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.188ms)
+✔ domestic_representative: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.1702ms)
+✔ authority_order_response: scoped measurement and retrievable document support a human review without issuing a legal verdict (0.1621ms)
+✔ strict normalization rejects unknown fields, wrong requirement, malformed hashes and misleading metric types (0.6788ms)
+✔ normalization rejects invalid calendar dates and duplicate or invented document sections (0.4308ms)
+✔ self-attestation, external hashes and supplier bundles cannot stand in for typed measured evidence (0.4483ms)
+✔ the document must have a validated retrieval snapshot and the exact measured content hash (0.5752ms)
+✔ changed purpose, requirement text, model or policy invalidates even a freshly rehashed collector snapshot (0.6195ms)
+✔ agent claims, unsigned copied snapshots, stale records and failed or inconclusive measurements remain insufficient (1.0203ms)
+✔ linking a later good check does not silently erase a selected failed check (0.28ms)
+✔ notice_pre_delivery: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action (0.8313ms)
+✔ high_impact_pre_review: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action (0.7631ms)
+✔ impact_assessment: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action (0.9447ms)
+✔ impact_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action (0.532ms)
+✔ certification_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action (0.4862ms)
+✔ machine-readable marking additionally requires detection and a generation notice, while human-readable marking requires perceptibility (0.3246ms)
+✔ realistic media tests must cover disclosed outputs, user conditions and accessibility; creative mode preserves enjoyment (0.5778ms)
+✔ authority receipts cannot be replaced by telemetry export records or an unaccepted submission (0.8555ms)
+✔ confirmation is optional, but a claimed request needs its separate authority receipt and required attachments (0.5749ms)
+✔ document publication covers four items, confines exclusions to recorded grounds and tests five-year policy, access and restore (0.6724ms)
+✔ impact assessment includes six unconditional areas, conditional improvement plan and vulnerable group characteristics (0.7008ms)
+✔ documented pre-provision efforts are explicitly supported without claiming completed impact assessment or certification (0.5333ms)
+✔ public preference needs an actual recorded comparison and rationale rather than assuming all institutions selected a certified product (0.7325ms)
+✔ oversight needs its explicit plan measurement plus an authority human reviewer for the same model and policy (1.6121ms)
+✔ domestic representative support requires a written mandate including current document review and a domestic presence (0.9019ms)
+✔ actual order response requires specified measures, implementation, acceptance and the recorded response deadline (1.0905ms)
+✔ unknown and non-Korean requirements never receive a fabricated technical success (0.1374ms)
+ℹ tests 61
+ℹ suites 0
+ℹ pass 60
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 658.6118
+
+✖ failing tests:
+
+test at test\governance-applicability-binding.test.mjs:24:1
+✖ assessment signs a server-computed applicability snapshot and ignores client provenance fields (155.6291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'evidence_insufficient'
+  - 'human_evidence_assessed'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-applicability-binding.test.mjs:34:9)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'evidence_insufficient',
+    expected: 'human_evidence_assessed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

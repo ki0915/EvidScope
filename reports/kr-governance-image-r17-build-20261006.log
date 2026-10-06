@@ -1,0 +1,60 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 681B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#2 DONE 1.3s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 268B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 218.78kB 0.0s done
+#4 DONE 0.1s
+
+#5 [ 1/10] FROM docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#5 resolve docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d 0.1s done
+#5 DONE 0.1s
+
+#6 [ 2/10] WORKDIR /app
+#6 CACHED
+
+#7 [ 3/10] COPY package.json package-lock.json ./
+#7 CACHED
+
+#8 [ 4/10] RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+#8 CACHED
+
+#9 [ 5/10] COPY --chown=1000:1000 src/ ./src/
+#9 DONE 0.1s
+
+#10 [ 6/10] COPY --chown=1000:1000 public/ ./public/
+#10 DONE 0.1s
+
+#11 [ 7/10] COPY --chown=1000:1000 data/ ./data/
+#11 DONE 0.1s
+
+#12 [ 8/10] COPY --chown=1000:1000 roles/ ./roles/
+#12 DONE 0.1s
+
+#13 [ 9/10] COPY --chown=1000:1000 scripts/k8s-load.mjs ./scripts/k8s-load.mjs
+#13 DONE 0.1s
+
+#14 [10/10] COPY --chown=1000:1000 scripts/k8s-distribution.mjs ./scripts/k8s-distribution.mjs
+#14 DONE 0.1s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.8s done
+#15 exporting manifest sha256:689719838f2cb9c51df9e4f32e2af2a1a4aeedc97f7b73adbcb5745bdbe05539 0.0s done
+#15 exporting config sha256:40eecb3bf8a7b0ae0bd386a9590fbffc711d65a437b08df7fd0391dade3a008d 0.0s done
+#15 exporting attestation manifest sha256:c70b25908164379c31ebcce5f3c56250befdda876496a31e0ca5d97e87606a7f 0.1s done
+#15 exporting manifest list sha256:e70914351024cbeb45f1034f9341cd25aa4c571e68c3a6c4ec34ef4912ec82f7
+#15 exporting manifest list sha256:e70914351024cbeb45f1034f9341cd25aa4c571e68c3a6c4ec34ef4912ec82f7 0.0s done
+#15 naming to docker.io/library/evidscope:kr-governance-20261006-r17 done
+#15 unpacking to docker.io/library/evidscope:kr-governance-20261006-r17
+#15 unpacking to docker.io/library/evidscope:kr-governance-20261006-r17 0.2s done
+#15 DONE 1.1s

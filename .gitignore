@@ -1,4 +1,5 @@
 node_modules/
+releases/
 .local/
 .test-runs/
 *.db
@@ -16,3 +17,11 @@ node_modules/
 *.sqlite3
 # Local task input is not product documentation.
 docs/user-request.ko.md
+# Local planning, interpreter caches, and downloaded model artifacts.
+.planning/
+__pycache__/
+*.py[cod]
+*.safetensors
+*.gguf
+*.pt
+*.pth

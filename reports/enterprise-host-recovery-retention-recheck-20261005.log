@@ -1,0 +1,32 @@
+✔ 보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 증명 (2210.0242ms)
+✔ 무단 키 누락·검색 사본 변조는 정당한 보존 종료로 위장할 수 없다 (791.976ms)
+✔ 승인 이후 추가된 보존 hold는 파기 실행 시 재확인된다 (1928.8102ms)
+✔ 변경된 원장 head를 정상 조회가 재서명해 정당화하지 않는다 (830.9741ms)
+✔ 서명되지 않은 파기 승인·hold·사건 사본 변경은 키 파기 전에 거부된다 (1998.1564ms)
+✔ 사본만 변경한 승인 작성자·hold 작성자·보존 정책은 새 서명으로 정당화하지 않는다 (1816.7973ms)
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (425.8263ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (323.5561ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (254.7284ms)
+✔ forged object projections cannot be certified by a new backup (154.3647ms)
+✔ actions-only tenants cannot be omitted from whole-vault backup verification (168.427ms)
+✔ a signed legacy archive omitting an actions-only tenant fails restore before publication (156.4131ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (237.7488ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (308.9653ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (283.0735ms)
+  ✔ delete (280.6199ms)
+  ✔ index (286.7232ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (851.2041ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (259.7112ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (204.2229ms)
+✔ deleted event keys stay deleted after snapshot recovery (258.7404ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (1017.6063ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (642.0448ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15095.0757

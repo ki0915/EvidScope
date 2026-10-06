@@ -1,0 +1,11 @@
+FROM pytorch/pytorch@sha256:77f17f843507062875ce8be2a6f76aa6aa3df7f9ef1e31d9d7432f4b0f563dee
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && dpkg-query -W > /opt/installed-system-packages.txt \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --no-cache-dir transformers==4.51.3 peft==0.15.2 bitsandbytes==0.45.5 accelerate==1.6.0 safetensors==0.5.3 \
+    && python -m pip freeze --all > /opt/installed-packages.txt
+COPY train-public-qa.py train-foundation-lora.py training_artifacts.py /app/
+USER 10001:10001
+ENV HOME=/tmp CC=/usr/bin/gcc CXX=/usr/bin/g++ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 WANDB_DISABLED=true PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TOKENIZERS_PARALLELISM=false
+WORKDIR /app
+ENTRYPOINT ["python", "/app/train-public-qa.py"]

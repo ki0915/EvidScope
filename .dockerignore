@@ -1,11 +1,15 @@
 *
 !Dockerfile
+!package.json
+!package-lock.json
 !src/
 !src/**
 !public/
 !public/**
 !data/
 !data/**
+!roles/
+!roles/**
 !scripts/
 !scripts/k8s-load.mjs
 !scripts/k8s-distribution.mjs

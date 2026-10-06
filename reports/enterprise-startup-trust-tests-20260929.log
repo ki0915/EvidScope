@@ -1,0 +1,28 @@
+2026-09-29 enterprise startup and ordinary-read trust verification
+
+startup migration host focused: 19/19 PASS
+ordinary read and agent inventory host focused: 66/66 PASS
+independent final review related tests: 45/45 PASS
+full host suite final: 557/557 PASS, fail 0, skip 0
+restricted Linux r11 relevant suites: 85/85 PASS
+
+image=evidscope:enterprise-20260929-r11
+digest=sha256:4b87445afcba6779aee736543631431f4710f8e88f4bfefc13f11caaf47f9cca
+runtime=uid 1000:1000, linux/amd64, network none, read-only root, cpu 2, memory 1GiB, cap-drop ALL, no-new-privileges
+
+historical transient full-suite attempts retained in report:
+- 544/546, nested failure from Windows TLS child listen EFAULT; isolated TLS 8/8 PASS
+- 545/547, two Windows retention child listen EFAULT; isolated retention 6/6 PASS
+
+training_resource_latest_gate:
+commit_free_gib=7.885/8.080/8.077
+physical_free_gib=10.123/10.678/10.826
+gpu_used_mib=2470/2488/2493
+gpu_total_mib=12288
+training_start_threshold_commit_free_gib=14
+state=blocked_resources
+job_created=false
+pod_created=false
+candidate_created=false
+lease_created=false
+dlp_restored_same_ids=true

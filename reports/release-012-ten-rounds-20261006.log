@@ -1,0 +1,10 @@
+Round 1/10: PASS (119/119, 25587ms)
+Round 2/10: PASS (119/119, 25789ms)
+Round 3/10: PASS (119/119, 25937ms)
+Round 4/10: PASS (119/119, 25301ms)
+Round 5/10: PASS (119/119, 25594ms)
+Round 6/10: PASS (119/119, 25825ms)
+Round 7/10: PASS (119/119, 25129ms)
+Round 8/10: PASS (119/119, 24863ms)
+Round 9/10: FAIL (117/119, 24889ms)
+Release verification: 8/10; FAIL

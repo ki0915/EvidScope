@@ -1,0 +1,31 @@
+✔ selection is deterministic and preserves full original context and annotation truth (2.5722ms)
+✔ reject heldout overlap by id before subset filtering (0.3746ms)
+✔ reject heldout overlap by familyId before subset filtering (0.1315ms)
+✔ reject heldout overlap by contextSha256 before subset filtering (0.0922ms)
+✔ reject original answer forgery even if context hash is updated (0.153ms)
+✔ reject forged original answer span and context modification (0.1703ms)
+✔ a long full context is excluded rather than answer-centered cropping (0.1625ms)
+✔ duplicate IDs and fake local review are rejected (0.1564ms)
+✔ privacy patterns exclude the entire row without claiming comprehensive review (0.1524ms)
+✔ pinned preparation refuses changed manifest before creating any output (3.9722ms)
+✔ source artifact verification rejects altered bytes and path escapes (2.6005ms)
+✔ exact answer with full context quote passes; an answer without supporting quote fails (0.4562ms)
+✔ forged quote and quote about another answer cannot pass grounding (0.1506ms)
+✔ correct abstention requires both fields empty and flag true (0.1041ms)
+✔ JSON failure and unsupported legal approval field count as failures (0.2726ms)
+✔ timeout, token exhaustion and inference error fail even with correct content (0.1711ms)
+✔ normalization is NFC and whitespace only, not semantic equivalence (0.1259ms)
+✔ all original human answer alternatives are accepted (0.1007ms)
+✔ missing outputs count as failures with unchanged denominator; no model execution claim (0.6155ms)
+✔ scorer rejects swapped data hash or extra response IDs (0.3802ms)
+✔ paired fresh scores retain human spans and class counts without asserting execution or promotion (6.5073ms)
+✔ missing, foreign and substituted fresh results cannot silently reduce the denominator (8.431ms)
+✔ unsupported answers, absent exact quotes, unsafe abstention and resource failures count as failures (2.9004ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 111.768

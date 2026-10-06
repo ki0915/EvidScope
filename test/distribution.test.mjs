@@ -1,3 +1,5 @@
+const fixtureHost=process.env.EVIDSCOPE_TEST_HOST==='::1'?'::1':'127.0.0.1';
+const fixtureUrlHost=fixtureHost==='::1'?'[::1]':fixtureHost;
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -10,9 +12,9 @@ const source = { id: 'source-agent', tenant: 'lab', role: 'source', kind: 'agent
 const human = { id: 'auditor', tenant: 'lab', role: 'auditor', token: 'secret-human-token' };
 async function listen(t, handler) {
   const server = http.createServer(handler);
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise(resolve => server.listen(0, fixtureHost, resolve));
   t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
-  return { server, url: `http://127.0.0.1:${server.address().port}` };
+  return { server, url: `http://${fixtureUrlHost}:${server.address().port}` };
 }
 const options = url => ({ config: { principals: [source] }, ingestUrl: url, allowLoopbackHttp: true, total: 6, concurrency: 3, timeoutMs: 1000 });
 const respond = (response, instance, status = 202, body = { accepted: true, duplicate: false }) => {

@@ -1,0 +1,39 @@
+✔ finance view keeps hostile names, findings and refs literal and labels model/document gaps (3.3697ms)
+✔ empty finance evidence remains missing and signed report is explicitly posted before download (2.183ms)
+✔ supplier JSON import rejects malformed or wrong-system payloads and accepts a verified API roundtrip (2.0681ms)
+✔ approval-only records do not hide the absence of actual execution evidence (1.4528ms)
+✔ supplier file chooser enforces its size bound and exports only the selected bundle (3.8378ms)
+✔ approval policy editor preserves false, true and unknown and omits blank end dates (2.7023ms)
+✔ Korean fact payload preserves tri-state values and distinct legal roles through the rendered editor (2.0119ms)
+✔ document intake computes the actual binary digest, binds its system, and offers verified original download (21.1705ms)
+✔ dynamic file cap rejects oversized and empty files before reading or posting; default remains64KiB (4.5295ms)
+✔ document inventory keeps hostile metadata literal and never claims a metadata row proves retrieval (2.0138ms)
+✔ changed versions, tampered export bytes and retrieval errors cannot produce a successful download (5.2795ms)
+✔ technical gaps remain visible next to a human sufficient assessment and unknown checks are retained (2.3078ms)
+✔ typed reported measurements translate alternatives and failure reasons without claiming independent proof or completed effort (2.5561ms)
+✔ supplier reliance shows reviewed bundle, scope and reviewer as literal text without extending its legal coverage (1.802ms)
+✔ KR-33 optional request status stays visible beside a supported mandatory pre-review (6.5652ms)
+✔ optional request conflicts retain literal reasons and evidence without executing markup or claiming a reply (1.5651ms)
+✔ additional Korean applicability facts preserve unknown, explicit false, zero and separate domains without inferring a bank role (5.495ms)
+✔ all Korean task closure refusals are rendered in the form without closing it or recording success (23.1722ms)
+✔ OIDC document intake uses the existing CSRF session and permission failures stay visible (2.8771ms)
+✔ missing or partial evidence never displays a positive technical confirmation and current Korean roles remain visible (1.7572ms)
+✔ visibility distinguishes complete, partial and absent content with missing values kept unknown (16.3947ms)
+✔ default OFF is separate from unavailable runtime and UI reads never start models (4.3084ms)
+✔ script signals and screening counts do not imply English proficiency or safety (2.8368ms)
+✔ asset drilldown renders hostile names and evidence as text, never executable DOM (2.4432ms)
+✔ frozen package preview exposes full governance and role contracts, including beyond display summaries (3.4934ms)
+✔ human adopted drafts and sequential changes preserve machine original and rejected history (2.835ms)
+✔ six primary task groups retain all existing destinations and local-only assets (1.7508ms)
+✔ governance requirement selection caps at three and changes invalidate package preview (3.0247ms)
+✔ only governance requests include explicitly selected requirements; manual question is optional and bounded (2.3982ms)
+✔ system facts preserve unknown and explicit false, numeric compute and independently selected EU roles (3.7209ms)
+✔ request builder sends latest profile and selected scope, invalidates frozen preview and rejects late responses (5.2116ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 178.1062

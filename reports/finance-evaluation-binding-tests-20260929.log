@@ -1,0 +1,40 @@
+✔ finance view keeps verification and consumption in one writer-excluding snapshot (107.6935ms)
+✔ finance export keeps verification and consumption in one writer-excluding snapshot (93.6946ms)
+✔ finance import keeps verification and consumption in one writer-excluding snapshot (107.2192ms)
+✔ finance report keeps verification and consumption in one writer-excluding snapshot (109.4353ms)
+✔ finance saved-report keeps verification and consumption in one writer-excluding snapshot (115.0135ms)
+✔ successful nested savepoints remain subject to complete outer rollback (80.7132ms)
+✔ caught inner failure rolls back its ledger, checkpoint and objects while outer work commits (87.5684ms)
+✔ an existing transaction started outside Store uses a savepoint and is not committed by the helper (75.3744ms)
+✔ transaction callbacks must be synchronous and never commit a returned promise (82.8659ms)
+✔ finance refuses evaluation move SQL tampering before reading or signing a mismatched operation (138.7515ms)
+✔ finance refuses evaluation swap SQL tampering before reading or signing a mismatched operation (100.6968ms)
+✔ finance refuses evaluation version SQL tampering before reading or signing a mismatched operation (107.4423ms)
+✔ finance refuses evaluation ordering SQL tampering before reading or signing a mismatched operation (107.2309ms)
+✔ finance preserves signed latest evaluation selection and tenant separation for valid history (116.1944ms)
+✔ verified supplier bytes, role isolation, immutable signed review and changed model invalidation (187.5516ms)
+✔ same private key representation can restore encrypted document bytes (4.662ms)
+▶ unknown or changed supplied model and purpose require review even when current bundle matches
+  ✔ SUPPLIED_MODEL_VERSION_UNKNOWN (114.2322ms)
+  ✔ SUPPLIED_PURPOSE_UNKNOWN (110.007ms)
+  ✔ SUPPLIED_MODEL_VERSION_MISMATCH (112.5204ms)
+  ✔ SUPPLIED_PURPOSE_MISMATCH (108.3023ms)
+✔ unknown or changed supplied model and purpose require review even when current bundle matches (445.9402ms)
+✔ newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history (134.1699ms)
+✔ corrupt or missing document never remains verified; hashes and measure bounds are enforced (118.2909ms)
+✔ bundle replacement invalidates only linked snapshots and cannot move between systems (95.1865ms)
+✔ altered system or supplier projection cannot be legitimized by a new signed report (68.7385ms)
+✔ legacy system facts migrate once to unknown without rewriting historical assessments (77.2695ms)
+✔ finance rejects renamed system SQL identities before exporting or signing another target (189.9233ms)
+✔ finance rejects swapped system SQL identities before exporting or signing another target (190.0329ms)
+✔ finance rejects renamed supplier_bundle SQL identities before exporting or signing another target (174.8151ms)
+✔ finance rejects swapped supplier_bundle SQL identities before exporting or signing another target (180.1756ms)
+✔ same-tenant object contents cannot be read through a foreign-tenant bundle ID (146.2773ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1323.4962

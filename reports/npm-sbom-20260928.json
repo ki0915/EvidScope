@@ -1,0 +1,164 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:e3f2c1d0-c63e-4c9e-b8f0-981428c40969",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-28T06:16:46.440Z",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": [
+      {
+        "vendor": "npm",
+        "name": "cli",
+        "version": "11.12.1"
+      }
+    ],
+    "component": {
+      "bom-ref": "evidscope@0.1.0",
+      "type": "library",
+      "name": "EvidScope — AI Visibility & Governance SIEM",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/evidscope@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "jose@6.2.12",
+      "type": "library",
+      "name": "jose",
+      "version": "6.2.12",
+      "scope": "required",
+      "author": "Filip Skokan <panva.ip@gmail.com>",
+      "description": "JWA, JWS, JWE, JWT, JWK, JWKS for Node.js, Browser, Cloudflare Workers, Deno, Bun, and other Web-interoperable runtimes",
+      "purl": "pkg:npm/jose@6.2.12",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/jose/-/jose-6.2.12.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/panva/jose"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f4d88598911ec74b32d83939f23d94181487814b36ca917d7994aee0beaf8ce5f70e9f7a4b0d45dee2fe1fe0f5b31d368d965dcd44f41e0bc2cb9f42baf5dc5b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "oauth4webapi@3.8.8",
+      "type": "library",
+      "name": "oauth4webapi",
+      "version": "3.8.8",
+      "scope": "required",
+      "author": "Filip Skokan <panva.ip@gmail.com>",
+      "description": "Low-Level OAuth 2 / OpenID Connect Client API for JavaScript Runtimes",
+      "purl": "pkg:npm/oauth4webapi@3.8.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/oauth4webapi/-/oauth4webapi-3.8.8.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/panva/oauth4webapi"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f0ddbc13e6bfa317d758180e32df993ff2547ff5d1f8815bbe40043cfde0ce75ce32ff41a400308888f44c5373ded1933dcd1943cce65813603759c0cacd209e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "openid-client@6.8.8",
+      "type": "library",
+      "name": "openid-client",
+      "version": "6.8.8",
+      "scope": "required",
+      "author": "Filip Skokan <panva.ip@gmail.com>",
+      "description": "OAuth 2 / OpenID Connect Client API for JavaScript Runtimes",
+      "purl": "pkg:npm/openid-client@6.8.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/openid-client/-/openid-client-6.8.8.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/panva/openid-client"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "66cb9c240e40774e14bfb60de2a97eb381973666fdb80610c32253b09c7b087fcc5f72598a82c4da954a8b5482f98adb48b0383f1dc68b7d1d32380e66d6faa4"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "evidscope@0.1.0",
+      "dependsOn": [
+        "openid-client@6.8.8"
+      ]
+    },
+    {
+      "ref": "jose@6.2.12",
+      "dependsOn": []
+    },
+    {
+      "ref": "oauth4webapi@3.8.8",
+      "dependsOn": []
+    },
+    {
+      "ref": "openid-client@6.8.8",
+      "dependsOn": [
+        "jose@6.2.12",
+        "oauth4webapi@3.8.8"
+      ]
+    }
+  ]
+}

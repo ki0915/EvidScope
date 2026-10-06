@@ -1,0 +1,14 @@
+✔ CPU verification can start with no owned public-QA lease (4.9674ms)
+✔ active GPU lease blocks CPU verification and preserves the original receipt (7.1847ms)
+✔ malformed or stale lease stays blocking; age and content do not authorize cleanup (5.5848ms)
+✔ serial runner executes every delivered test file and leaves non-test files out (296.8656ms)
+✔ serial runner propagates a real failed test exit (219.4655ms)
+✔ unsupported test arguments are rejected before any fixture test starts (75.9991ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 683.8603

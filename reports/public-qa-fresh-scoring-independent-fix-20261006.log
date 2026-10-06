@@ -1,0 +1,11 @@
+✔ paired fresh scores retain human spans and class counts without asserting execution or promotion (6.5291ms)
+✔ missing, foreign and substituted fresh results cannot silently reduce the denominator (8.4157ms)
+✔ unsupported answers, absent exact quotes, unsafe abstention and resource failures count as failures (3.2607ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.5049

@@ -1,0 +1,160 @@
+[
+  {
+    "systemId": "portfolio-credit",
+    "actionId": "portfolio-action",
+    "traceId": "portfolio-trace",
+    "requestId": "portfolio-request",
+    "attemptId": "attempt-1",
+    "modelId": "synthetic-credit-model",
+    "modelVersion": "v1",
+    "policyVersion": "synthetic-policy-v1",
+    "actor": "synthetic-credit-agent",
+    "tool": "credit-api",
+    "action": "score",
+    "resource": "synthetic-application",
+    "destination": "internal",
+    "clockUncertaintyMs": 0,
+    "id": "check-KR-34-RISK",
+    "kind": "governance_check",
+    "occurredAt": "2026-10-06T03:50:34.274Z",
+    "note": "합성 시험 결과 보고: 출처 인증은 측정 내용의 진실성 또는 법적 준수를 보증하지 않음",
+    "governanceCheck": {
+      "schemaVersion": 1,
+      "requirementId": "KR-34-RISK",
+      "checkType": "high_impact_risk_management",
+      "result": "pass",
+      "systemHash": "16dd93df8fc55d27ccabe0d2e3b5d745d7e2d7f532f85ad068ed831dac7f54d6",
+      "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+      "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+      "measurements": {
+        "riskPolicyRecorded": true,
+        "responsibleOrganisationRecorded": true,
+        "operatingReviewRecorded": true,
+        "mitigationTestPassed": true,
+        "residualRiskReviewed": true
+      }
+    },
+    "tenant": "portfolio",
+    "source": "synthetic-measurements",
+    "sourceKind": "telemetry",
+    "receivedAt": "2026-10-06T03:51:31.292Z",
+    "fingerprint": "3b58fa8567f0fc3c6cfc362e6980b0e0c34bcafe2c2a8d68ed4eccd70f7fa228",
+    "assurance": "authenticated_service_record",
+    "late": false,
+    "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+    },
+    "seq": 19,
+    "hash": "d8570b71a24a3ee8e032f63995a5e14caceb0f07fbaf451a42c95ebc30328a2c"
+  },
+  {
+    "systemId": "portfolio-credit",
+    "actionId": "portfolio-action",
+    "traceId": "portfolio-trace",
+    "requestId": "portfolio-request",
+    "attemptId": "attempt-1",
+    "modelId": "synthetic-credit-model",
+    "modelVersion": "v1",
+    "policyVersion": "synthetic-policy-v1",
+    "actor": "synthetic-credit-agent",
+    "tool": "credit-api",
+    "action": "score",
+    "resource": "synthetic-application",
+    "destination": "internal",
+    "clockUncertaintyMs": 0,
+    "id": "check-KR-34-DOCUMENT",
+    "kind": "governance_check",
+    "occurredAt": "2026-10-06T03:50:34.274Z",
+    "note": "합성 시험 결과 보고: 출처 인증은 측정 내용의 진실성 또는 법적 준수를 보증하지 않음",
+    "governanceCheck": {
+      "schemaVersion": 1,
+      "requirementId": "KR-34-DOCUMENT",
+      "checkType": "document_publication_retention",
+      "result": "pass",
+      "systemHash": "16dd93df8fc55d27ccabe0d2e3b5d745d7e2d7f532f85ad068ed831dac7f54d6",
+      "requirementHash": "6127a8d5c4533f061f3cac1221924796202f15abe26f7258882332da6463350b",
+      "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+      "measurements": {
+        "measureDocumentInventoryRecorded": true,
+        "retentionYears": 5,
+        "accessControlTestPassed": true,
+        "restoreTestPassed": true,
+        "publishedSections": [
+          "risk_management",
+          "explanation",
+          "user_protection",
+          "oversight_name_contact"
+        ],
+        "excludedSections": [],
+        "exclusionBasisRecorded": false,
+        "publicationTestPassed": true
+      }
+    },
+    "tenant": "portfolio",
+    "source": "synthetic-measurements",
+    "sourceKind": "telemetry",
+    "receivedAt": "2026-10-06T03:51:31.295Z",
+    "fingerprint": "30acd1acf29405b6c10ffbb3541483d5b61f223fb12b268a1b226f31f53ce5ab",
+    "assurance": "authenticated_service_record",
+    "late": false,
+    "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+    },
+    "seq": 21,
+    "hash": "52926608100b611bbf7e8f922f42e5a0268361063e101101721c1d625a5d74e0"
+  },
+  {
+    "systemId": "portfolio-credit",
+    "actionId": "portfolio-action",
+    "traceId": "portfolio-trace",
+    "requestId": "portfolio-request",
+    "attemptId": "attempt-1",
+    "modelId": "synthetic-credit-model",
+    "modelVersion": "v1",
+    "policyVersion": "synthetic-policy-v1",
+    "actor": "synthetic-credit-agent",
+    "tool": "credit-api",
+    "action": "score",
+    "resource": "synthetic-application",
+    "destination": "internal",
+    "clockUncertaintyMs": 0,
+    "id": "check-KR-34-OVERSIGHT",
+    "kind": "governance_check",
+    "occurredAt": "2026-10-06T03:50:34.274Z",
+    "note": "합성 시험 결과 보고: 출처 인증은 측정 내용의 진실성 또는 법적 준수를 보증하지 않음",
+    "governanceCheck": {
+      "schemaVersion": 1,
+      "requirementId": "KR-34-OVERSIGHT",
+      "checkType": "oversight_plan",
+      "result": "pass",
+      "systemHash": "16dd93df8fc55d27ccabe0d2e3b5d745d7e2d7f532f85ad068ed831dac7f54d6",
+      "requirementHash": "32a6a4ece0ceb3a741acaf62613a8b40c3e4aa7d1c177dac624f4b3808dfca2f",
+      "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+      "measurements": {
+        "sections": [
+          "responsibility",
+          "authority",
+          "competence",
+          "intervention",
+          "contact"
+        ],
+        "interventionExercisePassed": true
+      }
+    },
+    "tenant": "portfolio",
+    "source": "synthetic-measurements",
+    "sourceKind": "telemetry",
+    "receivedAt": "2026-10-06T03:51:31.298Z",
+    "fingerprint": "f1f36b18e5025d0617a73f16090b1bd0691cac8216853f263586a9b4406efb43",
+    "assurance": "authenticated_service_record",
+    "late": false,
+    "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+    },
+    "seq": 23,
+    "hash": "0b0fc74ace0a3e264b0cd001b10c231f2d32fd92747fa6cfc91026794289e550"
+  }
+]

@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-22T09:32:53.087Z",
+  "passed": true,
+  "cases": [
+    {
+      "id": "normal",
+      "passed": true,
+      "codes": [],
+      "issues": [],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "e95d5de1-73c1-41bc-a3be-62b99779997a",
+      "retrievalMilliseconds": 26.88,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "automatic",
+      "passed": true,
+      "codes": [],
+      "issues": [],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "e84bf7bc-889c-4dfa-8beb-b1d33740e9db",
+      "retrievalMilliseconds": 28.8,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "revoked",
+      "passed": true,
+      "codes": [
+        "AUTHORITY_MISMATCH"
+      ],
+      "issues": [],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "13f69467-b508-4c43-8187-a63211e52bbb",
+      "retrievalMilliseconds": 36.45,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "block-success",
+      "passed": true,
+      "codes": [
+        "STOP_UNCONFIRMED",
+        "BLOCK_SUCCESS_CONFLICT",
+        "EXECUTION_AFTER_STOP_REQUEST"
+      ],
+      "issues": [],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "96e036ab-6fe2-46ff-bfca-378b9283d0a4",
+      "retrievalMilliseconds": 41.12,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "late-approval",
+      "passed": true,
+      "codes": [
+        "LATE_EVIDENCE"
+      ],
+      "issues": [],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "b67293af-2e99-48d0-944e-8ae817a08625",
+      "retrievalMilliseconds": 51.47,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "model-changed",
+      "passed": true,
+      "codes": [],
+      "issues": [
+        "MODEL_VERSION_MISMATCH",
+        "SUPPLIED_MODEL_VERSION_MISMATCH"
+      ],
+      "operationalStatus": "observed_partial_evidence",
+      "reportId": "d773fa9d-6977-4e18-8e79-7acde9a674c2",
+      "retrievalMilliseconds": 56.09,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "no-execution",
+      "passed": true,
+      "codes": [],
+      "issues": [],
+      "operationalStatus": "execution_evidence_missing",
+      "reportId": "c5587bd3-b63d-427f-a697-451b8abfb025",
+      "retrievalMilliseconds": 54.81,
+      "humanReviewSeconds": null
+    },
+    {
+      "id": "document-corrupt",
+      "passed": true,
+      "codes": [],
+      "issues": [
+        "DOCUMENT_EVIDENCE_MISSING"
+      ],
+      "operationalStatus": "execution_evidence_missing",
+      "reportId": "c39d9f5b-c7e3-420e-b902-2696809e63ca",
+      "retrievalMilliseconds": 61.61,
+      "humanReviewSeconds": null
+    }
+  ],
+  "analyzedActions": 6,
+  "producers": [
+    {
+      "pid": 23696,
+      "source": "alpha-agent",
+      "records": 6
+    },
+    {
+      "pid": 21908,
+      "source": "alpha-tool",
+      "records": 12
+    },
+    {
+      "pid": 5052,
+      "source": "alpha-authority",
+      "records": 12
+    },
+    {
+      "pid": 8672,
+      "source": "alpha-safety",
+      "records": 1
+    }
+  ],
+  "transport": "independent child producers -> HMAC-authenticated service boundary over IPC; HTTP transport not tested",
+  "synthetic": true,
+  "liveFinancialIntegration": false,
+  "competitiveSuperiorityProven": false,
+  "limitations": [
+    "독립 프로세스 합성 실증이며 실제 금융사 연동이나 별도 호스트 신뢰 경계 검증이 아닙니다.",
+    "retrievalMilliseconds는 프로그램 실행 시간입니다. 감사자 검토 시간은 측정하지 않았습니다.",
+    "상용 경쟁 도구와 동일 입력 실행 비교는 수행하지 않았습니다."
+  ],
+  "artifactDirectory": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\.test-runs\\finance-6eC8yt"
+}

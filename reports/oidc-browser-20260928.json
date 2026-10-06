@@ -1,0 +1,47 @@
+{
+  "observedAt": "2026-09-28T06:08:36.811Z",
+  "environment": "Codex in-app browser; synthetic loopback IdP; independent audit/vault",
+  "verified": {
+    "valid": true,
+    "count": 9,
+    "tenant": "alpha",
+    "rollbackChecked": false,
+    "disclosedEvents": 0,
+    "erasedEvents": 0,
+    "scope": "Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined."
+  },
+  "operations": [
+    {
+      "type": "identity_session",
+      "operation": "session_authorized",
+      "principal": "browser-admin"
+    },
+    {
+      "type": "identity_access",
+      "operation": "revoke_sessions",
+      "principal": "browser-admin"
+    },
+    {
+      "type": "identity_session",
+      "operation": "session_authorized",
+      "principal": "browser-admin"
+    },
+    {
+      "type": "identity_session",
+      "operation": "session_logout",
+      "principal": "browser-admin"
+    }
+  ],
+  "screenshot": "reports/oidc-session-revoked-20260928.png",
+  "uiObserved": [
+    "OIDC login mapped to browser-admin alpha admin",
+    "self session revocation cleared evidence and required authentication",
+    "fresh login succeeded after revocation",
+    "logout cleared authenticated content",
+    "after fix reload shows authentication required"
+  ],
+  "limitations": [
+    "Synthetic IdP, not organization SSO",
+    "HTTPS cookie enforcement is separate automated integration test"
+  ]
+}

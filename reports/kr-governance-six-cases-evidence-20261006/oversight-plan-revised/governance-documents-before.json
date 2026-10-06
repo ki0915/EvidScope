@@ -1,0 +1,34 @@
+[
+  {
+    "bytes": 168,
+    "displayName": "portfolio-risk-measures.txt",
+    "id": "portfolio-risk-measures",
+    "mediaType": "text/plain",
+    "receivedAt": "2026-10-06T03:51:31.252Z",
+    "receivedBy": "synthetic-reviewer",
+    "retentionBasis": "인공지능기본법 시행령 제27조제2항 조치 근거 문서 5년 보관; 로컬 접수·복구 검증 기록이며 5년 경과 보존 실적을 입증하지 않음",
+    "retentionUntil": "2031-10-06T03:51:31.252Z",
+    "schemaVersion": 1,
+    "sha256": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+    "snapshotHash": "bd0eb0aa7951421283f2d51db756d5a0a02497256573febcb4fc43b0e6d879d5",
+    "systemId": "portfolio-credit",
+    "version": 1,
+    "contentBase64": "7ZWp7ISxIOychO2XmOq0gOumrCDsi5ztl5gg67O06rOgOiDsoJXssYXCt+uLtOuLuSDsobDsp4HCt+yatOyYgSDqsoDthqDCt+ychO2XmCDsoIDqsJAg7Iuc7ZeYwrfsnpTsl6wg7JyE7ZeYIOqygO2GoC4g7Iuk7KCcIOq4iOyctSDtmZjqsr3snYQg7Lih7KCV7ZWcIOyekOujjOqwgCDslYTri5gu"
+  },
+  {
+    "bytes": 413,
+    "displayName": "portfolio-oversight-plan.txt",
+    "id": "portfolio-oversight-plan",
+    "mediaType": "text/plain",
+    "receivedAt": "2026-10-06T03:51:31.260Z",
+    "receivedBy": "synthetic-reviewer",
+    "retentionBasis": "인공지능기본법 시행령 제27조제2항 조치 근거 문서 5년 보관; 로컬 접수·복구 검증 기록이며 5년 경과 보존 실적을 입증하지 않음",
+    "retentionUntil": "2031-10-06T03:51:31.260Z",
+    "schemaVersion": 1,
+    "sha256": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+    "snapshotHash": "486db2221323621033cfe20e83ebb043ab80c3a596fabfe71d1d1c1964dd0051",
+    "systemId": "portfolio-credit",
+    "version": 1,
+    "contentBase64": "7ZWp7ISxIOyhsOy5mMK36rKM7IucwrfqsJDrj4Ug6rOE7ZqNIHYxOiDsnITtl5jqtIDrpqwg7KCV7LGFIOuwjyDsi5ztl5gg67KU7JyEOyDstZzsooUg6rKw6rO8wrfso7zsmpQg6riw7KSAwrftlZnsirUg642w7J207YSwIOyEpOuqhSDrsKnslYg7IOusuOydmMK37J207J2YwrftlLztlbQg64yA7J2RIOygiOywqDsg6rCQ64+FIOuLtOuLuSBzeW50aGV0aWMtaHVtYW7qs7wg7Jew6529IHN5bnRoZXRpYy1jb250YWN0OyDssYXsnoTCt+q2jO2VnMK37Jet65+JwrfspJHri6gg6rCc7J6FIOygiOywqC4gNeuFhCDrs7TqtIAg7KCV7LGFwrfsoJHqt7wg7Ya17KCcwrfrs7XqtazCt+qyjOyLnCDsi5ztl5jsnYQg66qo7IKs7ZWcIOyekOujjOydtOupsCDsi6TsoJwg6riI7Jy1wrfrspXrpaAg7KCB7ZWp7ISxIOqygO2GoCDslYTri5g="
+  }
+]

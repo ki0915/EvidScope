@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-06T05:58:18.530Z",
+  "scope": "memory_recovery_and_actual_public_qa_lora_training",
+  "memoryRecoveryVerified": true,
+  "pagefile": {
+    "allocatedMiB": 30720,
+    "persistentInitialMiB": 30720,
+    "persistentMaximumMiB": 30720,
+    "automaticManaged": false,
+    "commitLimitGiB": 61.863,
+    "physicalRamNotUpgraded": true
+  },
+  "training": {
+    "runId": "public-qa-grounding-20261006-r3",
+    "executionVerified": true,
+    "sourceOptimizerHistoryUpdates": 60,
+    "newOptimizerUpdates": 20,
+    "totalAdapterHistoryOptimizerUpdates": 80,
+    "optimizerAndSchedulerReset": true,
+    "actualConsumedRows": 320,
+    "labelCounts": {
+      "answerable": 220,
+      "impossible": 100
+    },
+    "localHumanReviewPerformed": false,
+    "publicHumanAnnotationsUsed": true,
+    "syntheticLabelsUsed": false,
+    "checkpointSteps": [
+      10,
+      20
+    ],
+    "finiteAdapterTensorCount": 256,
+    "adapterSha256": "3de58b12eb5d6b46d4ad7a4ea53c008e5f070adcfe53a73826c0002e7495374e",
+    "artifactSha256": "4f25923e903e4f604401920035ac8d32fc6736874d57509f8be897340407d3eb",
+    "trainingRuntimeSeconds": 1081.9427,
+    "validationLossDiagnosticOnly": 0.07306386530399323,
+    "qualityClaimAllowed": false,
+    "promotionAllowed": false
+  },
+  "resources": {
+    "observations": 335,
+    "minCommitFreeGiB": 6.055,
+    "minPhysicalFreeGiB": 3.405,
+    "peakCgroupGiB": 1.9999427795410156,
+    "peakGpuTotalUsedMiB": 9211,
+    "peakGpuTemperatureC": 73,
+    "oomKills": 0,
+    "guardStops": 0,
+    "domainsNotSummed": true,
+    "profile": {
+      "name": "manual_public_qa_bounded_measured_v2",
+      "automaticStartAllowed": false,
+      "maxOptimizerSteps": 20,
+      "maxRuntimeMs": 3600000,
+      "cpuLimit": 2,
+      "memoryLimitGiB": 12,
+      "gpuMemoryFraction": 0.65,
+      "receiptMaxAgeMs": 5000,
+      "startSamples": 3,
+      "startSampleSpanMs": 20000,
+      "inputClockToleranceSeconds": 3,
+      "minStartIdleSeconds": 30,
+      "maxStartCpuPercent": 50,
+      "minStartWindowsFreeGiB": 4,
+      "minStartCommitFreeGiB": 14,
+      "maxStartCommitPercent": 85,
+      "minStartGuestAvailableGiB": 10,
+      "maxStartGuestMemoryFullAvg10": 1,
+      "minStartGpuFreeMiB": 9216,
+      "maxStartGpuUtilizationPercent": 10,
+      "maxStartGpuTemperatureC": 75,
+      "minContinueWindowsFreeGiB": 2,
+      "minContinueCommitFreeGiB": 3,
+      "maxContinueCommitPercent": 92,
+      "minContinueGuestAvailableGiB": 1.5,
+      "maxContinueGuestMemoryFullAvg10": 5,
+      "maxContinueCgroupGiB": 10,
+      "minContinueGpuFreeMiB": 1024,
+      "maxContinueGpuTemperatureC": 80
+    }
+  },
+  "attempts": [
+    {
+      "runId": "public-qa-grounding-20261006-r1",
+      "state": "stopped_by_resource_guard",
+      "verifiedCompletion": false
+    },
+    {
+      "runId": "public-qa-grounding-20261006-r2",
+      "state": "blocked_resources",
+      "reasons": [
+        "host_cpu_busy"
+      ],
+      "gpuJobCreated": false
+    },
+    {
+      "runId": "public-qa-grounding-20261006-r3",
+      "originalControllerState": "error",
+      "originalControllerReceiptPreserved": true,
+      "runtimeExitReconciliation": {
+        "schemaVersion": 1,
+        "kind": "exact_container_cri_exit_after_cgroup_exec_race_v1",
+        "reconciliationPassed": true,
+        "criInspectionPath": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\.local\\training\\public-qa-run\\continuation-preparation-20261006-r3\\cri-inspect.json",
+        "criInspectionSha256": "9751ae20dfea9f656d4643a70c1c2863acd4224913228a5d4117ff41e0e8b6b1",
+        "originalControllerSha256": "bbb6504733765876abf85ff557f9726b762cbe565422672ee07ce4880c54409d",
+        "originalControllerState": "error",
+        "originalControllerError": "Command failed: kubectl --kubeconfig .test-runs/evidscope-training/kubeconfig.yaml --request-timeout=10s -n evidscope-training exec public-qa-grounding-20261006-r3-m5t5q -- python -c import json,pathlib; p=pathlib.Path('/sys/fs/cgroup'); e=dict(l.split() for l in (p/'memory.events').read_text().splitlines()); print(json.dumps({'memoryCurrentGiB':int((p/'memory.current').read_text())/1073741824,'memoryLimitGiB':int((p/'memory.max').read_text())/1073741824,'oomCount':int(e.get('oom',0)),'oomKillCount':int(e.get('oom_kill',0)),'cpuMax':(p/'cpu.max').read_text().strip(),'memoryStat':dict((k,int(v)) for k,v in (line.split() for line in (p/'memory.stat').read_text().splitlines()) if k in ('anon','file','file_mapped','file_dirty','inactive_file','active_file'))}))\nerror: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to create exec \"c391671cfde6971f53689a3e02cd241deb095eb642cd3a239723d73a600cace7\": task 637ef88ea94683650f9c40a80b345411fffc280c89658ba1d34d43ff2c75d6fd not found\n",
+        "controllerAttemptId": "1b0b8a68-61ac-4a77-ba66-2e8976de569f",
+        "jobUid": "021707d0-e28d-43b7-afd4-a0ee91c4d2bb",
+        "podUid": "4daffaea-9887-44fe-9f80-c897c9b5d68f",
+        "podName": "public-qa-grounding-20261006-r3-m5t5q",
+        "namespace": "evidscope-training",
+        "containerId": "637ef88ea94683650f9c40a80b345411fffc280c89658ba1d34d43ff2c75d6fd",
+        "imageRef": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8",
+        "containerAttempt": 0,
+        "restartCount": 0,
+        "state": "CONTAINER_EXITED",
+        "exitCode": 0,
+        "reason": "Completed",
+        "createdAt": "2026-10-06T05:27:13.440798994Z",
+        "startedAt": "2026-10-06T05:27:13.603453648Z",
+        "finishedAt": "2026-10-06T05:49:02.792228494Z",
+        "terminationConfirmed": true,
+        "limitations": [
+          "Raw persisted local CRI report reconciles an observation race; it is not independent hardware attestation or a rewritten controller success record."
+        ]
+      }
+    }
+  ],
+  "cleanup": {
+    "gpuNodeStopped": true,
+    "originalDlpStatesRestored": true,
+    "originalContainerSettingsRestored": true,
+    "temporarilyStoppedDlpContainers": 5,
+    "containersVerified": 7,
+    "trainingJobsRemaining": 0,
+    "trainingPodsRemaining": 0
+  },
+  "postTrainingMemory": {
+    "recordedAt": "2026-10-06T05:54:29.6950317+00:00",
+    "commitLimitGiB": 61.863,
+    "commitFreeGiB": 13.821,
+    "physicalFreeGiB": 5.168,
+    "automaticManagedPagefile": false,
+    "pagefile": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "AllocatedBaseSize": 30720,
+        "CurrentUsage": 1250,
+        "PeakUsage": 1338
+      }
+    ],
+    "settings": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "InitialSize": 30720,
+        "MaximumSize": 30720
+      }
+    ],
+    "diskFreeGiB": 11.143
+  },
+  "sourceValidation": {
+    "tests": 836,
+    "passed": 836,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "unit_and_local_synthetic_HTTP_regression_not_real_financial_customer_proof"
+  },
+  "evidence": {
+    "controller": {
+      "path": ".local/training/public-qa-run/public-qa-grounding-20261006-r3/controller-receipt.json",
+      "sha256": "bbb6504733765876abf85ff557f9726b762cbe565422672ee07ce4880c54409d"
+    },
+    "verification": {
+      "path": "reports/public-qa-grounding-continuation-verification-20261006.json",
+      "sha256": "2ee71ff2cc856ad62cbd03e4e892c76728624e622f0548167bf6c34be8732ca9"
+    },
+    "pvcExport": {
+      "path": ".local/training/public-qa-run/continuation-preparation-20261006-r3/export-hashes.json",
+      "sha256": "468171f9d3e56949f597418065dabc96b8c4670b6a9321aeeaff338c2c4c7b57"
+    },
+    "custody": {
+      "path": ".local/training/public-qa-run/continuation-preparation-20261006-r1/custody-restored.json",
+      "sha256": "d259592de60ecaa6b055f93b0ba310d469051d891ac67007aa95cb8b8dc6b50e"
+    },
+    "sourceSuite": {
+      "path": "reports/source-full-continuation-r3-final-20261006.log",
+      "sha256": "b711524d9ac27f422983c333f5f4f8c566d5a32771f0e3bfc6d8fced0ab455b8"
+    }
+  },
+  "limitations": [
+    "Page file capacity is not added physical RAM; memory domains are measured separately.",
+    "The first resource stop and original third-attempt observation error remain preserved.",
+    "Raw local CRI exit data supplements the original controller; it is not hardware attestation.",
+    "Public Korean QA training is not Korean financial audit or legal sufficiency evaluation.",
+    "Fresh 128-row paired generation and human semantic review remain outstanding; the model stays unpromoted.",
+    "New source fixes are not included in the immutable previously packaged v0.1.1 archives."
+  ]
+}

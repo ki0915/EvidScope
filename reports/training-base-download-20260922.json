@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-09-22T06:13:25.089Z",
+  "directory": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\.local\\training\\base\\63c930c82d7646226d33502bec5870019738400e",
+  "repository": "fdtn-ai/Foundation-Sec-8B-Reasoning",
+  "revision": "63c930c82d7646226d33502bec5870019738400e",
+  "files": 13,
+  "bytes": 16078192422,
+  "artifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949",
+  "trainingStarted": false
+}

@@ -1,0 +1,21 @@
+{
+  "id": "evidence-normal",
+  "systemId": "credit-normal",
+  "synthetic": true,
+  "supplierId": "supplier-a",
+  "modelId": "credit-score",
+  "modelVersion": "v1",
+  "purpose": "대출 심사 보조",
+  "testScope": "해당 합성 금융 사례의 공급사 위험관리 시험",
+  "measures": [
+    "KR-34-RISK"
+  ],
+  "documents": [
+    {
+      "id": "risk-test",
+      "name": "합성 시험.txt",
+      "contentBase64": "7ZWp7ISxIOusuOyEnCBub3JtYWwgwrcg7Iuk7KCcIOq4iOyctSDqs6DqsJ0g7J6Q66OMIOyXhuydjA==",
+      "sha256": "f135c73ec74dd5c1936553978bfa68226b884a546f18cd06726cfa0eae2c89f1"
+    }
+  ]
+}

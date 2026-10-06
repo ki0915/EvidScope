@@ -1,0 +1,32 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "DaemonSet",
+  "metadata": {"name": "evidscope-nvidia-device-plugin", "namespace": "kube-system"},
+  "spec": {
+    "selector": {"matchLabels": {"app": "evidscope-nvidia-device-plugin"}},
+    "template": {
+      "metadata": {"labels": {"app": "evidscope-nvidia-device-plugin"}},
+      "spec": {
+        "runtimeClassName": "nvidia",
+        "automountServiceAccountToken": false,
+        "priorityClassName": "system-node-critical",
+        "nodeSelector": {"evidscope.io/training-node": "true"},
+        "containers": [{
+          "name": "device-plugin",
+          "image": "DEVICE_PLUGIN_IMAGE_DIGEST_REQUIRED",
+          "imagePullPolicy": "IfNotPresent",
+          "env": [
+            {"name": "FAIL_ON_INIT_ERROR", "value": "true"},
+            {"name": "MIG_STRATEGY", "value": "none"},
+            {"name": "NVIDIA_VISIBLE_DEVICES", "value": "all"},
+            {"name": "NVIDIA_DRIVER_CAPABILITIES", "value": "compute,utility"}
+          ],
+          "securityContext": {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}},
+          "resources": {"requests": {"cpu": "25m", "memory": "64Mi"}, "limits": {"cpu": "250m", "memory": "256Mi"}},
+          "volumeMounts": [{"name": "device-plugin", "mountPath": "/var/lib/kubelet/device-plugins"}]
+        }],
+        "volumes": [{"name": "device-plugin", "hostPath": {"path": "/var/lib/kubelet/device-plugins", "type": "Directory"}}]
+      }
+    }
+  }
+}

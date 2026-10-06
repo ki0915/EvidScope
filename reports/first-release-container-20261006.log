@@ -1,0 +1,68 @@
+✔ assistance profiles are versioned and fixed to local-only model policy (164.886328ms)
+✔ packages minimize adversarial fields, bind real refs and preserve governance semantics (60.765644ms)
+✔ run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result (259.410774ms)
+✔ human advisory reviews are separate, preserved, and drafts become stale on evidence change (234.420895ms)
+✔ expired run credential records timeout and cannot claim (137.602832ms)
+✔ assistance projections must match signed original ledger records (249.900455ms)
+✔ finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report (571.389062ms)
+✔ independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest (477.304289ms)
+✔ reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot (28.914959ms)
+✔ intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment (46.308111ms)
+✔ a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement (34.587771ms)
+✔ assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable (89.677952ms)
+✔ new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot (100.877322ms)
+✔ governance document projection tampering is rejected and cannot create a verified assessment (13.384098ms)
+✔ HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits (403.10355ms)
+✔ vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention (94.136978ms)
+✔ Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence (700.497829ms)
+✔ release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart (980.657704ms)
+✔ release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children (645.245741ms)
+{"component":"vault","address":"::1","port":47324,"tls":false}
+node:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use ::1:47325
+    at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+    at listenInCluster (node:net:2065:12)
+    at node:net:2274:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:2044:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::1',
+  port: 47325
+}
+
+Node.js v24.15.0
+✔ release startup conflict cleans earlier services and preserves the unrelated listener (156.03204ms)
+✔ release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners (40.907343ms)
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (158.444543ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (61.520837ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (37.542959ms)
+✔ forged object projections cannot be certified by a new backup (22.054137ms)
+✔ actions-only tenants cannot be omitted from whole-vault backup verification (25.213524ms)
+✔ a signed legacy archive omitting an actions-only tenant fails restore before publication (9.055567ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (53.139824ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (47.351182ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (59.324651ms)
+  ✔ delete (53.353485ms)
+  ✔ index (54.585113ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (167.944704ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (48.812274ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (37.824754ms)
+✔ deleted event keys stay deleted after snapshot recovery (47.31253ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (447.028759ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (193.810239ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7370.567188

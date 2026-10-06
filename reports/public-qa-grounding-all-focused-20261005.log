@@ -1,0 +1,42 @@
+✔ grounding is an explicit training mode with the approved interactive override (0.5286ms)
+✔ grounding generation diagnosis cannot train or restore optimizer state (0.9551ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.1911ms)
+✔ sealed balanced warmstart verifies local bindings while synthetic fixtures cannot claim training execution (226.1736ms)
+✔ production CLI rejects fixture pins and preserves existing report/evidence files (252.9916ms)
+✔ Kubernetes ConfigMap defaults preserve the measured mount contract (180.4699ms)
+✔ grounding rejects nonzero exit (96.5395ms)
+✔ grounding rejects unconfirmed reclamation (108.7202ms)
+✔ grounding rejects controller error (109.7463ms)
+✔ grounding rejects denied admission (116.3135ms)
+✔ grounding rejects changed source run (109.9492ms)
+✔ grounding rejects diagnostic-only training label (108.1386ms)
+✔ grounding rejects controller quality claim (103.8606ms)
+✔ grounding rejects changed runtime bytes (147.0042ms)
+✔ grounding rejects changed Job UID (167.1838ms)
+✔ grounding rejects foreign owner Job (164.7519ms)
+✔ grounding rejects wrong GPU node (176.9444ms)
+✔ grounding rejects writable source adapter (176.7613ms)
+✔ grounding rejects broad checkpoint mount (185.922ms)
+✔ grounding rejects wrong runtime env (176.0497ms)
+✔ grounding rejects wrong optimizer count (168.9637ms)
+✔ grounding rejects wrong memory cgroup (167.5895ms)
+✔ grounding rejects context crop receipt (239.9791ms)
+✔ grounding rejects token overflow receipt (287.4698ms)
+✔ new checkpoint and source adapter bytes remain bound to their complete markers (531.9933ms)
+✔ self-consistent final checkpoint cannot substitute a different adapter (215.1432ms)
+✔ source verification cannot conceal failed training after repinning synthetic fixture bytes (175.8141ms)
+✔ exactly twenty ordered non-skipped new updates are required (512.8693ms)
+✔ warmstart must reset optimizer/scheduler and cannot be represented as checkpoint resume (353.5422ms)
+✔ altered original annotations and reused old contexts cannot be hidden by resealing fixture hashes (517.7149ms)
+✔ missing and linked checkpoint members fail before execution success can be claimed (421.1256ms)
+✔ balanced selection preserves authentic originals and excludes all previously exposed families (8.8689ms)
+✔ selection rejects altered human labels and cross-split families (0.453ms)
+✔ real grounding workload resets training state, isolates warmstart and binds new data rather than diagnostic data (89.3098ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6558.1284

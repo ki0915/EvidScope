@@ -1,0 +1,1 @@
+{"gpuUsed": false, "tensorCount": 256, "allTensorsFinite": true, "loraBCount": 128, "allLoraBNonzero": true, "optimizerStateCount": 256, "allActualAdamSteps20": true}

@@ -1,0 +1,48 @@
+✔ finance view keeps verification and consumption in one writer-excluding snapshot (14.54705ms)
+✔ finance export keeps verification and consumption in one writer-excluding snapshot (6.366943ms)
+✔ finance import keeps verification and consumption in one writer-excluding snapshot (5.992608ms)
+✔ finance report keeps verification and consumption in one writer-excluding snapshot (6.912162ms)
+✔ finance saved-report keeps verification and consumption in one writer-excluding snapshot (8.307869ms)
+✔ successful nested savepoints remain subject to complete outer rollback (2.804388ms)
+✔ caught inner failure rolls back its ledger, checkpoint and objects while outer work commits (4.096567ms)
+✔ an existing transaction started outside Store uses a savepoint and is not committed by the helper (2.160587ms)
+✔ transaction callbacks must be synchronous and never commit a returned promise (2.566218ms)
+✔ finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report (455.162246ms)
+✔ finance rejects renamed system SQL identities before exporting or signing another target (46.12419ms)
+✔ finance rejects swapped system SQL identities before exporting or signing another target (33.171373ms)
+✔ finance rejects renamed supplier_bundle SQL identities before exporting or signing another target (33.531881ms)
+✔ finance rejects swapped supplier_bundle SQL identities before exporting or signing another target (32.149533ms)
+✔ same-tenant object contents cannot be read through a foreign-tenant bundle ID (26.118585ms)
+✔ assessment does not seal body system projection (10.735869ms)
+✔ assessment does not seal id system projection (3.665243ms)
+✔ assessment does not seal missing system projection (3.716309ms)
+✔ assessment does not seal injected system projection (4.552478ms)
+✔ unsigned event projection cannot become signed assessment evidence (3.77569ms)
+✔ signed event content determines evidence hash; projection changes cannot certify different bytes (5.187984ms)
+✔ governance report refuses forged system projection (5.470217ms)
+✔ governance report refuses forged assessment projection (5.128878ms)
+✔ governance report refuses forged governance_task projection (5.397051ms)
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (94.81861ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (46.093736ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (25.329212ms)
+✔ forged object projections cannot be certified by a new backup (12.595721ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (31.455089ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (24.526715ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (39.265631ms)
+  ✔ delete (38.504164ms)
+  ✔ index (40.026167ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (118.545725ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (40.396623ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (24.261291ms)
+✔ deleted event keys stay deleted after snapshot recovery (34.57583ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (386.305956ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (168.701621ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2076.931148

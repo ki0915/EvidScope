@@ -1,0 +1,5 @@
+
+> evidscope@0.1.2 test
+> node scripts/test-serial.mjs
+
+Active or unconfirmed public-QA job lease; finish and verify GPU cleanup before CPU release verification

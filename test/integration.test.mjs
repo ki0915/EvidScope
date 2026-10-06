@@ -40,6 +40,7 @@ test('실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합',async t=>{
  });
  await t.test('자기보고/독립 결과, 자동검토/사람승인, 뒤늦은 권한 재평가',async()=>{
   const when=Date.now()-1000;const common={actionId:'action-real',traceId:'trace-real',occurredAt:new Date(when).toISOString(),policyVersion:'v1',actor:'a',tool:'t',action:'write',resource:'r'};
+  assert.equal((await h.api('/api/assets',{role:'reviewer',body:{id:'prior-approval-policy',actor:'a',tool:'t',owner:'reviewer',policyVersion:'v1',validFrom:new Date(when-60000).toISOString(),approvalRequired:true}})).status,200);
   const scope={actor:'a',tool:'t',action:'write',resource:'r'};
   for(const [source,e]of [['tool',{id:'exec',kind:'result',status:'failure'}],['agent',{id:'claim',kind:'self_report',status:'success'}],['authority',{id:'auto',kind:'automated_review',scope,validFrom:new Date(when-1000).toISOString(),validUntil:new Date(when+60000).toISOString()}],['safety',{id:'stop',kind:'block_registered'}]])assert.equal((await submit(h.ingress.url,h.principal(source),{...common,...e})).status,202);
   await h.analyze();let a=(await h.api('/api/actions/action-real')).body;let codes=a.evaluations[0].findings.map(f=>f.code);
@@ -71,14 +72,23 @@ test('실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합',async t=>{
  });
  await t.test('빈 증거 통과 금지, 시스템 변경·기한 재검토, 보완과제 쓰기',async()=>{
   const s={id:'system-test',name:'생성형',owner:'담당',purpose:'고객 안내',role:'이용사업자',markets:['KR'],generative:true,highImpact:'unknown'};
-  assert.equal((await h.api('/api/governance/systems',{body:s})).status,200);
+  assert.equal((await h.api('/api/governance/systems',{role:'reviewer',body:s})).status,200);
   const a={systemId:s.id,requirementId:'KR-31-1',applicability:'applicable',evidence:[],control:'고지',owner:'담당',assessment:'sufficient',legalReview:'pending',reason:'합성',nextReviewAt:new Date(Date.now()+86400000).toISOString()};
-  assert.equal((await h.api('/api/governance/assessments',{body:a})).status,400);
-  a.evidence=[{type:'event',ref:'beta-agent/first',version:'1'}];assert.equal((await h.api('/api/governance/assessments',{body:a})).status,400);
-  a.evidence=[{type:'event',ref:'alpha-agent/first',version:'1'}];assert.equal((await h.api('/api/governance/assessments',{body:a})).status,200);
-  let report=(await h.api('/api/governance/report?systemId=system-test')).body;assert.equal(report.items.find(i=>i.requirement.id==='KR-31-1').status,'human_evidence_assessed');assert.equal(report.items.find(i=>i.requirement.id==='KR-31-1').legalStatus,'pending');
-  await h.api('/api/governance/systems',{body:{...s,purpose:'채용 의사결정'}});report=(await h.api('/api/governance/report?systemId=system-test')).body;assert.equal(report.items.find(i=>i.requirement.id==='KR-31-1').status,'review_required');
-  for(const task of report.tasks)assert.equal((await h.api('/api/governance/tasks/'+task.id,{body:{status:'closed',reason:'검토 계획 수립'}})).status,200);
+  assert.equal((await h.api('/api/governance/assessments',{role:'reviewer',body:a})).status,400);
+  a.evidence=[{type:'event',ref:'beta-agent/first',version:'1'}];assert.equal((await h.api('/api/governance/assessments',{role:'reviewer',body:a})).status,400);
+  a.evidence=[{type:'event',ref:'alpha-agent/first',version:'1'}];assert.equal((await h.api('/api/governance/assessments',{role:'reviewer',body:a})).status,200);
+  let report=(await h.api('/api/governance/report?systemId=system-test')).body;
+  const initial=report.items.find(i=>i.requirement.id==='KR-31-1');
+  assert.equal(initial.status,'evidence_insufficient');assert.equal(initial.legalStatus,'pending');assert.equal(initial.assessment.assessment,'sufficient');
+  assert.equal(initial.technicalEvidence.supportsHumanAssessment,false);assert.ok(initial.technicalEvidence.reasons.includes('authenticated_typed_measurement_missing'));
+  assert.ok(report.tasks.length>0);
+  for(const task of report.tasks)assert.equal((await h.api('/api/governance/tasks/'+task.id,{role:'reviewer',body:{status:'closed',reason:'일반 intent를 고지 증거로 주장'}})).status,409);
+  assert.equal((await h.api('/api/governance/systems',{role:'reviewer',body:{...s,purpose:'채용 의사결정'}})).status,200);
+  report=(await h.api('/api/governance/report?systemId=system-test')).body;
+  assert.equal(report.items.find(i=>i.requirement.id==='KR-31-1').status,'review_required');
+  assert.ok(report.tasks.some(task=>task.title.includes('시스템 사실관계 변경')));
+  for(const task of report.tasks)assert.equal((await h.api('/api/governance/tasks/'+task.id,{role:'reviewer',body:{status:'closed',reason:'검토 계획만 수립'}})).status,409);
+  assert.ok((await h.api('/api/governance/report?systemId=system-test')).body.tasks.every(task=>task.status==='open'));
  });
  await t.test('독립 신뢰키 검증·내용/누락/순서/키 대체 및 rollback 탐지',async()=>{
   const bundle=(await h.api('/api/export')).body;assert.equal(verifyBundle(bundle,h.publicKey).valid,true);
@@ -105,16 +115,36 @@ test('실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합',async t=>{
  });
  await t.test('실제 SQLite 쓰기 잠금 장애: 거짓 성공 없음·해제 뒤 재전송',async()=>{
   const child=fork('test/lock-store.mjs',[join(h.dir,'data','evidence.db')],{stdio:['ignore','ignore','ignore','ipc']});
-  await new Promise((r,j)=>{child.once('message',r);child.once('error',j);});
-  const e=event('outage');const result=await submit(h.ingress.url,h.principal('agent'),e,{timeoutMs:9000});assert.equal(result.status,503);
-  child.send('release');await new Promise(r=>child.once('exit',r));assert.equal((await submit(h.ingress.url,h.principal('agent'),e)).status,202);
+  const exited=()=>child.exitCode!==null||child.signalCode!==null;
+  const waitExit=ms=>new Promise(resolve=>{if(exited())return resolve(true);const finish=done=>{clearTimeout(timer);child.off('exit',onExit);resolve(done);},onExit=()=>finish(true),timer=setTimeout(()=>finish(false),ms);child.once('exit',onExit);});
+  let failure;const e=event('outage');
+  try{
+   await new Promise((resolve,reject)=>{
+    const finish=error=>{clearTimeout(timer);child.off('message',onMessage);child.off('error',onError);child.off('exit',onExit);error?reject(error):resolve();};
+    const onMessage=message=>message==='locked'?finish():finish(Error('SQLite lock helper returned an unexpected readiness message'));
+    const onError=error=>finish(error),onExit=(code,signal)=>finish(Error(`SQLite lock helper exited before readiness: ${code??signal}`)),timer=setTimeout(()=>finish(Error('SQLite lock helper readiness timeout after 10s')),10000);
+    child.once('message',onMessage);child.once('error',onError);child.once('exit',onExit);
+   });
+   const result=await submit(h.ingress.url,h.principal('agent'),e,{timeoutMs:9000});assert.equal(result.status,503);
+  }catch(error){failure=error;}
+  finally{
+   try{
+    if(!exited()){
+     if(child.connected){try{child.send('release',error=>{if(error&&!exited())child.kill();});}catch{child.kill();}}
+     else child.kill();
+     if(!await waitExit(3000)){child.kill();if(!await waitExit(3000))throw Error(`Owned SQLite lock helper ${child.pid} did not exit after release and kill`);}
+    }
+   }catch(error){failure=failure?new AggregateError([failure,error],'SQLite lock assertion and helper cleanup both failed'):error;}
+  }
+  if(failure)throw failure;
+  assert.equal((await submit(h.ingress.url,h.principal('agent'),e)).status,202);
  });
  await t.test('수집 실패가 업무 호출을 대기시키지 않는 유한 SDK',async()=>{
   const observer=new Observer('http://127.0.0.1:1',h.principal('agent'),{capacity:1,attempts:1,timeoutMs:50});const start=performance.now();for(let i=0;i<10;i++)observer.observe(event('sdk-'+i));assert.ok(performance.now()-start<100);while(observer.running)await new Promise(r=>setTimeout(r,20));assert.equal(observer.metrics.observed,10);assert.equal(observer.metrics.dropped,10);
  });
- await t.test('합성 예제 end-to-end 실제 API 시드·규정 요구 20개',async()=>{
+ await t.test('합성 예제 end-to-end 실제 API 시드·전체 요구 31개와 한국 18개',async()=>{
   const result=await demo({config:h.config,ingress:h.ingress.url,audit:h.audit.url});assert.equal(result.events,10);for(let i=0;i<5;i++)await h.analyze();
-  const gov=(await h.api('/api/governance')).body;assert.equal(gov.requirements.length,20);assert.ok(gov.systems.length>=2);assert.ok(gov.tasks.length>0);
+  const gov=(await h.api('/api/governance')).body;assert.equal(gov.requirements.length,31);assert.equal(gov.requirements.filter(item=>item.jurisdiction==='KR').length,18);assert.ok(gov.systems.length>=2);assert.ok(gov.tasks.length>0);
   const action=(await h.api('/api/actions/'+result.actionId)).body;assert.ok(action.evaluations[0].findings.some(f=>f.code==='APPROVAL_MISMATCH'));assert.ok(action.evaluations[0].findings.some(f=>f.code==='LOG_INJECTION_SIGNAL'));
   assert.equal((await h.api('/api/integrity')).body.valid,true);
  });

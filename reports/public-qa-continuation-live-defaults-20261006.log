@@ -1,0 +1,36 @@
+✔ continuation fixture binds 20 fresh updates and 220/100 actually consumed samples without execution claims (426.3416ms)
+✔ the production verifier refuses fixture pins and never overwrites existing reports (416.8584ms)
+✔ continuation rejects nonzero execution (195.0798ms)
+✔ continuation rejects missing termination (204.7068ms)
+✔ continuation rejects source history inflated to optimizer step eighty (195.0871ms)
+✔ continuation rejects source bytes changed (209.1339ms)
+✔ continuation rejects writable warmstart (336.9183ms)
+✔ continuation rejects foreign Pod owner (318.7501ms)
+✔ continuation rejects GPU limit removed (317.3264ms)
+✔ continuation rejects wrong memory leaf (309.3487ms)
+✔ continuation rejects new runtime changed (466.6766ms)
+✔ continuation rejects missing forward/backward (649.2722ms)
+✔ continuation rejects different encoded tensor (636.3508ms)
+✔ continuation rejects duplicate microbatch (606.3917ms)
+✔ continuation rejects full dataset instead of consumed prefix (566.5276ms)
+✔ continuation rejects incorrect 50/50 group (530.7424ms)
+✔ continuation rejects token cropping (474.3803ms)
+✔ observed sample order cannot be substituted by a self-consistent arbitrary sampler plan (390.6035ms)
+✔ ordered optimizer and reverse-pass records are independently required (1033.9479ms)
+✔ optimizer confirmation cannot precede its sixteen completed reverse passes (672.082ms)
+✔ resealed source evidence cannot conceal an unverified training history (325.409ms)
+✔ checkpoint exposure and final adapter are sealed and cannot be replaced (1623.8233ms)
+✔ finite and distinct new adapter bytes are mandatory (1179.5393ms)
+✔ source family overlap cannot be hidden by repinning synthetic dataset source receipts (686.4832ms)
+✔ unequal label selection keeps human originals and excludes exposed families with unchanged symmetric behavior (9.5899ms)
+✔ continuation job binds the actual latest source and separate writable output with unchanged resource isolation (1.3265ms)
+✔ controller requires explicit bounded continuation and rejects conflicting modes (0.2073ms)
+✔ live mount checks accept explicit false PVC defaults while rejecting scope changes (0.7808ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12896.3895

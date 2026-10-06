@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-09-28T06:12:45.911Z",
+  "scope": "Direct SQLite authentication-state reads over synthetic signed data, single process; not HTTP throughput, isolated CPU timing or enterprise SLO",
+  "node": "v24.15.0",
+  "rows": 20001,
+  "ledgerBytes": 25658052,
+  "initialVerificationMs": 326.66820000000007,
+  "wholeLedgerEachRead": {
+    "calls": 10,
+    "p50Ms": 312.6176999999998,
+    "p95Ms": 345.4471999999996,
+    "maxMs": 345.4471999999996
+  },
+  "verifiedIncrementalCache": {
+    "calls": 100,
+    "p50Ms": 0.17669999999998254,
+    "p95Ms": 0.3194000000003143,
+    "maxMs": 0.56670000000031
+  },
+  "twoRecordExtensionMs": 0.21590000000014697
+}

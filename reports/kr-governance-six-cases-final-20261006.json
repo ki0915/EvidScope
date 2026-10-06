@@ -1,0 +1,2004 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T03:51:32.554Z",
+  "passed": true,
+  "caseCount": 6,
+  "passedCases": 6,
+  "runtime": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "transport": "in_process_service_boundary_no_http_server",
+  "synthetic": true,
+  "modelCalls": 0,
+  "liveFinancialIntegration": false,
+  "humanReviewPerformed": false,
+  "measurementTrust": "authenticated_synthetic_report_not_independent_truth",
+  "automaticLegalVerdict": false,
+  "competitiveSuperiorityProven": false,
+  "catalogHash": "37788b448c867f017de0aa17d7c10a9473fcc76dfe3b822c0be51012fc7c1186",
+  "sourceSha256": {
+    "scripts/portfolio-governance-demo.mjs": "2acbb25acaba3e8d95ec0093e6bb6c1082176a5bb0719549e979913e768e39fb",
+    "data/requirements.json": "75775fe64fc1c053095ef6e0796a4858e161bef1b04d07aabfcf9a7d2f07e077",
+    "src/service.mjs": "99a7b4ac1c06a423b524b8733607a05105375a62aa6f0a921f9938203c6b0b86",
+    "src/governance-policy.mjs": "ccdbacdb86e24f6c788711536ace0ebb74c83f1ea77a2a4b85196be4bc333073",
+    "src/kr-governance-evidence.mjs": "dac1bebbbe0c7ede97f5007cc4ec7a1356655b8d4d2feb23e1eeb2f6846f9033",
+    "src/finance-evidence.mjs": "fc58e70f16c25c7f8d016253b3d17392e121bbcb7f869c26880376df9a9cbc9b",
+    "src/governance-documents.mjs": "adfbb9e9c94f32dcc3d427b834fc19a0a0a621ceb6d0d91661f18d2249b65d3a",
+    "src/model.mjs": "5314ddfb6ad2138a4b3585e36175e16eba622336fa41e629cca4367242920fa0",
+    "src/worker.mjs": "5f197d84afb53805769ef1829a2da9558318d5964e94412243f1764b6b55d2e2",
+    "src/crypto.mjs": "90de5da5089d4735b74927e856aa41ff9d347b88fab97d3eb4bbfaf69f392eee",
+    "src/store.mjs": "e92a655257ec5d82a5059d52729ba0b4f9bc94e44c7de194b9b370e9be35c0af"
+  },
+  "cases": [
+    {
+      "id": "baseline",
+      "name": "기준: 실제 보관 문서·합성 측정·감독 수행 기록 연결",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "0f75b3bd1d19711fbd5d7b85d3cfb7285a82990a2e8e545aa01ed7126a04810b",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "0f75b3bd1d19711fbd5d7b85d3cfb7285a82990a2e8e545aa01ed7126a04810b"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\baseline"
+    },
+    {
+      "id": "model-changed",
+      "name": "현재 모델 v2 변경",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "high_impact_risk_management"
+          ],
+          "reasons": [
+            "document_evidence_stale",
+            "high_impact_risk_management:system_model_or_policy_mismatch",
+            "high_impact_risk_management:system_facts_hash_mismatch",
+            "high_impact_risk_management:matching_verified_document_missing",
+            "verified_measure_document_missing"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "oversight_plan",
+            "human_oversight_review"
+          ],
+          "reasons": [
+            "oversight_plan:system_model_or_policy_mismatch",
+            "oversight_plan:system_facts_hash_mismatch"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "document_publication_retention"
+          ],
+          "reasons": [
+            "document_publication_retention:system_model_or_policy_mismatch",
+            "document_publication_retention:system_facts_hash_mismatch"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [
+        "MODEL_VERSION_MISMATCH",
+        "SUPPLIED_MODEL_VERSION_MISMATCH"
+      ],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "1f49fb1485266c7787d9dcdacb71a5fecc745864ceffadb59fb3d171ff3e6ad2",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "1f49fb1485266c7787d9dcdacb71a5fecc745864ceffadb59fb3d171ff3e6ad2"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "model_mismatch_detected",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "mismatched_supplier_sufficient_assessment_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\model-changed"
+    },
+    {
+      "id": "purpose-changed",
+      "name": "현재 공급사 목적이 같아도 최초 공급 목적 불일치",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "high_impact_risk_management"
+          ],
+          "reasons": [
+            "document_evidence_stale",
+            "high_impact_risk_management:system_facts_hash_mismatch",
+            "high_impact_risk_management:matching_verified_document_missing",
+            "verified_measure_document_missing"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "oversight_plan"
+          ],
+          "reasons": [
+            "oversight_plan:system_facts_hash_mismatch"
+          ],
+          "matchedChecks": [
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "document_publication_retention"
+          ],
+          "reasons": [
+            "document_publication_retention:system_facts_hash_mismatch"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [
+        "SUPPLIED_PURPOSE_MISMATCH"
+      ],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "e8c5be020ee0848e032caf90c60317fe01b95dd579d47177f37726b80859ac69",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "e8c5be020ee0848e032caf90c60317fe01b95dd579d47177f37726b80859ac69"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "current_supplier_purpose_matches",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "original_supplied_purpose_mismatch",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "mismatched_supplier_sufficient_assessment_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\purpose-changed"
+    },
+    {
+      "id": "supplier-document-revised",
+      "name": "공급사 문서 개정: 연결된 위험관리 평가만 재검토",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "high_impact_risk_management"
+          ],
+          "reasons": [
+            "document_evidence_stale",
+            "high_impact_risk_management:matching_verified_document_missing",
+            "verified_measure_document_missing"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "addcf8f2efeba9c85383c0830445084189fc9753026ff011f0a9f6115f80d064",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "addcf8f2efeba9c85383c0830445084189fc9753026ff011f0a9f6115f80d064"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "supplier_revision_review_task",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\supplier-document-revised"
+    },
+    {
+      "id": "oversight-plan-revised",
+      "name": "감독 계획 개정: 문서·사람 감독 재검토",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            },
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "oversight_plan"
+          ],
+          "reasons": [
+            "document_evidence_stale",
+            "oversight_plan:matching_verified_document_missing",
+            "verified_measure_document_missing"
+          ],
+          "matchedChecks": [
+            {
+              "checkType": "human_oversight_review",
+              "ref": "synthetic-authority/oversight",
+              "reviewer": "synthetic-human"
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "review_required",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "document_publication_retention"
+          ],
+          "reasons": [
+            "document_evidence_stale",
+            "document_publication_retention:matching_verified_document_missing",
+            "verified_measure_document_missing"
+          ],
+          "matchedChecks": [],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "16dd93df8fc55d27ccabe0d2e3b5d745d7e2d7f532f85ad068ed831dac7f54d6",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "16dd93df8fc55d27ccabe0d2e3b5d745d7e2d7f532f85ad068ed831dac7f54d6"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "plan_revision_review_task",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\oversight-plan-revised"
+    },
+    {
+      "id": "oversight-record-missing",
+      "name": "별도 누락 분기: 감독 수행 기록 없음",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "evidence_insufficient",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "human_oversight_review"
+          ],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "high_impact_risk_management",
+              "ref": "synthetic-measurements/check-KR-34-RISK",
+              "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "evidence_insufficient",
+          "technicalStatus": "typed_evidence_insufficient",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": false,
+          "missingChecks": [
+            "human_oversight_review"
+          ],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "oversight_plan",
+              "ref": "synthetic-measurements/check-KR-34-OVERSIGHT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "authenticated_reported_measurement_supported",
+          "legalStatus": "pending",
+          "supportsHumanAssessment": true,
+          "missingChecks": [],
+          "reasons": [],
+          "matchedChecks": [
+            {
+              "checkType": "document_publication_retention",
+              "ref": "synthetic-measurements/check-KR-34-DOCUMENT",
+              "documentHash": "b9cd93cd1bb8d276e53b087cb5fad4146c7075105457ee739d53c29103ccd02b",
+              "effortOnly": false
+            }
+          ],
+          "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+          "automaticLegalVerdict": false
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "only_authenticated_measurements_received",
+          "passed": true,
+          "expected": 3,
+          "actual": 3
+        },
+        {
+          "name": "invalid_measurement_hmac_rejected",
+          "passed": true
+        },
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "supplier_only_risk_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "high_impact_risk_management"
+            ]
+          }
+        },
+        {
+          "name": "document_only_publication_not_supported",
+          "passed": true,
+          "expected": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          },
+          "actual": {
+            "status": "evidence_insufficient",
+            "missingChecks": [
+              "document_publication_retention"
+            ]
+          }
+        },
+        {
+          "name": "submitted_human_conclusions_preserved",
+          "passed": true,
+          "expected": [
+            "sufficient",
+            "sufficient"
+          ],
+          "actual": [
+            "sufficient",
+            "sufficient"
+          ]
+        },
+        {
+          "name": "supplier_only_conclusion_history_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "typed_measurement_frozen_binding",
+          "passed": true,
+          "expected": {
+            "schemaVersion": 1,
+            "requirementId": "KR-34-RISK",
+            "checkType": "high_impact_risk_management",
+            "result": "pass",
+            "systemHash": "60b21a77b10ab58fe2fee637bcb9b4acccf352e0460b3fb555d26f9e50474e4a",
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "riskPolicyRecorded": true,
+              "responsibleOrganisationRecorded": true,
+              "operatingReviewRecorded": true,
+              "mitigationTestPassed": true,
+              "residualRiskReviewed": true
+            }
+          },
+          "actual": {
+            "checkType": "high_impact_risk_management",
+            "documentHash": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+            "measurements": {
+              "mitigationTestPassed": true,
+              "operatingReviewRecorded": true,
+              "residualRiskReviewed": true,
+              "responsibleOrganisationRecorded": true,
+              "riskPolicyRecorded": true
+            },
+            "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+            "requirementId": "KR-34-RISK",
+            "result": "pass",
+            "schemaVersion": 1,
+            "systemHash": "60b21a77b10ab58fe2fee637bcb9b4acccf352e0460b3fb555d26f9e50474e4a"
+          }
+        },
+        {
+          "name": "other_tenant_has_no_portfolio_events",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "other_tenant_document_and_assessment_access_rejected",
+          "passed": true
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "evidence_insufficient"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "evidence_insufficient",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "missing_oversight_record",
+          "passed": true,
+          "expected": {
+            "technicalStatus": "typed_evidence_insufficient",
+            "missingChecks": [
+              "human_oversight_review"
+            ]
+          },
+          "actual": {
+            "technicalStatus": "typed_evidence_insufficient",
+            "missingChecks": [
+              "human_oversight_review"
+            ]
+          }
+        },
+        {
+          "name": "unsupported_oversight_task_closure_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm\\oversight-record-missing"
+    }
+  ],
+  "artifactDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm",
+  "limitations": [
+    "합성 자격·문서·인간 평가 기록을 사용한 로컬 재현이며 실제 금융·법률 품질을 입증하지 않습니다.",
+    "governance_check는 고정된 합성 시험 결과를 HMAC 인증 접수한 보고입니다. 측정 내용·문서 의미·법률 이행을 독립 실측하거나 인증한 결과가 아닙니다.",
+    "공급사 증빙만으로 위험관리를 인정하지 않습니다. 실제 보관 문서와 조항별 측정의 현재 모델·정책·법령 해시를 대조하며 사람의 법률 검토는 pending으로 유지합니다.",
+    "기존 HMAC 접수·SQLite·worker·거버넌스 경계를 같은 프로세스에서 호출합니다. HTTP/TLS·별도 호스트 경계는 시험하지 않습니다.",
+    "감독 누락 사례는 처음부터 수행 기록을 제출하지 않는 별도 분기입니다. 기존 원본을 삭제하지 않습니다.",
+    "서명키는 시험 시작 시 메모리에서 생성·고정한 합성 신뢰점입니다. 운영 외부 신뢰점·KMS·신뢰 시각 봉인이 아닙니다.",
+    "금융 보고서·원장·공급사 원문은 여러 파일입니다. 독립 신뢰키 전달까지 포함한 단일 완결 증거 패키지가 아닙니다.",
+    "temporaryDatabaseRetained: 합성 실행 폴더는 보존합니다. 개인 설정·기존 데이터·비밀 파일은 사용하지 않습니다."
+  ]
+}

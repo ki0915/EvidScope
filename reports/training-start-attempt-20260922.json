@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-22T05:19:18.215Z",
+  "requested": "formal_training_with_human_annotated_public_data_first",
+  "trainingStarted": false,
+  "trainingRunCompleted": false,
+  "modelWeightsDownloaded": false,
+  "docker": {
+    "allowed": true,
+    "checks": {
+      "docker": {
+        "ready": true
+      },
+      "gpu": {
+        "ready": true
+      }
+    },
+    "errors": [],
+    "downloadsPerformed": false
+  },
+  "cluster": {
+    "context": "k3d-dlp",
+    "node": "k3d-dlp-server-0",
+    "ready": true,
+    "gpuAllocatable": 0,
+    "memory": "16300708Ki",
+    "configurationChanged": false
+  },
+  "gpuProbe": {
+    "kind": "docker_only",
+    "image": "ollama/ollama:latest",
+    "command": "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader",
+    "result": "NVIDIA GeForce RTX 3080, 12288 MiB",
+    "network": "none",
+    "hostMounts": [],
+    "containerRemoved": true,
+    "doesNotProveKubernetesGpu": true
+  },
+  "host": {
+    "receipt": {
+      "schemaVersion": 1,
+      "source": "trusted_windows_host_probe",
+      "observedAt": "2026-09-22T14:19:18.1756942+09:00",
+      "idleSeconds": 0,
+      "cpuPercent": 7.94,
+      "freeMemoryGiB": 5.586,
+      "onAcPower": true,
+      "gpu": {
+        "memoryUsedMiB": 1314,
+        "memoryTotalMiB": 12288,
+        "utilizationPercent": 2,
+        "temperatureC": 53,
+        "computeProcessCount": 25
+      }
+    },
+    "decision": {
+      "allowed": false,
+      "reasons": [
+        "interactive_session_not_idle",
+        "host_memory_reserve_low",
+        "gpu_memory_in_use",
+        "other_gpu_compute_active"
+      ]
+    }
+  },
+  "recovery": {
+    "method": "rename_stale_runtime_socket_directories_preserving_contents",
+    "dataReset": false,
+    "backups": [
+      "Docker/run.evidscope-backup-20260922-141320",
+      "docker-secrets-engine.evidscope-backup-20260922-141424",
+      "Docker/run.evidscope-backup-20260922-141646"
+    ],
+    "backupRoot": "%LOCALAPPDATA%",
+    "noExistingWorkloadConfigurationChanged": true
+  },
+  "remaining": [
+    "public_QA_training_target_and_privacy_validation",
+    "kubernetes_gpu_runtime_and_device_plugin",
+    "measured_isolation_and_resource_pilot",
+    "pinned_training_image_and_local_base_artifacts",
+    "host_resource_admission"
+  ],
+  "qualityClaimAllowed": false,
+  "cleanup": {
+    "observedAt": "2026-09-22T05:20:44.628Z",
+    "dockerStopCommandSucceeded": true,
+    "remainingDockerProcesses": [],
+    "hostAfterStop": {
+      "schemaVersion": 1,
+      "source": "trusted_windows_host_probe",
+      "observedAt": "2026-09-22T14:20:45.3868790+09:00",
+      "idleSeconds": 73,
+      "cpuPercent": 1.76,
+      "freeMemoryGiB": 10.585,
+      "onAcPower": true,
+      "gpu": {
+        "memoryUsedMiB": 1128,
+        "memoryTotalMiB": 12288,
+        "utilizationPercent": 2,
+        "temperatureC": 54,
+        "computeProcessCount": 23
+      }
+    },
+    "restoredInitialDockerStoppedState": true,
+    "trainingProcessesStarted": 0,
+    "dockerDesktopWslTerminationCommandSucceeded": true
+  },
+  "publicData": {
+    "dataset": "KLUE-MRC v1.1",
+    "revision": "3efd98708a40ff49251fddde35453f8fbb11f536",
+    "counts": {
+      "upstreamTrain": 17554,
+      "upstreamDev": 5841,
+      "train": 12060,
+      "validation": 1345,
+      "heldout": 5841,
+      "excluded": 4149
+    },
+    "manifestPath": ".local/public-training/klue-mrc/3efd98708a40ff49251fddde35453f8fbb11f536/manifest.json",
+    "manifestSha256": "c412bc1f048a33351be60ce8a4395bcf9d5a160d58047decc380a8c2197db14c",
+    "upstreamHumanAnnotated": true,
+    "localHumanReviewPerformed": false,
+    "governanceTrainingReady": false
+  },
+  "validation": {
+    "focusedTests": {
+      "passed": 10,
+      "failed": 0
+    },
+    "diffCheckPassed": true
+  }
+}

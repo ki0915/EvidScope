@@ -1,0 +1,66 @@
+{
+  "scope": "mocked controller reads, not Kubernetes or actual r3 exit proof",
+  "passed": 12,
+  "cases": [
+    {
+      "case": "delayed exit 0",
+      "reads": 3,
+      "exitCode": 0
+    },
+    {
+      "case": "delayed exit 1",
+      "reads": 3,
+      "exitCode": 1
+    },
+    {
+      "case": "delayed exit 137",
+      "reads": 3,
+      "exitCode": 137
+    },
+    {
+      "case": "unrelated failure preserves identity and error",
+      "message": "failed to create exec \"sample\": task another-container not found",
+      "reads": 1
+    },
+    {
+      "case": "unrelated failure preserves identity and error",
+      "message": "task independent-container not found",
+      "reads": 1
+    },
+    {
+      "case": "unrelated failure preserves identity and error",
+      "message": "failed to create exec \"sample\": task independent-containerX not found",
+      "reads": 1
+    },
+    {
+      "case": "delayed changed image",
+      "reads": 2,
+      "rejected": true
+    },
+    {
+      "case": "delayed changed cpu",
+      "reads": 2,
+      "rejected": true
+    },
+    {
+      "case": "delayed changed memory",
+      "reads": 2,
+      "rejected": true
+    },
+    {
+      "case": "delayed changed gpu",
+      "reads": 2,
+      "rejected": true
+    },
+    {
+      "case": "delayed changed writeable base",
+      "reads": 2,
+      "rejected": true
+    },
+    {
+      "case": "delayed changed terminated CID",
+      "reads": 2,
+      "rejected": true
+    }
+  ]
+}

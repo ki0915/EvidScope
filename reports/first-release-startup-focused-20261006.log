@@ -1,0 +1,71 @@
+✖ independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest (618.7434ms)
+✖ release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart (1077.7338ms)
+✔ release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children (1197.2551ms)
+{"component":"vault","address":"::1","port":34587,"tls":false}
+node:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use ::1:34588
+    at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+    at listenInCluster (node:net:2065:12)
+    at node:net:2274:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:2044:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::1',
+  port: 34588
+}
+
+Node.js v24.15.0
+✔ release startup conflict cleans earlier services and preserves the unrelated listener (431.8667ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3491.4933
+
+✖ failing tests:
+
+test at test\finance-report-verifier.test.mjs:12:1
+✖ independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest (618.7434ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  400 !== 200
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/finance-report-verifier.test.mjs:14:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 400,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\local-release.test.mjs:32:1
+✖ release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart (1077.7338ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  400 !== 200
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/local-release.test.mjs:37:237)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 400,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

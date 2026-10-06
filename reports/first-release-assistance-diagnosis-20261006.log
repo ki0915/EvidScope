@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: assistance profiles are versioned and fixed to local-only model policy
+ok 1 - assistance profiles are versioned and fixed to local-only model policy
+  ---
+  duration_ms: 319.4033
+  type: 'test'
+  ...
+# Subtest: packages minimize adversarial fields, bind real refs and preserve governance semantics
+ok 2 - packages minimize adversarial fields, bind real refs and preserve governance semantics
+  ---
+  duration_ms: 78.0113
+  type: 'test'
+  ...
+# Subtest: run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+ok 3 - run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+  ---
+  duration_ms: 312.9987
+  type: 'test'
+  ...
+# Subtest: human advisory reviews are separate, preserved, and drafts become stale on evidence change
+ok 4 - human advisory reviews are separate, preserved, and drafts become stale on evidence change
+  ---
+  duration_ms: 277.1208
+  type: 'test'
+  ...
+# Subtest: expired run credential records timeout and cannot claim
+ok 5 - expired run credential records timeout and cannot claim
+  ---
+  duration_ms: 152.6404
+  type: 'test'
+  ...
+# Subtest: assistance projections must match signed original ledger records
+ok 6 - assistance projections must match signed original ledger records
+  ---
+  duration_ms: 324.6471
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1614.8888

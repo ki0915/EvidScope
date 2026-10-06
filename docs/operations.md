@@ -1,5 +1,7 @@
 # EvidScope 실행·배포·복구
 
+2026-10-06 v0.1.0의 출시 계약은 [1차 파일럿 안내](first-release-20261006.md)를 따른다. 로컬 배포본과 실행 절차를 제공하며, 아래 Kubernetes 기록은 별도 과거 실험이다. 새 파일럿에는 기존 `.local` 자격·개인키·DB를 복사하지 않고 고유한 자격과 키를 생성한다. 기존 데이터의 업그레이드·복구는 원본 경로를 보존하고 독립 백업을 검증한 뒤 진행한다. 모델·GPU·학습 워커는 기본 OFF이며 로컬 실행 명령으로 켜지지 않는다.
+
 검증 상태: 사용자 승인 후 Docker를 복구하고 별도 evidscope-lab-20260908 클러스터에 이미지 빌드·배포, Service 분산, HPA 자동 증감, Pod 복구 시험을 실행했다. 기존 kube context k3d-dlp는 사용하거나 바꾸지 않았다. [실행 원자료와 실패·한계](../reports/kubernetes-runtime-20260908.md)를 확인한다. CNI 규칙과 거부 응답은 관측했지만 개별 패킷 귀속 검증은 미완료다. `Static` 성공은 실배포 성공을 뜻하지 않는다.
 
 현재 로드밸런싱 패키지는 `/readyz` 의존성 검사, 두 노드 이상 topology spread, 무중단 갱신 목표, 실제 처리 Pod별 분산 probe를 포함한다. [로드밸런싱 검증 절차](kubernetes-load-balancing.md)를 함께 따른다. ClusterIP 내부 분산과 외부 LoadBalancer 제공자, 단일 vault 저장소의 고가용성은 별도 범위다.
@@ -25,9 +27,12 @@ NetworkPolicy는 ingress/egress 기본 거부에서 시작하여 gateway/worker�
 
 ## 로컬 실행
 
-프로젝트 root에서 Node.js 24.15 이상 25 미만을 사용한다. 외부 npm 런타임 패키지는 없다.
+v0.1.0 배포 ZIP에는 고정한 node_modules가 포함된다. ZIP 설치는 바로 `npm start`를 사용하며, 아래 `npm ci`는 소스에서 의존성을 새로 설치할 때만 실행한다. 로컬 실행기는 HTTP 전용이며 TLS 환경 변수가 설정되어 있으면 별도 TLS 배포 경로를 안내하고 시작을 거부한다.
+
+프로젝트 root에서 Node.js 24.15 이상 25 미만을 사용한다. `openid-client` 6.8.8과 전이 의존성은 `package-lock.json`에 고정되어 있으므로 먼저 설치한다. 폐쇄망에서는 승인한 동일 잠금 파일의 의존성 묶음과 Node 런타임을 제공하고 설치·검증한다.
 
 ```powershell
+npm ci --ignore-scripts --no-audit --no-fund
 npm run init
 npm start
 # 별도 터미널
@@ -37,13 +42,15 @@ npm run bench
 node scripts/k8s-static.mjs
 ```
 
-개발용 loopback HTTP와 합성 자격증명은 로컬 검증용이다. 외부 네트워크에 노출할 때는 검증된 TLS 인증서와 별도 자격증명이 필요하다. Docker 빌드 컨텍스트는 `src`, `public`, 배포 catalog `data`만 허용하고 로컬 DB·키를 제외한다. `.local` 데이터나 인증 정보를 이미지에 포함하지 않는다.
+이 PC에서 IPv4 loopback 오류가 발생하면 시작 전 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정한다. 감사 URL은 `http://[::1]:8082`다. `EVIDSCOPE_LOCAL_DIR`로 별도 파일럿의 자격·키·데이터 경로를, `EVIDSCOPE_LOCAL_PORT_BASE`로 기본 8080부터 시작하는 네 포트를 선택한다. 기본 데이터 경로는 `.local`이며 기존 경로의 데이터를 덮어쓰거나 초기화하지 않는다. 포트 기준 `0`은 시험용 자동 할당으로 일반 사용 안내에 고정 URL을 재사용하지 않는다. 종료는 실행 터미널의 `Ctrl+C`를 사용하고 네 자식 프로세스가 종료된 뒤 재시작한다.
+
+개발용 loopback HTTP와 합성 자격증명은 통제된 파일럿용이다. 외부 네트워크에 노출할 때는 검증된 TLS 인증서와 조직별 인증·접근 통제가 필요하다. Docker 빌드 컨텍스트는 명시한 소스·정적 화면·catalog·역할 자료·잠금 파일과 제한된 배포 보조 스크립트만 허용하며 로컬 DB·키를 제외한다. `.local` 데이터나 인증 정보를 이미지에 포함하지 않는다. Docker 이미지는 구성요소 서버 실행용이며 초기화·검증·백업 CLI는 함께 제공한 소스 배포본에서 실행한다. 이미지 하나로 네 구성요소와 자격 초기화가 자동으로 준비되었다고 간주하지 않는다.
 
 ## 개인 실험 클러스터 준비
 
 요구 환경: Linux worker node, PVC를 provision하는 기본 StorageClass, NetworkPolicy 집행 CNI, CPU metrics API를 제공하는 metrics-server, Node24 이미지를 실행할 수 있는 런타임. HPA는 실제 CPU utilization을 CPU request와 비교하므로 request가 있어야 하며, API가 없거나 수집이 실패하면 확장 결과를 확인할 수 없다. [Kubernetes HPA](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/) 확인일: 2026-09-08.
 
-`deploy/kubernetes.json`은 `v1/List` 형식으로 `kubectl apply -f`가 읽는다. 기본 namespace는 `evidscope`다. `node deploy/render-manifests.mjs`로 같은 구성을 재생성한다. 운영 이미지는 테스트한 digest로 고정하고 취약점/공급망 검토 후 배포한다. 기본 `node:24-bookworm-slim`, `evidscope:local` 태그는 실험 프로파일이며 이미지 빌드 성공·무취약성을 주장하지 않는다.
+`deploy/kubernetes.json`은 `v1/List` 형식으로 `kubectl apply -f`가 읽는다. 기본 namespace는 `evidscope`다. `node deploy/render-manifests.mjs`로 같은 구성을 재생성한다. 운영 이미지는 테스트한 digest로 고정하고 취약점/공급망 검토 후 배포한다. Dockerfile은 Node24.15.0-bookworm-slim 공식 index digest를 고정하고 잠금 npm 의존성을 설치한다. 배포의 `evidscope:local` 태그는 여전히 실험 프로파일이며 완성 이미지 검증·운영 승격을 대신하지 않는다. [OIDC 전송·네트워크 정책 요구](oidc-authentication.md)를 함께 적용한다.
 
 예시는 이미 별도 승인된 개인 클러스터를 전제로 한다. 아래 context 값을 실제 실험 context로 바꾸고 사전에 소유권과 비용을 확인한다. 이 문서와 스크립트는 클러스터나 metrics-server를 설치하지 않는다.
 
@@ -140,7 +147,7 @@ Pod 종료는 1초 grace period를 사용한다. `HaltVault`는 서비스 중단
 
 SQLite vault는 단일 쓰기·저장 병목이자 단일 장애 지점이다. RWO는 클러스터 관리자나 동일 노드 침해에 대한 불변 저장 보장이 아니다. `Recreate` 갱신·노드 장애·PVC 재연결 동안 수집과 감사가 중단될 수 있다. PDB `minAvailable: 1`은 자발적 eviction을 제한하지만 단일 vault 고가용성이나 직접 Pod 삭제 방지를 제공하지 않는다. 유지보수 drain은 이 PDB에 막힐 수 있으므로 계획된 중단과 복구를 사전 승인해야 한다. [PDB 문서](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) 확인일: 2026-09-08.
 
-vault를 정지한 뒤 DB와 WAL 상태를 포함하는 일관된 volume backup을 만들거나 SQLite backup API를 사용하는 별도 도구가 필요하다. 실행 중인 DB 파일 하나만 복사한 것을 일관된 백업이라고 간주하지 않는다. 복원은 별도 실험 namespace/volume에서 수행하고 독립된 공개키·trusted checkpoint로 검증하며 원본 수, chain head, receipt ID, 분석 재구축을 대조한다. 본 릴리스는 자동 CSI snapshot/원격 backup/KMS/WORM/외부 checkpoint 보관 연동을 구현하지 않는다. 원본 DB, 개인키, trusted checkpoint를 함께 침해한 관리자는 이 로컬 보장을 넘어선다.
+로컬 SQLite backup API를 사용하는 [증적 백업·복구 도구](vault-recovery.md)를 제공한다. 실행 중인 DB의 일관된 snapshot과 과거 공급사 문서를 암호화 백업하고, 별도 공개키·anchor와 대조해 새 디렉터리에 복원한다. 실제 HTTP 복구와 테넌트 접근 검증을 수행했다. 운영 복원은 별도 namespace/volume에서 먼저 실증해야 한다. 실행 중인 DB 파일 하나만 복사한 것을 일관된 백업이라고 간주하지 않는다. 자동 CSI snapshot/원격 backup/KMS/WORM/외부 checkpoint 보관 연동은 미구현이다. 원본 DB, 개인키, trusted checkpoint를 함께 침해한 관리자는 이 로컬 보장을 넘어선다.
 
 Secret은 Kubernetes API에 저장된다. etcd encryption at rest, Secret RBAC, node 접근 통제, 키 rotation, 원격 불변 archive는 운영자가 별도 구성·검증해야 한다. 제한된 securityContext의 근거는 [Kubernetes Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)이며, 2026-09-08 확인했다. namespace 분리나 해시 체인만으로 완전 격리·법적 증거능력·운영 인증을 주장하지 않는다.
 

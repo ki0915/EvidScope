@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-05T10:13:03.7497500Z",
+  "executionArtifactDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E",
+  "preservedEvidenceDirectory": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\reports\\portfolio-governance-demo-20261005",
+  "copiedPublicSyntheticArtifactsOnly": true,
+  "privateKeysCopied": false,
+  "credentialsCopied": false,
+  "externalCertification": false,
+  "files": [
+    {
+      "path": "baseline/finance-before.json",
+      "sha256": "1528597daac7d11ae5f7c09f329624f11637e67e04233f00a37c8cb7708dd75e",
+      "bytes": 103964
+    },
+    {
+      "path": "baseline/finance-after.json",
+      "sha256": "96e019c3525a31e3739c954f4be485c9d5289958138e3f99be3942a550322a41",
+      "bytes": 103964
+    },
+    {
+      "path": "baseline/ledger-export.json",
+      "sha256": "b929d2101c49383152bb61816af29883c5fabbb78bc61f99fb53165f9b237dd7",
+      "bytes": 313697
+    },
+    {
+      "path": "baseline/supplier-export.json",
+      "sha256": "009d7028d1081a1a97172936631e43d63210fe9a4e828f20e65d9dcab47eee06",
+      "bytes": 1015
+    },
+    {
+      "path": "baseline/public-key.pem",
+      "sha256": "0a0538fd82201c602986419ef44d1e2c3d60748c350379e4b967c0888dabc483",
+      "bytes": 113
+    },
+    {
+      "path": "baseline/checkpoint.json",
+      "sha256": "6dc43fcb71ac94548213d20c977428105a38c147869103d243a5daa7fa806a0c",
+      "bytes": 267
+    },
+    {
+      "path": "model-changed/finance-before.json",
+      "sha256": "ad58a494cf4e934779f9a0ee82164ced15422e0e94e4a38d78183831528d3aa3",
+      "bytes": 103964
+    },
+    {
+      "path": "model-changed/finance-after.json",
+      "sha256": "ffe1bbbc924562cf0db7351162763dc9df665ce1d84707de29a2fd9e0b0008c9",
+      "bytes": 105003
+    },
+    {
+      "path": "model-changed/ledger-export.json",
+      "sha256": "017a059e93517bdf57fa53904f903ad3096ad8733148ac771d8f4c4f05a5ad7a",
+      "bytes": 317244
+    },
+    {
+      "path": "model-changed/supplier-export.json",
+      "sha256": "174a49fc9c19a8d7ba287ef8ca6c5ab851fee2fcb9a84cf0e0268a9cd60ac197",
+      "bytes": 1015
+    },
+    {
+      "path": "model-changed/public-key.pem",
+      "sha256": "57440737646a55c27aea11aa106685ce1d99d3d0e8e8370c8f52542aad66aea1",
+      "bytes": 113
+    },
+    {
+      "path": "model-changed/checkpoint.json",
+      "sha256": "b92ffe9c933e539d3c04de4ef1649c16e8456594b8abcd9b09744689207f42ac",
+      "bytes": 267
+    },
+    {
+      "path": "purpose-changed/finance-before.json",
+      "sha256": "8119fc699d32d9651b40927d4927de6ca486ea45b1b20e0076039a78e0a9af11",
+      "bytes": 103964
+    },
+    {
+      "path": "purpose-changed/finance-after.json",
+      "sha256": "65e91e0a039a3e5f68e4cc3bc2bd4351aae87314c90cfc0437273633e8a2aa83",
+      "bytes": 105665
+    },
+    {
+      "path": "purpose-changed/ledger-export.json",
+      "sha256": "e51cd65af5cdab93b6dc24070d62c4df3bbee58f7bab6f9f6baea9751a95cd64",
+      "bytes": 320268
+    },
+    {
+      "path": "purpose-changed/supplier-export.json",
+      "sha256": "fa59fee3d1f0742a6dc0c9b52f1b150f18362507afda9229f09f03df325f7262",
+      "bytes": 1018
+    },
+    {
+      "path": "purpose-changed/public-key.pem",
+      "sha256": "eebdf11bf618e5edfb69f8997466e4d2cb6389ae77d2dd4cd866a5f2117f883b",
+      "bytes": 113
+    },
+    {
+      "path": "purpose-changed/checkpoint.json",
+      "sha256": "fa8da8fe5d0a6c0532ad895d897fd2586e76c32ee551d9fa1d24858a62554ecc",
+      "bytes": 267
+    },
+    {
+      "path": "supplier-document-revised/finance-before.json",
+      "sha256": "8fdb830a70f8ad688171847869ec7e4292512645f53ae218cf78e2af8ba1348a",
+      "bytes": 103964
+    },
+    {
+      "path": "supplier-document-revised/finance-after.json",
+      "sha256": "47b8dacbe65f9f62b0e59e7a671ffd3cbc846ff3fc35a232bdc267de44abe0b1",
+      "bytes": 104918
+    },
+    {
+      "path": "supplier-document-revised/ledger-export.json",
+      "sha256": "607eb2782365a06274cc494c2295a8d7928fe55175b6925cd434c7bd4a959127",
+      "bytes": 317067
+    },
+    {
+      "path": "supplier-document-revised/supplier-export.json",
+      "sha256": "8561ae65be3b27754ae7140cd509a54ba4f31959ecb55fa41cb91ef90ae508a8",
+      "bytes": 1015
+    },
+    {
+      "path": "supplier-document-revised/public-key.pem",
+      "sha256": "9cd5c51644b093b94d7af3aa68ed68a0a119f36a9fde94f9915ebe8fe25c1fd4",
+      "bytes": 113
+    },
+    {
+      "path": "supplier-document-revised/checkpoint.json",
+      "sha256": "ab55f489c791bc373647865a73ff0667cf5a76a6a6d05020b9b3adc8f74139c1",
+      "bytes": 267
+    },
+    {
+      "path": "oversight-plan-revised/finance-before.json",
+      "sha256": "f3f93e69424bd1972a352fefe5a4469d315bc5197c1a64ae14cd99f65c71151e",
+      "bytes": 103964
+    },
+    {
+      "path": "oversight-plan-revised/finance-after.json",
+      "sha256": "d882ecd5a7597ef0abe77c973db5e9e39bd9131e98a1337ee898c44f959bc54d",
+      "bytes": 105013
+    },
+    {
+      "path": "oversight-plan-revised/ledger-export.json",
+      "sha256": "602c76b2e13b914a9e2fa6320891d8025241cf9989efecdf6eeddfcaec400c9b",
+      "bytes": 316909
+    },
+    {
+      "path": "oversight-plan-revised/supplier-export.json",
+      "sha256": "5bd3d40e9c826d3d91d9f917eac6c4a1dfb4b51c3e4586cd3faac33797a2368e",
+      "bytes": 1015
+    },
+    {
+      "path": "oversight-plan-revised/public-key.pem",
+      "sha256": "c0a5c83b931eb1cbbc08b7c8e42812f3edb0eb787272d26dff62a52d145945d9",
+      "bytes": 113
+    },
+    {
+      "path": "oversight-plan-revised/checkpoint.json",
+      "sha256": "72071ad57196188f61568793ee6ad4be3b3a85f31934790676e65b4ed99f1973",
+      "bytes": 267
+    },
+    {
+      "path": "oversight-record-missing/finance-before.json",
+      "sha256": "867044250a42e89ab8753199309b199877c1437ec4a9892a3176d2912ffe7402",
+      "bytes": 100983
+    },
+    {
+      "path": "oversight-record-missing/finance-after.json",
+      "sha256": "fc21e34b0b250a2874d887b8e0d67c63210db8802cbf0a0c2164ef08f365f986",
+      "bytes": 100983
+    },
+    {
+      "path": "oversight-record-missing/ledger-export.json",
+      "sha256": "f2e959ce6c155386237679b61bad81355353efff2b4110baeedbcead5d381a18",
+      "bytes": 302269
+    },
+    {
+      "path": "oversight-record-missing/supplier-export.json",
+      "sha256": "ecc30dbdf5798551706c3428c6f9b9269390e38f477fd3cad345e758ed85b36c",
+      "bytes": 1015
+    },
+    {
+      "path": "oversight-record-missing/public-key.pem",
+      "sha256": "dfc0feea3c58b3bd5c30f278505768e909edb83249b7b00c0395096fd21695a6",
+      "bytes": 113
+    },
+    {
+      "path": "oversight-record-missing/checkpoint.json",
+      "sha256": "d9537b295c11db8f2dccd4c69e8f4ed91a6d26a448d3719bbcb225081fd1c18d",
+      "bytes": 267
+    },
+    {
+      "path": "result.json",
+      "sha256": "16d91c5476649690d363a2d264d38b2a89990a8b31874ef595c8e8b3ebce4f6f",
+      "bytes": 25629
+    },
+    {
+      "path": "regression-final.log",
+      "sha256": "5670468e5833b9510a798d08d2db9afb61287523c7abe05d3bda50d3e728d276",
+      "bytes": 4705
+    },
+    {
+      "path": "regression-initial.log",
+      "sha256": "a8adbc5e33c7775a1341eb2f563acfaef348da0e790d1113ad6bbcff1728205d",
+      "bytes": 6777
+    }
+  ]
+}

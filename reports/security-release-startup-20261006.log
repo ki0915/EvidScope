@@ -1,0 +1,59 @@
+TAP version 13
+# Subtest: governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+ok 1 - governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+  ---
+  duration_ms: 959.1651
+  type: 'test'
+  ...
+# Subtest: release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+ok 2 - release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+  ---
+  duration_ms: 1779.7344
+  type: 'test'
+  ...
+# Subtest: release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+ok 3 - release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+  ---
+  duration_ms: 1149.3471
+  type: 'test'
+  ...
+# {"component":"vault","address":"::1","port":47548,"tls":false}
+# node:events:487
+#       throw er; // Unhandled 'error' event
+#       ^
+# Error: listen EADDRINUSE: address already in use ::1:47549
+#     at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+#     at listenInCluster (node:net:2065:12)
+#     at node:net:2274:7
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+# Emitted 'error' event on Server instance at:
+#     at emitErrorNT (node:net:2044:8)
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+#   code: 'EADDRINUSE',
+#   errno: -4091,
+#   syscall: 'listen',
+#   address: '::1',
+#   port: 47549
+# }
+# Node.js v24.15.0
+# Subtest: release startup conflict cleans earlier services and preserves the unrelated listener
+ok 4 - release startup conflict cleans earlier services and preserves the unrelated listener
+  ---
+  duration_ms: 434.2843
+  type: 'test'
+  ...
+# Subtest: release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+ok 5 - release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+  ---
+  duration_ms: 76.8728
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4564.9856

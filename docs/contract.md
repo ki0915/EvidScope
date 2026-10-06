@@ -34,11 +34,13 @@ X-Evid-Signature: <HMAC-SHA256 hex>
 |---|---|
 | agent | intent, self_report, delegation |
 | tool | execution, result |
-| authority | grant, revoke, human_approval, automated_review |
+| authority | grant, revoke, human_approval, automated_review, human_oversight_review |
 | safety | stop_requested, block_registered, stop_confirmed, safety_alert |
 | telemetry | heartbeat, gap, notice |
 
 grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUntil, scope 필요. human_approval은 외부 reviewer 참조 필요. scope 허용 키는 actor/tool/action/resource/destination/parentActionId. matched 판정을 위해 actor/tool/action/resource와 실행 정책 버전이 일치해야 하며 권한 발급이 실행보다 늦을 수 없다. revoke는 같은 authority source의 grant id를 authorityId로 참조한다. parent 관계 자체로 권한을 상속하지 않는다.
+
+`human_oversight_review`는 사람 감독의 수행 메타데이터이며 `reviewer`, `systemId`, `modelId`, `modelVersion`, `policyVersion`을 요구한다. 이 기록은 실행 권한이나 건별 사전 승인인 `human_approval`을 대체하지 않는다. KR-34-OVERSIGHT의 기술 증거 상태는 같은 시스템의 복구 가능한 감독 계획 문서와 현재 시스템·모델·정책 버전에 결합된 이 기록을 함께 요구한다. 이 결합은 감독자의 역량, 개입의 적절성, 전체 업무 범위 또는 법적 충족을 자동 판정하지 않는다.
 
 202 응답은 최소 접수 정보 `{accepted,duplicate,durability:'sqlite_full_commit',analysis:'asynchronous',externalSeal:false}`뿐이다. 원본 ID·hash·검색 결과를 source에 반환하지 않는다. HMAC 실패/시각 오류 401, 자격 유형 위반 403, 형식 400, replay/ID collision 409, body 초과 413, 저장·upstream 장애/적체 503. 접수 성공과 외부 봉인·분석 완료는 다르다. timeout은 재전송해 중복 상태를 확인한다.
 
@@ -79,6 +81,16 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | POST /api/retention/plans | reason; 만료·hold·사건 확인한 최대1,000건 구체 계획 |
 | POST /api/retention/plans/:id/approve | reason; 작성자와 다른 검토자 |
 | POST /api/retention/plans/:id/execute | admin, 승인 후 상태 재확인; live key/검색 사본 파기 |
+
+정상 접수는 암호화 `event`와 source/id/fingerprint·event seq/hash를 결합한 `event_receipt`를 같은 transaction에서 서명한 뒤 SQL 영수증 사본을 기록한다. durable duplicate 응답은 SQL 행만으로 발급하지 않고 서명 이력과 정확히 일치해야 한다. 기존 버전에서 보존 중인 이벤트에 영수증이 없으면 파기 transaction이 복호화·검증된 원본으로 `verified_before_retention` 영수증을 먼저 서명하고 그 뒤 키와 검색 사본을 파기한다. 영수증이 파기 기록보다 늦거나, 이미 파기돼 원본과 서명 영수증이 모두 없는 기록은 복구나 정상 상태로 승격하지 않는다. `basis`가 없는 과거 서명 영수증은 event seq/hash와 보존 원본 결합을 확인해 호환하지만 새 principal 의미를 소급해 주장하지 않는다.
+
+`/api/integrity`는 최종 서명 checkpoint까지 인증한 원장과 보존 이벤트 본문뿐 아니라 `events`의 tenant/source/id/fingerprint/action_id/trace_id/kind/received 색인, 접수 영수증, development run 색인, 객체·평가·행동 상태, 거버넌스 문서 사본과 서명 이력이 참조하는 로컬 문서 암호문을 같은 SQLite writer-excluding transaction에서 대조한다. 참조 문서는 파일별 읽기 시점에 파일 유형·크기, AES-GCM 인증, tenant/hash 결합, 평문 SHA-256과 서명된 길이를 확인한다. 이벤트 색인 불일치는 행동 상세, 지표, 모니터링, AI 가시성, 조사, worker claim 및 파기 실행 전에 409로 차단된다. `/api/rebuild`만 서명 원장으로 이벤트·접수 영수증·development run 사본을 다시 만드는 복구 경로다. 문서 검사는 미참조 파일, 원자적 파일시스템 스냅샷, 원격 불변 보관, 보관 기간 경과를 입증하지 않으며 출처가 보고한 내용의 진실성이나 법적 준수를 보증하지 않는다.
+
+서비스 시작 중 규정 카탈로그 갱신과 schema v3 이전 시스템 사실 이관은 모든 설정 tenant의 `catalog`, `system`, `assessment` 조회 사본을 서명 원장과 먼저 대조한 뒤 하나의 writer-excluding transaction에서 수행한다. 한 tenant라도 본문·SQL ID·누락·삽입이 일치하지 않으면 전체 시작 이관을 rollback하고 서비스를 열지 않는다. 시작 이관은 조회 사본을 복구하는 기능이 아니며, 변조된 사본을 새 서명 기록으로 승격하지 않는다.
+
+일반 자산·사건·룰·예외·거버넌스 조회와 AI/agent 집계도 사용하는 객체 사본을 같은 transaction 안에서 서명 이력과 대조한다. AI 가시성은 검증된 자산 등록만 정책 입력으로 사용하고, agent 검토 상태는 검증된 `case_decision`만 사용한다. 불일치 사본은 화면에 표시하거나 경보·검토 집계를 바꾸지 않고 409로 거부한다.
+
+반복 조회와 worker 분석은 매번 전체 원장을 다시 재생하지 않는다. 프로세스가 확인한 서명 checkpoint와 projection 상태를 tenant별로 보관하고, 다음 읽기에서 현재 checkpoint 서명·head, 이후 서명 원장 suffix, 이벤트·영수증·행동·키·객체·평가 projection delta와 SQLite mutation clock을 같은 transaction 안에서 인증한다. 외부 DB 변경, schema 변경, row 수 감소, checkpoint 후퇴·동일 길이 교체, 알 수 없는 trigger 부작용은 cache를 폐기하거나 409로 차단한다. `Store.transaction` 바깥에서 시작된 transaction의 중간 상태는 cache에 게시하지 않는다. 사람 판단의 최신 순서는 변경 가능한 SQL `rowid`가 아니라 서명 원장 `seq`로 정한다. `/api/integrity`, 전체 export, backup 검증은 이 빠른 경로와 별개로 전체 체인·사본을 끝까지 검사한다.
 
 내부 worker 계약은 `/internal/claim` 및 `/internal/complete`다. 일반 source/감사자에 허용하지 않는다. claim 최대5작업/10MiB, lease30초, commit 최대1MiB. worker가 분석해 `{leaseId,result}`를 제출하며 임의 tenant/action/타인의 증거 참조는 거부한다. 예전 `/internal/analyze`는410을 반환한다. 분석 한도 초과는 명시적 격리이며 분석완료로 집계하지 않는다.
 

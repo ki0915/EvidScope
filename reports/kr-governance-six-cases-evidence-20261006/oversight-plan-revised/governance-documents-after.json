@@ -1,0 +1,34 @@
+[
+  {
+    "bytes": 168,
+    "displayName": "portfolio-risk-measures.txt",
+    "id": "portfolio-risk-measures",
+    "mediaType": "text/plain",
+    "receivedAt": "2026-10-06T03:51:31.252Z",
+    "receivedBy": "synthetic-reviewer",
+    "retentionBasis": "인공지능기본법 시행령 제27조제2항 조치 근거 문서 5년 보관; 로컬 접수·복구 검증 기록이며 5년 경과 보존 실적을 입증하지 않음",
+    "retentionUntil": "2031-10-06T03:51:31.252Z",
+    "schemaVersion": 1,
+    "sha256": "227e4b6898207ba15fbfb31661faead077026c29a1a3bbb9c059d5fe6fab6e19",
+    "snapshotHash": "bd0eb0aa7951421283f2d51db756d5a0a02497256573febcb4fc43b0e6d879d5",
+    "systemId": "portfolio-credit",
+    "version": 1,
+    "contentBase64": "7ZWp7ISxIOychO2XmOq0gOumrCDsi5ztl5gg67O06rOgOiDsoJXssYXCt+uLtOuLuSDsobDsp4HCt+yatOyYgSDqsoDthqDCt+ychO2XmCDsoIDqsJAg7Iuc7ZeYwrfsnpTsl6wg7JyE7ZeYIOqygO2GoC4g7Iuk7KCcIOq4iOyctSDtmZjqsr3snYQg7Lih7KCV7ZWcIOyekOujjOqwgCDslYTri5gu"
+  },
+  {
+    "bytes": 41,
+    "displayName": "portfolio-oversight-plan.txt",
+    "id": "portfolio-oversight-plan",
+    "mediaType": "text/plain",
+    "receivedAt": "2026-10-06T03:51:31.442Z",
+    "receivedBy": "synthetic-reviewer",
+    "retentionBasis": "인공지능기본법 시행령 제27조제2항 조치 근거 문서 5년 보관; 로컬 접수·복구 검증 기록이며 5년 경과 보존 실적을 입증하지 않음",
+    "retentionUntil": "2031-10-06T03:51:31.442Z",
+    "schemaVersion": 1,
+    "sha256": "f25befa96553b67c6c3cc338afa50d7e8f382e3e989aa28473af5fdf02255804",
+    "snapshotHash": "e40fd41bdb4bbca915a5e59f37c02b20a546df2d968060003e015e0b2592d1d5",
+    "systemId": "portfolio-credit",
+    "version": 2,
+    "contentBase64": "7ZWp7ISxIOqwkOuPhSDqs4Ttmo0gdjI6IOuLtOuLueyekCDrs4Dqsr0="
+  }
+]

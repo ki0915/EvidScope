@@ -1,0 +1,570 @@
+{
+  "readOnly": true,
+  "scanned": 160,
+  "found": [
+    {
+      "directory": "run-IFj0Od",
+      "mtime": "2026-10-06T06:11:23.337Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 12,
+          "type": "governance_task",
+          "principal": "alpha-reviewer"
+        },
+        {
+          "seq": 11,
+          "type": "governance_task",
+          "principal": "alpha-reviewer"
+        }
+      ]
+    },
+    {
+      "directory": "run-imNbOy",
+      "mtime": "2026-10-06T06:10:58.333Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-GUCgY6",
+      "mtime": "2026-10-06T06:10:33.449Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-GRzPqd",
+      "mtime": "2026-10-06T06:10:07.225Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-648Wbi",
+      "mtime": "2026-10-06T06:09:41.575Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-SdJHyC",
+      "mtime": "2026-10-06T06:09:16.002Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-MfOmyA",
+      "mtime": "2026-10-06T06:08:49.798Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-0ozSTC",
+      "mtime": "2026-10-06T06:08:24.482Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-nQtbI7",
+      "mtime": "2026-10-06T06:07:58.614Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-Fk03Bn",
+      "mtime": "2026-10-06T06:04:23.967Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-NDkbuI",
+      "mtime": "2026-10-06T06:03:23.744Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    },
+    {
+      "directory": "run-t1SJ2i",
+      "mtime": "2026-10-06T05:55:13.857Z",
+      "systemOwner": "admin",
+      "last": [
+        {
+          "seq": 20,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 19,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 18,
+          "type": "audit_access",
+          "principal": "alpha-auditor"
+        },
+        {
+          "seq": 17,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 16,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 15,
+          "type": "assessment",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 14,
+          "type": "system",
+          "principal": "alpha-admin"
+        },
+        {
+          "seq": 13,
+          "type": "governance_task",
+          "principal": "alpha-admin"
+        }
+      ]
+    }
+  ]
+}

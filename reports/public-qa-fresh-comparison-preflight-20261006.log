@@ -1,0 +1,17 @@
+✔ paired fresh scores retain human spans and class counts without asserting execution or promotion (9.3506ms)
+✔ missing, foreign and substituted fresh results cannot silently reduce the denominator (12.0182ms)
+✔ unsupported answers, absent exact quotes, unsafe abstention and resource failures count as failures (3.6509ms)
+✔ fresh paired job fixes source80, unseen128 and sequential same-base comparison with unchanged resource isolation (2.5589ms)
+✔ fresh generation binding rejects altered source, data, comparison and self-consistent false claims (1.1854ms)
+✔ live mounts tolerate Kubernetes defaults while rejecting broader volumes and writable source evidence (2.2225ms)
+✔ missing private source artifacts fail closed without fabricated public evaluation admission (2.6695ms)
+✔ fresh runtime is immutable and binds all six shipped helper bytes without GPU calls (4.8098ms)
+✔ a replaced runtime helper cannot redefine the frozen fresh experiment (17.6281ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.2091

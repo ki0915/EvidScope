@@ -1,0 +1,51 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 681B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#2 DONE 1.3s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 268B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 19.17kB 0.0s done
+#4 DONE 0.0s
+
+#5 [ 1/10] FROM docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#5 resolve docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d 0.0s done
+#5 DONE 0.0s
+
+#6 [ 2/10] WORKDIR /app
+#6 CACHED
+
+#7 [ 3/10] COPY package.json package-lock.json ./
+#7 CACHED
+
+#8 [ 4/10] RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+#8 70.54 npm error code EAI_AGAIN
+#8 70.54 npm error syscall getaddrinfo
+#8 70.54 npm error errno EAI_AGAIN
+#8 70.54 npm error request to https://registry.npmjs.org/openid-client/-/openid-client-6.8.8.tgz failed, reason: getaddrinfo EAI_AGAIN registry.npmjs.org
+#8 70.54 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-09-29T09_03_03_254Z-debug-0.log
+#8 ERROR: process "/bin/sh -c npm ci --omit=dev --ignore-scripts --no-audit --no-fund" did not complete successfully: exit code: 1
+------
+ > [ 4/10] RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund:
+70.54 npm error code EAI_AGAIN
+70.54 npm error syscall getaddrinfo
+70.54 npm error errno EAI_AGAIN
+70.54 npm error request to https://registry.npmjs.org/openid-client/-/openid-client-6.8.8.tgz failed, reason: getaddrinfo EAI_AGAIN registry.npmjs.org
+70.54 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-09-29T09_03_03_254Z-debug-0.log
+------
+Dockerfile:5
+--------------------
+   3 |     WORKDIR /app
+   4 |     COPY package.json package-lock.json ./
+   5 | >>> RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+   6 |     COPY --chown=1000:1000 src/ ./src/
+   7 |     COPY --chown=1000:1000 public/ ./public/
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm ci --omit=dev --ignore-scripts --no-audit --no-fund" did not complete successfully: exit code: 1

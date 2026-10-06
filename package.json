@@ -1,6 +1,34 @@
 {
-  "name": "evidscope", "version": "0.1.0", "private": true, "type": "module",
-  "engines": {"node": ">=24.15.0 <25"},
-  "scripts": {"init": "node scripts/init.mjs", "start": "node scripts/local.mjs", "demo": "node scripts/demo.mjs", "test": "node --test --test-concurrency=1 test/*.test.mjs", "test:development-agents": "node --test test/development-coordinator.test.mjs test/development-runs.test.mjs test/role-packages.test.mjs test/test-runtime.test.mjs", "test:runtime": "node --test test/test-runtime.test.mjs", "generate:role-evals": "node scripts/generate-role-evals.mjs", "validate":"node scripts/validate.mjs", "bench": "node scripts/benchmark.mjs", "verify": "node scripts/verify.mjs"},
-  "license": "UNLICENSED"
+  "name": "evidscope",
+  "version": "0.1.2",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "init": "node scripts/init.mjs",
+    "start": "node scripts/local.mjs",
+    "demo": "node scripts/demo.mjs",
+    "test": "node scripts/test-serial.mjs",
+    "test:v1": "node --test --test-concurrency=1 test/ai-observations.test.mjs test/ai-visibility-integration.test.mjs test/content-screening.test.mjs test/governance-policy.test.mjs test/isolated-inference-client.test.mjs test/model-runtime.test.mjs test/multilingual-evals.test.mjs test/training-resource-guard.test.mjs test/ui-language-state.test.mjs",
+    "test:development-agents": "node --test test/development-coordinator.test.mjs test/development-runs.test.mjs test/role-packages.test.mjs test/test-runtime.test.mjs",
+    "test:runtime": "node --test test/test-runtime.test.mjs",
+    "generate:role-evals": "node scripts/generate-role-evals.mjs",
+    "generate:multilingual-evals": "node scripts/generate-multilingual-evals.mjs",
+    "model:status": "node scripts/model-runtime.mjs status",
+    "training:host-check": "node scripts/training-host-check.mjs",
+    "validate": "node scripts/validate.mjs",
+    "bench": "node scripts/benchmark.mjs",
+    "verify": "node scripts/verify.mjs",
+    "finance:pilot": "node scripts/finance-pilot.mjs",
+    "test:finance": "node --test test/finance-evidence.test.mjs test/finance-ui.test.mjs test/governance-policy.test.mjs test/model.test.mjs test/agt-approval-adapter.test.mjs",
+    "test:finance:http": "node --test test/finance-http.test.mjs",
+    "release:verify": "node scripts/release-verify.mjs",
+    "release:package": "node scripts/package-release.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "openid-client": "6.8.8"
+  }
 }

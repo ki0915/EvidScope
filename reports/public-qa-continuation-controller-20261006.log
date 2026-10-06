@@ -1,0 +1,1088 @@
+{"phase":"resource_preflight","sample":1,"windows":{"physicalFreeGiB":5.478,"commitFreeGiB":14.49,"commitUsedPercent":76.577,"pagesInputPerSecond":17073,"counterSource":"Win32_OperatingSystem_and_Win32_PerfFormattedData_PerfOS_Memory"},"gpu":{"memoryUsedMiB":1881,"memoryTotalMiB":12288,"utilizationPercent":39,"temperatureC":56,"computeProcessCount":37},"guest":{"observedAt":"2026-10-06T05:16:22.047Z","memAvailableGiB":11.58477783203125,"memoryFullAvg10":0}}
+{"phase":"resource_preflight","sample":2,"windows":{"physicalFreeGiB":5.295,"commitFreeGiB":14.375,"commitUsedPercent":76.763,"pagesInputPerSecond":12311,"counterSource":"Win32_OperatingSystem_and_Win32_PerfFormattedData_PerfOS_Memory"},"gpu":{"memoryUsedMiB":1898,"memoryTotalMiB":12288,"utilizationPercent":27,"temperatureC":56,"computeProcessCount":37},"guest":{"observedAt":"2026-10-06T05:16:36.542Z","memAvailableGiB":11.593036651611328,"memoryFullAvg10":0}}
+{"phase":"resource_preflight","sample":3,"windows":{"physicalFreeGiB":5.311,"commitFreeGiB":14.379,"commitUsedPercent":76.757,"pagesInputPerSecond":122777,"counterSource":"Win32_OperatingSystem_and_Win32_PerfFormattedData_PerfOS_Memory"},"gpu":{"memoryUsedMiB":1896,"memoryTotalMiB":12288,"utilizationPercent":40,"temperatureC":56,"computeProcessCount":37},"guest":{"observedAt":"2026-10-06T05:16:48.723Z","memAvailableGiB":11.60885238647461,"memoryFullAvg10":0}}
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"publicAnnotationAdmitted": true, "counts": {"train": 640, "validation": 64}, "localHumanReviewPerformed": false, "qualityClaimAllowed": false}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"groundingWarmstart": {"schemaVersion": 1, "kind": "adapter_only_warmstart_stratified_public_qa_continuation", "sourceRunId": "public-qa-grounding-20261005-r4", "sourceGlobalStep": 20, "sourceOptimizerHistoryUpdates": 60, "sourcePins": {"marker": "aa6b6fc1c7fa32f56507a4e31920acef3b46257ca90bf597c2a6e9e480fd1e60", "adapter": "c3b836df159917cd9ababd61ed9f574ac5b77252b8ec058a66269b045c78d9f6", "controller": "a376708b9932a6b1831568347b0ca2f1719c7707b8750b0f2e0025ffaca86617", "verification": "c33c946a0c80b6bdba4bc8e738fd98d6e04cfbfa10887b2f39a8b28e613ec517", "provenance": "b165e9f1b4d1fac016efa18825649cf21e13e86ff523105d2cb17ced900c5459"}, "sourceIdentity": {"artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "batchSize": 1, "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "contextSelection": "full_original_context", "datasetSha256": "a080f3ff03ce813d5f4e242512a6442ff148e2341613e227f8c03e2e29a8d4ea", "gpuMemoryFraction": 0.65, "gradientAccumulationSteps": 16, "groundingHelperSha256": "473c91344ef6b69b285b028d44e623261498ffc77f55585e8c268c7392a51614", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "learningRate": 0.0001, "manifestSha256": "f7da0a3af852a6bf632d718773e7a916d637d6df08dacb5437ac6eb5a4856a2f", "maxSteps": 20, "modelDtype": "bfloat16", "precision": "bf16", "quantComputeDtype": "bfloat16", "rank": 8, "seed": 42, "sequenceLength": 1024, "stage": "public_qa_grounding_v1", "trainerSha256": "c414797dafb77d21fe3aa7cd9e93fc8e02d19c00fdb6805e00a7669fc6b53e72"}, "targetRunId": "public-qa-grounding-20261006-r1", "targetIdentity": {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": "63c930c82d7646226d33502bec5870019738400e", "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949", "datasetSha256": "258ea70365b16ab31357467f3b32c66edca38b3ea0c6db46a11009ab79ed372b", "manifestSha256": "b4c7dbf7c129183765c347db3e08d0b92584eb5f99c2171df298c0d107666a76", "trainerSha256": "881cc9814a3658188e1db7e04e8f1c92f80196b77eac5a3fcabd30a3c2c53b31", "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e", "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d", "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8", "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": 0.65, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 3e-05, "maxSteps": 20, "stage": "public_qa_grounding_continuation_v1", "groundingHelperSha256": "807b764e66749ea092549bbbc3f13ce5369351fbe1264c6babcd056eeb12fd49", "contextSelection": "full_original_context", "precision": "bf16", "modelDtype": "bfloat16", "quantComputeDtype": "bfloat16", "sampler": {"kind": "stratified_optimizer_groups_v1", "groupSize": 16, "answerablePerGroup": 11, "impossiblePerGroup": 5, "seed": 42}}, "optimizerReset": true, "schedulerReset": true, "targetOptimizerSteps": 20, "sourceTrainingExecutionVerified": true, "qualityClaimAllowed": false, "promotionAllowed": false, "provenanceSha256": "df428d182d7cbe753f6dc9af388a623c5b6364751841070bbc35ae9ecb079ea8", "sourceOptimizerUpdates": 60, "optimizerUpdatesThisExperiment": 0, "sourceStateLoaded": "adapter_only", "optimizerStateLoaded": false, "schedulerStateLoaded": false}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"cudaLinker": {"driverPath": "/usr/lib/wsl/drivers/nv_dispig.inf_amd64_f4c7a2fd13e0f763/libcuda_loader.so", "driverSha256": "00d5773a96ab7e18d087880b8ce02741863da15c487b434999f7932f3cbe1383", "linkDirectory": "/tmp/evidscope-cuda-link-haj8lurw", "environment": "TRITON_LIBCUDA_PATH", "cudaInitialized": false}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"directGpuTemperatureC": 56}
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.31s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:10<00:10,  5.31s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:15<00:05,  5.05s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  3.56s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:16<00:00,  4.16s/it]
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"groundingAdapterLoaded": true, "sourceGlobalStep": 20, "newGlobalStep": 0, "optimizerStateLoaded": false, "schedulerStateLoaded": false, "sourceOptimizerHistoryUpdates": 60}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+
+  0%|          | 0/64 [00:00<?, ?it/s]
+  3%|▎         | 2/64 [00:01<00:37,  1.64it/s]
+  5%|▍         | 3/64 [00:02<00:56,  1.08it/s]
+  6%|▋         | 4/64 [00:03<01:05,  1.09s/it]
+  8%|▊         | 5/64 [00:05<01:09,  1.19s/it]
+  9%|▉         | 6/64 [00:06<01:11,  1.24s/it]
+ 11%|█         | 7/64 [00:08<01:12,  1.27s/it]
+ 12%|█▎        | 8/64 [00:09<01:12,  1.29s/it]
+ 14%|█▍        | 9/64 [00:10<01:12,  1.32s/it]
+ 16%|█▌        | 10/64 [00:12<01:11,  1.33s/it]
+ 17%|█▋        | 11/64 [00:13<01:10,  1.33s/it]
+ 19%|█▉        | 12/64 [00:14<01:09,  1.33s/it]
+ 20%|██        | 13/64 [00:16<01:07,  1.33s/it]
+ 22%|██▏       | 14/64 [00:17<01:07,  1.35s/it]
+ 23%|██▎       | 15/64 [00:18<01:05,  1.34s/it]
+ 25%|██▌       | 16/64 [00:20<01:04,  1.34s/it]
+ 27%|██▋       | 17/64 [00:21<01:03,  1.34s/it]
+ 28%|██▊       | 18/64 [00:22<01:01,  1.34s/it]
+ 30%|██▉       | 19/64 [00:24<01:00,  1.34s/it]
+ 31%|███▏      | 20/64 [00:25<00:59,  1.35s/it]
+ 33%|███▎      | 21/64 [00:26<00:57,  1.35s/it]
+ 34%|███▍      | 22/64 [00:28<00:56,  1.34s/it]
+ 36%|███▌      | 23/64 [00:29<00:55,  1.34s/it]
+ 38%|███▊      | 24/64 [00:30<00:53,  1.34s/it]
+ 39%|███▉      | 25/64 [00:32<00:52,  1.34s/it]
+ 41%|████      | 26/64 [00:33<00:50,  1.34s/it]
+ 42%|████▏     | 27/64 [00:34<00:49,  1.34s/it]
+ 44%|████▍     | 28/64 [00:36<00:48,  1.34s/it]
+ 45%|████▌     | 29/64 [00:37<00:46,  1.34s/it]
+ 47%|████▋     | 30/64 [00:38<00:45,  1.34s/it]
+ 48%|████▊     | 31/64 [00:40<00:44,  1.34s/it]
+ 50%|█████     | 32/64 [00:41<00:43,  1.34s/it]
+ 52%|█████▏    | 33/64 [00:42<00:41,  1.34s/it]
+ 53%|█████▎    | 34/64 [00:44<00:40,  1.36s/it]
+ 55%|█████▍    | 35/64 [00:45<00:39,  1.37s/it]
+ 56%|█████▋    | 36/64 [00:47<00:38,  1.37s/it]
+ 58%|█████▊    | 37/64 [00:48<00:37,  1.38s/it]
+ 59%|█████▉    | 38/64 [00:49<00:35,  1.37s/it]
+ 61%|██████    | 39/64 [00:51<00:34,  1.36s/it]
+ 62%|██████▎   | 40/64 [00:52<00:32,  1.37s/it]
+ 64%|██████▍   | 41/64 [00:53<00:31,  1.36s/it]
+ 66%|██████▌   | 42/64 [00:55<00:29,  1.36s/it]
+ 67%|██████▋   | 43/64 [00:56<00:28,  1.36s/it]
+ 69%|██████▉   | 44/64 [00:57<00:27,  1.36s/it]
+ 70%|███████   | 45/64 [00:59<00:25,  1.36s/it]
+ 72%|███████▏  | 46/64 [01:00<00:24,  1.36s/it]
+ 73%|███████▎  | 47/64 [01:02<00:23,  1.36s/it]
+ 75%|███████▌  | 48/64 [01:03<00:21,  1.36s/it]
+ 77%|███████▋  | 49/64 [01:04<00:20,  1.36s/it]
+ 78%|███████▊  | 50/64 [01:06<00:18,  1.35s/it]
+ 80%|███████▉  | 51/64 [01:07<00:17,  1.36s/it]
+ 81%|████████▏ | 52/64 [01:08<00:16,  1.36s/it]
+ 83%|████████▎ | 53/64 [01:10<00:14,  1.35s/it]
+ 84%|████████▍ | 54/64 [01:11<00:13,  1.35s/it]
+ 86%|████████▌ | 55/64 [01:12<00:12,  1.34s/it]
+ 88%|████████▊ | 56/64 [01:14<00:10,  1.34s/it]
+ 89%|████████▉ | 57/64 [01:15<00:09,  1.34s/it]
+ 91%|█████████ | 58/64 [01:16<00:08,  1.34s/it]
+ 92%|█████████▏| 59/64 [01:18<00:06,  1.35s/it]
+ 94%|█████████▍| 60/64 [01:19<00:05,  1.36s/it]
+ 95%|█████████▌| 61/64 [01:20<00:04,  1.35s/it]
+ 97%|█████████▋| 62/64 [01:22<00:02,  1.36s/it]
+ 98%|█████████▊| 63/64 [01:23<00:01,  1.36s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.35s/it]
+100%|██████████| 64/64 [01:25<00:00,  1.33s/it]
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"baseValidationLoss": 1.2432786226272583}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 1, "optimizerGroup": 1, "positionInGroup": 1, "datasetIndex": 551, "rowId": "klue-mrc-v1_train_09258", "isImpossible": false, "inputSha256": "7f8e5dfbfcfeffcc3e4637a0ec2e8b5a06bfa77c80ea1ce3bd1d2a05634afa2d", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 2, "optimizerGroup": 1, "positionInGroup": 2, "datasetIndex": 100, "rowId": "klue-mrc-v1_train_04803", "isImpossible": false, "inputSha256": "672e044451d4eeaf6219dcd29697869a2f10d69e9819807aeb2ef50bc2417d90", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 3, "optimizerGroup": 1, "positionInGroup": 3, "datasetIndex": 494, "rowId": "klue-mrc-v1_train_08313", "isImpossible": false, "inputSha256": "c4507f084fd8b7086079a7a6ca3c7893dc29b616bc4f0545d77ea2d6233d3a0e", "tokenCount": 489, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 4, "optimizerGroup": 1, "positionInGroup": 4, "datasetIndex": 124, "rowId": "klue-mrc-v1_train_05035", "isImpossible": false, "inputSha256": "15923219987dab8edbd53067102ac998703b67fb804b163b8eb6c147072ed20b", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 5, "optimizerGroup": 1, "positionInGroup": 5, "datasetIndex": 93, "rowId": "klue-mrc-v1_train_09171", "isImpossible": true, "inputSha256": "0f2f35f4043443583353e0c4374793ad336cb4bd854137697b4cf1b98dab7723", "tokenCount": 427, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 6, "optimizerGroup": 1, "positionInGroup": 6, "datasetIndex": 218, "rowId": "klue-mrc-v1_train_05943", "isImpossible": false, "inputSha256": "b06e208692c772d0d6b9f1543846de38b407e91c22581428f7642c24c347c56f", "tokenCount": 484, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 7, "optimizerGroup": 1, "positionInGroup": 7, "datasetIndex": 430, "rowId": "klue-mrc-v1_train_07566", "isImpossible": false, "inputSha256": "7109d74b38970a2b277e86a4186cfaf22487f012c6398cae199964d9e746f743", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 8, "optimizerGroup": 1, "positionInGroup": 8, "datasetIndex": 307, "rowId": "klue-mrc-v1_train_12102", "isImpossible": true, "inputSha256": "eb02eb054b94d6246df99f8a53b4e157098cb90c5ad933ec1f130e68417a622d", "tokenCount": 408, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 9, "optimizerGroup": 1, "positionInGroup": 9, "datasetIndex": 414, "rowId": "klue-mrc-v1_train_07280", "isImpossible": false, "inputSha256": "75aa14c822c18e7819573d6c04e2993de94bd3b0be09b8c4fc832ff39de1c9fc", "tokenCount": 539, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 10, "optimizerGroup": 1, "positionInGroup": 10, "datasetIndex": 79, "rowId": "klue-mrc-v1_train_08925", "isImpossible": true, "inputSha256": "be114e2f23299e7cd8bca702dcc77b1f516fe3020aeb96d204ab864459be6ff0", "tokenCount": 476, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 11, "optimizerGroup": 1, "positionInGroup": 11, "datasetIndex": 432, "rowId": "klue-mrc-v1_train_07596", "isImpossible": false, "inputSha256": "82c4ff9c27a7ee04d5a2b3d6964f4f5a09d81bc43959dd1f404264ea34fd7aa2", "tokenCount": 465, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 12, "optimizerGroup": 1, "positionInGroup": 12, "datasetIndex": 186, "rowId": "klue-mrc-v1_train_05527", "isImpossible": false, "inputSha256": "9f554c06bdb259cdb6fda4bf8ab894b049ee6bf241ca70af24358a50a41ca2d0", "tokenCount": 537, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 13, "optimizerGroup": 1, "positionInGroup": 13, "datasetIndex": 460, "rowId": "klue-mrc-v1_train_07892", "isImpossible": false, "inputSha256": "a97cc3b05eef0ad160475bab14662ce3c91b523646b6e1c7fd1da8341f57e6ef", "tokenCount": 470, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 14, "optimizerGroup": 1, "positionInGroup": 14, "datasetIndex": 368, "rowId": "klue-mrc-v1_train_06812", "isImpossible": false, "inputSha256": "7ba2afb3c68e9a2ef91cd6600a40cc5b09dc47e97c61c50497ddb39a0b2430c0", "tokenCount": 541, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 15, "optimizerGroup": 1, "positionInGroup": 15, "datasetIndex": 57, "rowId": "klue-mrc-v1_train_08729", "isImpossible": true, "inputSha256": "6f2de2197e0533bf5f670d37d98aca00dd68e4f14c73a70c64c9a4a92bc402a4", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 16, "optimizerGroup": 1, "positionInGroup": 16, "datasetIndex": 379, "rowId": "klue-mrc-v1_train_13098", "isImpossible": true, "inputSha256": "988f58506af474869debb8b5af54a99701aedec3bd65d27a1857a104f9348693", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"optimizerStep": 1, "actualOptimizerUpdates": 1, "skippedOptimizerUpdates": 0, "learningRate": 2.8499999999999998e-05, "cudaPeakAllocatedBytes": 6629408256, "cudaPeakReservedBytes": 6715080704}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationOptimizerGroup": {"optimizerGroup": 1, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 16, "totalAdapterHistoryOptimizerUpdates": 61}
+{'loss': 0.1298, 'grad_norm': 0.9264509677886963, 'learning_rate': 3e-05, 'epoch': 0.03}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 17, "optimizerGroup": 2, "positionInGroup": 1, "datasetIndex": 513, "rowId": "klue-mrc-v1_train_08648", "isImpossible": false, "inputSha256": "6942d772db3a3779747c43b5c0c0939520fc74cd2075e18048fae4f3ca3fcd26", "tokenCount": 435, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 18, "optimizerGroup": 2, "positionInGroup": 2, "datasetIndex": 532, "rowId": "klue-mrc-v1_train_08878", "isImpossible": false, "inputSha256": "f4f65892806341a09ad7dc1988818efef155676565957ad7219dbe970c1a479b", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 19, "optimizerGroup": 2, "positionInGroup": 3, "datasetIndex": 217, "rowId": "klue-mrc-v1_train_10985", "isImpossible": true, "inputSha256": "744d3a78cf4f9a0051f03b7b1a25f2278cad95c57e9bddc4183f88e1d7c04f36", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 20, "optimizerGroup": 2, "positionInGroup": 4, "datasetIndex": 43, "rowId": "klue-mrc-v1_train_08465", "isImpossible": true, "inputSha256": "33481c99db614182f08d28a0cca3ded52158b808530fe97e4d48ff88800dc929", "tokenCount": 506, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 21, "optimizerGroup": 2, "positionInGroup": 5, "datasetIndex": 621, "rowId": "klue-mrc-v1_train_10237", "isImpossible": false, "inputSha256": "f9f4692a6233e682b5e02fdde833a35fb5a1242a210efb48ab8fa1fc2352b497", "tokenCount": 503, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 22, "optimizerGroup": 2, "positionInGroup": 6, "datasetIndex": 575, "rowId": "klue-mrc-v1_train_09575", "isImpossible": false, "inputSha256": "bc74f4557067942c7d931c6a1cde4fa118bfa2b921bb64762302d8bf280ebb6d", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 23, "optimizerGroup": 2, "positionInGroup": 7, "datasetIndex": 608, "rowId": "klue-mrc-v1_train_10077", "isImpossible": false, "inputSha256": "4adec203257cd45544b084d602ae30749ca5283f66c7971fd420cc21bfeaa3dc", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 24, "optimizerGroup": 2, "positionInGroup": 8, "datasetIndex": 260, "rowId": "klue-mrc-v1_train_06123", "isImpossible": false, "inputSha256": "06f335db7c338bbe8174a7f1b3f733ba9082d86a350b4dac78a4819c47e748fb", "tokenCount": 508, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 25, "optimizerGroup": 2, "positionInGroup": 9, "datasetIndex": 232, "rowId": "klue-mrc-v1_train_05991", "isImpossible": false, "inputSha256": "0e1cb3a38065144fe779df711ccd6d3435e56e8e60c889b5f0122b0aa025da90", "tokenCount": 516, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 26, "optimizerGroup": 2, "positionInGroup": 10, "datasetIndex": 305, "rowId": "klue-mrc-v1_train_12073", "isImpossible": true, "inputSha256": "bc52cbeeb85e137154e5e327f029a82b98054a10615a4badee2fb9185ec2e219", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 27, "optimizerGroup": 2, "positionInGroup": 11, "datasetIndex": 30, "rowId": "klue-mrc-v1_train_04129", "isImpossible": false, "inputSha256": "6ccaf6572537ff69a0af375a5d413b2ba0e2442e6db84a6c2c346fc8a77d3446", "tokenCount": 450, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 28, "optimizerGroup": 2, "positionInGroup": 12, "datasetIndex": 316, "rowId": "klue-mrc-v1_train_06501", "isImpossible": false, "inputSha256": "a4ac60f41ecdd7f76b922d6f1df8860a6172648c1824713898d597eb9e145f6c", "tokenCount": 479, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 29, "optimizerGroup": 2, "positionInGroup": 13, "datasetIndex": 323, "rowId": "klue-mrc-v1_train_12431", "isImpossible": true, "inputSha256": "46323852642cfeee09c899f1b4f6ec274a4ed1a5f109611b65f9bbd6bc6e1076", "tokenCount": 456, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 30, "optimizerGroup": 2, "positionInGroup": 14, "datasetIndex": 164, "rowId": "klue-mrc-v1_train_05391", "isImpossible": false, "inputSha256": "7f487c04010ba256d242c9ad94bb1548b2163405947d8d47b9196e5dad5db135", "tokenCount": 438, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 31, "optimizerGroup": 2, "positionInGroup": 15, "datasetIndex": 293, "rowId": "klue-mrc-v1_train_11950", "isImpossible": true, "inputSha256": "889eb47965eb9261d10fc86c07bfe973ff949e1220982b3d7cdfb6fee4227f55", "tokenCount": 471, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 32, "optimizerGroup": 2, "positionInGroup": 16, "datasetIndex": 625, "rowId": "klue-mrc-v1_train_10259", "isImpossible": false, "inputSha256": "11f4268d796740c587608fef0004fff130a62d25e4e92550fa1ffc50d8312b6f", "tokenCount": 513, "forwardBackwardCompleted": true}}
+{"optimizerStep": 2, "actualOptimizerUpdates": 2, "skippedOptimizerUpdates": 0, "learningRate": 2.7000000000000002e-05, "cudaPeakAllocatedBytes": 6660231680, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationOptimizerGroup": {"optimizerGroup": 2, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 32, "totalAdapterHistoryOptimizerUpdates": 62}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{'loss': 0.0674, 'grad_norm': 0.5773451328277588, 'learning_rate': 2.8499999999999998e-05, 'epoch': 0.05}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 33, "optimizerGroup": 3, "positionInGroup": 1, "datasetIndex": 337, "rowId": "klue-mrc-v1_train_12660", "isImpossible": true, "inputSha256": "b752752b20b795046c7091636e27c60b32d0caf518f5bee83fce0121c2217254", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 34, "optimizerGroup": 3, "positionInGroup": 2, "datasetIndex": 172, "rowId": "klue-mrc-v1_train_05420", "isImpossible": false, "inputSha256": "f47fc9629634d3e26b33fcdb403ec5ba91e696de18cd8e0571005a2c5e26bf7b", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 35, "optimizerGroup": 3, "positionInGroup": 3, "datasetIndex": 480, "rowId": "klue-mrc-v1_train_08202", "isImpossible": false, "inputSha256": "74e34a615f6060368af16e83124943ea07df8d1f0745daf3615e67d92ac6311e", "tokenCount": 451, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 36, "optimizerGroup": 3, "positionInGroup": 4, "datasetIndex": 257, "rowId": "klue-mrc-v1_train_11587", "isImpossible": true, "inputSha256": "bcf625a686b973b1954a3fdf54e0405f4f106841c55116d768cb0d5f32aa3a06", "tokenCount": 526, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 37, "optimizerGroup": 3, "positionInGroup": 5, "datasetIndex": 604, "rowId": "klue-mrc-v1_train_10023", "isImpossible": false, "inputSha256": "60c762249ff0bd93ee5371e615ce492392dd0fc0443d614b233fbbbdf850d7d2", "tokenCount": 512, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 38, "optimizerGroup": 3, "positionInGroup": 6, "datasetIndex": 83, "rowId": "klue-mrc-v1_train_08945", "isImpossible": true, "inputSha256": "8025fc096c5920bff96ce03b410ec2b08823ce81d449b97e94e90f29cbcd1f34", "tokenCount": 481, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 39, "optimizerGroup": 3, "positionInGroup": 7, "datasetIndex": 194, "rowId": "klue-mrc-v1_train_05649", "isImpossible": false, "inputSha256": "dc819768ec274e1c19d76eb9b98ed8aaa2549fb575c48ea6ff973381ad48c5b3", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 40, "optimizerGroup": 3, "positionInGroup": 8, "datasetIndex": 490, "rowId": "klue-mrc-v1_train_08277", "isImpossible": false, "inputSha256": "b02b6c1c4602c97c6f6bbba15c464f4fa856c0513d2057a2123d44bc6117265f", "tokenCount": 492, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 41, "optimizerGroup": 3, "positionInGroup": 9, "datasetIndex": 200, "rowId": "klue-mrc-v1_train_05719", "isImpossible": false, "inputSha256": "7221aa743e44072cf65edb8cb348e81ecfe0fbd7874983d1382890f9f52d287a", "tokenCount": 487, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 42, "optimizerGroup": 3, "positionInGroup": 10, "datasetIndex": 404, "rowId": "klue-mrc-v1_train_07033", "isImpossible": false, "inputSha256": "3fc8223a5729cfe4fb71288ba68e03db9a7b167f085fa9e0576948800766e0e4", "tokenCount": 507, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 49, "optimizerGroup": 4, "positionInGroup": 1, "datasetIndex": 49, "rowId": "klue-mrc-v1_train_08516", "isImpossible": true, "inputSha256": "23f4c48c809ee495417d273c130a06947fb2305b635ec3769b2c6fe8aace0dc8", "tokenCount": 520, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 50, "optimizerGroup": 4, "positionInGroup": 2, "datasetIndex": 413, "rowId": "klue-mrc-v1_train_07241", "isImpossible": false, "inputSha256": "b66bb5fdeeed845f4397dac559b5a803440b39522406ffa0cd87f1aec4a0518e", "tokenCount": 519, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 43, "optimizerGroup": 3, "positionInGroup": 11, "datasetIndex": 635, "rowId": "klue-mrc-v1_train_10380", "isImpossible": false, "inputSha256": "f145038c7b4350b53459ced497c264a666d9df64dcb46ee8f1ae033d3f703c2d", "tokenCount": 536, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 49, "optimizerGroup": 4, "positionInGroup": 1, "datasetIndex": 49, "rowId": "klue-mrc-v1_train_08516", "isImpossible": true, "inputSha256": "23f4c48c809ee495417d273c130a06947fb2305b635ec3769b2c6fe8aace0dc8", "tokenCount": 520, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 50, "optimizerGroup": 4, "positionInGroup": 2, "datasetIndex": 413, "rowId": "klue-mrc-v1_train_07241", "isImpossible": false, "inputSha256": "b66bb5fdeeed845f4397dac559b5a803440b39522406ffa0cd87f1aec4a0518e", "tokenCount": 519, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 51, "optimizerGroup": 4, "positionInGroup": 3, "datasetIndex": 244, "rowId": "klue-mrc-v1_train_06029", "isImpossible": false, "inputSha256": "941067c9c2e44d3ddb086a74bb161edb9326ab68114e5fa0424a6565812d0b89", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 44, "optimizerGroup": 3, "positionInGroup": 12, "datasetIndex": 91, "rowId": "klue-mrc-v1_train_09128", "isImpossible": true, "inputSha256": "6856cf53fc39c25e401099ca34eabe3355e0bdee0b847d1a104bbbca5d8ec13c", "tokenCount": 486, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 45, "optimizerGroup": 3, "positionInGroup": 13, "datasetIndex": 506, "rowId": "klue-mrc-v1_train_08540", "isImpossible": false, "inputSha256": "5fc4e39bc6b940cfecc9ff28137bc0f6d01c67e6323313bd5355d3ebc3f70cd5", "tokenCount": 477, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 49, "optimizerGroup": 4, "positionInGroup": 1, "datasetIndex": 49, "rowId": "klue-mrc-v1_train_08516", "isImpossible": true, "inputSha256": "23f4c48c809ee495417d273c130a06947fb2305b635ec3769b2c6fe8aace0dc8", "tokenCount": 520, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 50, "optimizerGroup": 4, "positionInGroup": 2, "datasetIndex": 413, "rowId": "klue-mrc-v1_train_07241", "isImpossible": false, "inputSha256": "b66bb5fdeeed845f4397dac559b5a803440b39522406ffa0cd87f1aec4a0518e", "tokenCount": 519, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 51, "optimizerGroup": 4, "positionInGroup": 3, "datasetIndex": 244, "rowId": "klue-mrc-v1_train_06029", "isImpossible": false, "inputSha256": "941067c9c2e44d3ddb086a74bb161edb9326ab68114e5fa0424a6565812d0b89", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 52, "optimizerGroup": 4, "positionInGroup": 4, "datasetIndex": 572, "rowId": "klue-mrc-v1_train_09539", "isImpossible": false, "inputSha256": "c9568a852ae3a3bdd2460c394471c6a47a82fc2e5c9c0af14f73847ac833b4e5", "tokenCount": 446, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 46, "optimizerGroup": 3, "positionInGroup": 14, "datasetIndex": 477, "rowId": "klue-mrc-v1_train_08164", "isImpossible": false, "inputSha256": "b3300a915a51c2e5508b32c827fe3657cd6963523765827bd01727b732b6eed4", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 49, "optimizerGroup": 4, "positionInGroup": 1, "datasetIndex": 49, "rowId": "klue-mrc-v1_train_08516", "isImpossible": true, "inputSha256": "23f4c48c809ee495417d273c130a06947fb2305b635ec3769b2c6fe8aace0dc8", "tokenCount": 520, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 50, "optimizerGroup": 4, "positionInGroup": 2, "datasetIndex": 413, "rowId": "klue-mrc-v1_train_07241", "isImpossible": false, "inputSha256": "b66bb5fdeeed845f4397dac559b5a803440b39522406ffa0cd87f1aec4a0518e", "tokenCount": 519, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 51, "optimizerGroup": 4, "positionInGroup": 3, "datasetIndex": 244, "rowId": "klue-mrc-v1_train_06029", "isImpossible": false, "inputSha256": "941067c9c2e44d3ddb086a74bb161edb9326ab68114e5fa0424a6565812d0b89", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 52, "optimizerGroup": 4, "positionInGroup": 4, "datasetIndex": 572, "rowId": "klue-mrc-v1_train_09539", "isImpossible": false, "inputSha256": "c9568a852ae3a3bdd2460c394471c6a47a82fc2e5c9c0af14f73847ac833b4e5", "tokenCount": 446, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 53, "optimizerGroup": 4, "positionInGroup": 5, "datasetIndex": 538, "rowId": "klue-mrc-v1_train_09051", "isImpossible": false, "inputSha256": "ecabf39a022f98c62a0b95e1fbfd01c3ca415a07f43eb1b3f52a0d8f4a5b8637", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 54, "optimizerGroup": 4, "positionInGroup": 6, "datasetIndex": 37, "rowId": "klue-mrc-v1_train_08417", "isImpossible": true, "inputSha256": "63f2348862e5d24da4797f919e635e1bd1a1bb15d3a84db23e20587a4424904a", "tokenCount": 423, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 47, "optimizerGroup": 3, "positionInGroup": 15, "datasetIndex": 235, "rowId": "klue-mrc-v1_train_11099", "isImpossible": true, "inputSha256": "97c7a89eba71a24a512ce342b0135417eb20be8652a4f26101a1b5060b00826e", "tokenCount": 495, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 48, "optimizerGroup": 3, "positionInGroup": 16, "datasetIndex": 481, "rowId": "klue-mrc-v1_train_08209", "isImpossible": false, "inputSha256": "739917b88df5259695c1decdd9725ca15045013e1659a1cdb6aff0355eeb9a68", "tokenCount": 488, "forwardBackwardCompleted": true}}
+{"optimizerStep": 3, "actualOptimizerUpdates": 3, "skippedOptimizerUpdates": 0, "learningRate": 2.55e-05, "cudaPeakAllocatedBytes": 6681345024, "cudaPeakReservedBytes": 6863978496}
+{"continuationOptimizerGroup": {"optimizerGroup": 3, "microbatches": 16, "answerable": 11, "impossible": 5}, "processedMicrobatches": 48, "totalAdapterHistoryOptimizerUpdates": 63}
+{'loss': 0.0994, 'grad_norm': 1.0467746257781982, 'learning_rate': 2.7000000000000002e-05, 'epoch': 0.07}
+{"continuationTrainingSample": {"microbatch": 49, "optimizerGroup": 4, "positionInGroup": 1, "datasetIndex": 49, "rowId": "klue-mrc-v1_train_08516", "isImpossible": true, "inputSha256": "23f4c48c809ee495417d273c130a06947fb2305b635ec3769b2c6fe8aace0dc8", "tokenCount": 520, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 50, "optimizerGroup": 4, "positionInGroup": 2, "datasetIndex": 413, "rowId": "klue-mrc-v1_train_07241", "isImpossible": false, "inputSha256": "b66bb5fdeeed845f4397dac559b5a803440b39522406ffa0cd87f1aec4a0518e", "tokenCount": 519, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 51, "optimizerGroup": 4, "positionInGroup": 3, "datasetIndex": 244, "rowId": "klue-mrc-v1_train_06029", "isImpossible": false, "inputSha256": "941067c9c2e44d3ddb086a74bb161edb9326ab68114e5fa0424a6565812d0b89", "tokenCount": 453, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 52, "optimizerGroup": 4, "positionInGroup": 4, "datasetIndex": 572, "rowId": "klue-mrc-v1_train_09539", "isImpossible": false, "inputSha256": "c9568a852ae3a3bdd2460c394471c6a47a82fc2e5c9c0af14f73847ac833b4e5", "tokenCount": 446, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 53, "optimizerGroup": 4, "positionInGroup": 5, "datasetIndex": 538, "rowId": "klue-mrc-v1_train_09051", "isImpossible": false, "inputSha256": "ecabf39a022f98c62a0b95e1fbfd01c3ca415a07f43eb1b3f52a0d8f4a5b8637", "tokenCount": 538, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 54, "optimizerGroup": 4, "positionInGroup": 6, "datasetIndex": 37, "rowId": "klue-mrc-v1_train_08417", "isImpossible": true, "inputSha256": "63f2348862e5d24da4797f919e635e1bd1a1bb15d3a84db23e20587a4424904a", "tokenCount": 423, "forwardBackwardCompleted": true}}
+{"continuationTrainingSample": {"microbatch": 55, "optimizerGroup": 4, "positionInGroup": 7, "datasetIndex": 141, "rowId": "klue-mrc-v1_train_09882", "isImpossible": true, "inputSha256": "85fdb2064703907c6736340818f75335bac47ae1d8bb670b0f8410caadfa73a9", "tokenCount": 532, "forwardBackwardCompleted": true}}
+{"runId":"public-qa-grounding-20261006-r1","state":"stopped_by_resource_guard","terminationConfirmed":true,"receipt":"C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\.local\\training\\public-qa-run\\public-qa-grounding-20261006-r1\\controller-receipt.json","trainingRunCompleted":false,"artifactVerificationRequired":false}

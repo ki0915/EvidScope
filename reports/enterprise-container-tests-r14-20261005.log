@@ -1,0 +1,496 @@
+✔ replays event, policy, exception, evaluation and per-event retention changes (2.765854ms)
+✔ legacy encrypted event needs authenticated decoded actionId and fails closed after erasure when unavailable (1.179553ms)
+✔ rejects invalid policy transitions and evaluation versions instead of guessing action state (0.539803ms)
+✔ exact projection rejects modified action row (1.495253ms)
+✔ exact projection rejects deleted action row (0.573242ms)
+✔ exact projection rejects added action row (0.369162ms)
+✔ exact projection rejects tenant relabeled action row (0.366514ms)
+✔ retention increments each disposed event and rejects unknown or duplicate sequences (0.670023ms)
+✔ exact comparison is independent of locale ordering for mixed-case action IDs (0.778535ms)
+✔ incremental reducer fork matches a full replay without mutating its authenticated prefix (0.642174ms)
+✔ failed incremental suffix leaves the authenticated prefix unchanged (0.39584ms)
+✔ incremental reducer accepts authenticated disclosure for a legacy encrypted event (0.300789ms)
+✔ unsigned action state cannot erase backlog, mint compliance, or enter a signed review report (45.523359ms)
+✔ action verification and response share one writer-excluding snapshot (9.95634ms)
+✔ integrity rejects body evaluation projection tampering without affecting another tenant (22.538954ms)
+✔ integrity rejects malformed evaluation projection tampering without affecting another tenant (9.876717ms)
+✔ integrity rejects action evaluation projection tampering without affecting another tenant (10.486079ms)
+✔ integrity rejects version evaluation projection tampering without affecting another tenant (10.592642ms)
+✔ integrity rejects missing evaluation projection tampering without affecting another tenant (9.074133ms)
+✔ integrity rejects extra evaluation projection tampering without affecting another tenant (8.560642ms)
+✔ integrity rejects ordering evaluation projection tampering without affecting another tenant (9.28722ms)
+✔ overview, action and alert reads reject a forged evaluation instead of rendering it (12.504966ms)
+✔ valid reads preserve latest-first behavior and the integrity scope remains explicit (10.921765ms)
+✔ evaluation verification and response use one writer-excluding snapshot (7.032723ms)
+✔ finance view keeps verification and consumption in one writer-excluding snapshot (19.00476ms)
+✔ finance export keeps verification and consumption in one writer-excluding snapshot (8.100781ms)
+✔ finance import keeps verification and consumption in one writer-excluding snapshot (7.852359ms)
+✔ finance report keeps verification and consumption in one writer-excluding snapshot (10.291392ms)
+✔ finance saved-report keeps verification and consumption in one writer-excluding snapshot (13.13638ms)
+✔ successful nested savepoints remain subject to complete outer rollback (4.788977ms)
+✔ caught inner failure rolls back its ledger, checkpoint and objects while outer work commits (5.650901ms)
+✔ one transaction exposes its pending signed head and publishes only the final checkpoint (4.920686ms)
+✔ an existing transaction started outside Store uses a savepoint and is not committed by the helper (5.602683ms)
+✔ a busy BEGIN leaves no pending ledger head that can bypass checkpoint publication (5010.119999ms)
+✔ transaction callbacks must be synchronous and never commit a returned promise (3.567119ms)
+✔ verified supplier bytes, role isolation, immutable signed review and changed model invalidation (79.57547ms)
+✔ same private key representation can restore encrypted document bytes (1.045456ms)
+▶ unknown or changed supplied model and purpose require review even when current bundle matches
+  ✔ SUPPLIED_MODEL_VERSION_UNKNOWN (13.83759ms)
+  ✔ SUPPLIED_PURPOSE_UNKNOWN (12.809403ms)
+  ✔ SUPPLIED_MODEL_VERSION_MISMATCH (14.208231ms)
+  ✔ SUPPLIED_PURPOSE_MISMATCH (13.624285ms)
+✔ unknown or changed supplied model and purpose require review even when current bundle matches (55.112166ms)
+✔ newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history (53.458325ms)
+✔ corrupt or missing document never remains verified; hashes and measure bounds are enforced (22.82935ms)
+✔ bundle replacement invalidates only linked snapshots and cannot move between systems (25.69268ms)
+✔ altered system or supplier projection cannot be legitimized by a new signed report (9.717956ms)
+✔ legacy system facts migrate once to unknown without rewriting historical assessments (10.787517ms)
+✔ startup refuses a downgraded and altered system projection without re-signing it (6.432315ms)
+✔ startup refuses insert system projection drift (5.995888ms)
+✔ startup refuses delete system projection drift (6.027892ms)
+✔ startup refuses sql-id system projection drift (5.801791ms)
+✔ startup verifies every tenant before leaving any partial migration (8.681798ms)
+✔ catalog change refuses altered catalog projection before signing review tasks (6.120191ms)
+✔ catalog change refuses altered assessment projection before signing review tasks (6.172922ms)
+✔ integrity rejects rule forged projection (18.414302ms)
+✔ integrity rejects rule missing projection (7.489443ms)
+✔ integrity rejects rule extra projection (6.606738ms)
+✔ integrity rejects rule sql-id projection (7.128247ms)
+✔ integrity rejects rule body-id projection (7.088674ms)
+✔ integrity rejects assessment forged projection (6.956966ms)
+✔ integrity rejects assessment missing projection (6.667813ms)
+✔ integrity rejects assessment extra projection (6.765216ms)
+✔ integrity rejects assessment sql-id projection (6.896132ms)
+✔ integrity rejects assessment body-id projection (6.396155ms)
+✔ integrity rejects governance_task forged projection (6.743847ms)
+✔ integrity rejects governance_task missing projection (6.686736ms)
+✔ integrity rejects governance_task extra projection (6.6609ms)
+✔ integrity rejects governance_task sql-id projection (6.770924ms)
+✔ integrity rejects governance_task body-id projection (6.012959ms)
+✔ integrity rejects identity_access forged projection (6.347959ms)
+✔ integrity rejects identity_access missing projection (5.68567ms)
+✔ integrity rejects identity_access extra projection (6.205419ms)
+✔ integrity rejects identity_access sql-id projection (5.935252ms)
+✔ integrity rejects identity_access body-id projection (5.933161ms)
+✔ integrity rejects catalog forged projection (5.561162ms)
+✔ integrity rejects catalog missing projection (6.108914ms)
+✔ integrity rejects catalog extra projection (5.081731ms)
+✔ integrity rejects catalog sql-id projection (5.459302ms)
+✔ integrity rejects catalog body-id projection (5.44718ms)
+✔ integrity rejects assistance_profile forged projection (5.6046ms)
+✔ integrity rejects assistance_profile missing projection (5.450901ms)
+✔ integrity rejects assistance_profile extra projection (5.916833ms)
+✔ integrity rejects assistance_profile sql-id projection (5.993684ms)
+✔ integrity rejects assistance_profile body-id projection (6.659958ms)
+✔ valid latest objects and every assistance profile version survive API verification and backup recovery (50.784604ms)
+✔ unknown unsigned object types are rejected by API and backup with the same comparison (8.313765ms)
+✔ ordinary asset reads never display an altered unsigned projection (5.457681ms)
+✔ ordinary case reads never display an altered unsigned projection (5.772604ms)
+✔ ordinary rule reads never display an altered unsigned projection (4.663067ms)
+✔ ordinary exception reads never display an altered unsigned projection (4.425732ms)
+✔ ordinary system reads never display an altered unsigned projection (5.221295ms)
+✔ ordinary supplier_bundle reads never display an altered unsigned projection (4.961356ms)
+✔ ordinary assessment reads never display an altered unsigned projection (5.131681ms)
+✔ ordinary governance_task reads never display an altered unsigned projection (5.211713ms)
+✔ altered asset projection cannot be repaired and re-signed by an ordinary update (4.848252ms)
+✔ altered system projection cannot be repaired and re-signed by an ordinary update (5.105595ms)
+✔ unsigned receipt injection cannot turn a missing event into durable duplicate success (13.831311ms)
+✔ prepared receipt mutation executed after cache warm cannot bypass runtime invalidation (6.100183ms)
+✔ mutation clock cannot be reset by application SQL (4.022544ms)
+✔ an untrusted trigger cannot hide protected-table side effects inside a trusted append (4.545593ms)
+✔ incremental receipt verification rejects an invalid signed suffix before a cold replay (10.912336ms)
+✔ signed receipt binds normal duplicate success and integrity evidence (6.679788ms)
+✔ retention signs a verified legacy receipt before destroying its event key (1122.696979ms)
+✔ receipt projection detects fingerprint rows and rebuild restores only signed truth (8.803912ms)
+✔ receipt projection detects source rows and rebuild restores only signed truth (9.059072ms)
+✔ receipt projection detects id rows and rebuild restores only signed truth (9.853485ms)
+✔ receipt projection detects missing rows and rebuild restores only signed truth (9.154309ms)
+✔ receipt projection detects extra rows and rebuild restores only signed truth (8.149137ms)
+✔ moving signed rows to another SQL tenant cannot turn valid signatures into tenant authority (7.073041ms)
+✔ SQL sequence changes are detected even when record bodies and checkpoint still verify internally (2.28356ms)
+✔ an empty tenant cannot inherit another tenant checkpoint (2.257126ms)
+✖ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (0.774085ms)
+✖ 사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 연결하고 작성자 위조를 차단 (0.280099ms)
+✖ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (0.281026ms)
+✖ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (0.20337ms)
+✖ 검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존하며 재검토로 표시 (0.233395ms)
+✖ 평가 이력이 목록 한도를 넘으면 조사함은 예외 대신 제한 상태를 반환한다 (0.167466ms)
+✖ 다른 행동의 사건 과다는 검색된 작은 행동의 조사 페이지를 차단하지 않는다 (0.229595ms)
+✖ worker leases distribute disjoint jobs and commit deterministic output once (0.811478ms)
+✖ worker identity, evidence references and tenant/action override cannot be supplied by caller (0.13434ms)
+✖ second vault connection observes durable leases and completed results (0.08881ms)
+✖ late evidence invalidates old results and expired leases recover after worker restart (0.120845ms)
+✖ event and object projection edits block worker claims before signed policy evidence is used (0.117733ms)
+✖ evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure (0.090806ms)
+✖ findings are bounded with explicit total coverage, never reported as full analysis (0.105101ms)
+✖ oversized action quarantines explicitly and stays unanalyzed without looping duplicate evaluations (0.082739ms)
+✖ analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies (0.173552ms)
+✖ oversized individual ledger rows are quarantined before parsing while checkpoint completeness remains mandatory (0.182821ms)
+✖ streaming snapshot distinguishes authorized erasure, missing keys and illegally retained erased keys (0.139945ms)
+✖ encrypted records without the new action header remain readable through bounded streaming (0.122225ms)
+✖ worker HTTP claim/complete runs computation in client and denies source and audit boundary access (0.241161ms)
+ℹ tests 131
+ℹ suites 0
+ℹ pass 111
+ℹ fail 20
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8175.999947
+
+✖ failing tests:
+
+test at test/workbench.test.mjs:23:1
+✖ 행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지 (0.774085ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:24:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:36:1
+✖ 사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 연결하고 작성자 위조를 차단 (0.280099ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:37:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:52:1
+✖ 새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증 (0.281026ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:53:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:79:1
+✖ 보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다 (0.20337ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:80:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:95:1
+✖ 검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존하며 재검토로 표시 (0.233395ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:96:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:112:1
+✖ 평가 이력이 목록 한도를 넘으면 조사함은 예외 대신 제한 상태를 반환한다 (0.167466ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:113:2)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workbench.test.mjs:124:1
+✖ 다른 행동의 사건 과다는 검색된 작은 행동의 조사 페이지를 차단하지 않는다 (0.229595ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at TestContext.<anonymous> (file:///app/test/workbench.test.mjs:125:2)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:28:1
+✖ worker leases distribute disjoint jobs and commit deterministic output once (0.811478ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:29:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:38:1
+✖ worker identity, evidence references and tenant/action override cannot be supplied by caller (0.13434ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:39:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:47:1
+✖ second vault connection observes durable leases and completed results (0.08881ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:48:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:54:1
+✖ late evidence invalidates old results and expired leases recover after worker restart (0.120845ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:55:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:63:1
+✖ event and object projection edits block worker claims before signed policy evidence is used (0.117733ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:64:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:72:1
+✖ evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure (0.090806ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:73:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:82:1
+✖ findings are bounded with explicit total coverage, never reported as full analysis (0.105101ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:83:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:87:1
+✖ oversized action quarantines explicitly and stays unanalyzed without looping duplicate evaluations (0.082739ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:88:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:93:1
+✖ analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies (0.173552ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:94:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:100:1
+✖ oversized individual ledger rows are quarantined before parsing while checkpoint completeness remains mandatory (0.182821ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:101:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:107:1
+✖ streaming snapshot distinguishes authorized erasure, missing keys and illegally retained erased keys (0.139945ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:108:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:115:1
+✖ encrypted records without the new action header remain readable through bounded streaming (0.122225ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at fixture (file:///app/test/workers.test.mjs:14:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:116:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }
+
+test at test/workers.test.mjs:124:1
+✖ worker HTTP claim/complete runs computation in client and denies source and audit boundary access (0.241161ms)
+  Error: ENOENT: no such file or directory, mkdir '.test-runs'
+      at mkdirSync (node:fs:1350:26)
+      at harness (file:///app/test/harness.mjs:7:2)
+      at TestContext.<anonymous> (file:///app/test/workers.test.mjs:125:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'mkdir',
+    path: '.test-runs'
+  }

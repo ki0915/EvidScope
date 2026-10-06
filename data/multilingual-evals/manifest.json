@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "status": "UNREVIEWED_SYNTHETIC_TEMPLATE_POOL",
+  "generator": "scripts/generate-multilingual-evals.mjs",
+  "generationVersion": "1.0.0",
+  "audit": {
+    "file": "evidence-organizer/v1/candidates.jsonl",
+    "families": 180,
+    "rows": 540,
+    "splits": {
+      "tune": 300,
+      "validation": 60,
+      "test": 180
+    },
+    "familySplits": {
+      "tune": 100,
+      "validation": 20,
+      "test": 60
+    },
+    "scenarios": [
+      "unregistered_ai",
+      "scope_violation",
+      "sensitive_external",
+      "injection",
+      "conflicting_results",
+      "rate_model_change",
+      "collection_gap",
+      "post_stop_activity"
+    ]
+  },
+  "cipher": {
+    "file": "cipherguard/v1/test.jsonl",
+    "families": 60,
+    "rows": 180,
+    "categories": [
+      "PII",
+      "Financial Information",
+      "Credential/Secret",
+      "Location/Device Information",
+      "Health/Biometric Information",
+      "API Key/Access Token",
+      "Account Information",
+      "HR/Payroll Information",
+      "Internal Document",
+      "Legal Information",
+      "Organization/Project Information",
+      "Real Estate Information"
+    ]
+  },
+  "languages": [
+    "en",
+    "ko",
+    "mixed"
+  ],
+  "grouping": "Translations share a SHA-256 hash of language-neutral generated facts and remain in one split.",
+  "trainingRunAllowed": false,
+  "qualityClaimAllowed": false,
+  "limitations": [
+    "Template families share scenario structures; distinct facts and split isolation do not establish independent real-world evaluation.",
+    "expectedOutput and expectedPrivacy are generated candidate labels, not human-approved truth or measured model outputs.",
+    "All review flags remain unreviewed; no weights are trained or model quality scores produced.",
+    "Cipher candidate labels require review against the chosen privacy policy: dummy, reserved and nonoperational fixture values may require Safe labels.",
+    "Long-tail cases require actual tokenizer coverage measurement; incomplete screening must remain unknown or partial."
+  ],
+  "contentHashes": {
+    "audit": "bfec758f2b93c8f8aebc9a77569aca3426e6a8dc95082e61934d7744a2c4530a",
+    "cipher": "e4810938b17e1533cec527f88a1ad465107b4320a74620df09673c7dad122fcf"
+  }
+}

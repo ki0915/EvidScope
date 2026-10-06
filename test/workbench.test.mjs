@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {generateKeyPairSync} from 'node:crypto';
-import {writeFileSync} from 'node:fs';
+import {writeFileSync,mkdtempSync,readFileSync,mkdirSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {harness} from './harness.mjs';
 import {submit} from '../src/client.mjs';
 import {verifyCaseReport} from '../src/report-verifier.mjs';
+import {initialize} from '../scripts/init.mjs';
+import {createService} from '../src/service.mjs';
 
 async function fixture(h,actionId='review-action') {
  const base={actionId,traceId:'review-trace',occurredAt:new Date().toISOString(),actor:'assistant',tool:'crm',action:'update',resource:'case-42'};
@@ -68,6 +70,7 @@ test('새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409,
  await h.analyze();context=(await h.api(f.path+'/review-context')).body;assert.equal(context.decisions.length,1);assert.equal(context.reviewState,'stale');
  const next=await h.api(f.path+'/decisions',{body:decision(context.contextHash,f.ref,{conclusion:'inconclusive',evidence:[]})});assert.equal(next.status,200);
  assert.equal((await h.api(f.path+'/review-context')).body.reviewState,'inconclusive');
+ const reordered=new DatabaseSync(join(h.dir,'data','evidence.db'));t.after(()=>reordered.close());const older=reordered.prepare("SELECT id,body FROM objects WHERE tenant=? AND type='case_decision' AND id<>?").get('alpha',next.body.id);reordered.prepare("DELETE FROM objects WHERE tenant=? AND type='case_decision' AND id=?").run('alpha',older.id);reordered.prepare('INSERT INTO objects VALUES(?,?,?,?)').run('alpha','case_decision',older.id,older.body);const listing=await h.api('/api/investigations');assert.equal(listing.status,200);assert.equal(listing.body.items[0].latestDecision.id,next.body.id);assert.equal(listing.body.items[0].reviewState,'inconclusive');
  const newer=(await h.api(f.path+'/report')).body;assert.equal(verifyCaseReport(newer,h.publicKey).reviewState,'inconclusive');
  assert.throws(()=>verifyCaseReport(exported.body,h.publicKey,{expectedCheckpoint:newer.snapshot.checkpoint}),/rollback/);
  await h.restart();assert.equal((await h.api(f.path+'/review-context')).body.decisions.length,2);
@@ -85,7 +88,7 @@ test('보고서는 이벤트·사건·판단·평가의 변조된 조회 복사�
  ];
  const decisionRow=db.prepare('SELECT type FROM objects WHERE tenant=? AND id=?').get('alpha',saved.id);assert.ok(decisionRow);
  targets.push({table:'objects',where:'tenant=? AND type=? AND id=?',args:['alpha',decisionRow.type,saved.id],change:v=>({...v,reason:'forged decision'})});
- for(const item of targets){const original=db.prepare(`SELECT body FROM ${item.table} WHERE ${item.where}`).get(...item.args).body;db.prepare(`UPDATE ${item.table} SET body=? WHERE ${item.where}`).run(JSON.stringify(item.change(JSON.parse(original))),...item.args);try{const r=await h.api(f.path+'/report');assert.notEqual(r.status,200,`${item.table} corruption must not be signed`);}finally{db.prepare(`UPDATE ${item.table} SET body=? WHERE ${item.where}`).run(original,...item.args);}}
+ for(const item of targets){const original=db.prepare(`SELECT body FROM ${item.table} WHERE ${item.where}`).get(...item.args).body;db.prepare(`UPDATE ${item.table} SET body=? WHERE ${item.where}`).run(JSON.stringify(item.change(JSON.parse(original))),...item.args);try{const listing=await h.api('/api/investigations');assert.equal(listing.status,409,`${item.table} corruption must not affect investigation filters or severity`);const r=await h.api(f.path+'/report');assert.notEqual(r.status,200,`${item.table} corruption must not be signed`);}finally{db.prepare(`UPDATE ${item.table} SET body=? WHERE ${item.where}`).run(original,...item.args);}}
  assert.equal((await h.api(f.path+'/report')).status,200);
 });
 
@@ -104,4 +107,28 @@ test('검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존
  assert.equal((await h.api(`/api/retention/plans/${plan.id}/execute`,{role:'admin',body:{}})).status,200);
  context=(await h.api(f.path+'/review-context')).body;assert.equal(context.events.length,0);assert.equal(context.decisions.length,2);assert.equal(context.reviewState,'stale');
  const report=await h.api(f.path+'/report');assert.equal(report.status,200);assert.equal(verifyCaseReport(report.body,h.publicKey).reviewState,'stale');assert.equal(report.body.snapshot.action.events.length,0);
+});
+
+test('평가 이력이 목록 한도를 넘으면 조사함은 예외 대신 제한 상태를 반환한다',async t=>{
+ mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','workbench-limit-')),config=initialize(dir),service=createService({dataDir:join(dir,'data'),config,key:readFileSync(join(dir,'signing-private.pem'),'utf8')});t.after(()=>service.store.close());
+ const store=service.store,tenant='alpha',actionId='bounded-investigation',now=new Date().toISOString();
+ store.transaction(()=>{
+  const event={tenant,source:'alpha-tool',sourceKind:'tool',id:'bounded-event',fingerprint:'bounded-fingerprint',actionId,traceId:actionId,kind:'result',status:'success',occurredAt:now,receivedAt:now},record=store.append(tenant,'event',event,event.source);store.project({...event,seq:record.seq,hash:record.hash});store.projectionMutation(()=>store.db.prepare('INSERT INTO actions VALUES(?,?,?,?)').run(tenant,actionId,1,0));
+  for(let i=0;i<101;i++){const evaluation={id:`bounded-evaluation-${i}`,actionId,version:1,createdAt:now,status:'quarantined_resource_limit',findings:[],authority:'unverified_or_mismatch',coverage:{totalFindings:null,truncated:false}};store.append(tenant,'evaluation',evaluation,'worker');store.projectionMutation(()=>store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(tenant,actionId,1,JSON.stringify(evaluation)));}
+  store.put({id:'reviewer',tenant},'case_decision','bounded-decision',{id:'bounded-decision',caseId:'bounded-case',actionId,contextHash:'0'.repeat(64),conclusion:'inconclusive',nextReviewAt:new Date(Date.now()+86400000).toISOString()});
+ });
+ const auditor=config.principals.find(p=>p.tenant===tenant&&p.role==='auditor'),result=await service.handle('GET',new URL('http://localhost/api/investigations'),{authorization:`Bearer ${auditor.token}`});
+ assert.equal(result.items.length,1);assert.equal(result.items[0].actionId,actionId);assert.equal(result.items[0].findingCount,null);assert.equal(result.items[0].analysisStatus,'quarantined_resource_limit');assert.match(result.items[0].attention.join(' '),/자료 한도 초과/);
+});
+
+test('다른 행동의 사건 과다는 검색된 작은 행동의 조사 페이지를 차단하지 않는다',async t=>{
+ mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','workbench-case-limit-')),config=initialize(dir),service=createService({dataDir:join(dir,'data'),config,key:readFileSync(join(dir,'signing-private.pem'),'utf8')});t.after(()=>service.store.close());
+ const store=service.store,tenant='alpha',now=new Date().toISOString();
+ store.transaction(()=>{
+  for(const actionId of ['case-overflow-action','small-action']){const event={tenant,source:'alpha-tool',sourceKind:'tool',id:`event-${actionId}`,fingerprint:`fingerprint-${actionId}`,actionId,traceId:actionId,kind:'result',status:'success',occurredAt:now,receivedAt:now},record=store.append(tenant,'event',event,event.source);store.project({...event,seq:record.seq,hash:record.hash});store.projectionMutation(()=>store.db.prepare('INSERT INTO actions VALUES(?,?,?,?)').run(tenant,actionId,1,0));}
+  for(let i=0;i<1001;i++)store.put({id:'reviewer',tenant},'case',`overflow-case-${i}`,{id:`overflow-case-${i}`,actionId:'case-overflow-action',title:'bounded case'});
+ });
+ const auditor=config.principals.find(p=>p.tenant===tenant&&p.role==='auditor'),authorization=`Bearer ${auditor.token}`;
+ const small=await service.handle('GET',new URL('http://localhost/api/investigations?q=small-action&limit=1'),{authorization});assert.equal(small.total,1);assert.equal(small.items[0].actionId,'small-action');
+ await assert.rejects(()=>service.handle('GET',new URL('http://localhost/api/investigations?q=case-overflow-action&limit=1'),{authorization}),error=>error.status===413);
 });

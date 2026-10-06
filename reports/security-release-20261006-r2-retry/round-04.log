@@ -1,0 +1,264 @@
+TAP version 13
+# Subtest: assistance profiles are versioned and fixed to local-only model policy
+ok 1 - assistance profiles are versioned and fixed to local-only model policy
+  ---
+  duration_ms: 323.165
+  type: 'test'
+  ...
+# Subtest: packages minimize adversarial fields, bind real refs and preserve governance semantics
+ok 2 - packages minimize adversarial fields, bind real refs and preserve governance semantics
+  ---
+  duration_ms: 80.9199
+  type: 'test'
+  ...
+# Subtest: run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+ok 3 - run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+  ---
+  duration_ms: 319.4686
+  type: 'test'
+  ...
+# Subtest: human advisory reviews are separate, preserved, and drafts become stale on evidence change
+ok 4 - human advisory reviews are separate, preserved, and drafts become stale on evidence change
+  ---
+  duration_ms: 273.6694
+  type: 'test'
+  ...
+# Subtest: expired run credential records timeout and cannot claim
+ok 5 - expired run credential records timeout and cannot claim
+  ---
+  duration_ms: 151.7067
+  type: 'test'
+  ...
+# Subtest: assistance projections must match signed original ledger records
+ok 6 - assistance projections must match signed original ledger records
+  ---
+  duration_ms: 324.5483
+  type: 'test'
+  ...
+# Subtest: finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+ok 7 - finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+  ---
+  duration_ms: 1015.081
+  type: 'test'
+  ...
+# Subtest: independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest
+ok 8 - independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest
+  ---
+  duration_ms: 1025.6478
+  type: 'test'
+  ...
+# Subtest: governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+ok 9 - governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+  ---
+  duration_ms: 1037.8746
+  type: 'test'
+  ...
+# Subtest: reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot
+ok 10 - reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot
+  ---
+  duration_ms: 147.0225
+  type: 'test'
+  ...
+# Subtest: intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment
+ok 11 - intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment
+  ---
+  duration_ms: 206.1841
+  type: 'test'
+  ...
+# Subtest: a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement
+ok 12 - a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement
+  ---
+  duration_ms: 148.8314
+  type: 'test'
+  ...
+# Subtest: assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable
+ok 13 - assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable
+  ---
+  duration_ms: 227.4612
+  type: 'test'
+  ...
+# Subtest: new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot
+ok 14 - new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot
+  ---
+  duration_ms: 256.6242
+  type: 'test'
+  ...
+# Subtest: governance document projection tampering is rejected and cannot create a verified assessment
+ok 15 - governance document projection tampering is rejected and cannot create a verified assessment
+  ---
+  duration_ms: 121.4877
+  type: 'test'
+  ...
+# Subtest: HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits
+ok 16 - HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits
+  ---
+  duration_ms: 647.3275
+  type: 'test'
+  ...
+# Subtest: vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention
+ok 17 - vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention
+  ---
+  duration_ms: 348.728
+  type: 'test'
+  ...
+# Subtest: Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+ok 18 - Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+  ---
+  duration_ms: 1236.8517
+  type: 'test'
+  ...
+# Subtest: release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+ok 19 - release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+  ---
+  duration_ms: 1835.7087
+  type: 'test'
+  ...
+# Subtest: release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+ok 20 - release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+  ---
+  duration_ms: 1229.2864
+  type: 'test'
+  ...
+# {"component":"vault","address":"::1","port":42907,"tls":false}
+# node:events:487
+#       throw er; // Unhandled 'error' event
+#       ^
+# Error: listen EADDRINUSE: address already in use ::1:42908
+#     at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+#     at listenInCluster (node:net:2065:12)
+#     at node:net:2274:7
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+# Emitted 'error' event on Server instance at:
+#     at emitErrorNT (node:net:2044:8)
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+#   code: 'EADDRINUSE',
+#   errno: -4091,
+#   syscall: 'listen',
+#   address: '::1',
+#   port: 42908
+# }
+# Node.js v24.15.0
+# Subtest: release startup conflict cleans earlier services and preserves the unrelated listener
+ok 21 - release startup conflict cleans earlier services and preserves the unrelated listener
+  ---
+  duration_ms: 508.4608
+  type: 'test'
+  ...
+# Subtest: release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+ok 22 - release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+  ---
+  duration_ms: 73.0263
+  type: 'test'
+  ...
+# Subtest: online WAL snapshot restores both tenants, historic documents, signed report and exact evidence
+ok 23 - online WAL snapshot restores both tenants, historic documents, signed report and exact evidence
+  ---
+  duration_ms: 405.2304
+  type: 'test'
+  ...
+# Subtest: ciphertext tamper, extra members and stale independent anchors fail before publication
+ok 24 - ciphertext tamper, extra members and stale independent anchors fail before publication
+  ---
+  duration_ms: 317.2966
+  type: 'test'
+  ...
+# Subtest: wrong vault key, forged manifest and absent external anchor are rejected
+ok 25 - wrong vault key, forged manifest and absent external anchor are rejected
+  ---
+  duration_ms: 246.0031
+  type: 'test'
+  ...
+# Subtest: forged object projections cannot be certified by a new backup
+ok 26 - forged object projections cannot be certified by a new backup
+  ---
+  duration_ms: 170.5482
+  type: 'test'
+  ...
+# Subtest: actions-only tenants cannot be omitted from whole-vault backup verification
+ok 27 - actions-only tenants cannot be omitted from whole-vault backup verification
+  ---
+  duration_ms: 183.6926
+  type: 'test'
+  ...
+# Subtest: a signed legacy archive omitting an actions-only tenant fails restore before publication
+ok 28 - a signed legacy archive omitting an actions-only tenant fails restore before publication
+  ---
+  duration_ms: 156.9615
+  type: 'test'
+  ...
+# Subtest: missing source or archived document fails recovery and never leaves plaintext staging files
+ok 29 - missing source or archived document fails recovery and never leaves plaintext staging files
+  ---
+  duration_ms: 280.4233
+  type: 'test'
+  ...
+# Subtest: SQL tenant relabeling and event index tampering cannot be sealed into a valid backup
+ok 30 - SQL tenant relabeling and event index tampering cannot be sealed into a valid backup
+  ---
+  duration_ms: 373.4821
+  type: 'test'
+  ...
+# Subtest: development event content, deletion, and index tampering fail signed snapshot verification
+    # Subtest: content
+    ok 1 - content
+      ---
+      duration_ms: 499.1483
+      type: 'test'
+      ...
+    # Subtest: delete
+    ok 2 - delete
+      ---
+      duration_ms: 276.8864
+      type: 'test'
+      ...
+    # Subtest: index
+    ok 3 - index
+      ---
+      duration_ms: 537.7578
+      type: 'test'
+      ...
+    1..3
+ok 31 - development event content, deletion, and index tampering fail signed snapshot verification
+  ---
+  duration_ms: 1315.0721
+  type: 'test'
+  ...
+# Subtest: mixed-case development IDs use identical ordering for signed and SQL records
+ok 32 - mixed-case development IDs use identical ordering for signed and SQL records
+  ---
+  duration_ms: 522.6258
+  type: 'test'
+  ...
+# Subtest: restoration never overwrites an existing directory or crosses a symlink
+ok 33 - restoration never overwrites an existing directory or crosses a symlink
+  ---
+  duration_ms: 331.1956
+  type: 'test'
+  ...
+# Subtest: deleted event keys stay deleted after snapshot recovery
+ok 34 - deleted event keys stay deleted after snapshot recovery
+  ---
+  duration_ms: 456.3009
+  type: 'test'
+  ...
+# Subtest: actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries
+ok 35 - actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries
+  ---
+  duration_ms: 1430.3446
+  type: 'test'
+  ...
+# Subtest: operator CLI creates an external anchor and restores without copying credentials
+ok 36 - operator CLI creates an external anchor and restores without copying credentials
+  ---
+  duration_ms: 741.9732
+  type: 'test'
+  ...
+1..36
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19346.7048

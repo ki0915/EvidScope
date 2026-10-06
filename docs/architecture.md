@@ -1,5 +1,7 @@
 # 아키텍처와 위협 모델
 
+**기준일: 2026-10-06.** 현재 v0.1.2 소스의 통제된 로컬·폐쇄망 파일럿 구조를 설명한다. 검증 완료한 로컬 배포본 v0.1.1과 개발 중인 소스를 구분한다. v0.1.2 반복 검증은 10회 요청 중 9회 실행·8회 통과 상태이며, 9회차 실패와 후속 집중 검사 결과를 [조사 기록](../reports/release-012-round09-diagnosis-20261006.md)에 보존했다. 제품의 목적·지원 기능·성과는 [제품 소개](product-overview.md), 설치본 범위는 [보안 패치 안내](first-release-security-patch-20261006.md)를 함께 읽는다.
+
 ## 선택 이유
 
 한 사람이 유지하는 저비용 파일럿을 위해 Node 24.15 + 내장 HTTP/TLS/SQLite/Ed25519와 정적 한국어 UI를 선택했다. npm 공급망과 별도 broker/search cluster를 초기 도입하지 않았다. SQLite 트랜잭션이 접수 저널, 중복 키, 분석 queue 변경을 원자화한다. 중앙 vault와 비상태 gateway/worker 구조는 수집 API·감사 UI·원본 저장 권한을 구분하며 유지비를 줄인다. 비용은 저장 용량/보존, 서명 CPU, 감사 조회와 단일 writer I/O에 집중된다.
@@ -25,15 +27,17 @@ Node API [SQLite](https://nodejs.org/docs/latest-v24.x/api/sqlite.html)는 동�
 | 주체 | 할 수 있는 일 | 할 수 없는 일 |
 |---|---|---|
 | Source | 인증된 tenant·sourceKind에 맞는 이벤트 제출 | 원본/검색/export/룰/사건/키 조회, tenant 선택, 독립 출처 사칭 |
-| Auditor | 자신의 tenant 조사, 사건·거버넌스 평가, 예외 요청 | source 승인 발급, 원본 overwrite, 룰 배포 |
-| Reviewer | 인간 기능 + 룰 작성·시험·다른 작성자의 룰/예외 승인 | 자기 룰 승인, 자기 소유 예외 단독 승인 |
+| Auditor | 자신의 tenant 조사, 사건 검토, 거버넌스 조회·보고서 발급, 예외 요청 | 거버넌스 시스템·평가·과제 변경, source 승인 발급, 원본 overwrite, 룰 배포 |
+| Reviewer | 인간 기능 + 거버넌스 시스템·평가·과제 변경, 룰 작성·시험·다른 작성자의 룰/예외 승인 | 자기 룰 승인, 자기 소유 예외 단독 승인 |
 | Admin | reviewer + 검색 사본 재구축 | HTTP로 원본 덮어쓰기·삭제·서명키 읽기 |
 | Worker | `/internal/claim`으로 배정된 자료만 받아 deterministic 분석, `/internal/complete` 제출 | 인간 조회 API, 자의적 tenant 선택, 사건/법률 판단, 실행 승인 |
 | Vault 프로세스/운영 관리자 | 원본·키를 운영하는 높은 신뢰 영역 | 별도 통제 없이 침해 내성을 보장할 수 없음 |
 
 Kubernetes에서는 config/서명키/PVC는 vault에만 mount, worker는 worker token, gateway는 TLS 자격만 보유한다. gateway는 사용자 자격을 전달하고 vault가 최종 인증한다. NetworkPolicy로 수집·감사·worker 경로를 나눈다. 동일 노드/cluster administrator/OS 사용자 침해는 독립 trust anchor와 외부 보존 통제를 요구한다. namespace나 Pod만으로 완전 격리되는 것은 아니다. [Kubernetes multi-tenancy](https://kubernetes.io/docs/concepts/security/multi-tenancy/)
 
-로컬 개발은 한 OS 사용자 아래 여러 프로세스이며 운영 AI가 같은 OS 사용자 파일 접근 권한을 갖는 위협까지 격리하지 않는다. 합성 파일 자격·공개 테스트 자격은 운영에 재사용하지 않는다. 외부에 접근 가능한 UI는 SSO/MFA, 토큰 회전·회수, TLS 및 접근 관리를 운영 설계에 추가해야 한다. 인증된 source 시스템 자체의 거짓 기록은 암호만으로 해결되지 않는다.
+로컬 개발은 한 OS 사용자 아래 여러 프로세스이며 운영 AI가 같은 OS 사용자 파일 접근 권한을 갖는 위협까지 격리하지 않는다. 합성 파일 자격·공개 테스트 자격은 운영에 재사용하지 않는다. OIDC 로그인, 서버 소유 tenant·role, 세션 회수와 TLS 경계는 구현하고 합성 IdP 및 실제 브라우저에서 검증했다. 실제 조직 IdP·MFA 정책·외부 계정 회수와 배포 환경의 연결은 별도 검증 대상이다. [인증 구현과 범위](oidc-authentication.md). 인증된 source 시스템 자체의 거짓 기록은 암호만으로 해결되지 않는다.
+
+선택 모델은 기본 OFF이며 일반 수집·집계·정책 대조에는 LLM을 상시 호출하지 않는다. 제품의 모델 정책은 호스트 추론·클라우드 호출·도구 권한을 허용하지 않고, 격리 실행 경로의 승인된 입력과 자원 한도를 사용한다. Foundation-Sec-8B-Reasoning의 공개 한국어 QA 학습은 별도 Kubernetes Job 실험이다. 최신 기록은 실제 추가 optimizer 갱신 20회, 총 adapter 계보 80회와 종료·산출물을 검증했지만 품질 인정·운영 승격은 차단 상태다. 이는 제품 기본 추론 모델의 변경이나 모든 배포 환경의 격리 증명이 아니다. [학습 실행 검증](../reports/public-qa-grounding-continuation-verification-20261006.json).
 
 ## 증거 의미와 지속성
 
@@ -45,6 +49,8 @@ Kubernetes에서는 config/서명키/PVC는 vault에만 mount, worker는 worker 
 
 각 commit의 Ed25519 checkpoint는 마지막 해시·개수·tenant를 서명한다. export는 축약 없이 원장 전체와 checkpoint를 포함하며 외부 키로 검증한다. 악의적인 일부 추출·내용 변조·순서 변경은 검출된다. 유효하게 서명된 과거 export rollback은 별도 최신 checkpoint가 있어야 검출된다. 키·원본·checkpoint가 함께 침해되거나 독립 출처가 거짓인 경우 내용 진실성을 보장하지 않는다. 공개키를 동일 침해 영역에서만 가져오지 않는다. [Node Ed25519 sign/verify](https://nodejs.org/docs/latest-v24.x/api/crypto.html)
 
+수집과 반복 조회는 이미 인증한 checkpoint 이후의 원장 suffix와 조회 사본의 delta를 검증한다. SQLite `data_version`·`schema_version`과 mutation clock으로 외부 writer·직접 SQL 변경을 감지하고, checkpoint 후퇴·행 감소·알 수 없는 보호 테이블 trigger는 실패 처리한다. transaction 완료 전 상태는 검증 cache에 게시하지 않는다. `/api/integrity`, 전체 export와 backup 검증은 이 cache에 의존하지 않고 전체 체인과 조회 사본을 확인한다. 성능 최적화와 무결성 검사 범위는 [10월 5일 구현·검증 기록](../reports/enterprise-incremental-integrity-performance-20261005.md)에 구분했다.
+
 조회용 `events`, 평가 `evaluations`, 인간 작업 `objects`는 서로 구분된다. 원장은 관리 변경 및 조회/export도 기록한다. 접근 감사는 source ingestion을 재호출하지 않아 무한 수집 루프가 없다. 검색 사본은 원장 무결성 확인 후 다시 생성한다. worker는 durable 30초 lease와 snapshot hash를 받아 프로세스 밖에서 계산하고 version/lease 일치 결과만 transaction으로 확정한다. worker 장애·늦은 결과·정책 변경은 만료/충돌로 처리한다. 새 증거/룰/예외 승인/예외 만료는 과거 평가를 남기고 새 평가를 추가한다. 원장 streaming 검증은 전체 배열 대신 제한된 사건과 정책 자료만 모은다. 이벤트 1,000개/10MiB snapshot 한도 초과는 격리 상태와 backlog로 남기며, findings 100개 초과는 반환 범위·전체 수를 명시한다.
 
 ## 관측과 분석의 한계
@@ -55,7 +61,9 @@ Kubernetes에서는 config/서명키/PVC는 vault에만 mount, worker는 worker 
 
 상관분석 키는 source들이 합의한 actionId/traceId다. 강한 global action identity나 공급자별 실제 schema adapter는 아직 없다. 현재 sourceKinds는 기능 범주이며 공급자 실연동 완료를 뜻하지 않는다. clock 오차 5분 및 late 5분 기준은 공학적 기본값이다. source heartbeat/최근 수신은 연결 상태를 말할 뿐 전체 사용의 분모를 제공하지 않는다. OpenTelemetry GenAI 규약은 참고했으나 직접 호환 adapter라고 주장하지 않는다. [공식 GenAI 규약](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 
-단일 vault를 복제하지 않는다. API와 worker replica 증가가 SQLite writer나 검색 병목을 없애지 않는다. 분석 계산은 별도 worker로 이동했지만, vault의 서명·무결성 전수 순회 및 저장 CPU/I/O는 여전히 병목이다. 두 실제 프로세스의 lease 정합성과 원자적 commit을 시험했다. 2026-09-08 Kubernetes 실험에서 HPA 증감과 확장 후 새 Pod 참여를 관측했다. 부하 도중 새 Pod는 아직 Ready가 아니었으므로 확장에 따른 본 부하 처리량 개선은 입증하지 않았다. reports/kubernetes-runtime-20260908.md에 실패와 범위를 보존했다. 감사 검색/대규모 export에는 전체 원장·사본 스캔 및 메모리 상한 한계가 남아 있다.
+단일 vault를 복제하지 않는다. API와 worker replica 증가가 SQLite 단일 writer의 저장 CPU/I/O 한계를 없애지 않는다. 2026-10-05에는 매 요청 전체 원장 재검증을 위의 증분 검증으로 바꾼 뒤 로컬 합성 1,000/1,000건을 저장·분석하고 backlog 0을 확인했다. 지속 20 EPS 구간은 600/600건 접수, p95 206.81ms였다. 이는 Windows·i7-12700F·32GiB RAM·로컬 SQLite·worker 2개의 측정이며 운영 용량이나 HA 인증이 아니다. [성능 원자료](../reports/benchmark-2026-10-05T06-29-04-501Z.json). 전체 무결성 검사·대규모 export에는 전수 순회와 메모리 한계가 남아 있다.
+
+**과거 Kubernetes 실험(2026-09-08):** 두 실제 프로세스의 lease 정합성과 원자적 commit을 시험하고 HPA 증감과 확장 후 새 Pod 참여를 관측했다. 부하 도중 새 Pod는 아직 Ready가 아니었으므로 확장에 따른 본 부하 처리량 개선은 입증하지 않았다. [당시 실행 기록](../reports/kubernetes-runtime-20260908.md)에 실패와 범위를 보존했다. 이 기록을 현재 배포의 실시간 상태로 해석하지 않는다.
 
 ## 개인정보·비신뢰 내용·보존
 
@@ -75,6 +83,8 @@ UI는 외부 텍스트를 DOM textContent로 표시하고 CSP로 inline script/o
 
 ## 법적 판단과 운영 한계
 
-규정 catalog hash와 요구사항 snapshot, 시스템 사실관계 hash, 담당자, evidence refs/버전, 통제, 기술 상태, 충분성, 법적 검토, 재검토 일자를 보존한다. 시스템/규정 변경은 과거 평가를 보존하면서 보완 과제를 만든다. 문서 링크의 실재/서명/내용은 인간 참조이며 자동 검증하지 않는다. 충분성은 인간이 남긴 평가이고 규정 준수 증명서가 아니다. 한국 고영향/EU 고위험은 별도 입력이다.
+규정 catalog hash와 요구사항 snapshot, 시스템 사실관계 hash, 담당자, evidence refs/버전, 통제, 기술 상태, 충분성, 법적 검토, 재검토 일자를 보존한다. 시스템/규정 변경은 과거 평가를 보존하면서 보완 과제를 만든다. 현재 목록은 전체 31개·한국 18개 요구사항이며 한국 기술 증거 검사는 공급사 조치 활용 대안 3종을 포함해 23종이다. 충분성은 인간이 남긴 평가이고 규정 준수 증명서가 아니다. 한국 고영향/EU 고위험은 별도 입력이다.
 
-최종 한국 고시 일부 미확인, ISO 본문 미확보, 운영 KMS/WORM/SSO/백업 HA/공급자 실연동/법률 검토 미완료. Kubernetes static package와 실제 cluster 검증을 구분한다. 구현에 없는 기능을 배포 설정이나 면책 문구로 충족됐다고 표시하지 않는다.
+거버넌스 문서는 최대 4MiB의 실제 파일을 tenant별 암호화 보관하고 SHA-256·버전·현재 시스템 및 모델 연결과 복구 가능한 바이트를 대조한다. 공급사 묶음의 문서는 별도 로컬 암호화 adapter에서 검증하며 같은 4MiB 업로드 계약으로 취급하지 않는다. 과거에 참조된 두 종류의 문서도 무결성 검사와 암호화 backup/restore 범위에 포함한다. 문서 손상·개정·모델 변경은 재검토와 근거 부족 과제의 종결 거부로 이어지며 과거 서명 보고서는 보존한다. 임의 외부 URL은 자동으로 가져오지 않는다. 파일 무결성·복구 확인은 발행자의 진실성이나 자연어 내용의 법률적 충분성을 인증하지 않는다. [구현 계약](kr-governance-evidence.md) · [실제 HTTP·복구 검증](../reports/kr-ai-basic-governance-verification-20261006.md) · [백업·복구](vault-recovery.md).
+
+최종 한국 고시 일부 미확인, ISO 본문 미확보, 운영 KMS/WORM·실제 조직 IdP·원격 백업/저장소 HA·공급자 실연동·법률 검토 미완료. Kubernetes static package와 실제 cluster 검증을 구분한다. 구현에 없는 기능을 배포 설정이나 면책 문구로 충족됐다고 표시하지 않는다.

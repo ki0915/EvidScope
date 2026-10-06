@@ -1,0 +1,751 @@
+{
+  "started": "2026-10-04T14:38:06.822Z",
+  "finished": "2026-10-04T14:39:23.957Z",
+  "environment": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "arch": "x64",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700F",
+    "logicalCpus": 20,
+    "hostMemoryBytes": 34212798464,
+    "storage": "local SQLite WAL FULL",
+    "apiWriters": 1,
+    "workers": 2,
+    "sourceCount": 3,
+    "userRules": 1,
+    "queryIntervalMs": 500,
+    "kubernetes": false
+  },
+  "criteriaFile": "docs/validation-plan.md",
+  "phases": [
+    {
+      "name": "normal",
+      "generated": 200,
+      "attempts": 200,
+      "accepted": 200,
+      "duplicates": 0,
+      "statuses": {
+        "202": 200
+      },
+      "requestedEPS": 20,
+      "concurrency": 1,
+      "elapsedMs": 10000.89,
+      "observedEPS": 20,
+      "eventBytes": {
+        "min": 1055,
+        "max": 1061
+      },
+      "latencyMs": {
+        "p50": 5.96,
+        "p95": 25.99,
+        "p99": 127.34
+      },
+      "pass": true
+    },
+    {
+      "name": "burst",
+      "generated": 200,
+      "attempts": 200,
+      "accepted": 200,
+      "duplicates": 0,
+      "statuses": {
+        "202": 200
+      },
+      "requestedEPS": 0,
+      "concurrency": 20,
+      "elapsedMs": 1297.37,
+      "observedEPS": 154.16,
+      "eventBytes": {
+        "min": 1052,
+        "max": 1058
+      },
+      "latencyMs": {
+        "p50": 114.59,
+        "p95": 178.89,
+        "p99": 238.63
+      },
+      "pass": true
+    },
+    {
+      "name": "sustained",
+      "generated": 600,
+      "attempts": 600,
+      "accepted": 600,
+      "duplicates": 0,
+      "statuses": {
+        "202": 600
+      },
+      "requestedEPS": 20,
+      "concurrency": 1,
+      "elapsedMs": 31260.37,
+      "observedEPS": 19.19,
+      "eventBytes": {
+        "min": 1064,
+        "max": 1070
+      },
+      "latencyMs": {
+        "p50": 235.8,
+        "p95": 1530.28,
+        "p99": 1971.56
+      },
+      "pass": false
+    }
+  ],
+  "generated": 1000,
+  "accepted": 1000,
+  "stored": 1000,
+  "searchProjection": 1000,
+  "analyzedEvents": 524,
+  "backlog": 476,
+  "integrity": {
+    "valid": true,
+    "count": 2686,
+    "tenant": "alpha",
+    "rollbackChecked": false,
+    "disclosedEvents": 1000,
+    "erasedEvents": 0,
+    "scope": "Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined."
+  },
+  "sampleErrors": 0,
+  "peakVaultRssBytes": 241225728,
+  "peakBacklog": 534,
+  "samples": [
+    {
+      "at": "2026-10-04T14:38:08.324Z",
+      "vaultRssBytes": 74698752,
+      "events": 9,
+      "ledgerRecords": 31,
+      "analyzedEvents": 7,
+      "backlog": 2,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:08.827Z",
+      "vaultRssBytes": 75747328,
+      "events": 19,
+      "ledgerRecords": 61,
+      "analyzedEvents": 15,
+      "backlog": 4,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:09.325Z",
+      "vaultRssBytes": 76201984,
+      "events": 29,
+      "ledgerRecords": 95,
+      "analyzedEvents": 27,
+      "backlog": 2,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:09.835Z",
+      "vaultRssBytes": 77119488,
+      "events": 39,
+      "ledgerRecords": 126,
+      "analyzedEvents": 36,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:10.324Z",
+      "vaultRssBytes": 77852672,
+      "events": 49,
+      "ledgerRecords": 160,
+      "analyzedEvents": 48,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:10.839Z",
+      "vaultRssBytes": 79122432,
+      "events": 59,
+      "ledgerRecords": 190,
+      "analyzedEvents": 56,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:11.324Z",
+      "vaultRssBytes": 79515648,
+      "events": 69,
+      "ledgerRecords": 224,
+      "analyzedEvents": 68,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:11.824Z",
+      "vaultRssBytes": 80736256,
+      "events": 79,
+      "ledgerRecords": 254,
+      "analyzedEvents": 76,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:12.326Z",
+      "vaultRssBytes": 94588928,
+      "events": 89,
+      "ledgerRecords": 288,
+      "analyzedEvents": 88,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:12.826Z",
+      "vaultRssBytes": 95113216,
+      "events": 99,
+      "ledgerRecords": 318,
+      "analyzedEvents": 96,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:13.327Z",
+      "vaultRssBytes": 95948800,
+      "events": 109,
+      "ledgerRecords": 352,
+      "analyzedEvents": 108,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:13.829Z",
+      "vaultRssBytes": 96251904,
+      "events": 119,
+      "ledgerRecords": 382,
+      "analyzedEvents": 116,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:14.329Z",
+      "vaultRssBytes": 97775616,
+      "events": 129,
+      "ledgerRecords": 416,
+      "analyzedEvents": 128,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:14.830Z",
+      "vaultRssBytes": 98537472,
+      "events": 139,
+      "ledgerRecords": 446,
+      "analyzedEvents": 136,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:15.330Z",
+      "vaultRssBytes": 100290560,
+      "events": 149,
+      "ledgerRecords": 476,
+      "analyzedEvents": 144,
+      "backlog": 5,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:15.832Z",
+      "vaultRssBytes": 100589568,
+      "events": 159,
+      "ledgerRecords": 510,
+      "analyzedEvents": 156,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:16.334Z",
+      "vaultRssBytes": 100986880,
+      "events": 169,
+      "ledgerRecords": 544,
+      "analyzedEvents": 168,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:16.833Z",
+      "vaultRssBytes": 101990400,
+      "events": 179,
+      "ledgerRecords": 574,
+      "analyzedEvents": 176,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:17.334Z",
+      "vaultRssBytes": 101646336,
+      "events": 189,
+      "ledgerRecords": 608,
+      "analyzedEvents": 188,
+      "backlog": 1,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:17.834Z",
+      "vaultRssBytes": 102162432,
+      "events": 199,
+      "ledgerRecords": 638,
+      "analyzedEvents": 196,
+      "backlog": 3,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:18.472Z",
+      "vaultRssBytes": 100614144,
+      "events": 300,
+      "ledgerRecords": 848,
+      "analyzedEvents": 202,
+      "backlog": 98,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:18.927Z",
+      "vaultRssBytes": 101748736,
+      "events": 373,
+      "ledgerRecords": 1003,
+      "analyzedEvents": 209,
+      "backlog": 164,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:19.367Z",
+      "vaultRssBytes": 114892800,
+      "events": 403,
+      "ledgerRecords": 1071,
+      "analyzedEvents": 215,
+      "backlog": 188,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:19.847Z",
+      "vaultRssBytes": 117166080,
+      "events": 413,
+      "ledgerRecords": 1106,
+      "analyzedEvents": 228,
+      "backlog": 185,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:20.335Z",
+      "vaultRssBytes": 117018624,
+      "events": 423,
+      "ledgerRecords": 1140,
+      "analyzedEvents": 240,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:20.837Z",
+      "vaultRssBytes": 117010432,
+      "events": 433,
+      "ledgerRecords": 1172,
+      "analyzedEvents": 250,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:21.337Z",
+      "vaultRssBytes": 118505472,
+      "events": 443,
+      "ledgerRecords": 1204,
+      "analyzedEvents": 260,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:21.837Z",
+      "vaultRssBytes": 119033856,
+      "events": 453,
+      "ledgerRecords": 1236,
+      "analyzedEvents": 270,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:22.339Z",
+      "vaultRssBytes": 118976512,
+      "events": 463,
+      "ledgerRecords": 1268,
+      "analyzedEvents": 280,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:22.865Z",
+      "vaultRssBytes": 119603200,
+      "events": 473,
+      "ledgerRecords": 1300,
+      "analyzedEvents": 290,
+      "backlog": 183,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:23.365Z",
+      "vaultRssBytes": 120557568,
+      "events": 483,
+      "ledgerRecords": 1331,
+      "analyzedEvents": 299,
+      "backlog": 184,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:23.897Z",
+      "vaultRssBytes": 167231488,
+      "events": 493,
+      "ledgerRecords": 1357,
+      "analyzedEvents": 303,
+      "backlog": 190,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:24.451Z",
+      "vaultRssBytes": 171212800,
+      "events": 503,
+      "ledgerRecords": 1386,
+      "analyzedEvents": 310,
+      "backlog": 193,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:24.839Z",
+      "vaultRssBytes": 170151936,
+      "events": 513,
+      "ledgerRecords": 1418,
+      "analyzedEvents": 320,
+      "backlog": 193,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:25.380Z",
+      "vaultRssBytes": 166682624,
+      "events": 523,
+      "ledgerRecords": 1449,
+      "analyzedEvents": 329,
+      "backlog": 194,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:25.872Z",
+      "vaultRssBytes": 168722432,
+      "events": 533,
+      "ledgerRecords": 1475,
+      "analyzedEvents": 333,
+      "backlog": 200,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:26.556Z",
+      "vaultRssBytes": 169857024,
+      "events": 543,
+      "ledgerRecords": 1504,
+      "analyzedEvents": 340,
+      "backlog": 203,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:26.865Z",
+      "vaultRssBytes": 168558592,
+      "events": 553,
+      "ledgerRecords": 1534,
+      "analyzedEvents": 348,
+      "backlog": 205,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:27.373Z",
+      "vaultRssBytes": 167129088,
+      "events": 563,
+      "ledgerRecords": 1562,
+      "analyzedEvents": 354,
+      "backlog": 209,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:27.917Z",
+      "vaultRssBytes": 168349696,
+      "events": 573,
+      "ledgerRecords": 1591,
+      "analyzedEvents": 361,
+      "backlog": 212,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:28.521Z",
+      "vaultRssBytes": 168177664,
+      "events": 583,
+      "ledgerRecords": 1622,
+      "analyzedEvents": 370,
+      "backlog": 213,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:28.872Z",
+      "vaultRssBytes": 167882752,
+      "events": 593,
+      "ledgerRecords": 1652,
+      "analyzedEvents": 378,
+      "backlog": 215,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:29.390Z",
+      "vaultRssBytes": 168677376,
+      "events": 603,
+      "ledgerRecords": 1679,
+      "analyzedEvents": 383,
+      "backlog": 220,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:29.850Z",
+      "vaultRssBytes": 171151360,
+      "events": 613,
+      "ledgerRecords": 1709,
+      "analyzedEvents": 391,
+      "backlog": 222,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:30.466Z",
+      "vaultRssBytes": 168161280,
+      "events": 623,
+      "ledgerRecords": 1740,
+      "analyzedEvents": 400,
+      "backlog": 223,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:30.885Z",
+      "vaultRssBytes": 169041920,
+      "events": 633,
+      "ledgerRecords": 1767,
+      "analyzedEvents": 405,
+      "backlog": 228,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:31.353Z",
+      "vaultRssBytes": 171040768,
+      "events": 643,
+      "ledgerRecords": 1796,
+      "analyzedEvents": 412,
+      "backlog": 231,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:31.853Z",
+      "vaultRssBytes": 170414080,
+      "events": 653,
+      "ledgerRecords": 1826,
+      "analyzedEvents": 420,
+      "backlog": 233,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:33.413Z",
+      "vaultRssBytes": 168558592,
+      "events": 678,
+      "ledgerRecords": 1880,
+      "analyzedEvents": 422,
+      "backlog": 256,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:34.842Z",
+      "vaultRssBytes": 169480192,
+      "events": 713,
+      "ledgerRecords": 1960,
+      "analyzedEvents": 430,
+      "backlog": 283,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:36.404Z",
+      "vaultRssBytes": 169562112,
+      "events": 743,
+      "ledgerRecords": 2024,
+      "analyzedEvents": 432,
+      "backlog": 311,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:37.967Z",
+      "vaultRssBytes": 170651648,
+      "events": 773,
+      "ledgerRecords": 2092,
+      "analyzedEvents": 438,
+      "backlog": 335,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:39.724Z",
+      "vaultRssBytes": 167563264,
+      "events": 803,
+      "ledgerRecords": 2156,
+      "analyzedEvents": 440,
+      "backlog": 363,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:41.501Z",
+      "vaultRssBytes": 169738240,
+      "events": 843,
+      "ledgerRecords": 2244,
+      "analyzedEvents": 446,
+      "backlog": 397,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:43.612Z",
+      "vaultRssBytes": 171089920,
+      "events": 883,
+      "ledgerRecords": 2330,
+      "analyzedEvents": 450,
+      "backlog": 433,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:45.575Z",
+      "vaultRssBytes": 169934848,
+      "events": 921,
+      "ledgerRecords": 2413,
+      "analyzedEvents": 455,
+      "backlog": 466,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:48.083Z",
+      "vaultRssBytes": 170180608,
+      "events": 974,
+      "ledgerRecords": 2526,
+      "analyzedEvents": 460,
+      "backlog": 514,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:50.528Z",
+      "vaultRssBytes": 170348544,
+      "events": 1000,
+      "ledgerRecords": 2586,
+      "analyzedEvents": 466,
+      "backlog": 534,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:52.857Z",
+      "vaultRssBytes": 179798016,
+      "events": 1000,
+      "ledgerRecords": 2593,
+      "analyzedEvents": 470,
+      "backlog": 530,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:55.413Z",
+      "vaultRssBytes": 170106880,
+      "events": 1000,
+      "ledgerRecords": 2601,
+      "analyzedEvents": 475,
+      "backlog": 525,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:38:58.088Z",
+      "vaultRssBytes": 172318720,
+      "events": 1000,
+      "ledgerRecords": 2609,
+      "analyzedEvents": 480,
+      "backlog": 520,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:00.425Z",
+      "vaultRssBytes": 173129728,
+      "events": 1000,
+      "ledgerRecords": 2622,
+      "analyzedEvents": 489,
+      "backlog": 511,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:02.945Z",
+      "vaultRssBytes": 172417024,
+      "events": 1000,
+      "ledgerRecords": 2628,
+      "analyzedEvents": 491,
+      "backlog": 509,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:05.422Z",
+      "vaultRssBytes": 172744704,
+      "events": 1000,
+      "ledgerRecords": 2638,
+      "analyzedEvents": 498,
+      "backlog": 502,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:07.977Z",
+      "vaultRssBytes": 170065920,
+      "events": 1000,
+      "ledgerRecords": 2644,
+      "analyzedEvents": 501,
+      "backlog": 499,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:10.442Z",
+      "vaultRssBytes": 174264320,
+      "events": 1000,
+      "ledgerRecords": 2655,
+      "analyzedEvents": 509,
+      "backlog": 491,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:13.080Z",
+      "vaultRssBytes": 230043648,
+      "events": 1000,
+      "ledgerRecords": 2659,
+      "analyzedEvents": 510,
+      "backlog": 490,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:15.433Z",
+      "vaultRssBytes": 241225728,
+      "events": 1000,
+      "ledgerRecords": 2669,
+      "analyzedEvents": 516,
+      "backlog": 484,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    },
+    {
+      "at": "2026-10-04T14:39:18.142Z",
+      "vaultRssBytes": 228556800,
+      "events": 1000,
+      "ledgerRecords": 2676,
+      "analyzedEvents": 520,
+      "backlog": 480,
+      "scope": "tenant counts; vault process memory shared across tenants"
+    }
+  ],
+  "pass": false,
+  "limitations": [
+    "Local synthetic pilot measurement, not HA or large-scale certification",
+    "OS page cache/disk power-loss protection not tested",
+    "Kubernetes/HPA, node memory pressure, remote storage/network and paid provider integration not tested"
+  ],
+  "workbench": {
+    "query": "/api/investigations?q=benchmark&limit=25",
+    "querySamples": 69,
+    "queryP95Ms": 2223.25,
+    "matchedActions": 1000,
+    "reportSamples": 5,
+    "reportP95Ms": 148.19,
+    "reportScope": "one action among 1000 events, complete tenant ledger validation",
+    "pass": false
+  }
+}

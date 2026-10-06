@@ -60,9 +60,13 @@ test('late evidence invalidates old results and expired leases recover after wor
  assert.throws(()=>restarted.commit(f.principals[1],{leaseId:second.leaseId,result:evaluateJob(second)}),e=>e.status===409);
  restarted.commit(f.p,{leaseId:third.leaseId,result:evaluateJob(third)});assert.equal(f.store.evaluations('alpha','action').length,1);assert.equal(f.store.evaluations('alpha','action')[0].version,2);
 });
-test('query projection edits cannot alter worker source evidence or policy snapshot',t=>{
- const f=fixture(t);f.event();f.store.transaction(()=>f.store.put({id:'reviewer',tenant:'alpha'},'asset','asset',{id:'asset',actor:'actor',tool:'tool'}));
- f.store.db.prepare("UPDATE events SET body='{}' WHERE tenant='alpha'").run();f.store.db.prepare("UPDATE objects SET body='{}' WHERE tenant='alpha' AND type='asset'").run();
+test('event and object projection edits block worker claims before signed policy evidence is used',t=>{
+ const f=fixture(t);f.event();f.store.transaction(()=>{f.store.put({id:'reviewer',tenant:'alpha'},'asset','asset',{id:'asset',actor:'actor',tool:'tool'});f.store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run('alpha');});
+ const original=f.store.db.prepare("SELECT body FROM events WHERE tenant='alpha'").get().body,originalObject=f.store.db.prepare("SELECT body FROM objects WHERE tenant='alpha' AND type='asset'").get().body;f.store.db.prepare("UPDATE events SET body='{}' WHERE tenant='alpha'").run();f.store.db.prepare("UPDATE objects SET body='{}' WHERE tenant='alpha' AND type='asset'").run();
+ assert.throws(()=>f.analysis.claim(f.p),e=>e.status===409);assert.equal(f.store.db.prepare('SELECT COUNT(*) n FROM analysis_leases').get().n,0);
+ f.store.db.prepare("UPDATE events SET body=? WHERE tenant='alpha'").run(original);
+ assert.throws(()=>f.analysis.claim(f.p),e=>e.status===409);assert.equal(f.store.db.prepare('SELECT COUNT(*) n FROM analysis_leases').get().n,0);
+ f.store.db.prepare("UPDATE objects SET body=? WHERE tenant='alpha' AND type='asset'").run(originalObject);
  const job=f.analysis.claim(f.p).jobs[0];assert.equal(job.events[0].id,'event');assert.equal(job.assets[0].id,'asset');f.analysis.commit(f.p,{leaseId:job.leaseId,result:evaluateJob(job)});
 });
 test('evaluation, checkpoint, action version and lease completion roll back atomically on persistence failure',t=>{
@@ -88,7 +92,7 @@ test('oversized action quarantines explicitly and stays unanalyzed without loopi
 });
 test('analysis snapshot streams original ledger without bundle arrays and preserves historical asset policies',t=>{
  const f=fixture(t);for(let i=0;i<30;i++)f.event(`other-${i}`,`other-${i}`);f.event('target','target');
- f.store.transaction(()=>{for(let version=1;version<=3;version++)f.store.put({id:'reviewer',tenant:'alpha'},'asset','asset',{id:'asset',version});});
+ f.store.transaction(()=>{for(let version=1;version<=3;version++){f.store.put({id:'reviewer',tenant:'alpha'},'asset','asset',{id:'asset',version});f.store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run('alpha');}});
  for(const name of ['rawBundle','bundle','ledgerEvents','ledgerObjects','events','list'])f.store[name]=()=>{throw Error('unbounded path used');};
  const snapshot=f.store.verifiedAnalysisSnapshot('alpha','target',analysisLimits);assert.equal(snapshot.events.length,1);assert.equal(snapshot.events[0].id,'target');assert.deepEqual(snapshot.assets.map(a=>a.version),[1,2,3]);
  assert.equal(f.analysis.claim(f.p).jobs.length,5);

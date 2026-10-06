@@ -1,0 +1,43 @@
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (2.5855ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.1721ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.1379ms)
+✔ successful telemetry does not query another Pod or change the sample (0.1123ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.3557ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.1678ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.2068ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.1264ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.1635ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.2963ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.2481ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.1446ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.1098ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.0907ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.1784ms)
+✔ stage two job binds the exact completed step-20 parent and a new 40-step target (9.6016ms)
+✔ stage two manifest rejects target substitution and arbitrary parent steps (14.9156ms)
+✔ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (344.444ms)
+✔ ciphertext tamper, extra members and stale independent anchors fail before publication (283.0343ms)
+✔ wrong vault key, forged manifest and absent external anchor are rejected (206.138ms)
+✔ forged object projections cannot be certified by a new backup (152.6632ms)
+✔ actions-only tenants cannot be omitted from whole-vault backup verification (159.0805ms)
+✔ a signed legacy archive omitting an actions-only tenant fails restore before publication (142.6465ms)
+✔ missing source or archived document fails recovery and never leaves plaintext staging files (211.889ms)
+✔ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (291.167ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✔ content (268.0889ms)
+  ✔ delete (271.99ms)
+  ✔ index (260.7956ms)
+✔ development event content, deletion, and index tampering fail signed snapshot verification (801.5748ms)
+✔ mixed-case development IDs use identical ordering for signed and SQL records (233.9412ms)
+✔ restoration never overwrites an existing directory or crosses a symlink (220.9021ms)
+✔ deleted event keys stay deleted after snapshot recovery (343.9548ms)
+✔ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (1070.9237ms)
+✔ operator CLI creates an external anchor and restores without copying credentials (600.3006ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5382.0983

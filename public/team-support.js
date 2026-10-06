@@ -15,7 +15,7 @@
   const stateText = {
     queued: '대기 중', running: '실행 중', completed: '완료', succeeded: '완료', done: '완료',
     error: '오류', failed: '오류', canceled: '취소됨', cancelled: '취소됨',
-    prepared: '준비됨', dispatched: '전달됨', accept: '승인', accepted: '승인', reject: '반려', rejected: '반려',
+    prepared: '준비됨', dispatched: '전달됨', accept: '채택', accepted: '채택', reject: '반려', rejected: '반려',
   };
   function rlabel(value) {
     if (value === undefined || value === null || value === '') return '미확인';
@@ -168,7 +168,10 @@
     node.append(factList([
       ['묶음 ID', pkg.id], ['사건 ID', pkg.caseId], ['행동 ID', pkg.actionId],
       ['근거 해시 (contextHash)', pkg.contextHash], ['묶음 해시 (bundleHash)', pkg.bundleHash],
+      ['사건 스냅샷 해시', pkg.caseSnapshotHash || '미제공'], ['프로필 해시', pkg.profileSnapshotHash || '미제공'],
+      ['역할 실행 해시', pkg.roleExecutionHash || '미제공'], ['규정집 해시', pkg.governanceSnapshot?.catalogHash || '미제공'],
     ]));
+    if (pkg.operatorQuestion) node.append(el('h3', '', '사람이 작성한 감사 질문'), el('p', 'wrap', pkg.operatorQuestion));
     const evidenceItems = pkg.evidence || [];
     node.append(el('p', 'muted', `포함된 근거 ${evidenceItems.length}건 · 선택 시점 스냅샷이며 이후 근거 변경을 반영하지 않습니다.`));
     if (evidenceItems.length) {
@@ -176,10 +179,14 @@
       evidenceItems.forEach((item) => list.append(el('li', '', typeof item === 'string' ? item : stringify(item))));
       node.append(list);
     }
-    if (pkg.profileSnapshot) node.append(jsonDetails('역할 프로필 스냅샷', pkg.profileSnapshot));
-    if (pkg.analysisSnapshot) node.append(jsonDetails('분석 스냅샷', pkg.analysisSnapshot));
+    node.append(el('h3', '', '실행에 전달되는 고정 스냅샷'));
+    const snapshots = el('div', 'package-snapshot-grid');
+    for (const [key, title] of [['profileSnapshot', '역할 프로필'], ['roleExecutionSnapshot', '역할 실행 계약'], ['analysisSnapshot', '분석'], ['governanceSnapshot', '거버넌스·요구사항']]) {
+      snapshots.append(pkg[key] == null ? el('p', 'muted', `${title} 스냅샷 미제공`) : jsonDetails(`${title} 스냅샷 전체`, pkg[key]));
+    }
+    node.append(snapshots, jsonDetails('고정된 근거 묶음 전체 원문', pkg));
     node.append(limits(pkg.limitations));
-    node.append(el('p', 'muted', '이 미리보기는 불변 스냅샷입니다. 자유 메모 · 제목 · 자료 위치는 포함하지 않습니다.'));
+    node.append(el('p', 'muted', '이 미리보기는 API가 반환한 불변 스냅샷 전체입니다. 거버넌스 자료는 적용성·준수 여부의 자동 판정이 아니며, 실행 전 사람이 포함 범위를 확인합니다.'));
     return node;
   }
   function credentialPanel(result) {
@@ -214,8 +221,38 @@
     node.append(dispatchBtn);
     return node;
   }
+  function governanceRequirementPicker(data, onChange) {
+    const node = el('div', 'requirement-picker'), choices = [];
+    const maximum = Number.isSafeInteger(data?.maxSelected) && data.maxSelected > 0 ? Math.min(3, data.maxSelected) : 0;
+    node.append(el('h3', '', '검토할 거버넌스 요구사항'), el('p', 'muted', '적용성·증거 검토를 지원할 요구사항을 직접 선택하세요. 선택은 법적 적용성 판정이 아닙니다.'));
+    const status = el('p', 'selection-count'); status.setAttribute('role', 'status');
+    const list = el('div', 'evidence-checklist');
+    const value = () => choices.filter(item => item.input.checked).map(item => item.id);
+    function refresh() {
+      const selected = value(); status.textContent = `선택 ${selected.length}개 / 최대 ${maximum}개`;
+      choices.forEach(item => { item.input.disabled = !item.input.checked && selected.length >= maximum; });
+    }
+    if (!maximum || !Array.isArray(data?.items) || !data.items.length) node.append(empty('요구사항 목록을 확인하지 못했습니다', data?.error || '거버넌스 역할의 요청을 만들려면 규정집을 다시 불러와야 합니다.'));
+    else for (const requirement of data.items) {
+      const row = el('label'), input = el('input'); input.type = 'checkbox'; input.value = requirement.id;
+      const caption = el('span'); caption.append(el('strong', '', requirement.title || requirement.id), el('span', 'muted', `${requirement.id} · ${requirement.jurisdiction || requirement.framework || '분류 미제공'} · ${requirement.binding || '구속력 확인 필요'}`));
+      row.append(input, caption); list.append(row); choices.push({ id: requirement.id, input });
+      input.addEventListener('change', () => { refresh(); onChange(); });
+    }
+    refresh(); node.append(status, list); return { node, value };
+  }
+  function assistanceRequestOptions(profileId, requirementIds, question) {
+    const result = {}, operatorQuestion = String(question || '').trim();
+    if (operatorQuestion.length > 500) throw new Error('감사 질문은 500자 이내로 작성하세요.');
+    if (operatorQuestion) result.operatorQuestion = operatorQuestion;
+    if (profileId === 'governance-assistant') {
+      if (!Array.isArray(requirementIds) || requirementIds.length < 1 || requirementIds.length > 3 || new Set(requirementIds).size !== requirementIds.length) throw new Error('검토할 요구사항을 1개에서 3개까지 선택하세요.');
+      result.selectedRequirementIds = [...requirementIds];
+    }
+    return result;
+  }
   async function requestBuilder(presetCaseId, viewEpoch, authAtStart) {
-    const [casesData, profilesData] = await Promise.all([api('/api/cases'), api('/api/assistance/profiles')]);
+    const [casesData, profilesData, requirementsData] = await Promise.all([api('/api/cases'), api('/api/assistance/profiles'), api('/api/assistance/requirements').catch(error => ({ error: error.message }))]);
     if (viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return el('div');
     const cases = casesData.items || [];
     const runtimeProfiles = (profilesData.items || []).filter((p) => p.kind === 'runtime' && runtimeRoleIds.includes(p.id));
@@ -244,13 +281,21 @@
     const dispatchHost = el('div');
     node.append(dispatchHost);
 
-    let currentContext = null; let selectionEpoch = 0; const selections = [];
+    let currentContext = null; let selectionEpoch = 0; let contextEpoch = 0; const selections = [];
+    function invalidatePreview() { selectionEpoch++; previewHost.replaceChildren(); dispatchHost.replaceChildren(); }
+    const requirementPicker = governanceRequirementPicker(requirementsData, invalidatePreview);
+    requirementPicker.node.hidden = profileSelect.value !== 'governance-assistant';
+    const questionField = field('사람이 작성하는 감사 질문 · 선택 · 최대 500자', 'operatorQuestion', { multiline: true, wide: true, maxLength: 500, placeholder: '예: 이 사건의 제31조 고지 근거와 빠진 증거를 검토해 주세요.' });
+    const questionInput = questionField.querySelector('textarea'); questionInput.addEventListener('input', invalidatePreview);
+    intro.append(requirementPicker.node, questionField, el('p', 'muted', '질문은 고정된 감사 묶음과 검토 이력에 저장됩니다. 업무 AI의 원문 프롬프트·응답을 자동으로 가져오지 않습니다.'));
+    profileSelect.addEventListener('change', () => { invalidatePreview(); requirementPicker.node.hidden = profileSelect.value !== 'governance-assistant'; });
     function renderChecklist(context) {
       checklist.replaceChildren(); selections.length = 0;
       const events = context.events || [];
       if (!events.length) { checklist.append(empty('선택할 원본 근거가 없습니다', '근거가 없는 상태로는 지원 요청을 만들 수 없습니다.')); return; }
       for (const event of events) {
         const row = el('label'); const cb = el('input'); cb.type = 'checkbox';
+        cb.addEventListener('change', invalidatePreview);
         const ref = `${event.source}/${event.id}`;
         const caption = el('span');
         caption.append(el('strong', '', ref), el('span', 'muted', `${label(event.kind)} · ${date(event.occurredAt)} · ${event.actor || '행위자 미확인'} → ${event.tool || event.resource || '대상 미확인'}`));
@@ -259,15 +304,15 @@
       }
     }
     async function loadContext() {
-      const epoch = ++selectionEpoch; const caseId = caseSelect.value;
+      const epoch = ++contextEpoch; selectionEpoch++; const caseId = caseSelect.value;
       checklist.replaceChildren(el('div', 'loading', '사건 근거를 조회하고 있습니다…'));
       previewHost.replaceChildren(); dispatchHost.replaceChildren(); currentContext = null;
       try {
         const context = await api(`/api/cases/${encodeURIComponent(caseId)}/review-context`);
-        if (epoch !== selectionEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
+        if (epoch !== contextEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
         currentContext = context; renderChecklist(context);
       } catch (error) {
-        if (epoch !== selectionEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
+        if (epoch !== contextEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
         checklist.replaceChildren(el('div', 'message error', error.message));
       }
     }
@@ -278,11 +323,13 @@
       if (!currentContext) throw new Error('먼저 사건 근거를 조회하세요.');
       const refs = selections.filter((s) => s.checkbox.checked).map((s) => s.ref);
       if (!refs.length) throw new Error('묶음에 포함할 근거를 하나 이상 선택하세요.');
+      const requestOptions = assistanceRequestOptions(profileSelect.value, requirementPicker.value(), questionInput.value);
       const epoch = selectionEpoch; const profile = runtimeProfiles.find((p) => p.id === profileSelect.value);
       previewHost.replaceChildren(el('div', 'loading', '미리보기를 만들고 있습니다…')); dispatchHost.replaceChildren();
       const pkg = await api('/api/assistance/packages', 'POST', {
         caseId: caseSelect.value, contextHash: currentContext.contextHash, profileId: profileSelect.value,
         profileVersion: profile?.version, selectedEvidenceRefs: refs,
+        ...requestOptions,
       });
       if (epoch !== selectionEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
       previewHost.replaceChildren(packagePreview(pkg));
@@ -319,6 +366,67 @@
     if (isCurrentDetail(dialogContext)) await runDetail(run.id);
     savedNotice(dialogContext, '검토 판단을 기록했습니다. 이 기록은 업무 AI의 실행 승인이나 정책 판정이 아닙니다.');
   }
+  function draftContents(draft) {
+    const node = el('div', 'raw-language');
+    if (!draft || typeof draft !== 'object') { node.append(el('p', 'muted', '저장된 초안이 없습니다.')); return node; }
+    if (draft.abstained) node.append(el('div', 'message warning', '초안 작성을 보류했습니다 (abstained).'));
+    node.append(el('p', 'wrap', draft.summary || '요약 없음'));
+    for (const finding of Array.isArray(draft.findings) ? draft.findings : []) {
+      const item = el('div', 'finding-item');
+      item.append(el('p', 'wrap', finding.claim || '내용 없음'), badge(finding.confidence || 'unknown'));
+      if (finding.relation) item.append(el('span', 'muted', ` 근거 관계: ${label(finding.relation)}`));
+      const refs = el('div', 'actions');
+      for (const ref of Array.isArray(finding.evidenceRefs) ? finding.evidenceRefs : []) refs.append(el('span', 'mono wrap', ref));
+      item.append(refs); node.append(item);
+    }
+    if (draft.findings?.length) node.append(el('p', 'confidence-note', '신뢰도(confidence)는 작성자가 보고한 값이며 사실 확인 결과와 다릅니다.'));
+    if (draft.uncertainties?.length) node.append(jsonDetails('불확실 사항', draft.uncertainties));
+    if (draft.limitations?.length) node.append(limits(draft.limitations));
+    if (Array.isArray(draft.recommendedFollowUps) && draft.recommendedFollowUps.length) {
+      const followUps = el('ul'); draft.recommendedFollowUps.forEach(text => followUps.append(el('li', '', text)));
+      node.append(el('p', 'muted', '권장 후속 조치 · 검토를 위한 제안'), followUps);
+    }
+    node.append(jsonDetails('초안 전체 원문 · 불확실성·한계·후속 제안 포함', draft));
+    return node;
+  }
+  function draftDiff(previous, current, previousLabel = '기계 원문') {
+    const node = el('div');
+    if (!previous || !current) { node.append(el('p', 'muted', '비교할 초안이 기록되지 않았습니다.')); return node; }
+    const keys = [...new Set([...Object.keys(previous), ...Object.keys(current)])];
+    const changed = keys.filter(key => stringify(previous[key]) !== stringify(current[key]));
+    if (!changed.length) { node.append(el('p', 'muted', '초안 필드 변경 없음 · 원문 그대로 채택')); return node; }
+    node.append(el('p', 'muted', `변경된 필드 ${changed.length}개 · 원문을 그대로 대조합니다.`));
+    for (const key of changed) {
+      const block = el('div', 'draft-diff');
+      for (const [title, draft, className] of [[previousLabel, previous, ''], ['이 검토에 저장된 초안', current, 'changed-value']]) {
+        const side = el('div', className);
+        side.append(el('h5', '', `${key} · ${title}`), el('pre', '', Object.hasOwn(draft, key) ? stringify(draft[key]) : '(필드 없음)'));
+        block.append(side);
+      }
+      node.append(block);
+    }
+    return node;
+  }
+  function reviewHistory(reviews, original) {
+    const node = el('div'); let previous = original;
+    if (!reviews.length) { node.append(el('p', 'muted', '아직 사람의 검토가 기록되지 않았습니다.')); return node; }
+    const latest = reviews[reviews.length - 1];
+    if ((latest.action || latest.decision) === 'accept') {
+      const adopted = el('div', 'adopted-draft'); adopted.append(el('h4', '', '현재 채택된 사람 검토본'), draftContents(latest.draft)); node.append(adopted);
+    } else if ((latest.action || latest.decision) === 'reject') node.append(el('p', 'message warning', '가장 최근 검토는 반려입니다. 이전 채택본은 이력으로만 표시합니다.'));
+    else node.append(el('p', 'message warning', '최근 검토 상태를 확인할 수 없습니다. 저장된 기록을 확인하세요.'));
+    reviews.forEach((review, index) => {
+      const version = el('article', 'review-version');
+      version.append(el('p', 'wrap', `${index + 1}차 검토 · ${rlabel(review.action || review.decision)} · ${review.reviewedBy || '검토자 미확인'} · ${date(review.createdAt || review.reviewedAt)}`));
+      if (review.reason) version.append(el('p', 'wrap', review.reason));
+      if (review.draft) {
+        const comparison = el('details'); comparison.append(el('summary', '', index === 0 ? '기계 원문과 변경점' : '직전 저장 초안과 변경점'), draftDiff(previous, review.draft, previous === original ? '기계 원문' : '직전 저장 초안'));
+        version.append(comparison, jsonDetails('이 검토에 저장된 초안 전체', review.draft)); previous = review.draft;
+      }
+      version.append(jsonDetails('검토 기록 원문', review)); node.append(version);
+    });
+    return node;
+  }
   function runDetailNode(run, pkg) {
     const node = el('div');
     node.append(el('p', 'selection-note', `실행 ${run.id} · 상태 ${rlabel(runStateOf(run))}${run.stale ? ' · 최신성 불확실' : ''}`));
@@ -328,51 +436,30 @@
 
     const compare = el('div', 'review-compare');
     const evidenceSection = el('section'); evidenceSection.append(el('h4', '', '고정된 근거 (제출 시점 스냅샷)'));
-    const evItems = pkg?.evidence || [];
     if (!pkg) evidenceSection.append(el('p', 'muted', '근거 묶음을 조회하지 못해 스냅샷을 표시할 수 없습니다.'));
-    else if (!evItems.length) evidenceSection.append(el('p', 'muted', '포함된 근거 항목이 없습니다.'));
-    else { const list = el('ul'); evItems.forEach((item) => list.append(el('li', '', typeof item === 'string' ? item : stringify(item)))); evidenceSection.append(list); }
-
-    const draftSection = el('section'); draftSection.append(el('h4', '', '초안 (기계 출력)'));
+    else { const snapshot = el('details'); snapshot.append(el('summary', '', `고정 근거 ${(pkg.evidence || []).length}건 · 역할·거버넌스 스냅샷 전체 확인`), packagePreview(pkg)); evidenceSection.append(snapshot); }
+    const draftSection = el('section'); draftSection.append(el('h4', '', '기계가 생성한 원본 초안'), el('p', 'draft-language-note', '영문 분석을 포함한 원문을 번역 없이 보존합니다. 사람이 수정한 내용은 검토본과 변경 이력에서 따로 확인합니다.'));
     const draft = run.draft || run.result?.draft || null;
     const state = runStateOf(run);
     if (state === 'error' || state === 'failed') draftSection.append(el('p', 'message error', run.error || '실행 오류로 초안을 생성하지 못했습니다.'));
     else if (!draft) draftSection.append(el('p', 'muted', ['queued', 'running', 'pending'].includes(state) ? '아직 실행이 완료되지 않았습니다.' : '초안 데이터가 없습니다.'));
-    else {
-      if (draft.abstained) draftSection.append(el('div', 'message warning', '이 역할은 초안 작성을 보류했습니다 (abstained). 근거가 부족하거나 범위를 벗어났을 수 있습니다.'));
-      draftSection.append(el('p', 'wrap', draft.summary || '요약 없음'));
-      if (draft.findings?.length) {
-        const list = el('div');
-        draft.findings.forEach((f) => {
-          const item = el('div', 'finding-item');
-          item.append(el('p', 'wrap', f.claim || '내용 없음'), badge(f.confidence || 'unknown'));
-          const refs = el('div', 'actions'); (f.evidenceRefs || []).forEach((ref) => refs.append(el('span', 'mono', ref))); item.append(refs); list.append(item);
-        });
-        draftSection.append(list, el('p', 'confidence-note', '신뢰도(confidence)는 모델 자체 표시이며 검증된 사실 여부와 다릅니다.'));
-      }
-      if (draft.uncertainties?.length) draftSection.append(jsonDetails('불확실 사항', draft.uncertainties));
-      if (draft.limitations?.length) draftSection.append(limits(draft.limitations));
-      if (draft.recommendedFollowUps?.length) { const list = el('ul'); draft.recommendedFollowUps.forEach((t) => list.append(el('li', '', t))); draftSection.append(el('p', 'muted', '권장 후속 조치 (제안일 뿐 지시 아님)'), list); }
-    }
+    else draftSection.append(draftContents(draft));
 
     const reviewSection = el('section'); reviewSection.append(el('h4', '', '사람의 검토'));
     const reviews = run.reviews || (run.review ? [run.review] : []);
-    if (!reviews.length) reviewSection.append(el('p', 'muted', '아직 사람의 검토가 기록되지 않았습니다.'));
-    else reviews.forEach((r) => {
-      reviewSection.append(el('p', 'wrap', `${rlabel(r.action || r.decision)} · ${r.reviewedBy || '검토자 미확인'} · ${date(r.createdAt || r.reviewedAt)}`));
-      if (r.reason) reviewSection.append(el('p', 'muted', r.reason));
-    });
+    reviewSection.append(reviewHistory(reviews, draft));
     compare.append(evidenceSection, draftSection, reviewSection);
     node.append(compare);
 
     if (draft && state !== 'error' && state !== 'failed') {
       const actionsCard = el('div');
       actionsCard.append(el('h3', '', '검토 판단 기록'));
-      actionsCard.append(button('있는 그대로 승인 표시', () => submitReview(run, pkg, { action: 'accept' }), 'primary small'));
+      const editableDraft = reviews.at(-1)?.action === 'accept' && reviews.at(-1)?.draft ? reviews.at(-1).draft : draft;
+      actionsCard.append(button('기계 원문 그대로 채택', () => submitReview(run, pkg, { action: 'accept' }), 'primary small'));
       const editDetails = el('details');
-      editDetails.append(el('summary', '', '요약을 수정한 뒤 승인'), form([
-        field('수정한 요약', 'summary', { multiline: true, wide: true, value: draft.summary || '', required: true, maxLength: 4000 }),
-      ], '요약 수정 후 승인 표시', (values) => submitReview(run, pkg, { action: 'accept', editedDraft: { ...draft, summary: values.summary.trim() } })));
+      editDetails.append(el('summary', '', '현재 검토본의 요약을 수정한 뒤 채택'), form([
+        field('수정한 요약', 'summary', { multiline: true, wide: true, value: editableDraft.summary || '', required: true, maxLength: 4000 }),
+      ], '요약 수정 후 채택 기록', (values) => submitReview(run, pkg, { action: 'accept', editedDraft: { ...editableDraft, summary: values.summary.trim() } })));
       const rejectDetails = el('details');
       rejectDetails.append(el('summary', '', '반려 사유를 남기고 반려'), form([
         field('반려 사유', 'reason', { multiline: true, wide: true, required: true, maxLength: 2000 }),
@@ -404,18 +491,18 @@
     tabs.append(requestBtn, runsBtn);
     const content = el('div');
     root.append(tabs, content);
-    let mode = requestedCaseId ? 'request' : 'runs';
+    let mode = requestedCaseId ? 'request' : 'runs'; let modeEpoch = 0;
     async function choose(next) {
-      mode = next;
+      mode = next; const requestEpoch = ++modeEpoch;
       requestBtn.setAttribute('aria-pressed', String(mode === 'request'));
       runsBtn.setAttribute('aria-pressed', String(mode === 'runs'));
       content.replaceChildren(el('div', 'loading', '불러오는 중…'));
       try {
         const rendered = mode === 'request' ? await requestBuilder(requestedCaseId, viewEpoch, authAtStart) : await runsList(viewEpoch, authAtStart);
-        if (viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
+        if (requestEpoch !== modeEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
         content.replaceChildren(rendered);
       } catch (error) {
-        if (viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
+        if (requestEpoch !== modeEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
         content.replaceChildren(empty('불러오지 못했습니다', error.message));
       }
     }

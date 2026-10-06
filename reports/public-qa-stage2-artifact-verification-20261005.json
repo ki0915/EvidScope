@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "verified": true,
+  "verifiedAt": "2026-10-05T06:28:12.902Z",
+  "runId": "public-qa-stage2-lowmem-20261005-r4",
+  "artifactSha256": "a6f152d43c2ae481277650b094a8c416f9c99bbe74ea962fd6ed2bf485b899ea",
+  "controllerSha256": "10a6f18485608964af7674bc3ac51b97cb5f07258e99fbef767c4337774a06f6",
+  "runtimeConfigMapSha256": "2e185f70a7de6a4a727831abcab434cba2ea2721f793465878ee3d76318d8b55",
+  "trainingLogSha256": "0ebb08654a0b0e9d3a8bef3a4844c392ecdf2780bcfd0534959dd281b7adc6a8",
+  "identity": {
+    "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e",
+    "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949",
+    "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning",
+    "baseRevision": "63c930c82d7646226d33502bec5870019738400e",
+    "batchSize": 1,
+    "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d",
+    "datasetSha256": "21b4b91ad0f755de666fe2ebe9077f301477da6420ffa0195cb53b5189d2822f",
+    "gpuMemoryFraction": 0.65,
+    "gradientAccumulationSteps": 16,
+    "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8",
+    "learningRate": 0.0001,
+    "manifestSha256": "9eba08dc67ec2cbb258f199879a2b0610a4c2979e3699a50dafc6bfee52a32ec",
+    "maxSteps": 40,
+    "rank": 8,
+    "seed": 42,
+    "sequenceLength": 1024,
+    "stage": "public_qa_stage2",
+    "trainerSha256": "17fdca3d0d04f4c373058c2918343a1d4387718be44e24e56c865c19e6e480f6"
+  },
+  "globalStep": 40,
+  "actualOptimizerUpdates": 40,
+  "skippedOptimizerUpdates": 0,
+  "fileCount": 7,
+  "optimizerUpdatesThisRun": 20,
+  "resumeLineage": {
+    "schemaVersion": 2,
+    "provenanceSha256": "6cd15b9458b9c4e81fe3633479c25a2dd4c692df2414d0bd80beb6c451564977",
+    "sourceRunId": "public-qa-resume-20260928-r1",
+    "targetRunId": "public-qa-stage2-lowmem-20261005-r4",
+    "sourceCheckpointMarkerSha256": "8aa6594ec8a86f13ad1593304de88b246d000b797e525d8bc9a8eed887fff81c",
+    "sourceGlobalStep": 20,
+    "sourceIdentity": {
+      "artifactHelperSha256": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e",
+      "baseArtifactLockSha256": "c067d1fe680e8f6dc14c592ade49a1d791ea6cb15ecbefeda52a609d5d922949",
+      "baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning",
+      "baseRevision": "63c930c82d7646226d33502bec5870019738400e",
+      "batchSize": 1,
+      "bindingHelperSha256": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d",
+      "datasetSha256": "21b4b91ad0f755de666fe2ebe9077f301477da6420ffa0195cb53b5189d2822f",
+      "gpuMemoryFraction": 0.65,
+      "gradientAccumulationSteps": 16,
+      "image": "docker.io/evidscope/public-qa-training@sha256:440dbe10ff4e651296c65ff88f132077a4cbbb19054536b33c0695fdb5224be8",
+      "learningRate": 0.0001,
+      "manifestSha256": "9eba08dc67ec2cbb258f199879a2b0610a4c2979e3699a50dafc6bfee52a32ec",
+      "maxSteps": 20,
+      "rank": 8,
+      "seed": 42,
+      "sequenceLength": 1024,
+      "stage": "public_qa_stage1",
+      "trainerSha256": "419a5e8116b140ca9ef48f051d688d093f87b318f06f5a1cf91e683d1b803839"
+    },
+    "sourceRuntimeSha256": "9f2023fb402e5975cd2a1f27eae927833f5ae29d8a3bd4709045dd4274e0e539",
+    "sourceRuntimeFiles": {
+      "public_qa_cuda_runtime.py": "7729a61f03c54307c979fa0f2285d07d2a205a0a5a5650ed0bf8fef726a84b59",
+      "public_qa_kbit.py": "4d386a7959512f359477277802eae8b22541e96f1657ca3a15f3d2e0c72f8ef7",
+      "public_qa_memory_gate.py": "1f0097d98bf8cab73589163b09ad44fc8091a40ba9540ab9960b3e33ed157c0b",
+      "public_qa_resume.py": "2daeb060005d431bf42744d9eedc9a9e1b1b210bc17ab88c8a9df995e2ae7236",
+      "public_qa_thermal.py": "eb6db0d1d94d7e0efc790acf0345aa8eb509507444cf8016e5c418c9b63bea98",
+      "resource-pilot.py": "e1ae1d1b7fc0bfa64d11f69f34c50fe44291f653a2fb2ecab9516d878fa9ad5d",
+      "train-foundation-lora.py": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d",
+      "train-public-qa.py": "419a5e8116b140ca9ef48f051d688d093f87b318f06f5a1cf91e683d1b803839",
+      "training_artifacts.py": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e"
+    },
+    "targetRuntimeFiles": {
+      "public_qa_cuda_runtime.py": "7729a61f03c54307c979fa0f2285d07d2a205a0a5a5650ed0bf8fef726a84b59",
+      "public_qa_kbit.py": "4d386a7959512f359477277802eae8b22541e96f1657ca3a15f3d2e0c72f8ef7",
+      "public_qa_memory_gate.py": "1f0097d98bf8cab73589163b09ad44fc8091a40ba9540ab9960b3e33ed157c0b",
+      "public_qa_resume.py": "4a21e090541773099ee64f45a4065a7a6f3c8ecc927fb91e48326cd8cb7afb42",
+      "public_qa_thermal.py": "eb6db0d1d94d7e0efc790acf0345aa8eb509507444cf8016e5c418c9b63bea98",
+      "resource-pilot.py": "bfb73ff720b67f0d938cf0d0d01bf219da51df36865eb7a72c24a3fab9d2b576",
+      "train-foundation-lora.py": "e6494f4f6cb212a0ce656bd7762ad32d2b111c3ce462942dff1ae59a448f391d",
+      "train-public-qa.py": "17fdca3d0d04f4c373058c2918343a1d4387718be44e24e56c865c19e6e480f6",
+      "training_artifacts.py": "e93572ffaebdc2d26531c904708f538ba8157206fc9ba218ba7a7e5a96f6604e"
+    },
+    "allowedRuntimeCodeChanges": {
+      "train-public-qa.py": {
+        "from": "419a5e8116b140ca9ef48f051d688d093f87b318f06f5a1cf91e683d1b803839",
+        "to": "17fdca3d0d04f4c373058c2918343a1d4387718be44e24e56c865c19e6e480f6"
+      },
+      "public_qa_resume.py": {
+        "from": "2daeb060005d431bf42744d9eedc9a9e1b1b210bc17ab88c8a9df995e2ae7236",
+        "to": "4a21e090541773099ee64f45a4065a7a6f3c8ecc927fb91e48326cd8cb7afb42"
+      },
+      "resource-pilot.py": {
+        "from": "e1ae1d1b7fc0bfa64d11f69f34c50fe44291f653a2fb2ecab9516d878fa9ad5d",
+        "to": "bfb73ff720b67f0d938cf0d0d01bf219da51df36865eb7a72c24a3fab9d2b576"
+      }
+    },
+    "extension": {
+      "kind": "bounded_max_steps_extension",
+      "fromStage": "public_qa_stage1",
+      "toStage": "public_qa_stage2",
+      "fromMaxSteps": 20,
+      "toMaxSteps": 40,
+      "reason": "trainer_dynamic_padding_selective_completion_logits_stage2_resume_verifier_and_resource_pilot"
+    }
+  },
+  "checkpoints": [
+    {
+      "markerSha256": "c0d700594e7583e4d8a8b70d4d194339e261b09e2495ae73a5d3e6a2c046314c",
+      "globalStep": 30
+    },
+    {
+      "markerSha256": "42b3350c2e05d7ace3fc5964e6b3bae8071021fcc85b135817fcf3c471bf5dd2",
+      "globalStep": 40
+    }
+  ],
+  "trainingRunCompleted": true,
+  "terminationConfirmed": true,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "verificationScope": "Exported candidate integrity and local execution bindings; no model quality or legal compliance certification.",
+  "candidateDirectory": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\.local\\training\\runs\\public-qa-stage2-lowmem-20261005-r4\\candidate",
+  "trainingMetrics": {
+    "base_eval_loss": 1.2844529151916504,
+    "base_eval_model_preparation_time": 0.0024,
+    "base_eval_runtime": 86.64,
+    "base_eval_samples_per_second": 0.739,
+    "base_eval_steps_per_second": 0.739,
+    "epoch": 2,
+    "eval_loss": 0.11026321351528168,
+    "eval_model_preparation_time": 0.0024,
+    "eval_runtime": 94.9791,
+    "eval_samples_per_second": 0.674,
+    "eval_steps_per_second": 0.674,
+    "total_flos": 24030785385848830,
+    "train_loss": 0.057280159741640094,
+    "train_runtime": 930.0247,
+    "train_samples_per_second": 0.688,
+    "train_steps_per_second": 0.043
+  }
+}

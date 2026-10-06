@@ -1,0 +1,16 @@
+{
+  "observations": 225,
+  "peakCgroupGiB": 1.999969482421875,
+  "maxHostGpuMiB": 8480,
+  "maxGpuTemperatureC": 74,
+  "minWindowsCommitFreeGiB": 6.263,
+  "oomKills": 0,
+  "controllerExit": {
+    "containerID": "containerd://ccec0617b898ca390927f0f8b3a8e9e1ec84e4493cf1880f3f6d9281b6c9e5b1",
+    "exitCode": 0,
+    "finishedAt": "2026-09-28T07:06:43Z",
+    "reason": "Completed",
+    "startedAt": "2026-09-28T06:52:46Z"
+  },
+  "terminationConfirmed": true
+}

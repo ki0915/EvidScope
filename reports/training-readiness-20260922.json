@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-22T04:21:40.351Z",
+  "mode": "check-only",
+  "image": {
+    "allowed": false,
+    "checks": {
+      "docker": {
+        "ready": false
+      },
+      "gpu": {
+        "ready": true
+      }
+    },
+    "errors": [
+      "docker_unavailable"
+    ],
+    "downloadsPerformed": false
+  },
+  "host": {
+    "receipt": {
+      "schemaVersion": 1,
+      "source": "trusted_windows_host_probe",
+      "observedAt": "2026-09-22T13:21:40.3113002+09:00",
+      "idleSeconds": 190,
+      "cpuPercent": 5.35,
+      "freeMemoryGiB": 15.09,
+      "onAcPower": true,
+      "gpu": {
+        "memoryUsedMiB": 1065,
+        "memoryTotalMiB": 12288,
+        "utilizationPercent": 0,
+        "temperatureC": 46,
+        "computeProcessCount": 23
+      }
+    },
+    "decision": {
+      "allowed": false,
+      "reasons": [
+        "interactive_session_not_idle",
+        "host_memory_reserve_low",
+        "gpu_memory_in_use",
+        "other_gpu_compute_active"
+      ]
+    }
+  },
+  "data": {
+    "path": "data/financial-evals/evidence-organizer/v1/candidates.jsonl",
+    "reviewPacket": "data/financial-evals/evidence-organizer/v1/human-review-packet.json",
+    "rows": 540,
+    "splitCounts": {
+      "tune": 300,
+      "validation": 60,
+      "test": 180
+    },
+    "scenarioCounts": {
+      "supplier_model_changed": 78,
+      "authority_revoked": 78,
+      "block_success_conflict": 78,
+      "automatic_no_approval": 78,
+      "late_approval": 78,
+      "missing_execution": 75,
+      "document_corrupt": 75
+    },
+    "outputLanguages": {
+      "ko": 360,
+      "en": 180
+    },
+    "humanReviewed": 0,
+    "admission": {
+      "admitted": false,
+      "roleId": "evidence-organizer",
+      "counts": {
+        "tune": 0,
+        "validation": 0,
+        "test": 0
+      },
+      "reasons": [
+        "human-reviewed tune 0/300",
+        "human-reviewed validation 0/50",
+        "human-reviewed test 0/100",
+        "review_provenance_incomplete"
+      ],
+      "trainingRunAllowed": false,
+      "qualityClaimAllowed": false,
+      "qualityClaimRequirement": "held-out test measurement after an admitted training run"
+    }
+  },
+  "runtime": {
+    "context": "k3d-dlp",
+    "clusterProbed": false,
+    "measuredIsolationReceiptAvailable": false,
+    "imageBuilt": false,
+    "weightsDownloaded": false,
+    "podsStarted": false
+  },
+  "validation": {
+    "nodeFocused": {
+      "passed": 43,
+      "failed": 0
+    },
+    "pythonUnit": {
+      "passed": 13,
+      "failed": 0
+    },
+    "actualGpuTraining": false,
+    "actualPairedInference": false
+  },
+  "trainingRunAllowed": false,
+  "trainingRunCompleted": false,
+  "qualityClaimAllowed": false,
+  "limitations": [
+    "Declared dependency versions were not built or GPU-tested.",
+    "Prepared probe/pilot manifests are suspended and are not isolation receipts.",
+    "Formal training requires real human-reviewed records and measured cluster/resource prerequisites.",
+    "Candidates are templated synthetic audit evidence, not independent production quality data.",
+    "On Windows WDDM, nvidia-smi compute-process inventory can include graphics or otherwise unclassified workloads; computeProcessCount is not a verified count of active ML training jobs. The conservative start gate remains unchanged."
+  ]
+}

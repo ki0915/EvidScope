@@ -1,0 +1,135 @@
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/app/roles/evidence-organizer/v1/role.json'
+    at readFileSync (node:fs:441:20)
+    at loadRolePackage (file:///app/src/role-packages.mjs:13:161)
+    at file:///app/src/role-packages.mjs:15:67
+    at Array.map (<anonymous>)
+    at loadRolePackages (file:///app/src/role-packages.mjs:15:59)
+    at file:///app/src/assistance.mjs:12:17
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/app/roles/evidence-organizer/v1/role.json'
+}
+
+Node.js v24.15.0
+✖ test/object-integrity.test.mjs (56.056145ms)
+✖ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation (119.312023ms)
+✔ enterprise transport and principal binding fail closed at configuration time (1.306474ms)
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/app/roles/evidence-organizer/v1/role.json'
+    at readFileSync (node:fs:441:20)
+    at loadRolePackage (file:///app/src/role-packages.mjs:13:161)
+    at file:///app/src/role-packages.mjs:15:67
+    at Array.map (<anonymous>)
+    at loadRolePackages (file:///app/src/role-packages.mjs:15:59)
+    at file:///app/src/assistance.mjs:12:17
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/app/roles/evidence-organizer/v1/role.json'
+}
+
+Node.js v24.15.0
+✖ test/policy-projection-integrity.test.mjs (52.424354ms)
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (2.470486ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.236654ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.184703ms)
+✔ successful telemetry does not query another Pod or change the sample (0.159625ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.361103ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.219058ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.267682ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.14082ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.266313ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.227448ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.216865ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.206789ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.143617ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.111261ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.259898ms)
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/app/roles/evidence-organizer/v1/role.json'
+    at readFileSync (node:fs:441:20)
+    at loadRolePackage (file:///app/src/role-packages.mjs:13:161)
+    at file:///app/src/role-packages.mjs:15:67
+    at Array.map (<anonymous>)
+    at loadRolePackages (file:///app/src/role-packages.mjs:15:59)
+    at file:///app/src/assistance.mjs:12:17
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/app/roles/evidence-organizer/v1/role.json'
+}
+
+Node.js v24.15.0
+✖ test/vault-recovery.test.mjs (63.994497ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 16
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 481.52731
+
+✖ failing tests:
+
+test at test/object-integrity.test.mjs:1:1
+✖ test/object-integrity.test.mjs (56.056145ms)
+  'test failed'
+
+test at test/oidc-http.test.mjs:28:1
+✖ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation (119.312023ms)
+  Error: vault exit 1: node:fs:441
+      return binding.readFileUtf8(path, stringToFlags(options.flag));
+                     ^
+  
+  Error: ENOENT: no such file or directory, open '/app/roles/evidence-organizer/v1/role.json'
+      at readFileSync (node:fs:441:20)
+      at loadRolePackage (file:///app/src/role-packages.mjs:13:161)
+      at file:///app/src/role-packages.mjs:15:67
+      at Array.map (<anonymous>)
+      at loadRolePackages (file:///app/src/role-packages.mjs:15:59)
+      at file:///app/src/assistance.mjs:12:17
+      at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async node:internal/modules/esm/loader:639:26
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/app/roles/evidence-organizer/v1/role.json'
+  }
+  
+  Node.js v24.15.0
+  
+      at ChildProcess.<anonymous> (file:///app/test/harness.mjs:10:595)
+      at Object.onceWrapper (node:events:631:26)
+      at ChildProcess.emit (node:events:509:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at test/policy-projection-integrity.test.mjs:1:1
+✖ test/policy-projection-integrity.test.mjs (52.424354ms)
+  'test failed'
+
+test at test/vault-recovery.test.mjs:1:1
+✖ test/vault-recovery.test.mjs (63.994497ms)
+  'test failed'

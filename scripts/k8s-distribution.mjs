@@ -97,7 +97,11 @@ export async function runDistribution(options = {}) {
       report.preflight.attempts.push({ at, finishedAt: new Date().toISOString(), status: result.status ?? null, instance: result.instance ?? null, latencyMs: result.latencyMs, ready,
         ...(!ready ? { error: result.error || 'unexpected_status' } : {}) });
       if (ready) { report.preflight.ready = true; break; }
-      if (report.preflight.attempts.length < 30 && performance.now() < deadline) await delay(Math.min(1000, deadline - performance.now()));
+      // A short remaining budget cannot shorten the advertised retry interval.
+      // Recheck the monotonic clock because timer rounding can wake us early.
+      const retryAt = performance.now() + report.preflight.intervalMs;
+      if (report.preflight.attempts.length >= report.preflight.maxAttempts || retryAt >= deadline) break;
+      while (performance.now() < retryAt) await delay(Math.max(1, Math.ceil(retryAt - performance.now())));
     }
     report.preflight.finishedAt = new Date().toISOString();
     if (!report.preflight.ready) report.preflight.failure = 'readiness_not_confirmed_before_limit';

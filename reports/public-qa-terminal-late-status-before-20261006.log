@@ -1,0 +1,82 @@
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (2.5887ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.1962ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.1373ms)
+✔ successful telemetry does not query another Pod or change the sample (0.1208ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.4198ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.1536ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.2175ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.1327ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.2138ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.1972ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.1562ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.116ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.1122ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.119ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.1613ms)
+✖ a missing runtime task waits briefly for the same container terminal status (0.2168ms)
+✖ a missing runtime task never substitutes a replacement Pod during delayed status (0.5453ms)
+✖ bounded late status polling does not infer an exit from a missing task alone (0.4666ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 15
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.0148
+
+✖ failing tests:
+
+test at test\public-qa-controller-terminal.test.mjs:43:1
+✖ a missing runtime task waits briefly for the same container terminal status (0.2168ms)
+  Error: failed to create exec "late-sample": task original-training-container not found
+      at missingTask (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:42:23)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:44:28)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at test\public-qa-controller-terminal.test.mjs:48:1
+✖ a missing runtime task never substitutes a replacement Pod during delayed status (0.5453ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /identity_changed/. Input:
+  
+  'Error: failed to create exec "late-sample": task original-training-container not found'
+  
+      at async TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:50:2)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: failed to create exec "late-sample": task original-training-container not found
+        at missingTask (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:42:23)
+        at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:49:28)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1201:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+        at Test.postRun (node:internal/test_runner/test:1330:19)
+        at Test.run (node:internal/test_runner/test:1258:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:831:7),
+    expected: /identity_changed/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test\public-qa-controller-terminal.test.mjs:53:1
+✖ bounded late status polling does not infer an exit from a missing task alone (0.4666ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 4
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/public-qa-controller-terminal.test.mjs:56:9)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

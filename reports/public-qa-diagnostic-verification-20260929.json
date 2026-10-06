@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "verificationPassed": true,
+  "evaluationExecutionVerified": true,
+  "syntheticFixture": false,
+  "runId": "public-qa-eval-20260928-r1",
+  "jobUid": "c6a12e27-bf6d-46b7-8320-8b7713f5540e",
+  "podUid": "8dd4c38d-219a-4c56-a3bc-58e6d334f1cd",
+  "controllerReceiptSha256": "a920bb95c84ffd5c80a80f097c880e976bbe35df4778ccc3e551696a3ffe5de1",
+  "responsesSha256": "c6dc6657d9fa2663cc989cbfac1e366ef82722d4c131525073d9170fe1d7e23e",
+  "preAdmissionSha256": "d416b1c655e7ae44e5b4401a2aaa92c36713f3b9c459ab3898cf7f8bfa2b0664",
+  "datasetSha256": "50561634095f758781c4695fcc30e2d7bd7cf7d9b937d8c10174a3e927c837f9",
+  "modelCalls": 128,
+  "admittedRows": 64,
+  "excludedRows": 0,
+  "sourceTrainingExecutionVerified": false,
+  "trainingRunCompleted": false,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "limitations": [
+    "Local persisted execution evidence and hashes; not independent hardware attestation.",
+    "Output quality scoring and human semantic review remain separate.",
+    "Source training controller failure remains unresolved."
+  ]
+}

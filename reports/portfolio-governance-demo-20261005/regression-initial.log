@@ -1,0 +1,82 @@
+??verified supplier bytes, role isolation, immutable signed review and changed model invalidation (220.3485ms)
+??same private key representation can restore encrypted document bytes (5.2037ms)
+??unknown or changed supplied model and purpose require review even when current bundle matches
+  ??SUPPLIED_MODEL_VERSION_UNKNOWN (126.7589ms)
+  ??SUPPLIED_PURPOSE_UNKNOWN (128.8459ms)
+  ??SUPPLIED_MODEL_VERSION_MISMATCH (123.5526ms)
+  ??SUPPLIED_PURPOSE_MISMATCH (122.2059ms)
+??unknown or changed supplied model and purpose require review even when current bundle matches (502.4394ms)
+??newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history (178.893ms)
+??corrupt or missing document never remains verified; hashes and measure bounds are enforced (143.37ms)
+??bundle replacement invalidates only linked snapshots and cannot move between systems (150.3483ms)
+??altered system or supplier projection cannot be legitimized by a new signed report (115.543ms)
+??legacy system facts migrate once to unknown without rewriting historical assessments (126.3696ms)
+??startup refuses a downgraded and altered system projection without re-signing it (116.1962ms)
+??startup refuses insert system projection drift (114.3084ms)
+??startup refuses delete system projection drift (117.1741ms)
+??startup refuses sql-id system projection drift (115.1458ms)
+??startup verifies every tenant before leaving any partial migration (118.774ms)
+??catalog change refuses altered catalog projection before signing review tasks (115.2164ms)
+??catalog change refuses altered assessment projection before signing review tasks (119.7961ms)
+??assessment signs a server-computed applicability snapshot and ignores client provenance fields (125.5988ms)
+??legacy catalog and assessment provenance trigger a signed re-review task without replacing the human conclusion (129.6072ms)
+??signed finance reports freeze policy provenance while a later fact change only marks the live review stale (138.9374ms)
+??KR-34-DOCUMENT keeps missing document technically insufficient and its task open (139.522ms)
+??KR-34-DOCUMENT keeps unhashed external document technically insufficient and its task open (127.2466ms)
+??KR-34-DOCUMENT keeps unretrievable externally hashed document technically insufficient and its task open (124.1516ms)
+??non-document requirements and verified event evidence retain their existing status (123.6759ms)
+??reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot (144.4392ms)
+??intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment (130.8839ms)
+??assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable (177.3987ms)
+??new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot (165.0831ms)
+??governance document projection tampering is rejected and cannot create a verified assessment (126.0079ms)
+??HTTP boundary accepts the bounded 64 KiB governance document payload (1.0771ms)
+??vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention (370.4699ms)
+??unknown system facts remain unknown and never become an automatic non-applicability decision (2.7287ms)
+??Korean high-impact and frontier thresholds are evaluated as separate review candidates (0.3822ms)
+??EU transparency candidates require market, role and feature facts and preserve amendment warning (0.2978ms)
+??NIST remains voluntary and ISO remains readiness-only (0.1262ms)
+??Korean article 31 distinguishes high-impact notice, generated output and realistic synthetic media (0.2597ms)
+??legacy and financial system facts require review without inferring high-impact or a legal role (0.7712ms)
+??self-asserted oversight evidence remains insufficient and leaves a task that cannot be closed (139.2367ms)
+??oversight plan and review record are each necessary and must bind the current system model and policy (260.2081ms)
+??document revision makes the bound oversight assessment stale and blocks task closure until reassessment (175.4689ms)
+??historical policy determines whether a per-action human approval is required (2.8002ms)
+??approvals bind the model and attempt and preserve uncertainty instead of inventing ordering (0.7895ms)
+??block and success evidence only conflict for the same attempt with determinable order (0.3338ms)
+??event metadata validates context identifiers and bounded or explicitly unknown clock error (2.8869ms)
+??authority uses issuance time and policy known at execution, including late-arriving evidence (0.3336ms)
+??human approval issued after execution or under another policy never satisfies prior review (0.2232ms)
+??human oversight review requires authority provenance and system, model and policy binding (0.2803ms)
+??self-reported delegation cannot substitute for independent parent-scoped authority (0.2508ms)
+??stop confirmation matches the requested target and follows the request (0.7155ms)
+??six governance scenarios pass without network or model transport (2071.4467ms)
+??CLI produces a report and refuses to overwrite an existing deliverable (4209.9288ms)
+??tests 53
+??suites 0
+??pass 52
+??fail 1
+??cancelled 0
+??skipped 0
+??todo 0
+??duration_ms 12498.5816
+
+??failing tests:
+
+test at test\governance-documents.test.mjs:113:1
+??HTTP boundary accepts the bounded 64 KiB governance document payload (1.0771ms)
+  Error: EPERM: operation not permitted, mkdtemp 'C:\Users\湲곕???Documents\ChatGPT\EvidScope ??AI Visibility & Governance SIEM\.test-runs\run-XXXXXX'
+      at mkdtempSync (node:fs:3039:18)
+      at harness (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/harness.mjs:7:53)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:114:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'mkdtemp',
+    path: 'C:\\Users\\湲곕???\Documents\\ChatGPT\\EvidScope ??AI Visibility & Governance SIEM\\.test-runs\\run-XXXXXX'
+  }

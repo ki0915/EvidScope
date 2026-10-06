@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "repository": "fdtn-ai/Foundation-Sec-8B-Reasoning",
+  "revision": "63c930c82d7646226d33502bec5870019738400e",
+  "selectedAt": "2026-09-19",
+  "purpose": "QLoRA audit-domain candidate training; no automatic deployment",
+  "trainingFormat": "original BF16 safetensors loaded as NF4; Q4 GGUF is inference-only",
+  "metadataSource": "https://huggingface.co/api/models/fdtn-ai/Foundation-Sec-8B-Reasoning?blobs=true",
+  "metadataVerifiedAt": "2026-09-19",
+  "gated": false,
+  "weightBytes": 16060884056,
+  "files": [
+    {"path":"model-00001-of-00004.safetensors","size":4943283072,"sha256":"51f7069dfb046809ee1370eccea47c14063efb8e54d5eaf4d1b4cc7337b688da"},
+    {"path":"model-00002-of-00004.safetensors","size":4991413968,"sha256":"272b260e54e985bb9b31c1cd3cc4e2369cc42a7959ba347c0d1adaf2eb55ab97"},
+    {"path":"model-00003-of-00004.safetensors","size":4968548944,"sha256":"7b8349ce9f38173e36f0f86843309c948bac43f0e5ee8b042f4aa9e0d05f2f62"},
+    {"path":"model-00004-of-00004.safetensors","size":1157638072,"sha256":"42f13e3105f0fdd3048218d2b343230cdb2342a374b3b5fb345b39c4f4e59021"},
+    {"path":"tokenizer.json","size":17213681,"sha256":"88fb81f6493ea9017c2b2e25c95beab7b8d961a9aac5c6a5a5b5a01dc7be902d"},
+    {"path":"config.json","size":938,"sha256":"319a3278ff78931b84188a99e419916e7ab6cae7eb4247e8b8a9dd30c9546278"},
+    {"path":"generation_config.json","size":260,"sha256":"06d977635ff4b730cb511ca110c547b949f43a01be83a93896154a0b57c35981"},
+    {"path":"model.safetensors.index.json","size":23950,"sha256":"79020a7cf0bc0ecb6370775ecb7397c9483954c89c9d0750263e3b9d61d56fe5"},
+    {"path":"special_tokens_map.json","size":710,"sha256":"8d06f85908b8165c544858d97b2ab6863c7ef18ad47fbb16df3dd2877e3415a2"},
+    {"path":"tokenizer_config.json","size":57134,"sha256":"6929a5446c216be88f5341809f157ed5fb6bc30f64e2725488ddec9bd209a8a9"},
+    {"path":"NOTICE.md","size":257,"sha256":"c880be8c49c67669487eb2395914ecc6f69546d0b757ba69a80d42e70ee496ec"},
+    {"path":"LICENSE_APACHE2.md","size":11358,"sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"},
+    {"path":"LICENSE_LLAMA31.md","size":78,"sha256":"8a9aa234c748b9831a209810962cb0401200a2458ab42e8b3809d96d3c71b7c6"}
+  ],
+  "upstreamLicenseReference": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/LICENSE",
+  "licenses": ["Llama 3.1 Community License","Apache-2.0 for Cisco modifications"],
+  "localDownloadVerified": false,
+  "licenseReviewed": false,
+  "activationAllowed": false,
+  "note": "This is upstream metadata and a selected candidate, not a verified local artifact-lock or permission to bypass dataset, resource, image or isolation checks. Large-file hashes are LFS metadata; small metadata files were hashed from pinned raw HTTP bytes. LICENSE_LLAMA31.md is a link to the upstream agreement, which must be preserved before redistribution."
+}

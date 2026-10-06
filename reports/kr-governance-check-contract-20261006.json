@@ -1,0 +1,797 @@
+{
+  "schemaVersion": 1,
+  "eventKind": "governance_check",
+  "catalog": {
+    "schemaVersion": 1,
+    "requirementsHash": "37788b448c867f017de0aa17d7c10a9473fcc76dfe3b822c0be51012fc7c1186",
+    "policyVersion": "evidscope-applicability-2026-10-06",
+    "hash": "6c3469159e9b2954d7b31d54713703908b6bee23cc9e7253f21958d541b5487a"
+  },
+  "measurementTrust": "authenticated_reported_measurement_not_independent_truth",
+  "automaticLegalVerdict": false,
+  "sourceKinds": [
+    "telemetry",
+    "authority"
+  ],
+  "documentReferencePrefix": "governance-document:",
+  "bindingFields": [
+    "systemId",
+    "modelId",
+    "modelVersion",
+    "policyVersion",
+    "systemHash",
+    "requirementHash",
+    "documentHash"
+  ],
+  "fixedEventFields": [
+    "occurredAt",
+    "receivedAt",
+    "clockUncertaintyMs"
+  ],
+  "requirements": [
+    {
+      "id": "KR-31-1",
+      "title": "AI 사용 사전 고지",
+      "requirementHash": "f7a1b1e6dffc0eb114c4a1b5e6d82f858d48dd14c04700ff2965ebc1d9a46896",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-31-2",
+      "title": "생성형 결과물 표시",
+      "requirementHash": "258e7b119b529f2d349a99e4ae80119e743c0dab09702ff8ae334c33e3ef43ff",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-31-3",
+      "title": "사실적인 합성물의 명확한 고지",
+      "requirementHash": "9ac108a1070db7c06268afe8fb3aee17c4aa7351ecf2edb0107674776a48afac",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-32-RISK",
+      "title": "안전성 위험 식별·평가·완화",
+      "requirementHash": "bc7cd9d5a87d0e676ff7e46313e71965d0419ec07e6cac9a47773f409ecb1a17",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-32-MONITOR",
+      "title": "안전사고 모니터링·대응 체계",
+      "requirementHash": "bf18d5896f7673059ad221b8f477f2c725fcd03bb174091d3a133da7de5e22d6",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-32-SUBMIT",
+      "title": "안전성 이행 결과 제출",
+      "requirementHash": "2ca4cb2c589ea330add16a7527087cdfe2c10222433886de0ace9487c71f65ac",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-33",
+      "title": "고영향 해당 여부 사전 검토",
+      "requirementHash": "7b1db27c10fdb815b373a8c98a1035e9134aa9c2063fa5e8c7d79e6142a23ccb",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0033&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-34-RISK",
+      "title": "고영향 위험관리",
+      "requirementHash": "eac4d12793ebb5b9268ea33985e5c76b6911b1b702d46a9c631bfbfea8cd9a08",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-34-EXPLAIN",
+      "title": "설명 방안",
+      "requirementHash": "5808e419a0b257a83cfa0de829f7fad7bfa02233734d9f991e462b4d12b7a22e",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-34-PROTECT",
+      "title": "이용자 보호",
+      "requirementHash": "883e19b2122bf7684e1261554af64cd51dd6f762d78911c102546cce97b3fc5b",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-34-OVERSIGHT",
+      "title": "사람의 관리·감독",
+      "requirementHash": "32a6a4ece0ceb3a741acaf62613a8b40c3e4aa7d1c177dac624f4b3808dfca2f",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-34-DOCUMENT",
+      "title": "조치 문서·보관·게시",
+      "requirementHash": "6127a8d5c4533f061f3cac1221924796202f15abe26f7258882332da6463350b",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-35-IMPACT",
+      "title": "기본권 영향평가와 취약계층",
+      "requirementHash": "c31aa15c52b98215d3a82e3d76ca9e8f99fc67fa85eb87f58988ba14e90e9b5a",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855"
+    },
+    {
+      "id": "KR-35-PUBLIC",
+      "title": "공공 이용 시 평가 제품 우선 고려",
+      "requirementHash": "265347dde29b8987cc7d3c455de39ccca80518a54382b1019a989d54c272f42c",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855"
+    },
+    {
+      "id": "KR-30-EFFORT",
+      "title": "고영향 AI 사전 검·인증 노력",
+      "requirementHash": "5dc4854a43d76cca8489522252cecb4be5d681a1fe09c7bb818421feb20c1a8d",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-30-PUBLIC",
+      "title": "공공 이용 시 검·인증 AI 우선 고려",
+      "requirementHash": "9c921da4e219d36d4dd5d70e6f39b50453c5a8dda39fbb082eafc0d367a6c0c1",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-36-REPRESENTATIVE",
+      "title": "국외 사업자의 국내대리인 지정·신고",
+      "requirementHash": "724caed6923f7973ef8c1587a17b622975f127b9b50d09911c68ff695ca797f2",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0036&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "KR-40-ORDER",
+      "title": "사실조사 자료와 중지·시정명령 이행",
+      "requirementHash": "9d53da65208619e4790effe5998577831fb8b76391bbe390b4cd17e31a6ca4d1",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0040&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+    }
+  ],
+  "checks": [
+    {
+      "requirementId": "KR-31-1",
+      "checkType": "notice_pre_delivery",
+      "title": "사전 고지 전달·시점",
+      "metrics": {
+        "noticeAt": {
+          "type": "time"
+        },
+        "providedAt": {
+          "type": "time"
+        },
+        "noticeAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "providedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "noticeDelivered": {
+          "type": "boolean"
+        },
+        "deliveryMethod": {
+          "type": "enum",
+          "values": [
+            "product_or_terms",
+            "screen",
+            "physical_notice",
+            "minister_recognised"
+          ]
+        },
+        "methodBasisRecorded": {
+          "type": "boolean"
+        },
+        "targetUsersCovered": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-31-2",
+      "checkType": "generated_output_marking",
+      "title": "생성형 결과 표시",
+      "metrics": {
+        "outputCount": {
+          "type": "integer",
+          "min": 1,
+          "max": 1000000
+        },
+        "markedOutputCount": {
+          "type": "integer",
+          "min": 0,
+          "max": 1000000
+        },
+        "markingMode": {
+          "type": "enum",
+          "values": [
+            "perceptible",
+            "machine_readable"
+          ]
+        },
+        "perceptibilityTestPassed": {
+          "type": "boolean"
+        },
+        "machineDetectionTestPassed": {
+          "type": "boolean"
+        },
+        "generationNoticeProvided": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-31-3",
+      "checkType": "realistic_media_disclosure",
+      "title": "사실적 합성물 고지·접근성",
+      "metrics": {
+        "outputCount": {
+          "type": "integer",
+          "min": 1,
+          "max": 1000000
+        },
+        "disclosedOutputCount": {
+          "type": "integer",
+          "min": 0,
+          "max": 1000000
+        },
+        "accessibilityTestPassed": {
+          "type": "boolean"
+        },
+        "userConditionsConsidered": {
+          "type": "boolean"
+        },
+        "creativeExpression": {
+          "type": "boolean"
+        },
+        "enjoymentPreserved": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-32-RISK",
+      "checkType": "safety_risk_management",
+      "title": "수명주기 안전성 위험관리",
+      "metrics": {
+        "lifecycleStages": {
+          "type": "sections",
+          "values": [
+            "design",
+            "development",
+            "deployment",
+            "operation",
+            "retirement"
+          ]
+        },
+        "riskIdentificationRecorded": {
+          "type": "boolean"
+        },
+        "riskAssessmentRecorded": {
+          "type": "boolean"
+        },
+        "mitigationTestPassed": {
+          "type": "boolean"
+        },
+        "residualRiskReviewed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-32-MONITOR",
+      "checkType": "safety_incident_monitoring",
+      "title": "안전사고 모니터링·대응",
+      "metrics": {
+        "monitoringScopeRecorded": {
+          "type": "boolean"
+        },
+        "responseProcedureRecorded": {
+          "type": "boolean"
+        },
+        "responsibleTeamRecorded": {
+          "type": "boolean"
+        },
+        "responseExercisePassed": {
+          "type": "boolean"
+        },
+        "incidentRegisterReviewed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-32-SUBMIT",
+      "checkType": "safety_submission_receipt",
+      "title": "안전성 이행자료 외부 제출 접수",
+      "metrics": {
+        "implementationResultsIncluded": {
+          "type": "boolean"
+        },
+        "submissionAccepted": {
+          "type": "boolean"
+        },
+        "authority": {
+          "type": "enum",
+          "values": [
+            "MSIT"
+          ]
+        },
+        "receiptId": {
+          "type": "text"
+        },
+        "acceptedAt": {
+          "type": "time"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "authorityOnly": true
+    },
+    {
+      "requirementId": "KR-33",
+      "checkType": "high_impact_pre_review",
+      "title": "고영향 해당 여부 사전 검토",
+      "metrics": {
+        "reviewedAt": {
+          "type": "time"
+        },
+        "providedAt": {
+          "type": "time"
+        },
+        "reviewedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "providedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "domainsReviewed": {
+          "type": "boolean"
+        },
+        "impactSeverityFrequencyReviewed": {
+          "type": "boolean"
+        },
+        "domainSpecificityReviewed": {
+          "type": "boolean"
+        },
+        "conclusionRecorded": {
+          "type": "boolean"
+        },
+        "confirmationRequested": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0033&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-33",
+      "checkType": "high_impact_confirmation",
+      "title": "선택적 고영향 확인 요청 자료",
+      "metrics": {
+        "authority": {
+          "type": "enum",
+          "values": [
+            "MSIT"
+          ]
+        },
+        "requestId": {
+          "type": "text"
+        },
+        "requestedAt": {
+          "type": "time"
+        },
+        "attachments": {
+          "type": "sections",
+          "values": [
+            "product_overview",
+            "training_data_overview",
+            "process_and_results",
+            "other_supporting_material"
+          ]
+        },
+        "requestAccepted": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": false,
+      "authorityOnly": true
+    },
+    {
+      "requirementId": "KR-34-RISK",
+      "checkType": "high_impact_risk_management",
+      "title": "고영향 위험관리 운영",
+      "metrics": {
+        "riskPolicyRecorded": {
+          "type": "boolean"
+        },
+        "responsibleOrganisationRecorded": {
+          "type": "boolean"
+        },
+        "operatingReviewRecorded": {
+          "type": "boolean"
+        },
+        "mitigationTestPassed": {
+          "type": "boolean"
+        },
+        "residualRiskReviewed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-34-EXPLAIN",
+      "checkType": "explanation_plan",
+      "title": "설명 방안 수립·시행",
+      "metrics": {
+        "finalResultExplanationRecorded": {
+          "type": "boolean"
+        },
+        "principalCriteriaRecorded": {
+          "type": "boolean"
+        },
+        "trainingDataOverviewRecorded": {
+          "type": "boolean"
+        },
+        "technicalFeasibilityReviewed": {
+          "type": "boolean"
+        },
+        "explanationDeliveryTestPassed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-34-PROTECT",
+      "checkType": "user_protection",
+      "title": "이용자 보호 절차 운영",
+      "metrics": {
+        "protectionPolicyRecorded": {
+          "type": "boolean"
+        },
+        "inquiryProcedureRecorded": {
+          "type": "boolean"
+        },
+        "objectionProcedureRecorded": {
+          "type": "boolean"
+        },
+        "damageResponseProcedureRecorded": {
+          "type": "boolean"
+        },
+        "operatingReviewRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-34-OVERSIGHT",
+      "checkType": "oversight_plan",
+      "title": "사람 감독 계획·운영 시험",
+      "metrics": {
+        "sections": {
+          "type": "sections",
+          "values": [
+            "responsibility",
+            "authority",
+            "competence",
+            "intervention",
+            "contact"
+          ]
+        },
+        "interventionExercisePassed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-34-DOCUMENT",
+      "checkType": "document_publication_retention",
+      "title": "조치 근거 보관·게시",
+      "metrics": {
+        "measureDocumentInventoryRecorded": {
+          "type": "boolean"
+        },
+        "retentionYears": {
+          "type": "integer",
+          "min": 0,
+          "max": 100
+        },
+        "accessControlTestPassed": {
+          "type": "boolean"
+        },
+        "restoreTestPassed": {
+          "type": "boolean"
+        },
+        "publishedSections": {
+          "type": "sections",
+          "values": [
+            "risk_management",
+            "explanation",
+            "user_protection",
+            "oversight_name_contact"
+          ]
+        },
+        "excludedSections": {
+          "type": "sections",
+          "values": [
+            "risk_management",
+            "explanation",
+            "user_protection",
+            "oversight_name_contact"
+          ]
+        },
+        "exclusionBasisRecorded": {
+          "type": "boolean"
+        },
+        "publicationTestPassed": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-35-IMPACT",
+      "checkType": "impact_assessment",
+      "title": "기본권 영향평가 내용",
+      "metrics": {
+        "evaluatedAt": {
+          "type": "time"
+        },
+        "providedAt": {
+          "type": "time"
+        },
+        "evaluatedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "providedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "sections": {
+          "type": "sections",
+          "values": [
+            "affected_groups",
+            "fundamental_rights",
+            "social_economic_impact",
+            "usage_patterns",
+            "indicators_and_method",
+            "risk_prevention_mitigation_recovery",
+            "improvement_plan"
+          ]
+        },
+        "vulnerableGroupsConsidered": {
+          "type": "boolean"
+        },
+        "resultsRecorded": {
+          "type": "boolean"
+        },
+        "improvementsRequired": {
+          "type": "boolean"
+        },
+        "improvementPlanRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0028&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "alternativeGroup": "impact_assessment_or_effort"
+    },
+    {
+      "requirementId": "KR-35-IMPACT",
+      "checkType": "impact_effort",
+      "title": "영향평가 노력·미완료 계획",
+      "metrics": {
+        "effortAt": {
+          "type": "time"
+        },
+        "providedAt": {
+          "type": "time"
+        },
+        "effortAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "providedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "effortRecorded": {
+          "type": "boolean"
+        },
+        "incompleteReasonRecorded": {
+          "type": "boolean"
+        },
+        "nextEvaluationPlanRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0035&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "alternativeGroup": "impact_assessment_or_effort",
+      "effortOnly": true
+    },
+    {
+      "requirementId": "KR-35-PUBLIC",
+      "checkType": "public_impact_preference",
+      "title": "공공 선정 시 영향평가 제품 우선 고려",
+      "metrics": {
+        "publicInstitutionConfirmed": {
+          "type": "boolean"
+        },
+        "candidateComparisonRecorded": {
+          "type": "boolean"
+        },
+        "evaluatedProductsConsidered": {
+          "type": "boolean"
+        },
+        "selectionReasonRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0035&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-30-EFFORT",
+      "checkType": "certification_effort",
+      "title": "고영향 사전 검·인증 노력",
+      "metrics": {
+        "effortAt": {
+          "type": "time"
+        },
+        "providedAt": {
+          "type": "time"
+        },
+        "effortAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "providedAtUncertaintyMs": {
+          "type": "clock"
+        },
+        "effortRecorded": {
+          "type": "boolean"
+        },
+        "certificationReceived": {
+          "type": "boolean"
+        },
+        "certificateScopeReviewed": {
+          "type": "boolean"
+        },
+        "incompleteReasonRecorded": {
+          "type": "boolean"
+        },
+        "nextPlanRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "effortOnly": true
+    },
+    {
+      "requirementId": "KR-30-PUBLIC",
+      "checkType": "public_certification_preference",
+      "title": "공공 선정 시 검·인증 제품 우선 고려",
+      "metrics": {
+        "publicInstitutionConfirmed": {
+          "type": "boolean"
+        },
+        "candidateComparisonRecorded": {
+          "type": "boolean"
+        },
+        "certifiedProductsConsidered": {
+          "type": "boolean"
+        },
+        "certificateScopeReviewed": {
+          "type": "boolean"
+        },
+        "selectionReasonRecorded": {
+          "type": "boolean"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true
+    },
+    {
+      "requirementId": "KR-36-REPRESENTATIVE",
+      "checkType": "domestic_representative",
+      "title": "서면 국내대리인 지정·신고 접수",
+      "metrics": {
+        "writtenDesignationRecorded": {
+          "type": "boolean"
+        },
+        "domesticAddressOrOfficeVerified": {
+          "type": "boolean"
+        },
+        "mandate": {
+          "type": "sections",
+          "values": [
+            "safety_submission",
+            "high_impact_confirmation",
+            "obligation_support_document_review"
+          ]
+        },
+        "notificationAccepted": {
+          "type": "boolean"
+        },
+        "authority": {
+          "type": "enum",
+          "values": [
+            "MSIT"
+          ]
+        },
+        "receiptId": {
+          "type": "text"
+        },
+        "acceptedAt": {
+          "type": "time"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0036&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "authorityOnly": true
+    },
+    {
+      "requirementId": "KR-40-ORDER",
+      "checkType": "authority_order_response",
+      "title": "실제 조사·시정 명령 대응",
+      "metrics": {
+        "authority": {
+          "type": "enum",
+          "values": [
+            "MSIT"
+          ]
+        },
+        "orderId": {
+          "type": "text"
+        },
+        "orderReceivedAt": {
+          "type": "time"
+        },
+        "deadline": {
+          "type": "time"
+        },
+        "requestedMeasures": {
+          "type": "sections",
+          "values": [
+            "submit_materials",
+            "investigation_access",
+            "stop",
+            "correct"
+          ]
+        },
+        "requestedMeasuresCovered": {
+          "type": "boolean"
+        },
+        "implementationRecorded": {
+          "type": "boolean"
+        },
+        "responseAccepted": {
+          "type": "boolean"
+        },
+        "receiptId": {
+          "type": "text"
+        },
+        "responseAt": {
+          "type": "time"
+        }
+      },
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0040&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "required": true,
+      "authorityOnly": true
+    }
+  ],
+  "sourceHashes": {
+    "src/kr-governance-evidence.mjs": "dac1bebbbe0c7ede97f5007cc4ec7a1356655b8d4d2feb23e1eeb2f6846f9033",
+    "src/governance-policy.mjs": "ccdbacdb86e24f6c788711536ace0ebb74c83f1ea77a2a4b85196be4bc333073",
+    "src/service.mjs": "99a7b4ac1c06a423b524b8733607a05105375a62aa6f0a921f9938203c6b0b86",
+    "src/model.mjs": "5314ddfb6ad2138a4b3585e36175e16eba622336fa41e629cca4367242920fa0",
+    "src/governance-documents.mjs": "adfbb9e9c94f32dcc3d427b834fc19a0a0a621ceb6d0d91661f18d2249b65d3a"
+  }
+}

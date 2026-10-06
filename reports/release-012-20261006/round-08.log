@@ -1,0 +1,744 @@
+TAP version 13
+# Subtest: assistance profiles are versioned and fixed to local-only model policy
+ok 1 - assistance profiles are versioned and fixed to local-only model policy
+  ---
+  duration_ms: 307.0213
+  type: 'test'
+  ...
+# Subtest: packages minimize adversarial fields, bind real refs and preserve governance semantics
+ok 2 - packages minimize adversarial fields, bind real refs and preserve governance semantics
+  ---
+  duration_ms: 76.4284
+  type: 'test'
+  ...
+# Subtest: run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+ok 3 - run HTTP boundary scopes credentials, serializes tenants and accepts one bounded result
+  ---
+  duration_ms: 325.7026
+  type: 'test'
+  ...
+# Subtest: human advisory reviews are separate, preserved, and drafts become stale on evidence change
+ok 4 - human advisory reviews are separate, preserved, and drafts become stale on evidence change
+  ---
+  duration_ms: 261.0862
+  type: 'test'
+  ...
+# Subtest: expired run credential records timeout and cannot claim
+ok 5 - expired run credential records timeout and cannot claim
+  ---
+  duration_ms: 147.4331
+  type: 'test'
+  ...
+# Subtest: assistance projections must match signed original ledger records
+ok 6 - assistance projections must match signed original ledger records
+  ---
+  duration_ms: 295.7835
+  type: 'test'
+  ...
+# Subtest: finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+ok 7 - finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+  ---
+  duration_ms: 933.4853
+  type: 'test'
+  ...
+# Subtest: actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports
+ok 8 - actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports
+  ---
+  duration_ms: 3026.5719
+  type: 'test'
+  ...
+# Subtest: normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots
+ok 9 - normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots
+  ---
+  duration_ms: 1104.3176
+  type: 'test'
+  ...
+# Subtest: independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest
+ok 10 - independent finance verifier CLI accepts a real HTTP export and rejects changed evidence, wrong key and stale external digest
+  ---
+  duration_ms: 1066.4147
+  type: 'test'
+  ...
+# Subtest: governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+ok 11 - governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart
+  ---
+  duration_ms: 918.2708
+  type: 'test'
+  ...
+# Subtest: reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot
+ok 12 - reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot
+  ---
+  duration_ms: 141.8747
+  type: 'test'
+  ...
+# Subtest: intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment
+ok 13 - intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment
+  ---
+  duration_ms: 141.2317
+  type: 'test'
+  ...
+# Subtest: a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement
+ok 14 - a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement
+  ---
+  duration_ms: 138.4114
+  type: 'test'
+  ...
+# Subtest: assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable
+ok 15 - assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable
+  ---
+  duration_ms: 203.283
+  type: 'test'
+  ...
+# Subtest: new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot
+ok 16 - new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot
+  ---
+  duration_ms: 247.8061
+  type: 'test'
+  ...
+# Subtest: governance document projection tampering is rejected and cannot create a verified assessment
+ok 17 - governance document projection tampering is rejected and cannot create a verified assessment
+  ---
+  duration_ms: 114.0814
+  type: 'test'
+  ...
+# Subtest: HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits
+ok 18 - HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits
+  ---
+  duration_ms: 558.2441
+  type: 'test'
+  ...
+# Subtest: vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention
+ok 19 - vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention
+  ---
+  duration_ms: 313.607
+  type: 'test'
+  ...
+# Subtest: document intake computes the actual binary digest, binds its system, and offers verified original download
+ok 20 - document intake computes the actual binary digest, binds its system, and offers verified original download
+  ---
+  duration_ms: 19.6171
+  type: 'test'
+  ...
+# Subtest: dynamic file cap rejects oversized and empty files before reading or posting; default remains64KiB
+ok 21 - dynamic file cap rejects oversized and empty files before reading or posting; default remains64KiB
+  ---
+  duration_ms: 4.5624
+  type: 'test'
+  ...
+# Subtest: document inventory keeps hostile metadata literal and never claims a metadata row proves retrieval
+ok 22 - document inventory keeps hostile metadata literal and never claims a metadata row proves retrieval
+  ---
+  duration_ms: 1.7551
+  type: 'test'
+  ...
+# Subtest: changed versions, tampered export bytes and retrieval errors cannot produce a successful download
+ok 23 - changed versions, tampered export bytes and retrieval errors cannot produce a successful download
+  ---
+  duration_ms: 4.4645
+  type: 'test'
+  ...
+# Subtest: technical gaps remain visible next to a human sufficient assessment and unknown checks are retained
+ok 24 - technical gaps remain visible next to a human sufficient assessment and unknown checks are retained
+  ---
+  duration_ms: 1.9303
+  type: 'test'
+  ...
+# Subtest: typed reported measurements translate alternatives and failure reasons without claiming independent proof or completed effort
+ok 25 - typed reported measurements translate alternatives and failure reasons without claiming independent proof or completed effort
+  ---
+  duration_ms: 1.9398
+  type: 'test'
+  ...
+# Subtest: supplier reliance shows reviewed bundle, scope and reviewer as literal text without extending its legal coverage
+ok 26 - supplier reliance shows reviewed bundle, scope and reviewer as literal text without extending its legal coverage
+  ---
+  duration_ms: 1.4186
+  type: 'test'
+  ...
+# Subtest: KR-33 optional request status stays visible beside a supported mandatory pre-review
+ok 27 - KR-33 optional request status stays visible beside a supported mandatory pre-review
+  ---
+  duration_ms: 5.874
+  type: 'test'
+  ...
+# Subtest: optional request conflicts retain literal reasons and evidence without executing markup or claiming a reply
+ok 28 - optional request conflicts retain literal reasons and evidence without executing markup or claiming a reply
+  ---
+  duration_ms: 1.3157
+  type: 'test'
+  ...
+# Subtest: additional Korean applicability facts preserve unknown, explicit false, zero and separate domains without inferring a bank role
+ok 29 - additional Korean applicability facts preserve unknown, explicit false, zero and separate domains without inferring a bank role
+  ---
+  duration_ms: 4.6069
+  type: 'test'
+  ...
+# Subtest: all Korean task closure refusals are rendered in the form without closing it or recording success
+ok 30 - all Korean task closure refusals are rendered in the form without closing it or recording success
+  ---
+  duration_ms: 19.7495
+  type: 'test'
+  ...
+# Subtest: OIDC document intake uses the existing CSRF session and permission failures stay visible
+ok 31 - OIDC document intake uses the existing CSRF session and permission failures stay visible
+  ---
+  duration_ms: 2.6588
+  type: 'test'
+  ...
+# Subtest: missing or partial evidence never displays a positive technical confirmation and current Korean roles remain visible
+ok 32 - missing or partial evidence never displays a positive technical confirmation and current Korean roles remain visible
+  ---
+  duration_ms: 1.6493
+  type: 'test'
+  ...
+# Subtest: KR-33 HTTP keeps mandatory review separate from optional request evidence and preserves frozen tenant history
+ok 33 - KR-33 HTTP keeps mandatory review separate from optional request evidence and preserves frozen tenant history
+  ---
+  duration_ms: 1435.2211
+  type: 'test'
+  ...
+# Subtest: the schema covers eighteen requirements and confines supplier review alternatives to article34 measures1 through3
+ok 34 - the schema covers eighteen requirements and confines supplier review alternatives to article34 measures1 through3
+  ---
+  duration_ms: 1.2821
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 35 - notice_pre_delivery: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 3.1144
+  type: 'test'
+  ...
+# Subtest: generated_output_marking: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 36 - generated_output_marking: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3633
+  type: 'test'
+  ...
+# Subtest: realistic_media_disclosure: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 37 - realistic_media_disclosure: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3049
+  type: 'test'
+  ...
+# Subtest: safety_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 38 - safety_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3612
+  type: 'test'
+  ...
+# Subtest: safety_incident_monitoring: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 39 - safety_incident_monitoring: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3106
+  type: 'test'
+  ...
+# Subtest: safety_submission_receipt: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 40 - safety_submission_receipt: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3251
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 41 - high_impact_pre_review: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3696
+  type: 'test'
+  ...
+# Subtest: high_impact_confirmation: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 42 - high_impact_confirmation: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.5288
+  type: 'test'
+  ...
+# Subtest: high_impact_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 43 - high_impact_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.358
+  type: 'test'
+  ...
+# Subtest: explanation_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 44 - explanation_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2304
+  type: 'test'
+  ...
+# Subtest: user_protection: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 45 - user_protection: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1743
+  type: 'test'
+  ...
+# Subtest: oversight_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 46 - oversight_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.7001
+  type: 'test'
+  ...
+# Subtest: document_publication_retention: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 47 - document_publication_retention: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2178
+  type: 'test'
+  ...
+# Subtest: impact_assessment: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 48 - impact_assessment: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2005
+  type: 'test'
+  ...
+# Subtest: impact_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 49 - impact_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1735
+  type: 'test'
+  ...
+# Subtest: public_impact_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 50 - public_impact_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1382
+  type: 'test'
+  ...
+# Subtest: certification_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 51 - certification_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2017
+  type: 'test'
+  ...
+# Subtest: public_certification_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 52 - public_certification_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1624
+  type: 'test'
+  ...
+# Subtest: domestic_representative: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 53 - domestic_representative: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.262
+  type: 'test'
+  ...
+# Subtest: authority_order_response: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 54 - authority_order_response: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2695
+  type: 'test'
+  ...
+# Subtest: strict normalization rejects unknown fields, wrong requirement, malformed hashes and misleading metric types
+ok 55 - strict normalization rejects unknown fields, wrong requirement, malformed hashes and misleading metric types
+  ---
+  duration_ms: 0.5509
+  type: 'test'
+  ...
+# Subtest: normalization rejects invalid calendar dates and duplicate or invented document sections
+ok 56 - normalization rejects invalid calendar dates and duplicate or invented document sections
+  ---
+  duration_ms: 0.4345
+  type: 'test'
+  ...
+# Subtest: self-attestation, external hashes and supplier bundles cannot stand in for typed measured evidence
+ok 57 - self-attestation, external hashes and supplier bundles cannot stand in for typed measured evidence
+  ---
+  duration_ms: 0.6168
+  type: 'test'
+  ...
+# Subtest: the document must have a validated retrieval snapshot and the exact measured content hash
+ok 58 - the document must have a validated retrieval snapshot and the exact measured content hash
+  ---
+  duration_ms: 1.2116
+  type: 'test'
+  ...
+# Subtest: changed purpose, requirement text, model or policy invalidates even a freshly rehashed collector snapshot
+ok 59 - changed purpose, requirement text, model or policy invalidates even a freshly rehashed collector snapshot
+  ---
+  duration_ms: 0.6027
+  type: 'test'
+  ...
+# Subtest: agent claims, unsigned copied snapshots, stale records and failed or inconclusive measurements remain insufficient
+ok 60 - agent claims, unsigned copied snapshots, stale records and failed or inconclusive measurements remain insufficient
+  ---
+  duration_ms: 0.7289
+  type: 'test'
+  ...
+# Subtest: linking a later good check does not silently erase a selected failed check
+ok 61 - linking a later good check does not silently erase a selected failed check
+  ---
+  duration_ms: 0.204
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 62 - notice_pre_delivery: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.8356
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 63 - high_impact_pre_review: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 1.1893
+  type: 'test'
+  ...
+# Subtest: impact_assessment: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 64 - impact_assessment: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.7206
+  type: 'test'
+  ...
+# Subtest: impact_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 65 - impact_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.698
+  type: 'test'
+  ...
+# Subtest: certification_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 66 - certification_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.8443
+  type: 'test'
+  ...
+# Subtest: machine-readable marking additionally requires detection and a generation notice, while human-readable marking requires perceptibility
+ok 67 - machine-readable marking additionally requires detection and a generation notice, while human-readable marking requires perceptibility
+  ---
+  duration_ms: 0.3523
+  type: 'test'
+  ...
+# Subtest: realistic media tests must cover disclosed outputs, user conditions and accessibility; creative mode preserves enjoyment
+ok 68 - realistic media tests must cover disclosed outputs, user conditions and accessibility; creative mode preserves enjoyment
+  ---
+  duration_ms: 0.5107
+  type: 'test'
+  ...
+# Subtest: authority receipts cannot be replaced by telemetry export records or an unaccepted submission
+ok 69 - authority receipts cannot be replaced by telemetry export records or an unaccepted submission
+  ---
+  duration_ms: 0.5788
+  type: 'test'
+  ...
+# Subtest: a completed pre-review stays supported when an optional confirmation request has no receipt
+ok 70 - a completed pre-review stays supported when an optional confirmation request has no receipt
+  ---
+  duration_ms: 0.3841
+  type: 'test'
+  ...
+# Subtest: optional request evidence remains independently insufficient for failed, unauthenticated or mismatched receipts
+ok 71 - optional request evidence remains independently insufficient for failed, unauthenticated or mismatched receipts
+  ---
+  duration_ms: 3.716
+  type: 'test'
+  ...
+# Subtest: confirmation never replaces missing, contradictory, late or stale mandatory pre-review evidence
+ok 72 - confirmation never replaces missing, contradictory, late or stale mandatory pre-review evidence
+  ---
+  duration_ms: 1.6114
+  type: 'test'
+  ...
+# Subtest: document publication covers four items, confines exclusions to recorded grounds and tests five-year policy, access and restore
+ok 73 - document publication covers four items, confines exclusions to recorded grounds and tests five-year policy, access and restore
+  ---
+  duration_ms: 0.8941
+  type: 'test'
+  ...
+# Subtest: impact assessment includes six unconditional areas, conditional improvement plan and vulnerable group characteristics
+ok 74 - impact assessment includes six unconditional areas, conditional improvement plan and vulnerable group characteristics
+  ---
+  duration_ms: 0.4916
+  type: 'test'
+  ...
+# Subtest: documented pre-provision efforts are explicitly supported without claiming completed impact assessment or certification
+ok 75 - documented pre-provision efforts are explicitly supported without claiming completed impact assessment or certification
+  ---
+  duration_ms: 0.4412
+  type: 'test'
+  ...
+# Subtest: public preference needs an actual recorded comparison and rationale rather than assuming all institutions selected a certified product
+ok 76 - public preference needs an actual recorded comparison and rationale rather than assuming all institutions selected a certified product
+  ---
+  duration_ms: 0.5313
+  type: 'test'
+  ...
+# Subtest: oversight needs its explicit plan measurement plus an authority human reviewer for the same model and policy
+ok 77 - oversight needs its explicit plan measurement plus an authority human reviewer for the same model and policy
+  ---
+  duration_ms: 2.2426
+  type: 'test'
+  ...
+# Subtest: domestic representative support requires a written mandate including current document review and a domestic presence
+ok 78 - domestic representative support requires a written mandate including current document review and a domestic presence
+  ---
+  duration_ms: 0.4613
+  type: 'test'
+  ...
+# Subtest: actual order response requires specified measures, implementation, acceptance and the recorded response deadline
+ok 79 - actual order response requires specified measures, implementation, acceptance and the recorded response deadline
+  ---
+  duration_ms: 0.9283
+  type: 'test'
+  ...
+# Subtest: unknown and non-Korean requirements never receive a fabricated technical success
+ok 80 - unknown and non-Korean requirements never receive a fabricated technical success
+  ---
+  duration_ms: 0.1072
+  type: 'test'
+  ...
+# Subtest: every reported completed action or receipt rejects a future measurement despite matching hashes and pass result
+ok 81 - every reported completed action or receipt rejects a future measurement despite matching hashes and pass result
+  ---
+  duration_ms: 1.3797
+  type: 'test'
+  ...
+# Subtest: future provision and deadline are planned boundaries and never prove actual provision or business results
+ok 82 - future provision and deadline are planned boundaries and never prove actual provision or business results
+  ---
+  duration_ms: 0.6518
+  type: 'test'
+  ...
+# Subtest: fixed receipt times and explicit observation clocks are required for completed timestamp claims
+ok 83 - fixed receipt times and explicit observation clocks are required for completed timestamp claims
+  ---
+  duration_ms: 1.6337
+  type: 'test'
+  ...
+# Subtest: reported observation cannot precede its impossible future fixed receipt and overlapping clock bounds stay unresolved
+ok 84 - reported observation cannot precede its impossible future fixed receipt and overlapping clock bounds stay unresolved
+  ---
+  duration_ms: 0.3854
+  type: 'test'
+  ...
+# Subtest: declared completed-time uncertainty cannot conceal a later or overlapping action
+ok 85 - declared completed-time uncertainty cannot conceal a later or overlapping action
+  ---
+  duration_ms: 0.2508
+  type: 'test'
+  ...
+# Subtest: adding a good measurement cannot erase a selected future completion record
+ok 86 - adding a good measurement cannot erase a selected future completion record
+  ---
+  duration_ms: 0.2289
+  type: 'test'
+  ...
+# Subtest: human oversight reviews with missing fixed receipt, unknown clocks or future observed completion stay missing
+ok 87 - human oversight reviews with missing fixed receipt, unknown clocks or future observed completion stay missing
+  ---
+  duration_ms: 1.0101
+  type: 'test'
+  ...
+# Subtest: verification uses the recorded receipt and repeats identically when the current wall clock changes
+ok 88 - verification uses the recorded receipt and repeats identically when the current wall clock changes
+  ---
+  duration_ms: 0.2288
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 89 - notice_pre_delivery: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.8314
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 90 - high_impact_pre_review: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.7387
+  type: 'test'
+  ...
+# Subtest: impact_assessment: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 91 - impact_assessment: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.9121
+  type: 'test'
+  ...
+# Subtest: impact_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 92 - impact_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.6409
+  type: 'test'
+  ...
+# Subtest: certification_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 93 - certification_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.7283
+  type: 'test'
+  ...
+# Subtest: Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+ok 94 - Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+  ---
+  duration_ms: 1143.5945
+  type: 'test'
+  ...
+# Subtest: reviewed supplier performance evidence supports only each scoped article34 measure without issuing a legal verdict
+ok 95 - reviewed supplier performance evidence supports only each scoped article34 measure without issuing a legal verdict
+  ---
+  duration_ms: 4.8146
+  type: 'test'
+  ...
+# Subtest: a bundle or acknowledgement cannot replace scoped supplier-performance review and exact evidence bindings
+ok 96 - a bundle or acknowledgement cannot replace scoped supplier-performance review and exact evidence bindings
+  ---
+  duration_ms: 4.7151
+  type: 'test'
+  ...
+# Subtest: supplier alternatives cannot replace pre-review, oversight, documents or erase a selected failed measurement
+ok 97 - supplier alternatives cannot replace pre-review, oversight, documents or erase a selected failed measurement
+  ---
+  duration_ms: 1.3243
+  type: 'test'
+  ...
+# Subtest: actual supplier HTTP intake binds reviewed scope, survives restart and preserves signed tenant history
+ok 98 - actual supplier HTTP intake binds reviewed scope, survives restart and preserves signed tenant history
+  ---
+  duration_ms: 1708.9559
+  type: 'test'
+  ...
+# Subtest: release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+ok 99 - release launcher starts four real services, authenticates UI API, preserves data and confirms shutdown/restart
+  ---
+  duration_ms: 1718.4546
+  type: 'test'
+  ...
+# Subtest: release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+ok 100 - release demo CLI targets the selected directory and loopback ports; signal shutdown leaves no service children
+  ---
+  duration_ms: 1089.9276
+  type: 'test'
+  ...
+# {"component":"vault","address":"::1","port":41603,"tls":false}
+# node:events:487
+#       throw er; // Unhandled 'error' event
+#       ^
+# Error: listen EADDRINUSE: address already in use ::1:41604
+#     at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+#     at listenInCluster (node:net:2065:12)
+#     at node:net:2274:7
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+# Emitted 'error' event on Server instance at:
+#     at emitErrorNT (node:net:2044:8)
+#     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+#   code: 'EADDRINUSE',
+#   errno: -4091,
+#   syscall: 'listen',
+#   address: '::1',
+#   port: 41604
+# }
+# Node.js v24.15.0
+# Subtest: release startup conflict cleans earlier services and preserves the unrelated listener
+ok 101 - release startup conflict cleans earlier services and preserves the unrelated listener
+  ---
+  duration_ms: 426.6836
+  type: 'test'
+  ...
+# Subtest: release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+ok 102 - release HTTP launcher rejects inherited TLS configuration before creating credentials or listeners
+  ---
+  duration_ms: 83.9558
+  type: 'test'
+  ...
+# Subtest: online WAL snapshot restores both tenants, historic documents, signed report and exact evidence
+ok 103 - online WAL snapshot restores both tenants, historic documents, signed report and exact evidence
+  ---
+  duration_ms: 368.5576
+  type: 'test'
+  ...
+# Subtest: ciphertext tamper, extra members and stale independent anchors fail before publication
+ok 104 - ciphertext tamper, extra members and stale independent anchors fail before publication
+  ---
+  duration_ms: 274.4557
+  type: 'test'
+  ...
+# Subtest: wrong vault key, forged manifest and absent external anchor are rejected
+ok 105 - wrong vault key, forged manifest and absent external anchor are rejected
+  ---
+  duration_ms: 192.089
+  type: 'test'
+  ...
+# Subtest: forged object projections cannot be certified by a new backup
+ok 106 - forged object projections cannot be certified by a new backup
+  ---
+  duration_ms: 147.2104
+  type: 'test'
+  ...
+# Subtest: actions-only tenants cannot be omitted from whole-vault backup verification
+ok 107 - actions-only tenants cannot be omitted from whole-vault backup verification
+  ---
+  duration_ms: 154.7194
+  type: 'test'
+  ...
+# Subtest: a signed legacy archive omitting an actions-only tenant fails restore before publication
+ok 108 - a signed legacy archive omitting an actions-only tenant fails restore before publication
+  ---
+  duration_ms: 136.2654
+  type: 'test'
+  ...
+# Subtest: missing source or archived document fails recovery and never leaves plaintext staging files
+ok 109 - missing source or archived document fails recovery and never leaves plaintext staging files
+  ---
+  duration_ms: 225.1932
+  type: 'test'
+  ...
+# Subtest: SQL tenant relabeling and event index tampering cannot be sealed into a valid backup
+ok 110 - SQL tenant relabeling and event index tampering cannot be sealed into a valid backup
+  ---
+  duration_ms: 312.7507
+  type: 'test'
+  ...
+# Subtest: development event content, deletion, and index tampering fail signed snapshot verification
+    # Subtest: content
+    ok 1 - content
+      ---
+      duration_ms: 259.4356
+      type: 'test'
+      ...
+    # Subtest: delete
+    ok 2 - delete
+      ---
+      duration_ms: 249.0348
+      type: 'test'
+      ...
+    # Subtest: index
+    ok 3 - index
+      ---
+      duration_ms: 248.7468
+      type: 'test'
+      ...
+    1..3
+ok 111 - development event content, deletion, and index tampering fail signed snapshot verification
+  ---
+  duration_ms: 757.9038
+  type: 'test'
+  ...
+# Subtest: mixed-case development IDs use identical ordering for signed and SQL records
+ok 112 - mixed-case development IDs use identical ordering for signed and SQL records
+  ---
+  duration_ms: 225.1843
+  type: 'test'
+  ...
+# Subtest: restoration never overwrites an existing directory or crosses a symlink
+ok 113 - restoration never overwrites an existing directory or crosses a symlink
+  ---
+  duration_ms: 292.1027
+  type: 'test'
+  ...
+# Subtest: deleted event keys stay deleted after snapshot recovery
+ok 114 - deleted event keys stay deleted after snapshot recovery
+  ---
+  duration_ms: 384.7121
+  type: 'test'
+  ...
+# Subtest: actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries
+ok 115 - actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries
+  ---
+  duration_ms: 1025.0242
+  type: 'test'
+  ...
+# Subtest: operator CLI creates an external anchor and restores without copying credentials
+ok 116 - operator CLI creates an external anchor and restores without copying credentials
+  ---
+  duration_ms: 571.4929
+  type: 'test'
+  ...
+1..116
+# tests 119
+# suites 0
+# pass 119
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 24369.1433

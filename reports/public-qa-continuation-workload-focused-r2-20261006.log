@@ -1,0 +1,20 @@
+✔ unequal label selection keeps human originals and excludes exposed families with unchanged symmetric behavior (9.7319ms)
+✔ continuation job binds the actual latest source and separate writable output with unchanged resource isolation (1.1988ms)
+✔ controller requires explicit bounded continuation and rejects conflicting modes (0.2031ms)
+✔ grounding is an explicit training mode with the approved interactive override (0.5884ms)
+✔ transient Windows socket read failure has a bounded retry and preserves fresh result (0.8292ms)
+✔ persistent socket errors stop after three reads and non-socket errors never retry (0.4433ms)
+✔ persistent Windows bind failure may use one fresh alternate read; unrelated errors cannot (0.337ms)
+✔ grounding generation diagnosis cannot train or restore optimizer state (0.8426ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.1833ms)
+✔ balanced selection preserves authentic originals and excludes all previously exposed families (9.5571ms)
+✔ selection rejects altered human labels and cross-split families (0.5238ms)
+✔ real grounding workload resets training state, isolates warmstart and binds new data rather than diagnostic data (129.0803ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 404.4355

@@ -14,7 +14,7 @@ test('runner rejects missing, malformed, and expired credential deadlines before
 });
 
 test('synthetic fixture output is visibly distinct from actual model output',()=>{
- const output=syntheticAssistanceFixture({bundleHash:'a'.repeat(64),evidence:[{ref:'source/event'}]});assert.equal(output.fixture,true);assert.match(output.draft.limitations[0],/Synthetic/);assert.equal(output.providerReportedModel,'qwen3:4b');
+ const output=syntheticAssistanceFixture({bundleHash:'a'.repeat(64),evidence:[{ref:'source/event'}]});assert.equal(output.fixture,true);assert.match(output.draft.limitations[0],/Synthetic/);assert.equal(output.providerReportedModel,'fdtn-ai/Foundation-Sec-1.1-8B-Instruct');
 });
 
 test('runner independently rejects a package whose content no longer matches its bound hash',async()=>{

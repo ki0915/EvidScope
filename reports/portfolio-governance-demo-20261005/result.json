@@ -1,0 +1,846 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-05T10:08:59.220Z",
+  "passed": true,
+  "caseCount": 6,
+  "passedCases": 6,
+  "runtime": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "transport": "in_process_service_boundary_no_http_server",
+  "synthetic": true,
+  "modelCalls": 0,
+  "liveFinancialIntegration": false,
+  "humanReviewPerformed": false,
+  "automaticLegalVerdict": false,
+  "competitiveSuperiorityProven": false,
+  "catalogHash": "4b5ec5f2251b7c284bb0247a890597891a0a80dfe473d1725dd2bc1de6229ae2",
+  "sourceSha256": {
+    "scripts/portfolio-governance-demo.mjs": "49f4d63bb7599fbb645b40ee6c3b2d49053abde6a5f467b8f6792bf07fcabbc0",
+    "data/requirements.json": "2e3a8f447d3803bc93d51f7bb3a768393ed1763e76edbb909ce4dbe7ed4a4b24",
+    "src/service.mjs": "75baefca85425db96d5ed343ef520ba65daf871ecc9a9cfc331d918c91001d41",
+    "src/governance-policy.mjs": "152022b4e4c2e78b81a1f2270f3e3cef6e9e39410e3e5358ab0d0c11008f8d3b",
+    "src/finance-evidence.mjs": "fc58e70f16c25c7f8d016253b3d17392e121bbcb7f869c26880376df9a9cbc9b",
+    "src/governance-documents.mjs": "c2a125a0c24d5d10a00562ce5962bde8357162ea2d920397f636102faf26fc59",
+    "src/model.mjs": "98a0b00a09f4e3637cebe92e48352d7a2ca50eba5b515b330df105a2f69fbe10",
+    "src/worker.mjs": "5f197d84afb53805769ef1829a2da9558318d5964e94412243f1764b6b55d2e2",
+    "src/crypto.mjs": "90de5da5089d4735b74927e856aa41ff9d347b88fab97d3eb4bbfaf69f392eee",
+    "src/store.mjs": "e92a655257ec5d82a5059d52729ba0b4f9bc94e44c7de194b9b370e9be35c0af"
+  },
+  "cases": [
+    {
+      "id": "baseline",
+      "name": "기준: 공급사 문서·감독 계획·수행 기록 연결",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\baseline"
+    },
+    {
+      "id": "model-changed",
+      "name": "현재 모델 v2 변경",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "review_required"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "oversight_review_record_missing",
+          "legalStatus": "review_required"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "review_required"
+        }
+      },
+      "supplierIssues": [
+        "MODEL_VERSION_MISMATCH",
+        "SUPPLIED_MODEL_VERSION_MISMATCH"
+      ],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "model_mismatch_detected",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "mismatched_supplier_sufficient_assessment_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\model-changed"
+    },
+    {
+      "id": "purpose-changed",
+      "name": "현재 공급사 목적이 같아도 최초 공급 목적 불일치",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "review_required"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "review_required"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "review_required"
+        }
+      },
+      "supplierIssues": [
+        "SUPPLIED_PURPOSE_MISMATCH"
+      ],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "current_supplier_purpose_matches",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "original_supplied_purpose_mismatch",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "mismatched_supplier_sufficient_assessment_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\purpose-changed"
+    },
+    {
+      "id": "supplier-document-revised",
+      "name": "공급사 문서 개정: 연결된 위험관리 평가만 재검토",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "review_required",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "review_required"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "review_required",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "human_evidence_assessed"
+          },
+          "actual": {
+            "KR-34-RISK": "review_required",
+            "KR-34-OVERSIGHT": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "supplier_revision_review_task",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\supplier-document-revised"
+    },
+    {
+      "id": "oversight-plan-revised",
+      "name": "감독 계획 개정: 문서·사람 감독 재검토",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "review_required",
+          "technicalStatus": "oversight_plan_missing",
+          "legalStatus": "review_required"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "review_required",
+          "technicalStatus": "document_evidence_unverified",
+          "legalStatus": "review_required"
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "review_required",
+            "KR-34-OVERSIGHT": "review_required"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "review_required",
+            "KR-34-DOCUMENT": "review_required"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "plan_revision_review_task",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\oversight-plan-revised"
+    },
+    {
+      "id": "oversight-record-missing",
+      "name": "별도 누락 분기: 감독 수행 기록 없음",
+      "passed": true,
+      "before": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "evidence_insufficient",
+          "technicalStatus": "oversight_review_record_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "after": {
+        "KR-34-RISK": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-OVERSIGHT": {
+          "status": "evidence_insufficient",
+          "technicalStatus": "oversight_review_record_missing",
+          "legalStatus": "pending"
+        },
+        "KR-34-DOCUMENT": {
+          "status": "human_evidence_assessed",
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        }
+      },
+      "supplierIssues": [],
+      "checks": [
+        {
+          "name": "one_action_claimed",
+          "passed": true,
+          "expected": 1,
+          "actual": 1
+        },
+        {
+          "name": "baseline_rule_findings",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "analysis_backlog",
+          "passed": true,
+          "expected": 0,
+          "actual": 0
+        },
+        {
+          "name": "obligation_states",
+          "passed": true,
+          "expected": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-DOCUMENT": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "evidence_insufficient"
+          },
+          "actual": {
+            "KR-34-RISK": "human_evidence_assessed",
+            "KR-34-OVERSIGHT": "evidence_insufficient",
+            "KR-34-DOCUMENT": "human_evidence_assessed"
+          }
+        },
+        {
+          "name": "legal_review_remains_pending",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "automatic_legal_verdict",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "historical_signed_report_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "missing_oversight_record",
+          "passed": true,
+          "expected": "oversight_review_record_missing",
+          "actual": "oversight_review_record_missing"
+        },
+        {
+          "name": "unsupported_oversight_task_closure_rejected",
+          "passed": true
+        },
+        {
+          "name": "financial_snapshot_signature",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "altered_financial_snapshot_rejected",
+          "passed": true,
+          "expected": false,
+          "actual": false
+        },
+        {
+          "name": "full_integrity",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "chain_with_fixture_pinned_checkpoint",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "earlier_signed_export_rejected_by_current_checkpoint",
+          "passed": true
+        },
+        {
+          "name": "altered_ledger_rejected",
+          "passed": true
+        }
+      ],
+      "evidenceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E\\oversight-record-missing"
+    }
+  ],
+  "artifactDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-8QBn2E",
+  "limitations": [
+    "합성 자격·문서·인간 평가 기록을 사용한 로컬 재현이며 실제 금융·법률 품질을 입증하지 않습니다.",
+    "기존 HMAC 접수·SQLite·worker·거버넌스 경계를 같은 프로세스에서 호출합니다. HTTP/TLS·별도 호스트 경계는 시험하지 않습니다.",
+    "감독 누락 사례는 처음부터 수행 기록을 제출하지 않는 별도 분기입니다. 기존 원본을 삭제하지 않습니다.",
+    "서명키는 시험 시작 시 메모리에서 생성·고정한 합성 신뢰점입니다. 운영 외부 신뢰점·KMS·신뢰 시각 봉인이 아닙니다.",
+    "금융 보고서·원장·공급사 원문은 여러 파일입니다. 독립 신뢰키 전달까지 포함한 단일 완결 증거 패키지가 아닙니다.",
+    "temporaryDatabaseRetained: 합성 실행 폴더는 보존합니다. 개인 설정·기존 데이터·비밀 파일은 사용하지 않습니다."
+  ]
+}

@@ -1,0 +1,57 @@
+✔ finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report (834.0454ms)
+▶ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합
+  ✔ 원문/tenant/source 사칭, 임의 조회와 변조 HMAC 거부 (117.8246ms)
+  ✔ 접수 COMMIT, replay/duplicate/ID conflict, tenant 격리 (41.5778ms)
+  ✔ 자기보고/독립 결과, 자동검토/사람승인, 뒤늦은 권한 재평가 (117.1899ms)
+  ✔ 안전한 룰 DSL·시험·두 사람 승인·예외 만료 (800.4583ms)
+  ✔ 원본 참조 사건 담당·의견·종결 사유·tenant 접근 (17.7992ms)
+  ✔ 빈 증거 통과 금지, 시스템 변경·기한 재검토, 보완과제 쓰기 (33.7347ms)
+  ✔ 독립 신뢰키 검증·내용/누락/순서/키 대체 및 rollback 탐지 (23.0723ms)
+  ✔ 다중 실제 writer·worker 동시성: 중복·체인 분기 없음 (313.682ms)
+  ✔ 강제 종료 이후 성공 접수 보존·조회 사본 재구축 (194.6108ms)
+  ✔ 실제 SQLite 쓰기 잠금 장애: 거짓 성공 없음·해제 뒤 재전송 (5608.0562ms)
+  ✔ 수집 실패가 업무 호출을 대기시키지 않는 유한 SDK (31.3223ms)
+  ✔ 합성 예제 end-to-end 실제 API 시드·규정 요구 27개 (474.0311ms)
+✔ 실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합 (8260.185ms)
+▶ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation
+  ✔ server-owned issuer/subject mapping ignores injected role and tenant claims (106.8866ms)
+  ✔ invalid token claims, signature, authentication strength and response state never create sessions (84.7212ms)
+  ✔ callback replay and swapped browser flow cookies cannot issue sessions (15.9212ms)
+  ✔ cookie mutations require fixed Origin and CSRF; role and tenant checks still apply (61.4156ms)
+  ✔ collector HMAC and worker service credentials remain usable (33.8393ms)
+  ✔ revocation is immediate, disable blocks new login, enable does not revive old sessions (46.225ms)
+  ✔ logout ends only the app session and verifies CSRF (15.0009ms)
+  ✔ restart invalidates sessions; signed access state survives projection tampering and backup recovery (442.4269ms)
+  ✔ audit exports, database files and process logs contain no authentication secrets (15.9366ms)
+  ✔ absolute and idle expiration are enforced on the server; expired login flow is never exchanged (57.8795ms)
+  ✔ untrusted discovery issuer or endpoint origins are rejected before authorization redirect (43.2613ms)
+✔ OIDC provider → audit gateway → vault: authenticated identity, isolation and revocation (1627.5305ms)
+✔ enterprise transport and principal binding fail closed at configuration time (0.4348ms)
+✔ rule create-version cannot re-sign forged history, authorship or test evidence (72.7734ms)
+✔ rule test cannot re-sign forged history, authorship or test evidence (64.5514ms)
+✔ rule approve cannot re-sign forged history, authorship or test evidence (66.4393ms)
+✔ exception approval cannot sign forged scope, expiry or two-person identities (64.3382ms)
+✔ governance task updates preserve signed target and prior evidence (65.9079ms)
+✔ rule: missing projection is rejected without a new signed record (57.6048ms)
+✔ rule: extra projection is rejected without a new signed record (55.7621ms)
+✔ rule: body-id projection is rejected without a new signed record (55.9242ms)
+✔ rule: sql-id projection is rejected without a new signed record (58.7696ms)
+✔ exception: missing projection is rejected without a new signed record (56.6781ms)
+✔ exception: extra projection is rejected without a new signed record (56.2047ms)
+✔ exception: body-id projection is rejected without a new signed record (57.5915ms)
+✔ exception: sql-id projection is rejected without a new signed record (57.041ms)
+✔ governance_task: missing projection is rejected without a new signed record (57.7233ms)
+✔ governance_task: extra projection is rejected without a new signed record (59.7296ms)
+✔ governance_task: body-id projection is rejected without a new signed record (56.724ms)
+✔ governance_task: sql-id projection is rejected without a new signed record (58.2134ms)
+✔ rule tests use signed decrypted events despite tampered, missing and extra event projections (74.4769ms)
+✔ projection checks preserve tenant isolation and do not retire or rewrite previous versions on rejection (73.6991ms)
+✔ large unrelated signed records are fully hashed without blocking policy edits; oversized policy history fails closed (293.8517ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12579.9928

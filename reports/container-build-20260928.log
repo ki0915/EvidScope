@@ -1,0 +1,59 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 681B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 268B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 12.40kB 0.0s done
+#4 DONE 0.0s
+
+#5 [ 1/10] FROM docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#5 resolve docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d 0.0s done
+#5 DONE 0.0s
+
+#6 [ 5/10] COPY --chown=1000:1000 src/ ./src/
+#6 CACHED
+
+#7 [ 6/10] COPY --chown=1000:1000 public/ ./public/
+#7 CACHED
+
+#8 [ 2/10] WORKDIR /app
+#8 CACHED
+
+#9 [ 3/10] COPY package.json package-lock.json ./
+#9 CACHED
+
+#10 [ 4/10] RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+#10 CACHED
+
+#11 [ 7/10] COPY --chown=1000:1000 data/ ./data/
+#11 CACHED
+
+#12 [ 8/10] COPY --chown=1000:1000 roles/ ./roles/
+#12 DONE 0.0s
+
+#13 [ 9/10] COPY --chown=1000:1000 scripts/k8s-load.mjs ./scripts/k8s-load.mjs
+#13 DONE 0.1s
+
+#14 [10/10] COPY --chown=1000:1000 scripts/k8s-distribution.mjs ./scripts/k8s-distribution.mjs
+#14 DONE 0.1s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.3s done
+#15 exporting manifest sha256:fcea0698de764ad4ce80f9794d6c0a655773a697d98f330cb611cab302cdaae4 0.0s done
+#15 exporting config sha256:191ca4492dcd3aeb859f206f30cfb010584d5e4d5ee72368f0e5faedf67527dd 0.0s done
+#15 exporting attestation manifest sha256:f97fcf10b40753683deec2309bc52da4530f5d796c104c591fc3a3df82091d63 0.0s done
+#15 exporting manifest list sha256:d63c1880b212daaa666affe0409ca8754a5cad98194f821040aff6899467a92e
+#15 exporting manifest list sha256:d63c1880b212daaa666affe0409ca8754a5cad98194f821040aff6899467a92e 0.0s done
+#15 naming to docker.io/library/evidscope:enterprise-20260928 done
+#15 unpacking to docker.io/library/evidscope:enterprise-20260928 0.1s done
+#15 DONE 0.5s

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "activationAllowed": false,
+  "models": [
+    {"modelId":"foundation-sec","repository":"fdtn-ai/Foundation-Sec-1.1-8B-Instruct-Q4_K_M-GGUF","revision":"0b58da4736f799f3cb5bbaffb8a39025f1c4e5df","sha256":"5813d725b38f0da1eac34486e44b70b0f728c2e2881c96873def69e76f8421ed","image":null,"licenseReviewed":false,"files":[{"path":"foundation-sec-1.1-8b-instruct-q4_k_m.gguf","sha256":"5813d725b38f0da1eac34486e44b70b0f728c2e2881c96873def69e76f8421ed"}],"licenses":["Llama 3.1 Community License","Apache-2.0 for Cisco modifications"],"verification":"upstream metadata only; no local artifact downloaded or hashed"},
+    {"modelId":"cipherguard","repository":"smartm2m-bdg/CipherGuard-V5.0-XLM-RoBERTa","revision":null,"sha256":null,"image":null,"licenseReviewed":false,"files":[],"licenses":["Apache-2.0"],"verification":"revision and artifact hashes unresolved; activation blocked"}
+  ]
+}

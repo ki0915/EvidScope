@@ -1,0 +1,2121 @@
+{
+  "schemaVersion": 1,
+  "mode": "public_qa_diagnostic",
+  "datasetSha256": "50561634095f758781c4695fcc30e2d7bd7cf7d9b937d8c10174a3e927c837f9",
+  "diagnosticOnly": true,
+  "actualModelExecutionVerified": false,
+  "controllerExecutionVerified": false,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "localHumanReviewPerformed": false,
+  "metricsDefinition": {
+    "exactAnswer": "Any original human answer span, exact Unicode string; impossible requires empty answer and quote and abstained=true.",
+    "normalizedAnswer": "NFC, trim and collapse Unicode whitespace only; no punctuation deletion or lowercasing.",
+    "quoteGrounded": "Exact quote substring of full original context containing the nonempty exact returned answer; impossible requires empty fields.",
+    "passed": "Exact answer AND grounded quote AND correct abstention, with valid schema and no timeout/token limit/inference failure.",
+    "execution": "This scorer checks supplied outputs and metadata only; it does not prove they came from a model."
+  },
+  "baseline": {
+    "count": 64,
+    "formatValid": {
+      "count": 0,
+      "rate": 0
+    },
+    "exactAnswer": {
+      "count": 0,
+      "rate": 0
+    },
+    "normalizedAnswer": {
+      "count": 0,
+      "rate": 0
+    },
+    "quoteGrounded": {
+      "count": 0,
+      "rate": 0
+    },
+    "abstentionCorrect": {
+      "count": 0,
+      "rate": 0
+    },
+    "passed": {
+      "count": 0,
+      "rate": 0
+    },
+    "failures": [
+      {
+        "id": "klue-mrc-v1_dev_00000",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00001",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00002",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00003",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00004",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00005",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00007",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00010",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00011",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00012",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00014",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00016",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00017",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00018",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00019",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00020",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00021",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00022",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00023",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00024",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00025",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00026",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00027",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00029",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00030",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00032",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00033",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00034",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00035",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00036",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00037",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00038",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00039",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00040",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00041",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00042",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00043",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00044",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00046",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00047",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00049",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00050",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00052",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00055",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00057",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00058",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00059",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00060",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00063",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00064",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00065",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00066",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00067",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00068",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00069",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00070",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00073",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00074",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00076",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00078",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00085",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00087",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00089",
+        "reason": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00095",
+        "reason": "output_token_limit"
+      }
+    ]
+  },
+  "candidate": {
+    "count": 64,
+    "formatValid": {
+      "count": 64,
+      "rate": 1
+    },
+    "exactAnswer": {
+      "count": 16,
+      "rate": 0.25
+    },
+    "normalizedAnswer": {
+      "count": 16,
+      "rate": 0.25
+    },
+    "quoteGrounded": {
+      "count": 32,
+      "rate": 0.5
+    },
+    "abstentionCorrect": {
+      "count": 34,
+      "rate": 0.53125
+    },
+    "passed": {
+      "count": 16,
+      "rate": 0.25
+    },
+    "failures": []
+  },
+  "byAnswerability": {
+    "answerable": {
+      "baseline": {
+        "count": 32,
+        "formatValid": {
+          "count": 0,
+          "rate": 0
+        },
+        "exactAnswer": {
+          "count": 0,
+          "rate": 0
+        },
+        "normalizedAnswer": {
+          "count": 0,
+          "rate": 0
+        },
+        "quoteGrounded": {
+          "count": 0,
+          "rate": 0
+        },
+        "abstentionCorrect": {
+          "count": 0,
+          "rate": 0
+        },
+        "passed": {
+          "count": 0,
+          "rate": 0
+        },
+        "failures": [
+          {
+            "id": "klue-mrc-v1_dev_00001",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00002",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00003",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00005",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00014",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00017",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00018",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00020",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00021",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00022",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00023",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00024",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00025",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00027",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00029",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00030",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00033",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00034",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00035",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00036",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00037",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00041",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00043",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00049",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00057",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00060",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00064",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00065",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00066",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00067",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00068",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00069",
+            "reason": "output_token_limit"
+          }
+        ]
+      },
+      "candidate": {
+        "count": 32,
+        "formatValid": {
+          "count": 32,
+          "rate": 1
+        },
+        "exactAnswer": {
+          "count": 12,
+          "rate": 0.375
+        },
+        "normalizedAnswer": {
+          "count": 12,
+          "rate": 0.375
+        },
+        "quoteGrounded": {
+          "count": 28,
+          "rate": 0.875
+        },
+        "abstentionCorrect": {
+          "count": 30,
+          "rate": 0.9375
+        },
+        "passed": {
+          "count": 12,
+          "rate": 0.375
+        },
+        "failures": []
+      }
+    },
+    "unanswerable": {
+      "baseline": {
+        "count": 32,
+        "formatValid": {
+          "count": 0,
+          "rate": 0
+        },
+        "exactAnswer": {
+          "count": 0,
+          "rate": 0
+        },
+        "normalizedAnswer": {
+          "count": 0,
+          "rate": 0
+        },
+        "quoteGrounded": {
+          "count": 0,
+          "rate": 0
+        },
+        "abstentionCorrect": {
+          "count": 0,
+          "rate": 0
+        },
+        "passed": {
+          "count": 0,
+          "rate": 0
+        },
+        "failures": [
+          {
+            "id": "klue-mrc-v1_dev_00000",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00004",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00007",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00010",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00011",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00012",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00016",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00019",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00026",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00032",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00038",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00039",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00040",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00042",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00044",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00046",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00047",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00050",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00052",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00055",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00058",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00059",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00063",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00070",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00073",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00074",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00076",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00078",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00085",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00087",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00089",
+            "reason": "output_token_limit"
+          },
+          {
+            "id": "klue-mrc-v1_dev_00095",
+            "reason": "output_token_limit"
+          }
+        ]
+      },
+      "candidate": {
+        "count": 32,
+        "formatValid": {
+          "count": 32,
+          "rate": 1
+        },
+        "exactAnswer": {
+          "count": 4,
+          "rate": 0.125
+        },
+        "normalizedAnswer": {
+          "count": 4,
+          "rate": 0.125
+        },
+        "quoteGrounded": {
+          "count": 4,
+          "rate": 0.125
+        },
+        "abstentionCorrect": {
+          "count": 4,
+          "rate": 0.125
+        },
+        "passed": {
+          "count": 4,
+          "rate": 0.125
+        },
+        "failures": []
+      }
+    }
+  },
+  "rows": {
+    "baseline": [
+      {
+        "id": "klue-mrc-v1_dev_00000",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00001",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00002",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00003",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00004",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00005",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00007",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00010",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00011",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00012",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00014",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00016",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00017",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00018",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00019",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00020",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00021",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00022",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00023",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00024",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00025",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00026",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00027",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00029",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00030",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00032",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00033",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00034",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00035",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00036",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00037",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00038",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00039",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00040",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00041",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00042",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00043",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00044",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00046",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00047",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00049",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00050",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00052",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00055",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00057",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00058",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00059",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00060",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00063",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00064",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00065",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00066",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00067",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00068",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00069",
+        "isImpossible": false,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00070",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00073",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00074",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00076",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00078",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00085",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00087",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00089",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      },
+      {
+        "id": "klue-mrc-v1_dev_00095",
+        "isImpossible": true,
+        "formatValid": false,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": "output_token_limit"
+      }
+    ],
+    "candidate": [
+      {
+        "id": "klue-mrc-v1_dev_00000",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00001",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00002",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00003",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00004",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00005",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00007",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00010",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00011",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00012",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00014",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00016",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00017",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00018",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00019",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00020",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00021",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00022",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00023",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00024",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00025",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00026",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00027",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00029",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00030",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00032",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00033",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00034",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00035",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00036",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00037",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00038",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00039",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00040",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00041",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00042",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00043",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00044",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00046",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00047",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00049",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00050",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00052",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00055",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00057",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00058",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00059",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00060",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00063",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00064",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00065",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00066",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00067",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00068",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00069",
+        "isImpossible": false,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00070",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00073",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00074",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00076",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00078",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00085",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00087",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": true,
+        "normalizedAnswer": true,
+        "quoteGrounded": true,
+        "abstentionCorrect": true,
+        "passed": true,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00089",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      },
+      {
+        "id": "klue-mrc-v1_dev_00095",
+        "isImpossible": true,
+        "formatValid": true,
+        "exactAnswer": false,
+        "normalizedAnswer": false,
+        "quoteGrounded": false,
+        "abstentionCorrect": false,
+        "passed": false,
+        "failure": null
+      }
+    ]
+  }
+}

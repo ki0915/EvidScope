@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "portfolio-supplier",
+  "systemId": "portfolio-credit",
+  "synthetic": true,
+  "revision": 2,
+  "supplierId": "synthetic-supplier",
+  "modelId": "synthetic-credit-model",
+  "modelVersion": "v1",
+  "purpose": "고객 마케팅 분류",
+  "testScope": "합성 위험관리 문서 대조; 금융·법률 품질 평가 아님",
+  "measures": [
+    "KR-34-RISK"
+  ],
+  "reviewerNotes": "",
+  "receivedBy": "synthetic-reviewer",
+  "createdAt": "2026-10-05T10:08:58.022Z",
+  "retentionUntil": "2031-10-05T10:08:58.022Z",
+  "retentionBasis": "KR decree 27(2); local synthetic retention policy, not elapsed preservation proof",
+  "documents": [
+    {
+      "id": "synthetic-risk",
+      "name": "synthetic-risk.txt",
+      "sha256": "bc411dcfe433b644c2fc7cb697e31052402c41b160e7741064c5fd88f26356a8",
+      "bytes": 39,
+      "contentBase64": "7ZWp7ISxIOqzteq4ieyCrCDsnITtl5jqtIDrpqwg6riw66GdIHYx"
+    }
+  ],
+  "contentHash": "f9109857d91962c72d8814b94cc1bc6fa6374d0ef5dd10ef56ba95e504fc7e95"
+}

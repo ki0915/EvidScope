@@ -1,0 +1,48 @@
+✔ CPU verification can start with no owned public-QA lease (6.7114ms)
+✔ active GPU lease blocks CPU verification and preserves the original receipt (10.3236ms)
+✔ malformed or stale lease stays blocking; age and content do not authorize cleanup (8.6621ms)
+✖ serial runner executes every delivered test file and leaves non-test files out (184.2389ms)
+✖ serial runner propagates a real failed test exit (153.9051ms)
+✔ unsupported test arguments are rejected before any fixture test starts (87.5785ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 4
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 543.4045
+
+✖ failing tests:
+
+test at test\execution-memory-boundary.test.mjs:51:1
+✖ serial runner executes every delivered test file and leaves non-test files out (184.2389ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /# tests 2/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/execution-memory-boundary.test.mjs:58:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /# tests 2/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\execution-memory-boundary.test.mjs:62:1
+✖ serial runner propagates a real failed test exit (153.9051ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/execution-memory-boundary.test.mjs:66:3)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }

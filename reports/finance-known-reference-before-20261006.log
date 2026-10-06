@@ -1,0 +1,32 @@
+✖ actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports (978.9035ms)
+✔ normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots (1218.2498ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2299.0829
+
+✖ failing tests:
+
+test at test\finance-known-reference.test.mjs:14:1
+✖ actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports (978.9035ms)
+  AssertionError [ERR_ASSERTION]: UNKNOWN
+  + actual - expected
+  
+  + 'technical_match_human_review_required'
+  - 'review_required'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/finance-known-reference.test.mjs:20:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'technical_match_human_review_required',
+    expected: 'review_required',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

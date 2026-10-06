@@ -1,0 +1,61 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 681B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 268B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 5.68kB 0.0s done
+#4 DONE 0.0s
+
+#5 [ 1/10] FROM docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#5 resolve docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+#5 resolve docker.io/library/node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d 0.0s done
+#5 DONE 0.0s
+
+#6 [ 2/10] WORKDIR /app
+#6 CACHED
+
+#7 [ 3/10] COPY package.json package-lock.json ./
+#7 CACHED
+
+#8 [ 4/10] RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+#8 CACHED
+
+#9 [ 5/10] COPY --chown=1000:1000 src/ ./src/
+#9 DONE 0.1s
+
+#10 [ 6/10] COPY --chown=1000:1000 public/ ./public/
+#10 DONE 0.1s
+
+#11 [ 7/10] COPY --chown=1000:1000 data/ ./data/
+#11 DONE 0.1s
+
+#12 [ 8/10] COPY --chown=1000:1000 roles/ ./roles/
+#12 DONE 0.1s
+
+#13 [ 9/10] COPY --chown=1000:1000 scripts/k8s-load.mjs ./scripts/k8s-load.mjs
+#13 DONE 0.1s
+
+#14 [10/10] COPY --chown=1000:1000 scripts/k8s-distribution.mjs ./scripts/k8s-distribution.mjs
+#14 DONE 0.1s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.5s done
+#15 exporting manifest sha256:168dce2aef02f778518289aaf318f4a61c6484c7dfd670e16aecd37b563809d8 0.0s done
+#15 exporting config sha256:738072724fb88228b16c6fa2952ad629507ae3c9761c1e0540d4731cf03fd274 0.0s done
+#15 exporting attestation manifest sha256:9746768cdb50d80b5184adafc6ce3b805d8edf7a76e6581b3d0cade58be119ad 0.0s done
+#15 exporting manifest list sha256:59b5dac57d838aa225c3fb80c51224cb00979a45d9bf8159a98b6a7c6f969c38
+#15 exporting manifest list sha256:59b5dac57d838aa225c3fb80c51224cb00979a45d9bf8159a98b6a7c6f969c38 0.0s done
+#15 naming to docker.io/library/evidscope:enterprise-20260929-r1 done
+#15 unpacking to docker.io/library/evidscope:enterprise-20260929-r1
+#15 unpacking to docker.io/library/evidscope:enterprise-20260929-r1 0.2s done
+#15 DONE 0.9s

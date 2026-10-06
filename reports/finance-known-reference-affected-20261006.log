@@ -1,0 +1,749 @@
+TAP version 13
+# Subtest: integrity rejects body evaluation projection tampering without affecting another tenant
+ok 1 - integrity rejects body evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 127.5638
+  type: 'test'
+  ...
+# Subtest: integrity rejects malformed evaluation projection tampering without affecting another tenant
+ok 2 - integrity rejects malformed evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 112.6817
+  type: 'test'
+  ...
+# Subtest: integrity rejects action evaluation projection tampering without affecting another tenant
+ok 3 - integrity rejects action evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 112.1398
+  type: 'test'
+  ...
+# Subtest: integrity rejects version evaluation projection tampering without affecting another tenant
+ok 4 - integrity rejects version evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 113.3115
+  type: 'test'
+  ...
+# Subtest: integrity rejects missing evaluation projection tampering without affecting another tenant
+ok 5 - integrity rejects missing evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 111.0286
+  type: 'test'
+  ...
+# Subtest: integrity rejects extra evaluation projection tampering without affecting another tenant
+ok 6 - integrity rejects extra evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 130.1095
+  type: 'test'
+  ...
+# Subtest: integrity rejects ordering evaluation projection tampering without affecting another tenant
+ok 7 - integrity rejects ordering evaluation projection tampering without affecting another tenant
+  ---
+  duration_ms: 121.2933
+  type: 'test'
+  ...
+# Subtest: overview, action and alert reads reject a forged evaluation instead of rendering it
+ok 8 - overview, action and alert reads reject a forged evaluation instead of rendering it
+  ---
+  duration_ms: 121.0733
+  type: 'test'
+  ...
+# Subtest: valid reads preserve latest-first behavior and the integrity scope remains explicit
+ok 9 - valid reads preserve latest-first behavior and the integrity scope remains explicit
+  ---
+  duration_ms: 121.1735
+  type: 'test'
+  ...
+# Subtest: evaluation verification and response use one writer-excluding snapshot
+ok 10 - evaluation verification and response use one writer-excluding snapshot
+  ---
+  duration_ms: 118.4674
+  type: 'test'
+  ...
+# Subtest: finance view keeps verification and consumption in one writer-excluding snapshot
+ok 11 - finance view keeps verification and consumption in one writer-excluding snapshot
+  ---
+  duration_ms: 133.2
+  type: 'test'
+  ...
+# Subtest: finance export keeps verification and consumption in one writer-excluding snapshot
+ok 12 - finance export keeps verification and consumption in one writer-excluding snapshot
+  ---
+  duration_ms: 126.6841
+  type: 'test'
+  ...
+# Subtest: finance import keeps verification and consumption in one writer-excluding snapshot
+ok 13 - finance import keeps verification and consumption in one writer-excluding snapshot
+  ---
+  duration_ms: 118.9583
+  type: 'test'
+  ...
+# Subtest: finance report keeps verification and consumption in one writer-excluding snapshot
+ok 14 - finance report keeps verification and consumption in one writer-excluding snapshot
+  ---
+  duration_ms: 118.3289
+  type: 'test'
+  ...
+# Subtest: finance saved-report keeps verification and consumption in one writer-excluding snapshot
+ok 15 - finance saved-report keeps verification and consumption in one writer-excluding snapshot
+  ---
+  duration_ms: 117.8376
+  type: 'test'
+  ...
+# Subtest: successful nested savepoints remain subject to complete outer rollback
+ok 16 - successful nested savepoints remain subject to complete outer rollback
+  ---
+  duration_ms: 98.2444
+  type: 'test'
+  ...
+# Subtest: caught inner failure rolls back its ledger, checkpoint and objects while outer work commits
+ok 17 - caught inner failure rolls back its ledger, checkpoint and objects while outer work commits
+  ---
+  duration_ms: 109.4088
+  type: 'test'
+  ...
+# Subtest: one transaction exposes its pending signed head and publishes only the final checkpoint
+ok 18 - one transaction exposes its pending signed head and publishes only the final checkpoint
+  ---
+  duration_ms: 98.9446
+  type: 'test'
+  ...
+# Subtest: an existing transaction started outside Store uses a savepoint and is not committed by the helper
+ok 19 - an existing transaction started outside Store uses a savepoint and is not committed by the helper
+  ---
+  duration_ms: 98.421
+  type: 'test'
+  ...
+# Subtest: a busy BEGIN leaves no pending ledger head that can bypass checkpoint publication
+ok 20 - a busy BEGIN leaves no pending ledger head that can bypass checkpoint publication
+  ---
+  duration_ms: 5623.4148
+  type: 'test'
+  ...
+# Subtest: transaction callbacks must be synchronous and never commit a returned promise
+ok 21 - transaction callbacks must be synchronous and never commit a returned promise
+  ---
+  duration_ms: 136.5641
+  type: 'test'
+  ...
+# Subtest: finance refuses evaluation move SQL tampering before reading or signing a mismatched operation
+ok 22 - finance refuses evaluation move SQL tampering before reading or signing a mismatched operation
+  ---
+  duration_ms: 144.8027
+  type: 'test'
+  ...
+# Subtest: finance refuses evaluation swap SQL tampering before reading or signing a mismatched operation
+ok 23 - finance refuses evaluation swap SQL tampering before reading or signing a mismatched operation
+  ---
+  duration_ms: 128.8869
+  type: 'test'
+  ...
+# Subtest: finance refuses evaluation version SQL tampering before reading or signing a mismatched operation
+ok 24 - finance refuses evaluation version SQL tampering before reading or signing a mismatched operation
+  ---
+  duration_ms: 124.738
+  type: 'test'
+  ...
+# Subtest: finance refuses evaluation ordering SQL tampering before reading or signing a mismatched operation
+ok 25 - finance refuses evaluation ordering SQL tampering before reading or signing a mismatched operation
+  ---
+  duration_ms: 118.7603
+  type: 'test'
+  ...
+# Subtest: finance preserves signed latest evaluation selection and tenant separation for valid history
+ok 26 - finance preserves signed latest evaluation selection and tenant separation for valid history
+  ---
+  duration_ms: 127.3421
+  type: 'test'
+  ...
+# Subtest: verified supplier bytes, role isolation, immutable signed review and changed model invalidation
+ok 27 - verified supplier bytes, role isolation, immutable signed review and changed model invalidation
+  ---
+  duration_ms: 244.1137
+  type: 'test'
+  ...
+# Subtest: same private key representation can restore encrypted document bytes
+ok 28 - same private key representation can restore encrypted document bytes
+  ---
+  duration_ms: 4.1217
+  type: 'test'
+  ...
+# Subtest: unknown or changed supplied model and purpose require review even when current bundle matches
+    # Subtest: SUPPLIED_MODEL_VERSION_UNKNOWN
+    ok 1 - SUPPLIED_MODEL_VERSION_UNKNOWN
+      ---
+      duration_ms: 124.2014
+      type: 'test'
+      ...
+    # Subtest: SUPPLIED_PURPOSE_UNKNOWN
+    ok 2 - SUPPLIED_PURPOSE_UNKNOWN
+      ---
+      duration_ms: 125.0668
+      type: 'test'
+      ...
+    # Subtest: SUPPLIED_MODEL_VERSION_MISMATCH
+    ok 3 - SUPPLIED_MODEL_VERSION_MISMATCH
+      ---
+      duration_ms: 126.1155
+      type: 'test'
+      ...
+    # Subtest: SUPPLIED_PURPOSE_MISMATCH
+    ok 4 - SUPPLIED_PURPOSE_MISMATCH
+      ---
+      duration_ms: 134.293
+      type: 'test'
+      ...
+    1..4
+ok 29 - unknown or changed supplied model and purpose require review even when current bundle matches
+  ---
+  duration_ms: 510.5267
+  type: 'test'
+  ...
+# Subtest: newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history
+ok 30 - newly discovered supplied scope mismatch invalidates current assessment and preserves its signed history
+  ---
+  duration_ms: 218.7189
+  type: 'test'
+  ...
+# Subtest: corrupt or missing document never remains verified; hashes and measure bounds are enforced
+ok 31 - corrupt or missing document never remains verified; hashes and measure bounds are enforced
+  ---
+  duration_ms: 156.1874
+  type: 'test'
+  ...
+# Subtest: bundle replacement invalidates only linked snapshots and cannot move between systems
+ok 32 - bundle replacement invalidates only linked snapshots and cannot move between systems
+  ---
+  duration_ms: 163.779
+  type: 'test'
+  ...
+# Subtest: altered system or supplier projection cannot be legitimized by a new signed report
+ok 33 - altered system or supplier projection cannot be legitimized by a new signed report
+  ---
+  duration_ms: 116.8484
+  type: 'test'
+  ...
+# Subtest: legacy system facts migrate once to unknown without rewriting historical assessments
+ok 34 - legacy system facts migrate once to unknown without rewriting historical assessments
+  ---
+  duration_ms: 124.7399
+  type: 'test'
+  ...
+# Subtest: startup refuses a downgraded and altered system projection without re-signing it
+ok 35 - startup refuses a downgraded and altered system projection without re-signing it
+  ---
+  duration_ms: 109.8108
+  type: 'test'
+  ...
+# Subtest: startup refuses insert system projection drift
+ok 36 - startup refuses insert system projection drift
+  ---
+  duration_ms: 144.0113
+  type: 'test'
+  ...
+# Subtest: startup refuses delete system projection drift
+ok 37 - startup refuses delete system projection drift
+  ---
+  duration_ms: 105.3916
+  type: 'test'
+  ...
+# Subtest: startup refuses sql-id system projection drift
+ok 38 - startup refuses sql-id system projection drift
+  ---
+  duration_ms: 106.346
+  type: 'test'
+  ...
+# Subtest: startup verifies every tenant before leaving any partial migration
+ok 39 - startup verifies every tenant before leaving any partial migration
+  ---
+  duration_ms: 113.2441
+  type: 'test'
+  ...
+# Subtest: catalog change refuses altered catalog projection before signing review tasks
+ok 40 - catalog change refuses altered catalog projection before signing review tasks
+  ---
+  duration_ms: 347.8457
+  type: 'test'
+  ...
+# Subtest: catalog change refuses altered assessment projection before signing review tasks
+ok 41 - catalog change refuses altered assessment projection before signing review tasks
+  ---
+  duration_ms: 108.1342
+  type: 'test'
+  ...
+# Subtest: finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+ok 42 - finance HTTP gateway: bounded verified import, source separation, model change and signed frozen report
+  ---
+  duration_ms: 977.1777
+  type: 'test'
+  ...
+# Subtest: actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports
+ok 43 - actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports
+  ---
+  duration_ms: 3063.2469
+  type: 'test'
+  ...
+# Subtest: normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots
+ok 44 - normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots
+  ---
+  duration_ms: 1348.2301
+  type: 'test'
+  ...
+# Subtest: finance rejects renamed system SQL identities before exporting or signing another target
+ok 45 - finance rejects renamed system SQL identities before exporting or signing another target
+  ---
+  duration_ms: 213.8369
+  type: 'test'
+  ...
+# Subtest: finance rejects swapped system SQL identities before exporting or signing another target
+ok 46 - finance rejects swapped system SQL identities before exporting or signing another target
+  ---
+  duration_ms: 203.7633
+  type: 'test'
+  ...
+# Subtest: finance rejects renamed supplier_bundle SQL identities before exporting or signing another target
+ok 47 - finance rejects renamed supplier_bundle SQL identities before exporting or signing another target
+  ---
+  duration_ms: 195.6587
+  type: 'test'
+  ...
+# Subtest: finance rejects swapped supplier_bundle SQL identities before exporting or signing another target
+ok 48 - finance rejects swapped supplier_bundle SQL identities before exporting or signing another target
+  ---
+  duration_ms: 207.4969
+  type: 'test'
+  ...
+# Subtest: same-tenant object contents cannot be read through a foreign-tenant bundle ID
+ok 49 - same-tenant object contents cannot be read through a foreign-tenant bundle ID
+  ---
+  duration_ms: 169.6342
+  type: 'test'
+  ...
+# Subtest: the schema covers the eighteen Korean governance requirements without importing supplier recognition
+ok 50 - the schema covers the eighteen Korean governance requirements without importing supplier recognition
+  ---
+  duration_ms: 1.1845
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 51 - notice_pre_delivery: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 4.1207
+  type: 'test'
+  ...
+# Subtest: generated_output_marking: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 52 - generated_output_marking: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.4809
+  type: 'test'
+  ...
+# Subtest: realistic_media_disclosure: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 53 - realistic_media_disclosure: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3104
+  type: 'test'
+  ...
+# Subtest: safety_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 54 - safety_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.4166
+  type: 'test'
+  ...
+# Subtest: safety_incident_monitoring: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 55 - safety_incident_monitoring: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2913
+  type: 'test'
+  ...
+# Subtest: safety_submission_receipt: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 56 - safety_submission_receipt: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.355
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 57 - high_impact_pre_review: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3458
+  type: 'test'
+  ...
+# Subtest: high_impact_confirmation: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 58 - high_impact_confirmation: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.5034
+  type: 'test'
+  ...
+# Subtest: high_impact_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 59 - high_impact_risk_management: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3415
+  type: 'test'
+  ...
+# Subtest: explanation_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 60 - explanation_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2352
+  type: 'test'
+  ...
+# Subtest: user_protection: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 61 - user_protection: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1841
+  type: 'test'
+  ...
+# Subtest: oversight_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 62 - oversight_plan: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.3296
+  type: 'test'
+  ...
+# Subtest: document_publication_retention: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 63 - document_publication_retention: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.6768
+  type: 'test'
+  ...
+# Subtest: impact_assessment: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 64 - impact_assessment: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2521
+  type: 'test'
+  ...
+# Subtest: impact_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 65 - impact_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1985
+  type: 'test'
+  ...
+# Subtest: public_impact_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 66 - public_impact_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1424
+  type: 'test'
+  ...
+# Subtest: certification_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 67 - certification_effort: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2198
+  type: 'test'
+  ...
+# Subtest: public_certification_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 68 - public_certification_preference: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1663
+  type: 'test'
+  ...
+# Subtest: domestic_representative: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 69 - domestic_representative: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.1689
+  type: 'test'
+  ...
+# Subtest: authority_order_response: scoped measurement and retrievable document support a human review without issuing a legal verdict
+ok 70 - authority_order_response: scoped measurement and retrievable document support a human review without issuing a legal verdict
+  ---
+  duration_ms: 0.2053
+  type: 'test'
+  ...
+# Subtest: strict normalization rejects unknown fields, wrong requirement, malformed hashes and misleading metric types
+ok 71 - strict normalization rejects unknown fields, wrong requirement, malformed hashes and misleading metric types
+  ---
+  duration_ms: 0.5682
+  type: 'test'
+  ...
+# Subtest: normalization rejects invalid calendar dates and duplicate or invented document sections
+ok 72 - normalization rejects invalid calendar dates and duplicate or invented document sections
+  ---
+  duration_ms: 0.4284
+  type: 'test'
+  ...
+# Subtest: self-attestation, external hashes and supplier bundles cannot stand in for typed measured evidence
+ok 73 - self-attestation, external hashes and supplier bundles cannot stand in for typed measured evidence
+  ---
+  duration_ms: 0.5578
+  type: 'test'
+  ...
+# Subtest: the document must have a validated retrieval snapshot and the exact measured content hash
+ok 74 - the document must have a validated retrieval snapshot and the exact measured content hash
+  ---
+  duration_ms: 1.3858
+  type: 'test'
+  ...
+# Subtest: changed purpose, requirement text, model or policy invalidates even a freshly rehashed collector snapshot
+ok 75 - changed purpose, requirement text, model or policy invalidates even a freshly rehashed collector snapshot
+  ---
+  duration_ms: 0.6389
+  type: 'test'
+  ...
+# Subtest: agent claims, unsigned copied snapshots, stale records and failed or inconclusive measurements remain insufficient
+ok 76 - agent claims, unsigned copied snapshots, stale records and failed or inconclusive measurements remain insufficient
+  ---
+  duration_ms: 0.7851
+  type: 'test'
+  ...
+# Subtest: linking a later good check does not silently erase a selected failed check
+ok 77 - linking a later good check does not silently erase a selected failed check
+  ---
+  duration_ms: 0.2293
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 78 - notice_pre_delivery: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.9557
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 79 - high_impact_pre_review: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 1.0478
+  type: 'test'
+  ...
+# Subtest: impact_assessment: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 80 - impact_assessment: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.6443
+  type: 'test'
+  ...
+# Subtest: impact_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 81 - impact_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.6082
+  type: 'test'
+  ...
+# Subtest: certification_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+ok 82 - certification_effort: unknown clocks, overlapping intervals, equality and actual late action do not prove prior action
+  ---
+  duration_ms: 0.787
+  type: 'test'
+  ...
+# Subtest: machine-readable marking additionally requires detection and a generation notice, while human-readable marking requires perceptibility
+ok 83 - machine-readable marking additionally requires detection and a generation notice, while human-readable marking requires perceptibility
+  ---
+  duration_ms: 0.3596
+  type: 'test'
+  ...
+# Subtest: realistic media tests must cover disclosed outputs, user conditions and accessibility; creative mode preserves enjoyment
+ok 84 - realistic media tests must cover disclosed outputs, user conditions and accessibility; creative mode preserves enjoyment
+  ---
+  duration_ms: 0.5064
+  type: 'test'
+  ...
+# Subtest: authority receipts cannot be replaced by telemetry export records or an unaccepted submission
+ok 85 - authority receipts cannot be replaced by telemetry export records or an unaccepted submission
+  ---
+  duration_ms: 0.563
+  type: 'test'
+  ...
+# Subtest: confirmation is optional, but a claimed request needs its separate authority receipt and required attachments
+ok 86 - confirmation is optional, but a claimed request needs its separate authority receipt and required attachments
+  ---
+  duration_ms: 0.5324
+  type: 'test'
+  ...
+# Subtest: document publication covers four items, confines exclusions to recorded grounds and tests five-year policy, access and restore
+ok 87 - document publication covers four items, confines exclusions to recorded grounds and tests five-year policy, access and restore
+  ---
+  duration_ms: 1.048
+  type: 'test'
+  ...
+# Subtest: impact assessment includes six unconditional areas, conditional improvement plan and vulnerable group characteristics
+ok 88 - impact assessment includes six unconditional areas, conditional improvement plan and vulnerable group characteristics
+  ---
+  duration_ms: 0.5349
+  type: 'test'
+  ...
+# Subtest: documented pre-provision efforts are explicitly supported without claiming completed impact assessment or certification
+ok 89 - documented pre-provision efforts are explicitly supported without claiming completed impact assessment or certification
+  ---
+  duration_ms: 0.474
+  type: 'test'
+  ...
+# Subtest: public preference needs an actual recorded comparison and rationale rather than assuming all institutions selected a certified product
+ok 90 - public preference needs an actual recorded comparison and rationale rather than assuming all institutions selected a certified product
+  ---
+  duration_ms: 0.681
+  type: 'test'
+  ...
+# Subtest: oversight needs its explicit plan measurement plus an authority human reviewer for the same model and policy
+ok 91 - oversight needs its explicit plan measurement plus an authority human reviewer for the same model and policy
+  ---
+  duration_ms: 2.7339
+  type: 'test'
+  ...
+# Subtest: domestic representative support requires a written mandate including current document review and a domestic presence
+ok 92 - domestic representative support requires a written mandate including current document review and a domestic presence
+  ---
+  duration_ms: 0.6757
+  type: 'test'
+  ...
+# Subtest: actual order response requires specified measures, implementation, acceptance and the recorded response deadline
+ok 93 - actual order response requires specified measures, implementation, acceptance and the recorded response deadline
+  ---
+  duration_ms: 1.0028
+  type: 'test'
+  ...
+# Subtest: unknown and non-Korean requirements never receive a fabricated technical success
+ok 94 - unknown and non-Korean requirements never receive a fabricated technical success
+  ---
+  duration_ms: 0.1091
+  type: 'test'
+  ...
+# Subtest: every reported completed action or receipt rejects a future measurement despite matching hashes and pass result
+ok 95 - every reported completed action or receipt rejects a future measurement despite matching hashes and pass result
+  ---
+  duration_ms: 1.3402
+  type: 'test'
+  ...
+# Subtest: future provision and deadline are planned boundaries and never prove actual provision or business results
+ok 96 - future provision and deadline are planned boundaries and never prove actual provision or business results
+  ---
+  duration_ms: 0.8178
+  type: 'test'
+  ...
+# Subtest: fixed receipt times and explicit observation clocks are required for completed timestamp claims
+ok 97 - fixed receipt times and explicit observation clocks are required for completed timestamp claims
+  ---
+  duration_ms: 2.0859
+  type: 'test'
+  ...
+# Subtest: reported observation cannot precede its impossible future fixed receipt and overlapping clock bounds stay unresolved
+ok 98 - reported observation cannot precede its impossible future fixed receipt and overlapping clock bounds stay unresolved
+  ---
+  duration_ms: 0.514
+  type: 'test'
+  ...
+# Subtest: declared completed-time uncertainty cannot conceal a later or overlapping action
+ok 99 - declared completed-time uncertainty cannot conceal a later or overlapping action
+  ---
+  duration_ms: 0.3091
+  type: 'test'
+  ...
+# Subtest: adding a good measurement cannot erase a selected future completion record
+ok 100 - adding a good measurement cannot erase a selected future completion record
+  ---
+  duration_ms: 0.2369
+  type: 'test'
+  ...
+# Subtest: human oversight reviews with missing fixed receipt, unknown clocks or future observed completion stay missing
+ok 101 - human oversight reviews with missing fixed receipt, unknown clocks or future observed completion stay missing
+  ---
+  duration_ms: 0.9569
+  type: 'test'
+  ...
+# Subtest: verification uses the recorded receipt and repeats identically when the current wall clock changes
+ok 102 - verification uses the recorded receipt and repeats identically when the current wall clock changes
+  ---
+  duration_ms: 0.2682
+  type: 'test'
+  ...
+# Subtest: notice_pre_delivery: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 103 - notice_pre_delivery: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.9462
+  type: 'test'
+  ...
+# Subtest: high_impact_pre_review: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 104 - high_impact_pre_review: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.8713
+  type: 'test'
+  ...
+# Subtest: impact_assessment: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 105 - impact_assessment: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 1.4561
+  type: 'test'
+  ...
+# Subtest: impact_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 106 - impact_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 1.3287
+  type: 'test'
+  ...
+# Subtest: certification_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+ok 107 - certification_effort: a matching current system hash cannot hide a changed or unknown registered provision boundary
+  ---
+  duration_ms: 0.7642
+  type: 'test'
+  ...
+# Subtest: Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+ok 108 - Korean governance across independent ingress, vault and audit processes preserves measured scope and frozen evidence
+  ---
+  duration_ms: 1244.39
+  type: 'test'
+  ...
+# Subtest: all eighteen Korean requirements keep an unfetched attestation insufficient and block closure
+ok 109 - all eighteen Korean requirements keep an unfetched attestation insufficient and block closure
+  ---
+  duration_ms: 638.9212
+  type: 'test'
+  ...
+# Subtest: HMAC source ingestion, retained file and fixed versions support a measured notice review
+ok 110 - HMAC source ingestion, retained file and fixed versions support a measured notice review
+  ---
+  duration_ms: 181.5236
+  type: 'test'
+  ...
+# Subtest: notice after provision cannot clear a review task
+ok 111 - notice after provision cannot clear a review task
+  ---
+  duration_ms: 148.896
+  type: 'test'
+  ...
+# Subtest: notice unknown clock cannot clear a review task
+ok 112 - notice unknown clock cannot clear a review task
+  ---
+  duration_ms: 148.9926
+  type: 'test'
+  ...
+# Subtest: notice wrong model cannot clear a review task
+ok 113 - notice wrong model cannot clear a review task
+  ---
+  duration_ms: 149.9521
+  type: 'test'
+  ...
+# Subtest: notice failed test cannot clear a review task
+ok 114 - notice failed test cannot clear a review task
+  ---
+  duration_ms: 145.7042
+  type: 'test'
+  ...
+# Subtest: an AI self-report cannot issue a governance check, nor can a caller inject a frozen snapshot
+ok 115 - an AI self-report cannot issue a governance check, nor can a caller inject a frozen snapshot
+  ---
+  duration_ms: 139.691
+  type: 'test'
+  ...
+# Subtest: current report and closure both reject changed purpose, expired review, pending legal review and changed law
+ok 116 - current report and closure both reject changed purpose, expired review, pending legal review and changed law
+  ---
+  duration_ms: 286.6968
+  type: 'test'
+  ...
+# Subtest: human non-applicability is recorded separately and needs a recoverable basis before closure
+ok 117 - human non-applicability is recorded separately and needs a recoverable basis before closure
+  ---
+  duration_ms: 285.9724
+  type: 'test'
+  ...
+# Subtest: the existing vault document alone cannot imply publication or a qualified human oversight plan
+ok 118 - the existing vault document alone cannot imply publication or a qualified human oversight plan
+  ---
+  duration_ms: 216.4601
+  type: 'test'
+  ...
+# Subtest: a different government order cannot close a prior order task; a fresh matching response can
+ok 119 - a different government order cannot close a prior order task; a fresh matching response can
+  ---
+  duration_ms: 208.2811
+  type: 'test'
+  ...
+1..119
+# tests 123
+# suites 0
+# pass 123
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 22644.9319

@@ -5,10 +5,14 @@ import {submit} from '../src/client.mjs';
 import {verifyBundle} from '../src/crypto.mjs';
 import {verifyCaseReport} from '../src/report-verifier.mjs';
 const started=new Date().toISOString(),h=await harness(),phases=[],samples=[];
+const environment={node:process.version,platform:process.platform,arch:process.arch,cpu:cpus()[0]?.model,logicalCpus:cpus().length,hostMemoryBytes:totalmem(),storage:'local SQLite WAL FULL',apiWriters:1,workers:2,sourceCount:3,userRules:1,queryIntervalMs:500,kubernetes:false};
+const limitations=['Local synthetic pilot measurement, not HA or large-scale certification','OS page cache/disk power-loss protection not tested','Kubernetes/HPA, node memory pressure, remote storage/network and paid provider integration not tested'];
+const reportPath='reports/benchmark-'+started.replaceAll(/[:.]/g,'-')+'.json';
+function persist(report){mkdirSync('reports',{recursive:true});writeFileSync(reportPath,JSON.stringify(report,null,2));writeFileSync('reports/benchmark-latest.json',JSON.stringify(report,null,2));}
 const workerToken=h.config.principals.find(p=>p.role==='worker').token;
 const worker=await h.start('worker',{VAULT_URL:h.vault.url,WORKER_TOKEN:workerToken});
 const worker2=await h.start('worker',{VAULT_URL:h.vault.url,WORKER_TOKEN:workerToken});
-let sampleBusy=false,sampleErrors=0,generated=0;const investigationLatencies=[];
+let sampleBusy=false,sampleErrors=0,generated=0,stage='setup';const investigationLatencies=[];
 const timer=setInterval(async()=>{if(sampleBusy)return;sampleBusy=true;try{const m=await h.api('/api/metrics');if(m.status===200)samples.push({at:new Date().toISOString(),...m.body});else sampleErrors++;const begin=performance.now(),query=await h.api('/api/investigations?q=benchmark&limit=25');investigationLatencies.push(performance.now()-begin);if(query.status!==200)sampleErrors++;}catch{sampleErrors++;}finally{sampleBusy=false;}},500);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function phase(name,count,eps,concurrency){
@@ -20,19 +24,25 @@ async function phase(name,count,eps,concurrency){
  phases.push(result);console.log(JSON.stringify(result));
 }
 try{
+ stage='policy_setup';
  await h.api('/api/assets',{role:'reviewer',body:{id:'bench',actor:'bench-agent',tool:'bench-tool',owner:'synthetic',purpose:'benchmark',destinations:[]}});
  await h.api('/api/rules',{role:'reviewer',body:{id:'bench-rule',title:'합성 벤치마크 룰',field:'note',op:'contains',value:'benchmark',severity:'low'}});
  await h.api('/api/rules/bench-rule/test',{role:'reviewer',body:{version:1}});await h.api('/api/rules/bench-rule/approve',{role:'admin',body:{version:1}});
- await phase('normal',200,20,1);await phase('burst',200,0,20);await phase('sustained',600,20,1);
+ stage='normal_load';await phase('normal',200,20,1);stage='burst_load';await phase('burst',200,0,20);stage='sustained_load';await phase('sustained',600,20,1);
+ stage='analysis_drain';
  const deadline=Date.now()+30000;let metrics;do{await sleep(250);metrics=(await h.api('/api/metrics')).body;}while(metrics.backlog&&Date.now()<deadline);
- const bundle=(await h.api('/api/export')).body,integrity=verifyBundle(bundle,h.publicKey);const stored=bundle.records.filter(r=>r.type==='event').length;
- const report={started,finished:new Date().toISOString(),environment:{node:process.version,platform:process.platform,arch:process.arch,cpu:cpus()[0]?.model,logicalCpus:cpus().length,hostMemoryBytes:totalmem(),storage:'local SQLite WAL FULL',apiWriters:1,workers:2,sourceCount:3,userRules:1,queryIntervalMs:500,kubernetes:false},criteriaFile:'docs/validation-plan.md',phases,generated,accepted:phases.reduce((n,p)=>n+p.accepted,0),stored,searchProjection:metrics.events,analyzedEvents:metrics.analyzedEvents,backlog:metrics.backlog,integrity,sampleErrors,peakVaultRssBytes:Math.max(...samples.map(s=>s.vaultRssBytes)),peakBacklog:Math.max(...samples.map(s=>s.backlog)),samples,pass:phases.every(p=>p.pass)&&stored===generated&&metrics.events===generated&&metrics.analyzedEvents===generated&&metrics.backlog===0&&sampleErrors===0,limitations:['Local synthetic pilot measurement, not HA or large-scale certification','OS page cache/disk power-loss protection not tested','Kubernetes/HPA, node memory pressure, remote storage/network and paid provider integration not tested']};
+ stage='signed_export';const exported=await h.api('/api/export');if(exported.status!==200)throw Error(`Benchmark export failed with HTTP ${exported.status}`);const bundle=exported.body,integrity=verifyBundle(bundle,h.publicKey);const stored=bundle.records.filter(r=>r.type==='event').length;
+ const report={started,finished:new Date().toISOString(),environment,criteriaFile:'docs/validation-plan.md',phases,generated,accepted:phases.reduce((n,p)=>n+p.accepted,0),stored,searchProjection:metrics.events,analyzedEvents:metrics.analyzedEvents,backlog:metrics.backlog,integrity,sampleErrors,peakVaultRssBytes:Math.max(...samples.map(s=>s.vaultRssBytes)),peakBacklog:Math.max(...samples.map(s=>s.backlog)),samples,pass:phases.every(p=>p.pass)&&stored===generated&&metrics.events===generated&&metrics.analyzedEvents===generated&&metrics.backlog===0&&sampleErrors===0,limitations};
  clearInterval(timer);while(sampleBusy)await sleep(10);
- const investigation=(await h.api('/api/investigations?limit=25')).body;
+ stage='workbench';const investigation=(await h.api('/api/investigations?limit=25')).body;
  const caseResult=await h.api('/api/cases',{body:{title:'합성 1000건 중 단일 행동 보고서 성능',actionId:'benchmark-normal-0',owner:'benchmark-auditor'}});if(caseResult.status!==200)throw Error('Benchmark case creation failed');
  const reportLatencies=[];for(let i=0;i<5;i++){const begin=performance.now(),exported=await h.api(`/api/cases/${caseResult.body.id}/report`);reportLatencies.push(performance.now()-begin);if(exported.status!==200)throw Error('Benchmark report export failed');verifyCaseReport(exported.body,h.publicKey);}
  const p95=values=>+[...values].sort((a,b)=>a-b)[Math.max(0,Math.ceil(values.length*.95)-1)].toFixed(2);
  report.workbench={query:'/api/investigations?q=benchmark&limit=25',querySamples:investigationLatencies.length,queryP95Ms:p95(investigationLatencies),matchedActions:investigation.total,reportSamples:reportLatencies.length,reportP95Ms:p95(reportLatencies),reportScope:'one action among 1000 events, complete tenant ledger validation',pass:sampleErrors===0&&investigation.total===generated&&p95(investigationLatencies)<1000&&p95(reportLatencies)<2000};
  report.pass=report.pass&&report.workbench.pass;report.finished=new Date().toISOString();
- mkdirSync('reports',{recursive:true});const file='reports/benchmark-'+started.replaceAll(/[:.]/g,'-')+'.json';writeFileSync(file,JSON.stringify(report,null,2));writeFileSync('reports/benchmark-latest.json',JSON.stringify(report,null,2));console.log(JSON.stringify({report:file,pass:report.pass,generated,stored,analyzedEvents:metrics.analyzedEvents,backlog:metrics.backlog,workbench:report.workbench,peakVaultRssBytes:report.peakVaultRssBytes}));if(!report.pass)process.exitCode=1;
+ persist(report);console.log(JSON.stringify({report:reportPath,pass:report.pass,generated,stored,analyzedEvents:metrics.analyzedEvents,backlog:metrics.backlog,workbench:report.workbench,peakVaultRssBytes:report.peakVaultRssBytes}));if(!report.pass)process.exitCode=1;
+}catch(error){
+ clearInterval(timer);while(sampleBusy)await sleep(10);
+ const report={started,finished:new Date().toISOString(),environment,criteriaFile:'docs/validation-plan.md',phases,generated,accepted:phases.reduce((n,p)=>n+p.accepted,0),sampleErrors,samples,stage,pass:false,failure:{name:error?.name||'Error',message:String(error?.message||error).slice(0,500)},limitations};
+ persist(report);console.error(JSON.stringify({report:reportPath,pass:false,stage,failure:report.failure}));process.exitCode=1;
 }finally{clearInterval(timer);while(sampleBusy)await sleep(10);await h.close();}

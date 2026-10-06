@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.1",
+  "verifiedAt": "2026-10-06T04:58:35.573Z",
+  "releaseScope": "controlled_local_pilot",
+  "recordedVerificationPassed": true,
+  "tenRounds": 10,
+  "checksPerRound": 39,
+  "totalRepeatedChecks": 390,
+  "windows": {
+    "tests": 758,
+    "pass": 758,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "linux": {
+    "tests": 39,
+    "pass": 39,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "sourceFilesMatched": 103,
+  "imageFilesMatched": 95,
+  "imageId": "sha256:39e349ea5c4ce6cfd40c8cc25469a9c291920ec1d41e5b3c3d400c5108c8343f",
+  "imageArchive": {
+    "path": "releases/evidscope-0.1.1-image.tar",
+    "bytes": 81159168,
+    "sha256": "b9595eef771b99cb3c3f9fe4843e8d63532031d0e968396e0032b1151d6746e6",
+    "exportLoadVerified": true
+  },
+  "verificationSha256": "7e335ee725df97610bea82d5d71e7454b8fa4c49455cb0ba7a55eb64e40e5960",
+  "windowsLogSha256": "871d50cba5242b98aa5eeffc3e26ca2265a2e1ea81d0c913ba789947bfb2d7ab",
+  "linuxLogSha256": "e5144487294b49797f93e7076abeef2657e853a9fb223426518e913b9859567d",
+  "externalPublicationPerformed": false,
+  "legalComplianceCertified": false,
+  "newModelQualityApproved": false,
+  "excludedDevelopmentTrainingChecks": 8,
+  "excludedChecksRequiringPrivateLocalRecords": 6,
+  "earlierFailedAttemptsPreserved": true,
+  "limitations": [
+    "Synthetic inputs with real HTTP, files and independent processes; no live financial institution integration.",
+    "Whole container OS vulnerability scan not performed.",
+    "Three private training experiment test files excluded and individually listed in release manifest.",
+    "Earlier intermittent fetch and lease rename failures remain unconfirmed; final Windows run explicitly uses IPv6 loopback."
+  ]
+}

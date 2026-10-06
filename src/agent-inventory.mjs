@@ -1,7 +1,7 @@
 import {digest} from './crypto.mjs';
 import {fail} from './model.mjs';
 
-const gaps=new Set(['UNREGISTERED_ASSET','POLICY_CONTEXT_UNVERIFIED','DELEGATION_UNVERIFIED','AUTHORITY_MISMATCH','AUTHORITY_MISSING','APPROVAL_MISMATCH','HUMAN_APPROVAL_MISSING','COLLECTION_GAP','REFERENCE_METADATA_CONFLICT','CONTRADICTING_RESULT','STOP_UNCONFIRMED','LOG_INJECTION_SIGNAL']);
+const gaps=new Set(['APPROVAL_REQUIREMENT_UNKNOWN','APPROVAL_TIME_UNCERTAIN','AUTHORITY_TIME_UNCERTAIN','CLOCK_ORDER_UNCERTAIN','UNREGISTERED_ASSET','POLICY_CONTEXT_UNVERIFIED','DELEGATION_UNVERIFIED','AUTHORITY_MISMATCH','AUTHORITY_MISSING','APPROVAL_MISMATCH','HUMAN_APPROVAL_MISSING','COLLECTION_GAP','REFERENCE_METADATA_CONFLICT','CONTRADICTING_RESULT','STOP_UNCONFIRMED','LOG_INJECTION_SIGNAL']);
 export function policyState(events,evaluation,version,{ambiguous=false}={}){
  if(ambiguous)return {state:'unconfirmed',reason:'같은 행동에 여러 에이전트 또는 서로 다른 행위자 보고가 있어 귀속을 확정하지 못했습니다'};
  if(!version||version.analyzed<version.version)return {state:'pending',reason:'새 증거 또는 정책 변경에 대한 분석 대기'};
@@ -15,7 +15,8 @@ export function policyState(events,evaluation,version,{ambiguous=false}={}){
  return {state:'compliant',reason:'수집된 실행의 기본 정책 점검에서 위반·근거 누락 신호가 없습니다. 법적 준수 확정은 아닙니다'};
 }
 
-export function agentInventory(store,principals,tenant,params,now=Date.now()){
+export function agentInventory(store,principals,tenant,params,now=Date.now(),verifiedDecisions=[]){
+ if(!Array.isArray(verifiedDecisions))throw Error('verified_case_decisions_required');
  const ranges={'24h':86400000,'7d':604800000,'30d':2592000000,all:null};
  const range=params.get('range')||'all',focus=params.get('focus')||'all',sort=params.get('sort')||'recent';
  if(!Object.hasOwn(ranges,range)||!['all','violation','unconfirmed','stale','inactive'].includes(focus)||!['recent','attention','coverage'].includes(sort))fail(400,'에이전트 조회 조건 오류');
@@ -37,7 +38,7 @@ export function agentInventory(store,principals,tenant,params,now=Date.now()){
  for(const p of principals.filter(p=>p.tenant===tenant&&p.role==='source'&&p.kind==='agent'))if(![...groups.values()].some(g=>g.source===p.id)){const id=identity(p.id,'');groups.set(id,{id,source:p.id,actor:'수신 대기',identityComplete:false,models:new Set(),actionIds:new Set(),lastSeen:null});}
  const versions=new Map(store.db.prepare('SELECT id,version,analyzed FROM actions WHERE tenant=?').all(tenant).map(v=>[v.id,v]));
  const evaluations=read('SELECT CASE WHEN length(CAST(body AS BLOB))<=1048576 THEN body ELSE NULL END body,length(CAST(body AS BLOB)) bytes FROM evaluations WHERE tenant=? ORDER BY id DESC',[tenant]),evals=new Map();for(const e of evaluations){if(!evals.has(e.actionId))evals.set(e.actionId,[]);evals.get(e.actionId).push(e);}
- const decisions=read("SELECT CASE WHEN length(CAST(body AS BLOB))<=1048576 THEN body ELSE NULL END body,length(CAST(body AS BLOB)) bytes FROM objects WHERE tenant=? AND type='case_decision' ORDER BY rowid DESC",[tenant]),latest=new Map();for(const d of decisions)if(!latest.has(d.actionId))latest.set(d.actionId,d);
+ const latest=new Map();for(const d of [...verifiedDecisions].reverse())if(!latest.has(d.actionId))latest.set(d.actionId,d);
  // Select the cohort by first retained agent receipt, then evaluate its complete evidence.
  const firstSeen=new Map([...actions].map(([id,ev])=>[id,(ev.find(e=>e.sourceKind==='agent')||ev[0]).receivedAt]));
  const inWindow=id=>{const at=Date.parse(firstSeen.get(id));return at<=end&&(start===null||at>=start);};
@@ -61,7 +62,7 @@ export function agentInventory(store,principals,tenant,params,now=Date.now()){
  const searched=all.filter(g=>!q||[g.actor,g.source,...g.models].some(v=>v.toLowerCase().includes(q.toLowerCase())));
  const matches=g=>focus==='all'||(focus==='stale'?g.reviews.stale>0:focus==='inactive'?g.actions===0:g.counts[focus]>0);
  const filtered=searched.filter(matches);
- const definition={version:'evidscope-observed-policy-v1',formula:'충족 행동 / (충족 행동 + 위반 신호 행동). 미확인·분석 대기·예외는 제외하며 평가 범위를 함께 표시합니다.',checks:'등록 자산·당시 목적지 정책·독립 실행 권한·사람 승인 근거 및 사용자 정책 룰의 최신 전체 평가',scope:'선택 기간에 첫 에이전트 기록이 수신된 행동의 현재 평가입니다. 기간 밖 연관 근거도 대조합니다. 과거 당시의 판정 또는 법적 준수율이 아닙니다. 파기로 보존 기록이 줄면 집계가 달라질 수 있습니다.',identity:'테넌트 내부의 인증된 수집 출처 + 보고된 actor로 구분합니다. 출처 인증이 actor의 실제 신원을 증명하지 않습니다. 다중 귀속 행동은 각 에이전트에 미확인으로 표시하므로 행별 행동 수의 합은 고유 행동 수와 다를 수 있습니다.'};
+ const definition={version:'evidscope-observed-policy-v1',formula:'충족 행동 / (충족 행동 + 위반 신호 행동). 미확인·분석 대기·예외는 제외하며 평가 범위를 함께 표시합니다.',checks:'등록 자산·당시 목적지 정책·독립 실행 권한·당시 정책에서 요구한 사람 승인 근거 및 사용자 정책 룰의 최신 전체 평가',scope:'선택 기간에 첫 에이전트 기록이 수신된 행동의 현재 평가입니다. 기간 밖 연관 근거도 대조합니다. 과거 당시의 판정 또는 법적 준수율이 아닙니다. 파기로 보존 기록이 줄면 집계가 달라질 수 있습니다.',identity:'테넌트 내부의 인증된 수집 출처 + 보고된 actor로 구분합니다. 출처 인증이 actor의 실제 신원을 증명하지 않습니다. 다중 귀속 행동은 각 에이전트에 미확인으로 표시하므로 행별 행동 수의 합은 고유 행동 수와 다를 수 있습니다.'};
  const window={range,start:start===null?null:new Date(start).toISOString(),end:new Date(end).toISOString(),basis:'first_retained_agent_receipt',evaluation:'latest_with_all_retained_evidence'};
  const common={generatedAt:new Date(now).toISOString(),tenant,window,definition};
  if(selected){const item=all.find(g=>g.id===selected);if(!item)fail(404,'에이전트를 찾을 수 없습니다');

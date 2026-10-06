@@ -1,0 +1,32 @@
+{
+  "syntheticOnly": true,
+  "scope": "pre-patch signed report HTTP retrieval; no legal verdict",
+  "historicalReportsUnchanged": [
+    {
+      "id": "4499fa39-921d-4786-bddc-21e5c9f3db76",
+      "digest": "6a6d054714d9e46f39c4010d7c713d5c496a88e22dbd0f75c6fe7fe7af042f6f",
+      "oldKr33TechnicalStatus": "typed_evidence_insufficient",
+      "oldKr33ResponseShapeUnchanged": true
+    },
+    {
+      "id": "a4739d50-cfb8-47ad-a3f5-138c67a4960c",
+      "digest": "9d725032f714ca3174628451657ba42b04d4e6fd84b875278a4c7c162fdaa05e",
+      "oldKr33TechnicalStatus": "typed_evidence_insufficient",
+      "oldKr33ResponseShapeUnchanged": true
+    },
+    {
+      "id": "e6653a63-ba54-41d2-a007-60566c591e99",
+      "digest": "79ece2d192e74991bc1d822512c071b71b04c7bb10eb29e0369825506b86b527",
+      "oldKr33TechnicalStatus": "typed_evidence_insufficient",
+      "oldKr33ResponseShapeUnchanged": true
+    },
+    {
+      "id": "f424b959-91ce-4cfe-b94a-4b4115639158",
+      "digest": "1dc503f05ef9fcad792541b9746a152489482b295a901f8654fd549c0fb7aae4",
+      "oldKr33TechnicalStatus": "typed_evidence_insufficient",
+      "oldKr33ResponseShapeUnchanged": true
+    }
+  ],
+  "historicalSignedRecordsUnchanged": true,
+  "historicalRecordCount": 8
+}

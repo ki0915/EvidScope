@@ -1,0 +1,2051 @@
+{
+  "id": "a25864f9-b597-4410-90f5-0bfa7e53425d",
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "a25864f9-b597-4410-90f5-0bfa7e53425d",
+    "createdAt": "2026-10-05T10:08:58.435Z",
+    "reviewer": "synthetic-reviewer",
+    "tenant": "portfolio",
+    "system": {
+      "schemaVersion": 3,
+      "id": "portfolio-credit",
+      "name": "합성 대출 심사 보조",
+      "owner": "합성 검토팀",
+      "purpose": "대출 심사 보조",
+      "role": "deployer",
+      "markets": [
+        "KR"
+      ],
+      "domain": "credit",
+      "generative": false,
+      "highImpact": "candidate",
+      "euHighRisk": "unknown",
+      "dataCategories": [],
+      "affectedPeople": "unknown",
+      "modelVersion": "v1",
+      "policyVersion": "synthetic-policy-v1",
+      "internalOnly": "unknown",
+      "publicInstitution": "unknown",
+      "realisticSyntheticMedia": "unknown",
+      "emotionRecognition": "unknown",
+      "biometricCategorisation": "unknown",
+      "publicInterestText": "unknown",
+      "frontierTechnology": "unknown",
+      "broadSignificantRisk": "unknown",
+      "trainingCompute": "unknown",
+      "euRoles": [],
+      "status": "human_applicability_review_required",
+      "updatedAt": "2026-10-05T10:08:58.294Z",
+      "krRoles": [
+        "deployer"
+      ],
+      "supplierId": "synthetic-supplier",
+      "modelId": "synthetic-credit-model",
+      "decisionInfluence": "unknown",
+      "suppliedModelVersion": "v1",
+      "suppliedPurpose": "대출 심사 보조",
+      "substantialModification": false
+    },
+    "bundles": [
+      {
+        "schemaVersion": 1,
+        "id": "portfolio-supplier",
+        "systemId": "portfolio-credit",
+        "synthetic": true,
+        "revision": 2,
+        "supplierId": "synthetic-supplier",
+        "modelId": "synthetic-credit-model",
+        "modelVersion": "v1",
+        "purpose": "대출 심사 보조",
+        "testScope": "합성 위험관리 문서 대조; 금융·법률 품질 평가 아님",
+        "measures": [
+          "KR-34-RISK"
+        ],
+        "reviewerNotes": "",
+        "receivedBy": "synthetic-reviewer",
+        "createdAt": "2026-10-05T10:08:58.402Z",
+        "retentionUntil": "2031-10-05T10:08:58.402Z",
+        "retentionBasis": "KR decree 27(2); local synthetic retention policy, not elapsed preservation proof",
+        "documents": [
+          {
+            "id": "synthetic-risk",
+            "name": "synthetic-risk.txt",
+            "sha256": "2a0a1f42aa162b90558301d4323119e0bfcaaab9a3d390c55db050a408f5509a",
+            "bytes": 39
+          }
+        ],
+        "contentHash": "6aeb493797cac7ba8f28f90b14fcc7744a9e019f3f8adf15af015f9aa643427e",
+        "verification": {
+          "status": "technical_match_human_review_required",
+          "issues": [],
+          "documents": [
+            {
+              "id": "synthetic-risk",
+              "name": "synthetic-risk.txt",
+              "sha256": "2a0a1f42aa162b90558301d4323119e0bfcaaab9a3d390c55db050a408f5509a",
+              "bytes": 39,
+              "status": "hash_verified_and_retrievable"
+            }
+          ],
+          "eligibleMeasureCandidates": [
+            "KR-34-RISK"
+          ],
+          "legalDecision": "human_review_required",
+          "checkedAt": "2026-10-05T10:08:58.439Z"
+        }
+      }
+    ],
+    "operations": [
+      {
+        "actionId": "portfolio-action",
+        "events": [
+          {
+            "action": "score",
+            "actionId": "portfolio-action",
+            "actor": "synthetic-credit-agent",
+            "assurance": "authenticated_service_record",
+            "attemptId": "attempt-1",
+            "clockUncertaintyMs": 0,
+            "destination": "internal",
+            "fingerprint": "1060f370388d8a31153ba306af7385542ae786648a277b910c5b0e00e1e2ee84",
+            "id": "grant",
+            "kind": "grant",
+            "late": false,
+            "modelId": "synthetic-credit-model",
+            "modelVersion": "v1",
+            "occurredAt": "2026-10-05T10:07:48.314Z",
+            "payload": {
+              "minimization": "allowlist_metadata_only",
+              "originalContentStored": false
+            },
+            "policyVersion": "synthetic-policy-v1",
+            "receivedAt": "2026-10-05T10:08:58.317Z",
+            "requestId": "portfolio-request",
+            "resource": "synthetic-application",
+            "scope": {
+              "action": "score",
+              "actor": "synthetic-credit-agent",
+              "destination": "internal",
+              "resource": "synthetic-application",
+              "tool": "credit-api"
+            },
+            "source": "synthetic-authority",
+            "sourceKind": "authority",
+            "systemId": "portfolio-credit",
+            "tenant": "portfolio",
+            "tool": "credit-api",
+            "traceId": "portfolio-trace",
+            "validFrom": "2026-10-05T10:07:38.314Z",
+            "validUntil": "2026-10-05T10:17:58.314Z",
+            "seq": 6,
+            "hash": "5f9b73dd2d5bcbc462ef3fadeabd286de75ccce350adb013da2e4388a786bc8f"
+          },
+          {
+            "action": "score",
+            "actionId": "portfolio-action",
+            "actor": "synthetic-credit-agent",
+            "assurance": "authenticated_service_record",
+            "attemptId": "attempt-1",
+            "clockUncertaintyMs": 0,
+            "destination": "internal",
+            "fingerprint": "65946281c8f1cdf91b378448858a73686c97287e0a6d3fa73e64b55d2596a230",
+            "id": "approval",
+            "kind": "human_approval",
+            "late": false,
+            "modelId": "synthetic-credit-model",
+            "modelVersion": "v1",
+            "occurredAt": "2026-10-05T10:07:49.314Z",
+            "payload": {
+              "minimization": "allowlist_metadata_only",
+              "originalContentStored": false
+            },
+            "policyVersion": "synthetic-policy-v1",
+            "receivedAt": "2026-10-05T10:08:58.321Z",
+            "requestId": "portfolio-request",
+            "resource": "synthetic-application",
+            "reviewer": "synthetic-human",
+            "scope": {
+              "action": "score",
+              "actor": "synthetic-credit-agent",
+              "destination": "internal",
+              "resource": "synthetic-application",
+              "tool": "credit-api"
+            },
+            "source": "synthetic-authority",
+            "sourceKind": "authority",
+            "systemId": "portfolio-credit",
+            "tenant": "portfolio",
+            "tool": "credit-api",
+            "traceId": "portfolio-trace",
+            "validFrom": "2026-10-05T10:07:38.314Z",
+            "validUntil": "2026-10-05T10:17:58.314Z",
+            "seq": 8,
+            "hash": "202869f759552e3763a5febf4972b1839240821ca1d1f5c4adeb152f39d0c5c4"
+          },
+          {
+            "action": "score",
+            "actionId": "portfolio-action",
+            "actor": "synthetic-credit-agent",
+            "assurance": "authenticated_service_record",
+            "attemptId": "attempt-1",
+            "clockUncertaintyMs": 0,
+            "destination": "internal",
+            "fingerprint": "543b19da7398e0fcb787962e6c8163c6184eb7aa24727e180f7fd45d9106b37f",
+            "id": "execution",
+            "kind": "execution",
+            "late": false,
+            "modelId": "synthetic-credit-model",
+            "modelVersion": "v1",
+            "occurredAt": "2026-10-05T10:07:58.314Z",
+            "payload": {
+              "minimization": "allowlist_metadata_only",
+              "originalContentStored": false
+            },
+            "policyVersion": "synthetic-policy-v1",
+            "receivedAt": "2026-10-05T10:08:58.324Z",
+            "requestId": "portfolio-request",
+            "resource": "synthetic-application",
+            "source": "synthetic-tool",
+            "sourceKind": "tool",
+            "systemId": "portfolio-credit",
+            "tenant": "portfolio",
+            "tool": "credit-api",
+            "traceId": "portfolio-trace",
+            "seq": 10,
+            "hash": "e7946f4358eb9487244e462061d70696035de729886e837fd5a276387812449c"
+          },
+          {
+            "action": "score",
+            "actionId": "portfolio-action",
+            "actor": "synthetic-credit-agent",
+            "assurance": "authenticated_service_record",
+            "attemptId": "attempt-1",
+            "clockUncertaintyMs": 0,
+            "destination": "internal",
+            "fingerprint": "268f1afe5bc2b49f584eb9190818b77dcf06074e14c24146f1878236652638a0",
+            "id": "result",
+            "kind": "result",
+            "late": false,
+            "modelId": "synthetic-credit-model",
+            "modelVersion": "v1",
+            "occurredAt": "2026-10-05T10:07:59.314Z",
+            "payload": {
+              "minimization": "allowlist_metadata_only",
+              "originalContentStored": false
+            },
+            "policyVersion": "synthetic-policy-v1",
+            "receivedAt": "2026-10-05T10:08:58.328Z",
+            "requestId": "portfolio-request",
+            "resource": "synthetic-application",
+            "source": "synthetic-tool",
+            "sourceKind": "tool",
+            "status": "success",
+            "systemId": "portfolio-credit",
+            "tenant": "portfolio",
+            "tool": "credit-api",
+            "traceId": "portfolio-trace",
+            "seq": 12,
+            "hash": "77f4ee92d7a6ed80ec6d30f624833a8eba6807e92cf3d607ede783440c55625b"
+          },
+          {
+            "action": "score",
+            "actionId": "portfolio-action",
+            "actor": "synthetic-credit-agent",
+            "assurance": "authenticated_service_record",
+            "attemptId": "attempt-1",
+            "clockUncertaintyMs": 0,
+            "destination": "internal",
+            "fingerprint": "afb89585657fda08eebff53b21014620c8dc7a3880cdd6f64255f660bec7908b",
+            "id": "oversight",
+            "kind": "human_oversight_review",
+            "late": false,
+            "modelId": "synthetic-credit-model",
+            "modelVersion": "v1",
+            "occurredAt": "2026-10-05T10:08:00.314Z",
+            "payload": {
+              "minimization": "allowlist_metadata_only",
+              "originalContentStored": false
+            },
+            "policyVersion": "synthetic-policy-v1",
+            "receivedAt": "2026-10-05T10:08:58.331Z",
+            "requestId": "portfolio-request",
+            "resource": "synthetic-application",
+            "reviewer": "synthetic-human",
+            "source": "synthetic-authority",
+            "sourceKind": "authority",
+            "systemId": "portfolio-credit",
+            "tenant": "portfolio",
+            "tool": "credit-api",
+            "traceId": "portfolio-trace",
+            "seq": 14,
+            "hash": "b232aab997e5cd8bfefb90b3d298068bb4d711ab68f71053e840b20a6728ebc3"
+          }
+        ],
+        "evaluation": {
+          "findings": [],
+          "authority": "matched_at_event_time",
+          "effect": "independently_reported_success",
+          "limitations": [
+            "출처 인증은 내용의 진실성을 보증하지 않습니다",
+            "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+            "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+            "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+          ],
+          "coverage": {
+            "totalFindings": 0,
+            "returnedFindings": 0,
+            "truncated": false
+          },
+          "id": "7d538af8-c80a-4220-82d1-170d284e7729",
+          "actionId": "portfolio-action",
+          "version": 5,
+          "createdAt": "2026-10-05T10:08:58.339Z",
+          "analysisTime": "2026-10-05T10:08:58.335Z",
+          "status": "evaluated",
+          "worker": "synthetic-worker",
+          "snapshotHash": "3db66490f60593b1735482d9022e60c84414e4cc1183763ec813ae3f91ff0f86"
+        },
+        "analysisPending": false,
+        "correlationStatus": "explicit_system_reference",
+        "modelIssues": []
+      }
+    ],
+    "assessments": [
+      {
+        "id": "6866eaab-65e6-4faa-99fd-f983147a9e47",
+        "systemId": "portfolio-credit",
+        "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+        "requirementId": "KR-34-DOCUMENT",
+        "requirementHash": "191a96c28d4b717755fd72e51620ffee3f68046c7045b86ac0fc460cf75ca482",
+        "requirementSnapshot": {
+          "id": "KR-34-DOCUMENT",
+          "jurisdiction": "KR",
+          "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+          "article": "제34조제1항제5호 / 시행령 제27조제1항·제2항",
+          "title": "조치 문서·보관·게시",
+          "requirement": "안전성·신뢰성 조치를 확인하는 문서를 작성하고 근거를 5년 보관한다. 시행령상 위험관리·설명·이용자보호·감독자 정보를 게시한다.",
+          "binding": "조건부 의무",
+          "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+          "evidenceNeeded": [
+            "조치 문서 목록·버전",
+            "5년 보관 정책 및 접근통제",
+            "게시 증거와 영업비밀 제외 근거"
+          ],
+          "limitations": "5년은 이 조치 근거 문서의 규정이며 모든 원문 prompt·이벤트의 일률적 보존기간이 아님. 보관 정책 설정만으로 5년 운영 실적을 입증하지 않음.",
+          "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+          "verifiedAt": "2026-09-08",
+          "effectiveDate": "2026-01-22",
+          "reviewStatus": "draft_requires_human_review"
+        },
+        "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+        "applicabilitySnapshot": {
+          "schemaVersion": 1,
+          "policyVersion": "evidscope-applicability-2026-09-22",
+          "requirementId": "KR-34-DOCUMENT",
+          "requirementHash": "191a96c28d4b717755fd72e51620ffee3f68046c7045b86ac0fc460cf75ca482",
+          "systemId": "portfolio-credit",
+          "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+          "candidate": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          }
+        },
+        "applicabilitySnapshotHash": "a0db99ba82522c56c405210d874a53bd7f80cfe7cc3065b0936239e97ba8a027",
+        "applicability": "applicable",
+        "evidence": [
+          {
+            "type": "document",
+            "ref": "governance-document:portfolio-oversight-plan",
+            "version": "1",
+            "notes": "",
+            "contentHash": "878ebc1821029fc7a62403796f6ac1f4b8ea62d316f3d80a12313565f6c672b9",
+            "documentSnapshotHash": "c273d4213d3248ddb2b315fa0337075ef4b50b2ce2e903bad6c54aad676d2086",
+            "verification": "governance_document_verified_at_assessment"
+          }
+        ],
+        "control": "합성 검토자가 제출한 증거 연결",
+        "owner": "합성 검토팀",
+        "assessment": "sufficient",
+        "legalReview": "pending",
+        "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+        "nextReviewAt": "2099-01-01T00:00:00.000Z",
+        "reviewer": "synthetic-reviewer",
+        "createdAt": "2026-10-05T10:08:58.351Z"
+      },
+      {
+        "id": "72cad9eb-75e7-4ff5-a92c-83804e87d1d8",
+        "systemId": "portfolio-credit",
+        "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+        "requirementId": "KR-34-RISK",
+        "requirementHash": "51a40ef59cbf074497c69417899a642914970b4869913c3092265c9a13e3008f",
+        "requirementSnapshot": {
+          "id": "KR-34-RISK",
+          "jurisdiction": "KR",
+          "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+          "article": "제34조제1항제1호",
+          "title": "고영향 위험관리",
+          "requirement": "고영향 AI의 위험관리방안을 수립하고 운영한다.",
+          "binding": "조건부 의무",
+          "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+          "evidenceNeeded": [
+            "위험관리 정책",
+            "책임조직",
+            "위험·통제 운영 평가"
+          ],
+          "limitations": "법 제34조제3항·시행령 제27조제5항·별표1 인정 요건을 사람이 검토. 최종 세부 고시 미확인.",
+          "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+          "verifiedAt": "2026-09-08",
+          "effectiveDate": "2026-01-22",
+          "reviewStatus": "draft_requires_human_review"
+        },
+        "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+        "applicabilitySnapshot": {
+          "schemaVersion": 1,
+          "policyVersion": "evidscope-applicability-2026-09-22",
+          "requirementId": "KR-34-RISK",
+          "requirementHash": "51a40ef59cbf074497c69417899a642914970b4869913c3092265c9a13e3008f",
+          "systemId": "portfolio-credit",
+          "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+          "candidate": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          }
+        },
+        "applicabilitySnapshotHash": "ffec9a666f965f748b84cf3d6e95ef17b5b8a5ddcb1d0934560c5c92f27dbee1",
+        "applicability": "applicable",
+        "evidence": [
+          {
+            "type": "document",
+            "ref": "supplier-bundle:portfolio-supplier",
+            "version": "unknown",
+            "notes": "",
+            "contentHash": "3524db19d48f1a248b0a962cd2e30cd9919fc17d45a98b2c726cda5ce25b0dee",
+            "verification": "supplier_bundle_verified_at_assessment"
+          }
+        ],
+        "control": "합성 검토자가 제출한 증거 연결",
+        "owner": "합성 검토팀",
+        "assessment": "sufficient",
+        "legalReview": "pending",
+        "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+        "nextReviewAt": "2099-01-01T00:00:00.000Z",
+        "reviewer": "synthetic-reviewer",
+        "createdAt": "2026-10-05T10:08:58.345Z"
+      },
+      {
+        "id": "d2079f52-fdc4-4093-be5c-9977eb5d4749",
+        "systemId": "portfolio-credit",
+        "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+        "requirementId": "KR-34-OVERSIGHT",
+        "requirementHash": "a44998d43d638d99fad2d035e592ee152c644a5ee5403c47be3e31339e099f00",
+        "requirementSnapshot": {
+          "id": "KR-34-OVERSIGHT",
+          "jurisdiction": "KR",
+          "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+          "article": "제34조제1항제4호",
+          "title": "사람의 관리·감독",
+          "requirement": "고영향 AI에 대해 사람이 관리·감독하도록 한다.",
+          "binding": "조건부 의무",
+          "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+          "evidenceNeeded": [
+            "감독 책임자·연락체계",
+            "권한·역량·운영 절차",
+            "실제 인간 검토·개입 기록"
+          ],
+          "limitations": "자동 검토기 허용은 인간 감독이 아님. EvidScope 사건 검토만으로 업무 AI 감독 체계 전체를 입증하지 않음.",
+          "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+          "verifiedAt": "2026-09-08",
+          "effectiveDate": "2026-01-22",
+          "reviewStatus": "draft_requires_human_review"
+        },
+        "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+        "applicabilitySnapshot": {
+          "schemaVersion": 1,
+          "policyVersion": "evidscope-applicability-2026-09-22",
+          "requirementId": "KR-34-OVERSIGHT",
+          "requirementHash": "a44998d43d638d99fad2d035e592ee152c644a5ee5403c47be3e31339e099f00",
+          "systemId": "portfolio-credit",
+          "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+          "candidate": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          }
+        },
+        "applicabilitySnapshotHash": "90ea4ce94fa11edcdf0b39cdf244ee334a7d17edc7d8bc067008f785ac3b79fe",
+        "applicability": "applicable",
+        "evidence": [
+          {
+            "type": "document",
+            "ref": "governance-document:portfolio-oversight-plan",
+            "version": "1",
+            "notes": "",
+            "contentHash": "878ebc1821029fc7a62403796f6ac1f4b8ea62d316f3d80a12313565f6c672b9",
+            "documentSnapshotHash": "c273d4213d3248ddb2b315fa0337075ef4b50b2ce2e903bad6c54aad676d2086",
+            "verification": "governance_document_verified_at_assessment"
+          },
+          {
+            "type": "event",
+            "ref": "synthetic-authority/oversight",
+            "version": "unknown",
+            "notes": "",
+            "contentHash": "3b0e52bd69c504e15a6f5a136dae36217ea762ed94ad4345f3bc651c0adb8de9",
+            "eventSnapshot": {
+              "kind": "human_oversight_review",
+              "sourceKind": "authority",
+              "systemId": "portfolio-credit",
+              "modelId": "synthetic-credit-model",
+              "modelVersion": "v1",
+              "policyVersion": "synthetic-policy-v1",
+              "reviewer": "synthetic-human"
+            },
+            "eventSnapshotHash": "ff9ecdca50a6b1161777373131c6b1d171927896f53b3339ba62c75c27cd86a0",
+            "verification": "linked_verified_minimized_record"
+          }
+        ],
+        "control": "합성 검토자가 제출한 증거 연결",
+        "owner": "합성 검토팀",
+        "assessment": "sufficient",
+        "legalReview": "pending",
+        "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+        "nextReviewAt": "2099-01-01T00:00:00.000Z",
+        "reviewer": "synthetic-reviewer",
+        "createdAt": "2026-10-05T10:08:58.358Z"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "6866eaab-65e6-4faa-99fd-f983147a9e47",
+        "systemId": "portfolio-credit",
+        "requirementId": "KR-34-DOCUMENT",
+        "title": "법률 적용성 검토",
+        "owner": "합성 검토팀",
+        "dueAt": "2099-01-01T00:00:00.000Z",
+        "status": "open"
+      },
+      {
+        "id": "72cad9eb-75e7-4ff5-a92c-83804e87d1d8",
+        "systemId": "portfolio-credit",
+        "requirementId": "KR-34-RISK",
+        "title": "법률 적용성 검토",
+        "owner": "합성 검토팀",
+        "dueAt": "2099-01-01T00:00:00.000Z",
+        "status": "open"
+      },
+      {
+        "id": "d2079f52-fdc4-4093-be5c-9977eb5d4749",
+        "systemId": "portfolio-credit",
+        "requirementId": "KR-34-OVERSIGHT",
+        "title": "법률 적용성 검토",
+        "owner": "합성 검토팀",
+        "dueAt": "2099-01-01T00:00:00.000Z",
+        "status": "open"
+      },
+      {
+        "id": "dbf4ec1a-966e-4dc4-8d50-73693ea78baa",
+        "systemId": "portfolio-credit",
+        "bundleId": "portfolio-supplier",
+        "title": "공급사 증빙 변경: 연결 평가 재검토",
+        "owner": "합성 검토팀",
+        "status": "open",
+        "previousHash": "3524db19d48f1a248b0a962cd2e30cd9919fc17d45a98b2c726cda5ce25b0dee",
+        "currentHash": "6aeb493797cac7ba8f28f90b14fcc7744a9e019f3f8adf15af015f9aa643427e"
+      }
+    ],
+    "operationalStatus": "observed_partial_evidence",
+    "unassignedEvents": 0,
+    "limitations": [
+      "합성 금융 실증용 로컬 문서 보관입니다. 5년 운영 실적이나 상용 문서관리소 연결을 입증하지 않습니다.",
+      "출처 인증과 서명은 보고 내용의 진실성·신뢰된 발생 시각을 보증하지 않습니다.",
+      "공급사 조치의 활용 후보는 제34조제1항제1~3호에 한정하며 인간 감독·문서 보관을 자동 승계하지 않습니다.",
+      "기술적 증거 대조와 법적 적용성·충분성의 인간 판단은 별개입니다."
+    ],
+    "governance": {
+      "system": {
+        "affectedPeople": "unknown",
+        "biometricCategorisation": "unknown",
+        "broadSignificantRisk": "unknown",
+        "dataCategories": [],
+        "decisionInfluence": "unknown",
+        "domain": "credit",
+        "emotionRecognition": "unknown",
+        "euHighRisk": "unknown",
+        "euRoles": [],
+        "frontierTechnology": "unknown",
+        "generative": false,
+        "highImpact": "candidate",
+        "id": "portfolio-credit",
+        "internalOnly": "unknown",
+        "krRoles": [
+          "deployer"
+        ],
+        "markets": [
+          "KR"
+        ],
+        "modelId": "synthetic-credit-model",
+        "modelVersion": "v1",
+        "name": "합성 대출 심사 보조",
+        "owner": "합성 검토팀",
+        "policyVersion": "synthetic-policy-v1",
+        "publicInstitution": "unknown",
+        "publicInterestText": "unknown",
+        "purpose": "대출 심사 보조",
+        "realisticSyntheticMedia": "unknown",
+        "role": "deployer",
+        "schemaVersion": 3,
+        "status": "human_applicability_review_required",
+        "substantialModification": false,
+        "suppliedModelVersion": "v1",
+        "suppliedPurpose": "대출 심사 보조",
+        "supplierId": "synthetic-supplier",
+        "trainingCompute": "unknown",
+        "updatedAt": "2026-10-05T10:08:58.294Z"
+      },
+      "items": [
+        {
+          "requirement": {
+            "id": "KR-31-1",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제31조제1항 / 시행령 제23조",
+            "title": "AI 사용 사전 고지",
+            "requirement": "고영향 또는 생성형 AI 기반 제품·서비스라는 사실을 이용자에게 사전에 알린다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 또는 생성형 AI 제품·서비스 제공 전.",
+            "evidenceNeeded": [
+              "고지 정책 및 버전",
+              "제공 전 고지 전달·렌더링 시험",
+              "대상 이용자 및 예외 검토"
+            ],
+            "limitations": "시행령 제23조제4항의 명백성·내부 업무 등 전부 또는 일부 예외는 근거와 범위를 따로 검토. 통지 이벤트만으로 읽음·이해를 입증하지 않음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [
+              "generative_or_highImpact",
+              "internalOnly"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "2ec8e26f2880e801d0cd9921c06e8c1f152693c2b2a8ec5674a2e118fc993131"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-31-2",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제31조제2항 / 시행령 제23조제2항",
+            "title": "생성형 결과물 표시",
+            "requirement": "생성형 AI 결과물임을 표시한다. 기계 판독 방식을 택하면 안내 문구·음성 등으로 생성 사실을 1회 이상 알린다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 생성형 AI 또는 이를 이용한 제품·서비스 결과물 제공.",
+            "evidenceNeeded": [
+              "출력 표시 정책",
+              "대표 출력 표시·기계판독 시험",
+              "안내 제공 증거"
+            ],
+            "limitations": "사전 고지와 결과물 표시는 별개. 표시 로그는 실제 렌더링·접근성·모든 출력의 표시 여부를 보장하지 않음. 시행령 예외 별도 검토.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "제출된 비생성형 사실에서 생성형 결과 표시 대상이 확인되지 않았습니다. 적용 제외 확정은 아닙니다",
+            "missingFacts": [
+              "internalOnly"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "617ad4abb38f57313664aaafb7670d65f0633ac4c313fc564da542f5e2a005e6"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-31-3",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제31조제3항 / 시행령 제23조제3항",
+            "title": "사실적인 합성물의 명확한 고지",
+            "requirement": "실제와 구별하기 어려운 가상 음향·이미지·영상 등은 AI 생성 사실을 이용자가 명확히 인식하도록 알리거나 표시한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 실제와 구분하기 어려운 가상 결과물을 제공.",
+            "evidenceNeeded": [
+              "결과물 유형·사실성 검토",
+              "고지·표시 접근성 시험",
+              "예술적 표현물 해당성 검토"
+            ],
+            "limitations": "예술·창의적 표현물은 향유를 저해하지 않는 방식 가능. 이용자 조건을 고려. 자동으로 예외 판정하지 않음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "사실적인 합성물 생성 여부와 제공 형태를 검토해야 합니다",
+            "missingFacts": [
+              "realisticSyntheticMedia",
+              "internalOnly"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "f371bdf64b9a284a85e5ff85041a021c3b815d6d2339dc72a097a7808a98f9f6"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-32-RISK",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제32조제1항제1호 / 시행령 제24조",
+            "title": "안전성 위험 식별·평가·완화",
+            "requirement": "대상 시스템의 수명주기 전반 위험을 식별·평가하고 완화한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+            "evidenceNeeded": [
+              "연산량 및 대상성 검토",
+              "위험등록부",
+              "완화 시험과 잔여위험 평가"
+            ],
+            "limitations": "모든 AI에 적용하지 않음. 연산량·기술·위험 사실과 최종 고시 확인 필요. 외부 안전성 시험·문서·전문가 검토를 로그로 대체할 수 없음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [
+              "trainingCompute",
+              "frontierTechnology",
+              "broadSignificantRisk"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "93e17cb9b7ef68402e010f3463cd303b2a6b96a7e861dbefc4d3b4b826120188"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-32-MONITOR",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제32조제1항제2호 / 시행령 제24조",
+            "title": "안전사고 모니터링·대응 체계",
+            "requirement": "AI 관련 안전사고를 모니터링하고 대응하는 위험관리체계를 구축한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+            "evidenceNeeded": [
+              "안전사고 모니터링 범위",
+              "대응 절차·담당자",
+              "대응 훈련 및 사건 기록"
+            ],
+            "limitations": "모든 AI에 적용하지 않음. 연산량·기술·위험 사실과 최종 고시 확인 필요. 외부 안전성 시험·문서·전문가 검토를 로그로 대체할 수 없음. 외부 중단 등록은 실제 중단 확인과 구분.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [
+              "trainingCompute",
+              "frontierTechnology",
+              "broadSignificantRisk"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "c96726a3a0a1d41e8b6476a9be0ec83ae12fe4ae5f9ac78467826216859882df"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-32-SUBMIT",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제32조제2항·제3항",
+            "title": "안전성 이행 결과 제출",
+            "requirement": "제32조제1항 이행 결과를 과학기술정보통신부장관에게 제출한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+            "evidenceNeeded": [
+              "이행 결과 자료",
+              "법무·책임자 검토",
+              "외부 제출 접수 증명"
+            ],
+            "limitations": "제출 방식·시기 최종 고시 원문 미확인. 제출 준비를 지원하며 기관 자동 제출은 지원하지 않음. 내보내기를 제출 완료로 표시하지 않음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [
+              "trainingCompute",
+              "frontierTechnology",
+              "broadSignificantRisk"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "899e0b254c4d2fd88a96295fde976bae5a08a5170cfa967fadde0e0c726975ee"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-33",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제33조제1항 / 시행령 제25조",
+            "title": "고영향 해당 여부 사전 검토",
+            "requirement": "AI 또는 AI 제품·서비스를 제공하기 전에 고영향 여부를 검토한다. 필요한 경우 장관에게 확인을 요청할 수 있다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. AI 또는 AI 제품·서비스 제공.",
+            "evidenceNeeded": [
+              "시스템 목적·활용분야·영향 사실",
+              "법 제2조제4호 대조와 판단 근거",
+              "사전 검토 및 선택적 외부 확인 기록"
+            ],
+            "limitations": "사전 검토 의무와 확인 요청 선택권을 구분. 한국 고영향과 EU 고위험을 동일시하지 않음. 자료 부족은 미확인.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0033&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "62d72c0a05c6adde52b4bbb9ccc7e76b27002305b7dc6ae5d7ea6171c51fcb91"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-34-RISK",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제34조제1항제1호",
+            "title": "고영향 위험관리",
+            "requirement": "고영향 AI의 위험관리방안을 수립하고 운영한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "위험관리 정책",
+              "책임조직",
+              "위험·통제 운영 평가"
+            ],
+            "limitations": "법 제34조제3항·시행령 제27조제5항·별표1 인정 요건을 사람이 검토. 최종 세부 고시 미확인.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "review_required",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "ffec9a666f965f748b84cf3d6e95ef17b5b8a5ddcb1d0934560c5c92f27dbee1",
+            "currentSnapshotHash": "ffec9a666f965f748b84cf3d6e95ef17b5b8a5ddcb1d0934560c5c92f27dbee1"
+          },
+          "assessment": {
+            "applicability": "applicable",
+            "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+            "applicabilitySnapshot": {
+              "candidate": {
+                "decision": "human_review_required",
+                "missingFacts": [],
+                "policyVersion": "evidscope-applicability-2026-09-22",
+                "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+                "status": "candidate"
+              },
+              "policyVersion": "evidscope-applicability-2026-09-22",
+              "requirementHash": "51a40ef59cbf074497c69417899a642914970b4869913c3092265c9a13e3008f",
+              "requirementId": "KR-34-RISK",
+              "schemaVersion": 1,
+              "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+              "systemId": "portfolio-credit"
+            },
+            "applicabilitySnapshotHash": "ffec9a666f965f748b84cf3d6e95ef17b5b8a5ddcb1d0934560c5c92f27dbee1",
+            "assessment": "sufficient",
+            "control": "합성 검토자가 제출한 증거 연결",
+            "createdAt": "2026-10-05T10:08:58.345Z",
+            "evidence": [
+              {
+                "contentHash": "3524db19d48f1a248b0a962cd2e30cd9919fc17d45a98b2c726cda5ce25b0dee",
+                "notes": "",
+                "ref": "supplier-bundle:portfolio-supplier",
+                "type": "document",
+                "verification": "supplier_bundle_verified_at_assessment",
+                "version": "unknown"
+              }
+            ],
+            "id": "72cad9eb-75e7-4ff5-a92c-83804e87d1d8",
+            "legalReview": "pending",
+            "nextReviewAt": "2099-01-01T00:00:00.000Z",
+            "owner": "합성 검토팀",
+            "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+            "requirementHash": "51a40ef59cbf074497c69417899a642914970b4869913c3092265c9a13e3008f",
+            "requirementId": "KR-34-RISK",
+            "requirementSnapshot": {
+              "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+              "article": "제34조제1항제1호",
+              "binding": "조건부 의무",
+              "effectiveDate": "2026-01-22",
+              "evidenceNeeded": [
+                "위험관리 정책",
+                "책임조직",
+                "위험·통제 운영 평가"
+              ],
+              "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+              "id": "KR-34-RISK",
+              "jurisdiction": "KR",
+              "limitations": "법 제34조제3항·시행령 제27조제5항·별표1 인정 요건을 사람이 검토. 최종 세부 고시 미확인.",
+              "requirement": "고영향 AI의 위험관리방안을 수립하고 운영한다.",
+              "reviewStatus": "draft_requires_human_review",
+              "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+              "title": "고영향 위험관리",
+              "verifiedAt": "2026-09-08"
+            },
+            "reviewer": "synthetic-reviewer",
+            "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+            "systemId": "portfolio-credit"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "review_required"
+        },
+        {
+          "requirement": {
+            "id": "KR-34-EXPLAIN",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제34조제1항제2호",
+            "title": "설명 방안",
+            "requirement": "기술적으로 가능한 범위에서 최종결과·주요 기준·학습용데이터 개요 등에 관한 설명 방안을 수립·시행한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "설명 정책",
+              "학습데이터 개요",
+              "설명 사례와 이용자 평가"
+            ],
+            "limitations": "내부 사고 과정 수집을 요구하지 않음. 도구 호출 로그만으로 설명가능성 충족 아님.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "6cfa389f97d819e5554af24c9734274686f58996692b342742f97ffca301ba39"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-34-PROTECT",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제34조제1항제3호",
+            "title": "이용자 보호",
+            "requirement": "이용자 보호 방안을 수립하고 운영한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "보호 정책",
+              "문의·이의·피해 처리 절차",
+              "처리 실적 검토"
+            ],
+            "limitations": "고객 권리와 절차 적절성은 인간·전문가 평가가 필요. 개인정보 등 타법은 별도 검토.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "fb1ffc1f6f7f87ed29417fe8196916b401daa19ad078093cbdc44609d057ba1f"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-34-OVERSIGHT",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제34조제1항제4호",
+            "title": "사람의 관리·감독",
+            "requirement": "고영향 AI에 대해 사람이 관리·감독하도록 한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "감독 책임자·연락체계",
+              "권한·역량·운영 절차",
+              "실제 인간 검토·개입 기록"
+            ],
+            "limitations": "자동 검토기 허용은 인간 감독이 아님. EvidScope 사건 검토만으로 업무 AI 감독 체계 전체를 입증하지 않음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "human_evidence_assessed",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "90ea4ce94fa11edcdf0b39cdf244ee334a7d17edc7d8bc067008f785ac3b79fe",
+            "currentSnapshotHash": "90ea4ce94fa11edcdf0b39cdf244ee334a7d17edc7d8bc067008f785ac3b79fe"
+          },
+          "assessment": {
+            "applicability": "applicable",
+            "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+            "applicabilitySnapshot": {
+              "candidate": {
+                "decision": "human_review_required",
+                "missingFacts": [],
+                "policyVersion": "evidscope-applicability-2026-09-22",
+                "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+                "status": "candidate"
+              },
+              "policyVersion": "evidscope-applicability-2026-09-22",
+              "requirementHash": "a44998d43d638d99fad2d035e592ee152c644a5ee5403c47be3e31339e099f00",
+              "requirementId": "KR-34-OVERSIGHT",
+              "schemaVersion": 1,
+              "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+              "systemId": "portfolio-credit"
+            },
+            "applicabilitySnapshotHash": "90ea4ce94fa11edcdf0b39cdf244ee334a7d17edc7d8bc067008f785ac3b79fe",
+            "assessment": "sufficient",
+            "control": "합성 검토자가 제출한 증거 연결",
+            "createdAt": "2026-10-05T10:08:58.358Z",
+            "evidence": [
+              {
+                "contentHash": "878ebc1821029fc7a62403796f6ac1f4b8ea62d316f3d80a12313565f6c672b9",
+                "documentSnapshotHash": "c273d4213d3248ddb2b315fa0337075ef4b50b2ce2e903bad6c54aad676d2086",
+                "notes": "",
+                "ref": "governance-document:portfolio-oversight-plan",
+                "type": "document",
+                "verification": "governance_document_verified_at_assessment",
+                "version": "1"
+              },
+              {
+                "contentHash": "3b0e52bd69c504e15a6f5a136dae36217ea762ed94ad4345f3bc651c0adb8de9",
+                "eventSnapshot": {
+                  "kind": "human_oversight_review",
+                  "modelId": "synthetic-credit-model",
+                  "modelVersion": "v1",
+                  "policyVersion": "synthetic-policy-v1",
+                  "reviewer": "synthetic-human",
+                  "sourceKind": "authority",
+                  "systemId": "portfolio-credit"
+                },
+                "eventSnapshotHash": "ff9ecdca50a6b1161777373131c6b1d171927896f53b3339ba62c75c27cd86a0",
+                "notes": "",
+                "ref": "synthetic-authority/oversight",
+                "type": "event",
+                "verification": "linked_verified_minimized_record",
+                "version": "unknown"
+              }
+            ],
+            "id": "d2079f52-fdc4-4093-be5c-9977eb5d4749",
+            "legalReview": "pending",
+            "nextReviewAt": "2099-01-01T00:00:00.000Z",
+            "owner": "합성 검토팀",
+            "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+            "requirementHash": "a44998d43d638d99fad2d035e592ee152c644a5ee5403c47be3e31339e099f00",
+            "requirementId": "KR-34-OVERSIGHT",
+            "requirementSnapshot": {
+              "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+              "article": "제34조제1항제4호",
+              "binding": "조건부 의무",
+              "effectiveDate": "2026-01-22",
+              "evidenceNeeded": [
+                "감독 책임자·연락체계",
+                "권한·역량·운영 절차",
+                "실제 인간 검토·개입 기록"
+              ],
+              "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+              "id": "KR-34-OVERSIGHT",
+              "jurisdiction": "KR",
+              "limitations": "자동 검토기 허용은 인간 감독이 아님. EvidScope 사건 검토만으로 업무 AI 감독 체계 전체를 입증하지 않음.",
+              "requirement": "고영향 AI에 대해 사람이 관리·감독하도록 한다.",
+              "reviewStatus": "draft_requires_human_review",
+              "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+              "title": "사람의 관리·감독",
+              "verifiedAt": "2026-09-08"
+            },
+            "reviewer": "synthetic-reviewer",
+            "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+            "systemId": "portfolio-credit"
+          },
+          "technicalStatus": "oversight_plan_and_review_record_verified",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-34-DOCUMENT",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제34조제1항제5호 / 시행령 제27조제1항·제2항",
+            "title": "조치 문서·보관·게시",
+            "requirement": "안전성·신뢰성 조치를 확인하는 문서를 작성하고 근거를 5년 보관한다. 시행령상 위험관리·설명·이용자보호·감독자 정보를 게시한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "조치 문서 목록·버전",
+              "5년 보관 정책 및 접근통제",
+              "게시 증거와 영업비밀 제외 근거"
+            ],
+            "limitations": "5년은 이 조치 근거 문서의 규정이며 모든 원문 prompt·이벤트의 일률적 보존기간이 아님. 보관 정책 설정만으로 5년 운영 실적을 입증하지 않음.",
+            "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "human_evidence_assessed",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "a0db99ba82522c56c405210d874a53bd7f80cfe7cc3065b0936239e97ba8a027",
+            "currentSnapshotHash": "a0db99ba82522c56c405210d874a53bd7f80cfe7cc3065b0936239e97ba8a027"
+          },
+          "assessment": {
+            "applicability": "applicable",
+            "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+            "applicabilitySnapshot": {
+              "candidate": {
+                "decision": "human_review_required",
+                "missingFacts": [],
+                "policyVersion": "evidscope-applicability-2026-09-22",
+                "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+                "status": "candidate"
+              },
+              "policyVersion": "evidscope-applicability-2026-09-22",
+              "requirementHash": "191a96c28d4b717755fd72e51620ffee3f68046c7045b86ac0fc460cf75ca482",
+              "requirementId": "KR-34-DOCUMENT",
+              "schemaVersion": 1,
+              "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+              "systemId": "portfolio-credit"
+            },
+            "applicabilitySnapshotHash": "a0db99ba82522c56c405210d874a53bd7f80cfe7cc3065b0936239e97ba8a027",
+            "assessment": "sufficient",
+            "control": "합성 검토자가 제출한 증거 연결",
+            "createdAt": "2026-10-05T10:08:58.351Z",
+            "evidence": [
+              {
+                "contentHash": "878ebc1821029fc7a62403796f6ac1f4b8ea62d316f3d80a12313565f6c672b9",
+                "documentSnapshotHash": "c273d4213d3248ddb2b315fa0337075ef4b50b2ce2e903bad6c54aad676d2086",
+                "notes": "",
+                "ref": "governance-document:portfolio-oversight-plan",
+                "type": "document",
+                "verification": "governance_document_verified_at_assessment",
+                "version": "1"
+              }
+            ],
+            "id": "6866eaab-65e6-4faa-99fd-f983147a9e47",
+            "legalReview": "pending",
+            "nextReviewAt": "2099-01-01T00:00:00.000Z",
+            "owner": "합성 검토팀",
+            "reason": "시험용 인간 평가 기록이며 실제 사람의 법률 판단이 아님",
+            "requirementHash": "191a96c28d4b717755fd72e51620ffee3f68046c7045b86ac0fc460cf75ca482",
+            "requirementId": "KR-34-DOCUMENT",
+            "requirementSnapshot": {
+              "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+              "article": "제34조제1항제5호 / 시행령 제27조제1항·제2항",
+              "binding": "조건부 의무",
+              "effectiveDate": "2026-01-22",
+              "evidenceNeeded": [
+                "조치 문서 목록·버전",
+                "5년 보관 정책 및 접근통제",
+                "게시 증거와 영업비밀 제외 근거"
+              ],
+              "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+              "id": "KR-34-DOCUMENT",
+              "jurisdiction": "KR",
+              "limitations": "5년은 이 조치 근거 문서의 규정이며 모든 원문 prompt·이벤트의 일률적 보존기간이 아님. 보관 정책 설정만으로 5년 운영 실적을 입증하지 않음.",
+              "requirement": "안전성·신뢰성 조치를 확인하는 문서를 작성하고 근거를 5년 보관한다. 시행령상 위험관리·설명·이용자보호·감독자 정보를 게시한다.",
+              "reviewStatus": "draft_requires_human_review",
+              "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+              "title": "조치 문서·보관·게시",
+              "verifiedAt": "2026-09-08"
+            },
+            "reviewer": "synthetic-reviewer",
+            "systemHash": "dc8e750cff34dfa03531e0b2761f0b5b93723ad73180996e34e5bcee61b6e6d8",
+            "systemId": "portfolio-credit"
+          },
+          "technicalStatus": "document_evidence_verified",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-35-IMPACT",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제35조제1항 / 시행령 제28조",
+            "title": "기본권 영향평가와 취약계층",
+            "requirement": "고영향 AI 제품·서비스 제공 전 기본권 영향평가를 위해 노력한다. 평가에 제품·서비스 성격에 따른 인공지능취약계층 특성을 반영한다.",
+            "binding": "노력의무 및 평가 내용 요건",
+            "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+            "evidenceNeeded": [
+              "영향받는 집단·기본권·사회경제 영향",
+              "평가 지표·방식·결과",
+              "위험 완화·복구·개선 계획",
+              "취약계층 특성 검토"
+            ],
+            "limitations": "사전 평가 자체의 노력의무와 실시하는 평가의 내용 요건을 구분. 행동 로그는 부분 자료. 평가 세부 고시 최종본 미확인.",
+            "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-07-21 (취약계층 후단); 기존 노력의무 2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "candidate",
+          "applicability": {
+            "status": "candidate",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "8a6741af778486b245335b27c075d4fcd79f91504b7d1069782dab38565bfb64"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "KR-35-PUBLIC",
+            "jurisdiction": "KR",
+            "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+            "article": "제35조제2항",
+            "title": "공공 이용 시 평가 제품 우선 고려",
+            "requirement": "국가기관등이 고영향 AI 제품·서비스를 이용하려면 영향평가를 실시한 제품·서비스를 우선 고려한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "국가기관등이 고영향 AI 제품·서비스를 이용하려는 경우.",
+            "evidenceNeeded": [
+              "공공기관 해당성",
+              "후보 제품 영향평가 비교",
+              "조달·선정 검토 기록"
+            ],
+            "limitations": "민간 사업자 모두에게 동일한 강제 영향평가 의무를 부여하는 조항이 아님.",
+            "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-01-22",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+            "missingFacts": [
+              "publicInstitution"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "57f6edcba761b43c732faa3e87ccb945d437e8cbf43e5c6935c44fca7b1458b1"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-GOVERN",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "GOVERN 1.1, 1.5, 1.6, 2.1",
+            "title": "책임·정책·인벤토리",
+            "requirement": "적용 규범과 책임을 문서화하고 AI 목록과 정기 검토를 관리한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+            "evidenceNeeded": [
+              "책임자 및 인벤토리",
+              "규범·정책 목록",
+              "검토 주기"
+            ],
+            "limitations": "조직이 채택한 범위의 권고 매핑. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "ee1ad1e2d49f3185e831097d189135b094880470f8a53f69d133624aef1f9eb2"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-MAP",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "MAP 1.1, 2.2",
+            "title": "사용 맥락과 한계",
+            "requirement": "목적·이용자·영향과 사용 맥락, 지식 한계 및 인간 감독을 기록한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+            "evidenceNeeded": [
+              "시스템 목적·시장·이용자",
+              "영향 평가",
+              "가정·한계"
+            ],
+            "limitations": "인벤토리만으로 사회적 맥락 평가를 대체하지 않음. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "ec1eae994c800770230d885a32d009be51430a5f05364221ee0bb1d2cbcdd519"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-MEASURE",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "MEASURE 1.1, 2.1, 2.4",
+            "title": "위험 측정과 미관측",
+            "requirement": "위험 지표와 시험 조건을 기록하고 운영 행동을 관측하며 측정하지 못한 위험을 명시한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+            "evidenceNeeded": [
+              "시험 결과 및 기준",
+              "관측 범위",
+              "미측정 위험"
+            ],
+            "limitations": "관측 범위를 넘어 전체 가시성 백분율을 만들지 않음. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "26bbce19c1aa2c53771b32722d0f246bee8b3d2ead76acf44627c70e4f26f223"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-MANAGE",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "MANAGE 1.2, 1.3, 1.4",
+            "title": "위험 처리와 잔여위험",
+            "requirement": "평가에 따라 위험 우선순위·처리 계획을 정하고 잔여위험을 기록한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+            "evidenceNeeded": [
+              "보완 담당자·기한",
+              "처리 검토",
+              "잔여위험 수용 근거"
+            ],
+            "limitations": "이 기능은 조치 과제 관리이며 자동 실행 차단·권한 변경이 아님. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "42a0bc2e75e948d7779876d3abfb46a4b1f31449896d4b1cd58934fe4b86c7cd"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-1",
+            "jurisdiction": "EU",
+            "framework": "Regulation (EU) 2024/1689 + 2026/1744",
+            "article": "Article 50(1), 50(5)",
+            "title": "사람과 상호작용하는 AI 고지",
+            "requirement": "직접 상호작용하도록 설계된 AI의 provider는 사람이 AI와 상호작용함을 알 수 있도록 설계·개발한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "Article 2 관할과 provider 역할이 확인되고 자연인과 직접 상호작용하는 AI.",
+            "evidenceNeeded": [
+              "EU 관할·역할 판단",
+              "최초 상호작용 고지",
+              "접근성 시험"
+            ],
+            "limitations": "합리적인 이용자에게 명백한 경우 및 특정 법집행 예외 별도 검토. 전체 EU 의무를 포괄하지 않음.",
+            "sourceUrl": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-08-02",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "dae83bafa030c831c26bce4a1a81afd2fab0648da5da56d5f29d948719d55103"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-2",
+            "jurisdiction": "EU",
+            "framework": "Regulation (EU) 2024/1689 + 2026/1744",
+            "article": "Article 50(2); 111(4), as amended by 2026/1744",
+            "title": "합성 콘텐츠의 기계 판독 표시",
+            "requirement": "합성 음성·이미지·영상·문자 생성 AI의 provider는 출력의 AI 생성·조작을 기계 판독하고 검출할 수 있도록 한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "Article 2 관할과 합성 콘텐츠 생성 시스템의 provider 역할 확인.",
+            "evidenceNeeded": [
+              "시장 출시일",
+              "기계 판독 표시·검출 시험",
+              "콘텐츠별 기술 한계"
+            ],
+            "limitations": "기술적으로 가능한 범위와 편집 보조·입력 의미를 실질 변경하지 않는 경우 등 예외 검토. 2026-08-02 이전 출시 시스템은 111(4)에 따라 2026-12-02까지 전환. 한국 표시 방식과 동일하다고 보지 않음.",
+            "sourceUrl": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+            "verifiedAt": "2026-09-08",
+            "effectiveDate": "2026-08-02; 기존 시스템 전환 2026-12-02",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles",
+              "marketEntryAt"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "f606b56eb66c0c594a8468e739cf9ce2e15acc9a8d5cdab6a59140b4d5e7f65e"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-3",
+            "jurisdiction": "EU",
+            "framework": "EU AI Act",
+            "article": "Article 50(3)",
+            "title": "생체 분류·감정 인식 고지",
+            "requirement": "대상자에게 기능 운영을 알리는 통제와 근거를 검토한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "deployer 역할 및 해당 기능 사용 범위. 법집행 등 예외 별도 검토.",
+            "evidenceNeeded": [
+              "기능·역할 확인",
+              "대상자 고지 화면",
+              "개인정보 처리 검토"
+            ],
+            "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+            "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified",
+            "frameworkVersion": "Article 50; consolidated amendment review pending",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "4ae719b87822b59d0d10bfe5bbb84110bef03c85abb53064f9697b396960679e"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-4-MEDIA",
+            "jurisdiction": "EU",
+            "framework": "EU AI Act",
+            "article": "Article 50(4)",
+            "title": "딥페이크 공개 고지",
+            "requirement": "사실적인 합성·조작 콘텐츠의 공개 고지와 예외를 검토한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "deployer의 딥페이크 생성·조작 이용. 예술·풍자·법집행 예외 별도 검토.",
+            "evidenceNeeded": [
+              "콘텐츠 종류",
+              "표시 화면",
+              "예외 판단 기록"
+            ],
+            "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+            "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified",
+            "frameworkVersion": "Article 50; consolidated amendment review pending",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "3c743179bf3ac42a47506537c25ea8014917abad10384f43bf780b28c82729cd"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-4-TEXT",
+            "jurisdiction": "EU",
+            "framework": "EU AI Act",
+            "article": "Article 50(4)",
+            "title": "공익 정보용 생성 텍스트 고지",
+            "requirement": "공익 정보를 제공하는 생성·조작 텍스트의 공개 고지를 검토한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "deployer 역할과 공개 목적. 인간 편집·책임 및 법집행 예외 검토.",
+            "evidenceNeeded": [
+              "게시 목적",
+              "고지 기록",
+              "편집 책임 검토"
+            ],
+            "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+            "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified",
+            "frameworkVersion": "Article 50; consolidated amendment review pending",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "acdfd54e05ca69030c4d70c17d86e6c9ff52d98b96382ad1c3c13b1e7ef7730a"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "EU-50-5",
+            "jurisdiction": "EU",
+            "framework": "EU AI Act",
+            "article": "Article 50(5)",
+            "title": "고지 시점·접근성",
+            "requirement": "최초 상호작용 또는 노출 시 명확하고 접근 가능한 고지인지 확인한다.",
+            "binding": "조건부 의무",
+            "appliesWhen": "해당 Article 50 고지 의무의 적용성이 확인된 범위.",
+            "evidenceNeeded": [
+              "최초 노출 시험",
+              "접근성 시험"
+            ],
+            "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+            "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "amendment_consolidation_unverified",
+            "frameworkVersion": "Article 50; consolidated amendment review pending",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "unknown",
+          "applicability": {
+            "status": "unknown",
+            "reason": "공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요",
+            "missingFacts": [
+              "markets.EU",
+              "euRoles"
+            ],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "c8b9f1081b83de3636339fc454ee7f15333f39ac352e26c835c92f7074493bac"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-SUPPLY-CHAIN",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "GOVERN 6.1; MAP 4.1, 4.2",
+            "title": "모델·데이터 공급망 검토",
+            "requirement": "제삼자 모델·데이터의 사용 조건, 버전과 위험 검토를 기록한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 채택한 자율 프레임워크 범위.",
+            "evidenceNeeded": [
+              "모델 revision·라이선스",
+              "학습 자료 사용 근거",
+              "제삼자 위험 검토"
+            ],
+            "limitations": "자율 프레임워크의 참고 매핑이며 법률 의무나 인증 판정이 아니다.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "official_guidance",
+            "frameworkVersion": "1.0",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "d76d31419512fe0259496fb06480abc3d33001f3c9fe29f4872a43f23ec029a1"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "NIST-SECURITY",
+            "jurisdiction": "International",
+            "framework": "NIST AI RMF 1.0",
+            "article": "MEASURE 2.7",
+            "title": "보안·견고성 검증",
+            "requirement": "AI 보안과 견고성의 시험 조건·결과·한계를 기록한다.",
+            "binding": "자율 프레임워크",
+            "appliesWhen": "조직이 채택한 자율 프레임워크 범위.",
+            "evidenceNeeded": [
+              "격리·인젝션 시험",
+              "언어별 오류 평가",
+              "남은 위험과 담당자"
+            ],
+            "limitations": "자율 프레임워크의 참고 매핑이며 법률 의무나 인증 판정이 아니다.",
+            "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "official_guidance",
+            "frameworkVersion": "1.0",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "voluntary",
+          "applicability": {
+            "status": "voluntary",
+            "reason": "조직이 채택한 범위의 자율 프레임워크",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "d107f931611badde254035b087f905445d8e9129e17ec483f0d05a567c0ce1cf"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        },
+        {
+          "requirement": {
+            "id": "ISO-42001-READINESS",
+            "jurisdiction": "International",
+            "framework": "ISO/IEC 42001:2023 준비",
+            "article": "공개 소개 기반 준비 항목",
+            "title": "AI 경영시스템 준비 기록",
+            "requirement": "조직 범위·정책·담당자·위험·검토·개선 기록을 연결한다.",
+            "binding": "준비 참고; 조항 매핑 아님",
+            "appliesWhen": "조직이 표준 도입을 검토하는 경우의 준비 기능.",
+            "evidenceNeeded": [
+              "조직 범위·정책",
+              "담당자와 위험 등록부",
+              "검토·개선 기록"
+            ],
+            "limitations": "표준 본문 미확보. 일반 준비 기록이며 ISO 조항 충족·인증을 뜻하지 않는다.",
+            "sourceUrl": "https://www.iso.org/standard/42001",
+            "verifiedAt": "2026-09-12",
+            "effectiveDate": "2023-12 발행; 법적 시행일 없음",
+            "reviewStatus": "draft_requires_human_review",
+            "sourceTextStatus": "public_overview_only",
+            "frameworkVersion": "2023",
+            "sourceHash": "not_captured"
+          },
+          "status": "evidence_missing",
+          "applicabilityCandidate": "readiness_only",
+          "applicability": {
+            "status": "readiness_only",
+            "reason": "공개 소개에 근거한 준비 기록이며 표준 조항 매핑·인증 판정이 아닙니다",
+            "missingFacts": [],
+            "policyVersion": "evidscope-applicability-2026-09-22",
+            "decision": "human_review_required"
+          },
+          "applicabilityReview": {
+            "status": "current",
+            "reasons": [],
+            "assessmentPolicyVersion": "not_recorded",
+            "currentPolicyVersion": "evidscope-applicability-2026-09-22",
+            "assessmentSnapshotHash": "not_recorded",
+            "currentSnapshotHash": "3ddb79f570afd42009c83f6be966733b0294675a85de8f61acc6c18a061acda4"
+          },
+          "technicalStatus": "external_or_missing",
+          "legalStatus": "pending"
+        }
+      ],
+      "tasks": [
+        {
+          "dueAt": "2099-01-01T00:00:00.000Z",
+          "id": "72cad9eb-75e7-4ff5-a92c-83804e87d1d8",
+          "owner": "합성 검토팀",
+          "requirementId": "KR-34-RISK",
+          "status": "open",
+          "systemId": "portfolio-credit",
+          "title": "법률 적용성 검토"
+        },
+        {
+          "dueAt": "2099-01-01T00:00:00.000Z",
+          "id": "6866eaab-65e6-4faa-99fd-f983147a9e47",
+          "owner": "합성 검토팀",
+          "requirementId": "KR-34-DOCUMENT",
+          "status": "open",
+          "systemId": "portfolio-credit",
+          "title": "법률 적용성 검토"
+        },
+        {
+          "dueAt": "2099-01-01T00:00:00.000Z",
+          "id": "d2079f52-fdc4-4093-be5c-9977eb5d4749",
+          "owner": "합성 검토팀",
+          "requirementId": "KR-34-OVERSIGHT",
+          "status": "open",
+          "systemId": "portfolio-credit",
+          "title": "법률 적용성 검토"
+        },
+        {
+          "bundleId": "portfolio-supplier",
+          "currentHash": "6aeb493797cac7ba8f28f90b14fcc7744a9e019f3f8adf15af015f9aa643427e",
+          "id": "dbf4ec1a-966e-4dc4-8d50-73693ea78baa",
+          "owner": "합성 검토팀",
+          "previousHash": "3524db19d48f1a248b0a962cd2e30cd9919fc17d45a98b2c726cda5ce25b0dee",
+          "status": "open",
+          "systemId": "portfolio-credit",
+          "title": "공급사 증빙 변경: 연결 평가 재검토"
+        }
+      ],
+      "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+      "applicabilityPolicyIdentityHash": "d855e183990372eee9cca0f9ab8e662e48be752fc77cf90d3687587adf942699",
+      "limitations": [
+        "법적 적용성은 사실관계와 인간 검토를 요구합니다",
+        "증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다",
+        "한국 고영향과 EU 고위험 분류를 공유하지 않습니다",
+        "ISO/IEC 42001 본문 미확보: 조항 매핑 미지원"
+      ]
+    },
+    "lawCatalogHash": "4b5ec5f2251b7c284bb0247a890597891a0a80dfe473d1725dd2bc1de6229ae2",
+    "applicabilityPolicyVersion": "evidscope-applicability-2026-09-22",
+    "applicabilityPolicyIdentityHash": "d855e183990372eee9cca0f9ab8e662e48be752fc77cf90d3687587adf942699",
+    "automaticLegalVerdict": false
+  },
+  "sha256": "91136d99212adbcb7b225b0b5df38d84cb1f7d3490f06593d3f060124801d7b8",
+  "signature": "/bvay0Xo/mNixhS0h8oAybaMy8xE65VK7LtFSrJORgi9e6iHhckWUqdrJjIk6DPOKNXCefRGJ0bFplhBViRYDQ==",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAG3lHdZuEOd2wtxbKVqpkS6t+yebnu1QLEeXt5kig2Z8=\n-----END PUBLIC KEY-----\n",
+  "trust": "Pin vault public key independently; signature does not prove source truth"
+}

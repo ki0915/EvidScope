@@ -1,3 +1,5 @@
+const fixtureHost=process.env.EVIDSCOPE_TEST_HOST==='::1'?'::1':'127.0.0.1';
+const fixtureUrlHost=fixtureHost==='::1'?'[::1]':fixtureHost;
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -5,7 +7,7 @@ import {harness} from './harness.mjs';
 
 async function probe(url){const response=await fetch(url,{signal:AbortSignal.timeout(4000)});return {status:response.status,instance:response.headers.get('x-evidscope-instance'),body:await response.json()};}
 async function eventually(predicate,timeout=4000){const started=Date.now();while(Date.now()-started<timeout){if(await predicate())return;await new Promise(r=>setTimeout(r,75));}assert.fail('Expected probe state was not reached');}
-async function mockVault(t,handler){const server=http.createServer(handler);await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>{server.closeAllConnections();server.close(r);}));return `http://127.0.0.1:${server.address().port}`;}
+async function mockVault(t,handler){const server=http.createServer(handler);await new Promise(r=>server.listen(0,fixtureHost,r));t.after(()=>new Promise(r=>{server.closeAllConnections();server.close(r);}));return `http://${fixtureUrlHost}:${server.address().port}`;}
 
 test('gateway readiness follows vault loss and recovery while local liveness stays available',async t=>{
  const h=await harness();t.after(()=>h.close());

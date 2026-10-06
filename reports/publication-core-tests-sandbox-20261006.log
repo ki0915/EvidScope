@@ -1,0 +1,553 @@
+✔ replays event, policy, exception, evaluation and per-event retention changes (2.6195ms)
+✔ legacy encrypted event needs authenticated decoded actionId and fails closed after erasure when unavailable (0.7285ms)
+✔ rejects invalid policy transitions and evaluation versions instead of guessing action state (4.4864ms)
+✔ exact projection rejects modified action row (0.5326ms)
+✔ exact projection rejects deleted action row (0.3721ms)
+✔ exact projection rejects added action row (0.3301ms)
+✔ exact projection rejects tenant relabeled action row (0.3023ms)
+✔ retention increments each disposed event and rejects unknown or duplicate sequences (0.5868ms)
+✔ exact comparison is independent of locale ordering for mixed-case action IDs (0.3982ms)
+✔ incremental reducer fork matches a full replay without mutating its authenticated prefix (0.5852ms)
+✔ failed incremental suffix leaves the authenticated prefix unchanged (0.3863ms)
+✔ incremental reducer accepts authenticated disclosure for a legacy encrypted event (0.2726ms)
+✖ actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports (746.3179ms)
+✖ normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots (688.2607ms)
+✖ test\governance-authorization.test.mjs (1065.2028ms)
+✖ reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot (147.1814ms)
+✖ intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment (155.4295ms)
+✖ a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement (128.7533ms)
+✖ assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable (160.171ms)
+✖ new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot (116.0232ms)
+✖ governance document projection tampering is rejected and cannot create a verified assessment (114.2206ms)
+✖ HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits (319.7723ms)
+✖ vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention (116.69ms)
+✖ KR-33 HTTP keeps mandatory review separate from optional request evidence and preserves frozen tenant history (648.7777ms)
+✔ unsigned receipt injection cannot turn a missing event into durable duplicate success (109.8194ms)
+✔ prepared receipt mutation executed after cache warm cannot bypass runtime invalidation (100.5181ms)
+✔ mutation clock cannot be reset by application SQL (93.0579ms)
+✔ an untrusted trigger cannot hide protected-table side effects inside a trusted append (104.8279ms)
+✔ incremental receipt verification rejects an invalid signed suffix before a cold replay (99.2111ms)
+✔ signed receipt binds normal duplicate success and integrity evidence (101.5063ms)
+✔ retention signs a verified legacy receipt before destroying its event key (1236.2925ms)
+✔ receipt projection detects fingerprint rows and rebuild restores only signed truth (107.0217ms)
+✔ receipt projection detects source rows and rebuild restores only signed truth (114.4429ms)
+✔ receipt projection detects id rows and rebuild restores only signed truth (117.0141ms)
+✔ receipt projection detects missing rows and rebuild restores only signed truth (118.3211ms)
+✔ receipt projection detects extra rows and rebuild restores only signed truth (111.2595ms)
+✖ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (117.9735ms)
+✖ ciphertext tamper, extra members and stale independent anchors fail before publication (112.6244ms)
+✖ wrong vault key, forged manifest and absent external anchor are rejected (116.9634ms)
+✖ forged object projections cannot be certified by a new backup (113.079ms)
+✖ actions-only tenants cannot be omitted from whole-vault backup verification (112.8083ms)
+✔ a signed legacy archive omitting an actions-only tenant fails restore before publication (170.3181ms)
+✖ missing source or archived document fails recovery and never leaves plaintext staging files (116.6488ms)
+✖ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (118.7982ms)
+▶ development event content, deletion, and index tampering fail signed snapshot verification
+  ✖ content (116.1479ms)
+  ✖ delete (108.9172ms)
+  ✖ index (110.1495ms)
+✖ development event content, deletion, and index tampering fail signed snapshot verification (336.0653ms)
+✖ mixed-case development IDs use identical ordering for signed and SQL records (107.6723ms)
+✖ restoration never overwrites an existing directory or crosses a symlink (108.7454ms)
+✖ deleted event keys stay deleted after snapshot recovery (108.4601ms)
+✖ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (663.664ms)
+✖ operator CLI creates an external anchor and restores without copying credentials (111.7613ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 25
+ℹ fail 28
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10048.2042
+
+✖ failing tests:
+
+test at test\finance-known-reference.test.mjs:14:1
+✖ actual finance HTTP keeps reserved supplier, purpose and model aliases unknown in current views and signed reports (746.3179ms)
+  [TypeError: fetch failed] {
+    [cause]: Error: connect EACCES ::1:55559
+        at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '::1',
+      port: 55559
+    }
+  }
+
+test at test\finance-known-reference.test.mjs:37:1
+✖ normal finance references retain exact case-sensitive matching and historical signed bundle and report snapshots (688.2607ms)
+  [TypeError: fetch failed] {
+    [cause]: Error: connect EACCES ::1:55563
+        at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '::1',
+      port: 55563
+    }
+  }
+
+test at test\governance-authorization.test.mjs:1:1
+✖ test\governance-authorization.test.mjs (1065.2028ms)
+  'test failed'
+
+test at test\governance-documents.test.mjs:42:1
+✖ reviewer intake stores and retrieves tenant-bound encrypted content-addressed bytes with a five-year metadata snapshot (147.1814ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-h4IGL8\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\8a6f823970b3458ca10c452c6578c187618c1c9003148d3f5fe9fec2a6ef8d9b.json.11b4e837-dbff-4718-be9a-b09b3d8f80e8.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-h4IGL8\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\8a6f823970b3458ca10c452c6578c187618c1c9003148d3f5fe9fec2a6ef8d9b.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:46:22)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-h4IGL8\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\8a6f823970b3458ca10c452c6578c187618c1c9003148d3f5fe9fec2a6ef8d9b.json.11b4e837-dbff-4718-be9a-b09b3d8f80e8.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-h4IGL8\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\8a6f823970b3458ca10c452c6578c187618c1c9003148d3f5fe9fec2a6ef8d9b.json'
+  }
+
+test at test\governance-documents.test.mjs:58:1
+✖ intake rejects non-canonical base64, wrong hashes, oversized bytes, unknown systems and system reassignment (155.4295ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-rNrr2u\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\43cc23fa52b87b4cc1d02b5b114154151d6adddb17c9fddc06b027fa99e24008.json.55286a5d-2526-48a7-926f-946fbf30edd8.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-rNrr2u\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\43cc23fa52b87b4cc1d02b5b114154151d6adddb17c9fddc06b027fa99e24008.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:64:10)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-rNrr2u\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\43cc23fa52b87b4cc1d02b5b114154151d6adddb17c9fddc06b027fa99e24008.json.55286a5d-2526-48a7-926f-946fbf30edd8.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-rNrr2u\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\43cc23fa52b87b4cc1d02b5b114154151d6adddb17c9fddc06b027fa99e24008.json'
+  }
+
+test at test\governance-documents.test.mjs:69:1
+✖ a 256 KiB actual document is fully retrievable without treating its hash as a publication measurement (128.7533ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-H5fZkC\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\bf65c99300e43108fdde9e3d66d18ca5ec4089daf264d112a9ba47dd00a9aa70.json.74b25f03-b296-47d8-b2b8-72689ecb9b16.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-H5fZkC\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\bf65c99300e43108fdde9e3d66d18ca5ec4089daf264d112a9ba47dd00a9aa70.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:71:22)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-H5fZkC\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\bf65c99300e43108fdde9e3d66d18ca5ec4089daf264d112a9ba47dd00a9aa70.json.74b25f03-b296-47d8-b2b8-72689ecb9b16.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-H5fZkC\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\bf65c99300e43108fdde9e3d66d18ca5ec4089daf264d112a9ba47dd00a9aa70.json'
+  }
+
+test at test\governance-documents.test.mjs:77:1
+✖ assessment binds the signed document system, version, content hash and snapshot then permits task closure only while retrievable (160.171ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-P7aVTI\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\57f08323feddcc9037af41e78550c133ee026a3e0fedd2e00f18a3410d4e99fa.json.189d9ebc-6745-4740-85cb-3a7e73864e3e.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-P7aVTI\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\57f08323feddcc9037af41e78550c133ee026a3e0fedd2e00f18a3410d4e99fa.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:84:25)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-P7aVTI\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\57f08323feddcc9037af41e78550c133ee026a3e0fedd2e00f18a3410d4e99fa.json.189d9ebc-6745-4740-85cb-3a7e73864e3e.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-P7aVTI\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\57f08323feddcc9037af41e78550c133ee026a3e0fedd2e00f18a3410d4e99fa.json'
+  }
+
+test at test\governance-documents.test.mjs:101:1
+✖ new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot (116.0232ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-gSWpRK\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\197c7c60ef8a8470a38d1a9212bdfde9cfe6fd4be910825fe6ac7880ac765d16.json.7b444bc7-a678-4ee1-b0f0-2bd53bf57fd7.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-gSWpRK\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\197c7c60ef8a8470a38d1a9212bdfde9cfe6fd4be910825fe6ac7880ac765d16.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:103:30)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-gSWpRK\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\197c7c60ef8a8470a38d1a9212bdfde9cfe6fd4be910825fe6ac7880ac765d16.json.7b444bc7-a678-4ee1-b0f0-2bd53bf57fd7.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-gSWpRK\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\197c7c60ef8a8470a38d1a9212bdfde9cfe6fd4be910825fe6ac7880ac765d16.json'
+  }
+
+test at test\governance-documents.test.mjs:124:1
+✖ governance document projection tampering is rejected and cannot create a verified assessment (114.2206ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-EvR24g\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\0ce715b475f438555bb45249fb4b62acd6af5eb38e9d0774c430142b870bc999.json.fb0897ba-8a0f-4986-8571-3136b9a3c580.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-EvR24g\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\0ce715b475f438555bb45249fb4b62acd6af5eb38e9d0774c430142b870bc999.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:125:114)
+      at async Test.run (node:internal/test_runner/test:1208:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-EvR24g\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\0ce715b475f438555bb45249fb4b62acd6af5eb38e9d0774c430142b870bc999.json.fb0897ba-8a0f-4986-8571-3136b9a3c580.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-EvR24g\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\0ce715b475f438555bb45249fb4b62acd6af5eb38e9d0774c430142b870bc999.json'
+  }
+
+test at test\governance-documents.test.mjs:132:1
+✖ HTTP boundary accepts and retrieves a complete 4 MiB document and rejects documents or payloads above their limits (319.7723ms)
+  [TypeError: fetch failed] {
+    [cause]: Error: connect EACCES ::1:55574
+        at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '::1',
+      port: 55574
+    }
+  }
+
+test at test\governance-documents.test.mjs:144:1
+✖ vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention (116.69ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-mY1bU7\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\b179884a6e3c12dc8fcd3138f4ed8c51e99fc28442b0297f60a11ce0f3005694.json.93345f0c-dea8-4c8f-849b-a0c8f2a4184b.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-governance-documents-mY1bU7\governance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\b179884a6e3c12dc8fcd3138f4ed8c51e99fc28442b0297f60a11ce0f3005694.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:52:3)
+      at intake (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:106:11)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:124:66
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/governance-documents.mjs:123:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:84)
+      at Object.call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:27:40)
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-documents.test.mjs:147:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-mY1bU7\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\b179884a6e3c12dc8fcd3138f4ed8c51e99fc28442b0297f60a11ce0f3005694.json.93345f0c-dea8-4c8f-849b-a0c8f2a4184b.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-governance-documents-mY1bU7\\governance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\b179884a6e3c12dc8fcd3138f4ed8c51e99fc28442b0297f60a11ce0f3005694.json'
+  }
+
+test at test\kr-governance-33-http.test.mjs:8:1
+✖ KR-33 HTTP keeps mandatory review separate from optional request evidence and preserves frozen tenant history (648.7777ms)
+  [TypeError: fetch failed] {
+    [cause]: Error: connect EACCES ::1:55894
+        at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '::1',
+      port: 55894
+    }
+  }
+
+test at test\vault-recovery.test.mjs:30:1
+✖ online WAL snapshot restores both tenants, historic documents, signed report and exact evidence (117.9735ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-p5TBWS\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.f689e3fc-9046-498f-9b6d-e407398f3009.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-p5TBWS\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-p5TBWS\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.f689e3fc-9046-498f-9b6d-e407398f3009.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-p5TBWS\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:51:1
+✖ ciphertext tamper, extra members and stale independent anchors fail before publication (112.6244ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-0drcht\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.0f5e5c91-62b6-4564-be57-280cf360f5ab.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-0drcht\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-0drcht\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.0f5e5c91-62b6-4564-be57-280cf360f5ab.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-0drcht\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:61:1
+✖ wrong vault key, forged manifest and absent external anchor are rejected (116.9634ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-LJ6Qtt\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.2e695de2-72da-431d-b718-fa3eeb70cea3.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-LJ6Qtt\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-LJ6Qtt\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.2e695de2-72da-431d-b718-fa3eeb70cea3.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-LJ6Qtt\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:69:1
+✖ forged object projections cannot be certified by a new backup (113.079ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-X691L1\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.38e5d694-8493-4a90-9c93-e79d8469a6fa.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-X691L1\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-X691L1\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.38e5d694-8493-4a90-9c93-e79d8469a6fa.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-X691L1\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:74:1
+✖ actions-only tenants cannot be omitted from whole-vault backup verification (112.8083ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-oiTYgl\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.c70a9418-233d-4f84-9d5a-e649034898dd.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-oiTYgl\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-oiTYgl\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.c70a9418-233d-4f84-9d5a-e649034898dd.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-oiTYgl\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:100:1
+✖ missing source or archived document fails recovery and never leaves plaintext staging files (116.6488ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-NVQ2hR\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.1b8b8dcb-a988-4ee7-a16f-729dbcd3b75c.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-NVQ2hR\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-NVQ2hR\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.1b8b8dcb-a988-4ee7-a16f-729dbcd3b75c.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-NVQ2hR\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:109:1
+✖ SQL tenant relabeling and event index tampering cannot be sealed into a valid backup (118.7982ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-Dx8vef\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.0a979813-0961-410e-91af-ebca119e8a0d.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-Dx8vef\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-Dx8vef\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.0a979813-0961-410e-91af-ebca119e8a0d.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-Dx8vef\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:121:59
+✖ content (116.1479ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-uaPvWm\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.dfdb283c-63ff-4d7d-9106-fdc444bc2354.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-uaPvWm\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-uaPvWm\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.dfdb283c-63ff-4d7d-9106-fdc444bc2354.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-uaPvWm\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:121:59
+✖ delete (108.9172ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-VN79yV\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.65e68f79-bf44-4781-b0b7-3992c06a9edf.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-VN79yV\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-VN79yV\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.65e68f79-bf44-4781-b0b7-3992c06a9edf.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-VN79yV\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:121:59
+✖ index (110.1495ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-kDnt5N\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.8ccb79b5-c5ff-4956-9d71-41574b36bcbe.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-kDnt5N\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-kDnt5N\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.8ccb79b5-c5ff-4956-9d71-41574b36bcbe.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-kDnt5N\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:132:1
+✖ mixed-case development IDs use identical ordering for signed and SQL records (107.6723ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-6Fl3QR\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.564efa79-2f80-423d-b497-8fe0efe1a51c.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-6Fl3QR\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-6Fl3QR\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.564efa79-2f80-423d-b497-8fe0efe1a51c.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-6Fl3QR\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:139:1
+✖ restoration never overwrites an existing directory or crosses a symlink (108.7454ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-5CJ9Hb\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.a604326c-1800-4796-aef4-5f2a561be7ee.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-5CJ9Hb\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-5CJ9Hb\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.a604326c-1800-4796-aef4-5f2a561be7ee.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-5CJ9Hb\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:146:1
+✖ deleted event keys stay deleted after snapshot recovery (108.4601ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-v1bqdU\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.1ef0d900-1911-4785-99f0-5d558e86ab23.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-v1bqdU\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-v1bqdU\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.1ef0d900-1911-4785-99f0-5d558e86ab23.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-v1bqdU\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }
+
+test at test\vault-recovery.test.mjs:154:1
+✖ actual restored HTTP vault serves supplier bytes and preserves tenant access boundaries (663.664ms)
+  [TypeError: fetch failed] {
+    [cause]: Error: connect EACCES ::1:55908
+        at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '::1',
+      port: 55908
+    }
+  }
+
+test at test\vault-recovery.test.mjs:167:1
+✖ operator CLI creates an external anchor and restores without copying credentials (111.7613ms)
+  Error: EPERM: operation not permitted, rename 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-Ilm0Kj\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.9806d431-dd4a-4f27-bc73-c91f6da35b91.tmp' -> 'C:\Users\기민수\AppData\Local\Packages\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\AC\Temp\evidscope-recovery-Ilm0Kj\data\finance-documents\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+      at renameSync (node:fs:1013:11)
+      at Object.put (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:20:596)
+      at importBundle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:74:35)
+      at scopedHandle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:82:63)
+      at file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:60
+      at Store.transaction (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/store.mjs:83:14)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/finance-evidence.mjs:98:16)
+      at Object.handle (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/src/service.mjs:187:180)
+      at call (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:23:49)
+      at fixture (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/vault-recovery.test.mjs:24:98) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'rename',
+    path: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-Ilm0Kj\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json.9806d431-dd4a-4f27-bc73-c91f6da35b91.tmp',
+    dest: 'C:\\Users\\기민수\\AppData\\Local\\Packages\\sandbox.{82403ac4-eaa9-46b4-8f55-0ed814ef38cd}\\AC\\Temp\\evidscope-recovery-Ilm0Kj\\data\\finance-documents\\8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8\\39593eadda663bb9bce67487e9ab788828f9b6a76fecbc70d12b601b6858265d.json'
+  }

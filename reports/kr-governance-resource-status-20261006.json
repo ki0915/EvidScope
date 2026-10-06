@@ -1,0 +1,43 @@
+{
+  "changesPerformed": [],
+  "verifiedAt": "2026-10-06T03:55:57.2184038Z",
+  "freePhysicalGiB": 4.558,
+  "freeCommitGiB": 1.828,
+  "ownedBrowserAndLockChildren": 0,
+  "dlpOriginalIdsRunning": [
+    {
+      "id": "bb79729aa65da469ef47754c9c54aea4822fa51b8247da8caaef21e225a66893",
+      "name": "k3d-dlp-empirical-20260712-serverlb",
+      "state": "running"
+    },
+    {
+      "id": "6111dd506c263cf0ed995ae84535f162d7d1b9d0309d561a292eb11240e3605c",
+      "name": "k3d-dlp-empirical-20260712-server-0",
+      "state": "running"
+    },
+    {
+      "id": "4e9d06beacf4c193c782c5af763983eee567aa6ba5edcff42d51a94b35b384bb",
+      "name": "k3d-dlp-proof-serverlb",
+      "state": "running"
+    },
+    {
+      "id": "31b0ad7cd72ae70e8e8c8d609a3d24f31cad491e99a0dcb99080211b69e547fd",
+      "name": "k3d-dlp-proof-server-0",
+      "state": "running"
+    },
+    {
+      "id": "2c999a6a96dcfcf66e17c050a9ddf1c62ac7df284d83ee4bd7f3b728faeb099e",
+      "name": "k3d-dlp-server-0",
+      "state": "running"
+    }
+  ],
+  "verified": true,
+  "imageId": "sha256:d1f3e8fa61cff0cb1f6248acec240669dcbf5d1b51d2434bb0ce14fa9ba4f2b1",
+  "trainingNodeStopped": {
+    "id": "02d2656be88e46bae6cc9e24cb9412bc73a5fb199c95c230101ca28336741075",
+    "name": "k3d-evidscope-training-server-0",
+    "state": "exited"
+  },
+  "schemaVersion": 1,
+  "verificationContainerRemoved": true
+}

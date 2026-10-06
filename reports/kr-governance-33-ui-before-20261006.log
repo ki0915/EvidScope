@@ -1,0 +1,60 @@
+✔ document intake computes the actual binary digest, binds its system, and offers verified original download (21.923ms)
+✔ dynamic file cap rejects oversized and empty files before reading or posting; default remains64KiB (5.5949ms)
+✔ document inventory keeps hostile metadata literal and never claims a metadata row proves retrieval (2.1286ms)
+✔ changed versions, tampered export bytes and retrieval errors cannot produce a successful download (5.859ms)
+✔ technical gaps remain visible next to a human sufficient assessment and unknown checks are retained (2.0329ms)
+✔ typed reported measurements translate alternatives and failure reasons without claiming independent proof or completed effort (2.1524ms)
+✖ KR-33 optional request status stays visible beside a supported mandatory pre-review (1.9623ms)
+✖ optional request conflicts retain literal reasons and evidence without executing markup or claiming a reply (1.3722ms)
+✔ additional Korean applicability facts preserve unknown, explicit false, zero and separate domains without inferring a bank role (5.338ms)
+✔ all Korean task closure refusals are rendered in the form without closing it or recording success (27.8057ms)
+✔ OIDC document intake uses the existing CSRF session and permission failures stay visible (4.5605ms)
+✔ missing or partial evidence never displays a positive technical confirmation and current Korean roles remain visible (2.081ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 10
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.3852
+
+✖ failing tests:
+
+test at test\governance-ui.test.mjs:87:1
+✖ KR-33 optional request status stays visible beside a supported mandatory pre-review (1.9623ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /선택적 확인 요청/. Input:
+  
+  '신용평가 · 책임자 검토자 · 목적 신용평가고영향 사전 검토human_evidence_assessed기술 증거: 인증된 출처의 보고된 측정 근거 연결사람의 증거 평가를 뒷받침하는 기술 근거가 확인되었습니다. 법률 적용·충분성 판단은 별도입니다.연결된 보고 근거원본 기록 참조조치 문서 해시고영향 해당 여부 사전 검토telemetry/pre-reviewaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa보고된 시험 근거는 기록의 출처·버전·범위를 대조합니다. 이 화면이 시험 결과나 업무 실행 승인을 발급하지 않습니다.사람 평가: 적용성 applicable · 증거 충분성 sufficient · 법률 검토 reviewed · 담당자 미지정요구사항·현재 평가 근거 {"requirement":{"id":"KR-33","title":"고영향 사전 검토"},"status":"human_evidence_assessed","assessment":{"applicability":"applicable","assessment":"sufficient","legalReview":"reviewed"},"technicalEvidence":{"status":"authenticated_reported_measurement_supported","supportsHumanAssessment":true,"missingChecks":[],"reasons":[],"matchedChecks":[{"checkType":"high_impact_pre_review","ref":"telemetry/pre-review","documentHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"optionalWorkflows":[{"checkType":"high_impact_confirmation","required":false,"status":"not_requested","supportsRequestReceipt":false,"missingChecks":[],"reasons":[],"matchedChecks":[],"limitations":["합성 요청 보고를 실제 정부 접수의 진실성으로 보증하지 않습니다."]}]}}평가·통제·증거 기록시스템 사실관계 {"name":"신용평가","owner":"검토자","purpose":"신용평가"}'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-ui.test.mjs:98:63)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '신용평가 · 책임자 검토자 · 목적 신용평가고영향 사전 검토human_evidence_assessed기술 증거: 인증된 출처의 보고된 측정 근거 연결사람의 증거 평가를 뒷받침하는 기술 근거가 확인되었습니다. 법률 적용·충분성 판단은 별도입니다.연결된 보고 근거원본 기록 참조조치 문서 해시고영향 해당 여부 사전 검토telemetry/pre-reviewaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa보고된 시험 근거는 기록의 출처·버전·범위를 대조합니다. 이 화면이 시험 결과나 업무 실행 승인을 발급하지 않습니다.사람 평가: 적용성 applicable · 증거 충분성 sufficient · 법률 검토 reviewed · 담당자 미지정요구사항·현재 평가 근거 {"requirement":{"id":"KR-33","title":"고영향 사전 검토"},"status":"human_evidence_assessed","assessment":{"applicability":"applicable","assessment":"sufficient","legalReview":"reviewed"},"technicalEvidence":{"status":"authenticated_reported_measurement_supported","supportsHumanAssessment":true,"missingChecks":[],"reasons":[],"matchedChecks":[{"checkType":"high_impact_pre_review","ref":"telemetry/pre-review","documentHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"optionalWorkflows":[{"checkType":"high_impact_confirmation","required":false,"status":"not_requested","supportsRequestReceipt":false,"missingChecks":[],"reasons":[],"matchedChecks":[],"limitations":["합성 요청 보고를 실제 정부 접수의 진실성으로 보증하지 않습니다."]}]}}평가·통제·증거 기록시스템 사실관계 {"name":"신용평가","owner":"검토자","purpose":"신용평가"}',
+    expected: /선택적 확인 요청/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\governance-ui.test.mjs:107:1
+✖ optional request conflicts retain literal reasons and evidence without executing markup or claiming a reply (1.3722ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /보고된 시험 실패/. Input:
+  
+  '기술 증거: 인증된 출처의 보고된 측정 근거 연결사람의 증거 평가를 뒷받침하는 기술 근거가 확인되었습니다. 법률 적용·충분성 판단은 별도입니다.보고된 시험 근거는 기록의 출처·버전·범위를 대조합니다. 이 화면이 시험 결과나 업무 실행 승인을 발급하지 않습니다.'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/governance-ui.test.mjs:109:64)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '기술 증거: 인증된 출처의 보고된 측정 근거 연결사람의 증거 평가를 뒷받침하는 기술 근거가 확인되었습니다. 법률 적용·충분성 판단은 별도입니다.보고된 시험 근거는 기록의 출처·버전·범위를 대조합니다. 이 화면이 시험 결과나 업무 실행 승인을 발급하지 않습니다.',
+    expected: /보고된 시험 실패/,
+    operator: 'match',
+    diff: 'simple'
+  }

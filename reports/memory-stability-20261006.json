@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-06T06:27:54.256Z",
+  "scope": "Memory stabilization and CPU verification scheduling; live evaluation is incomplete",
+  "hostSnapshot": {
+    "observedAt": "2026-10-06T15:26:20.5506578+09:00",
+    "physicalFreeGiB": 4.119,
+    "commitLimitGiB": 61.863,
+    "commitFreeGiB": 7.37,
+    "diskFreeGiB": 10.467,
+    "pagefile": [
+      {
+        "AllocatedBaseSize": 30720,
+        "CurrentUsage": 1155,
+        "PeakUsage": 1338
+      }
+    ],
+    "processGroups": [
+      {
+        "name": "vmmemWSL",
+        "processes": 1,
+        "privateGiB": 10.896,
+        "workingSetGiB": 4.201
+      },
+      {
+        "name": "chrome",
+        "processes": 41,
+        "privateGiB": 5.562,
+        "workingSetGiB": 6.333
+      },
+      {
+        "name": "Code",
+        "processes": 22,
+        "privateGiB": 4.192,
+        "workingSetGiB": 2.761
+      },
+      {
+        "name": "vmmem",
+        "processes": 1,
+        "privateGiB": 4.008,
+        "workingSetGiB": 1.265
+      },
+      {
+        "name": "ChatGPT",
+        "processes": 18,
+        "privateGiB": 3.124,
+        "workingSetGiB": 2.647
+      },
+      {
+        "name": "claude",
+        "processes": 15,
+        "privateGiB": 2.879,
+        "workingSetGiB": 2.621
+      },
+      {
+        "name": "msedge",
+        "processes": 19,
+        "privateGiB": 1.792,
+        "workingSetGiB": 0.827
+      },
+      {
+        "name": "node",
+        "processes": 29,
+        "privateGiB": 1.642,
+        "workingSetGiB": 1.65
+      },
+      {
+        "name": "python",
+        "processes": 4,
+        "privateGiB": 1.537,
+        "workingSetGiB": 0.188
+      },
+      {
+        "name": "msedgewebview2",
+        "processes": 36,
+        "privateGiB": 1.405,
+        "workingSetGiB": 1.357
+      },
+      {
+        "name": "Discord",
+        "processes": 6,
+        "privateGiB": 1.219,
+        "workingSetGiB": 0.995
+      },
+      {
+        "name": "sqlservr",
+        "processes": 1,
+        "privateGiB": 0.71,
+        "workingSetGiB": 0.146
+      }
+    ]
+  },
+  "ongoingEvaluation": {
+    "runId": "public-qa-fresh-20261006-r2",
+    "controllerPath": ".local/training/public-qa-run/public-qa-fresh-20261006-r2/controller-receipt.json",
+    "controllerState": "created",
+    "modelCallsObserved": 94,
+    "lastSide": "baseline",
+    "latestObservationAt": "2026-10-06T15:27:50.3939985+09:00",
+    "sampleCount": 203,
+    "minimumPhysicalFreeGiB": 3.617,
+    "minimumCommitFreeGiB": 6.45,
+    "peakCgroupMemoryGiB": 1.9999961853027344,
+    "peakGpuMemoryMiB": 8416,
+    "maximumOomCount": 0,
+    "maximumOomKillCount": 0,
+    "completed": false,
+    "qualityClaimAllowed": false,
+    "promotionAllowed": false
+  },
+  "priorTraining": {
+    "verification": "reports/public-qa-grounding-continuation-verification-20261006.json",
+    "actualTrainingExecutionVerified": true,
+    "note": "Additional 20 optimizer updates verified separately; candidate history 80. Original error receipt remains preserved."
+  },
+  "changes": {
+    "npmTestChecksOwnedGpuLease": true,
+    "releaseChecksLeaseBeforeStartAndEachRound": true,
+    "fullTestConcurrency": 1,
+    "gpuRuntimeChangedDuringRun": false,
+    "unrelatedUserAppsStopped": false,
+    "additionalPagefileIncreasePerformed": false,
+    "osLevelAtomicMutualExclusionClaimed": false,
+    "directNodeTestCommandsRemainManual": true
+  },
+  "proof": {
+    "focusedTestsPassed": 6,
+    "focusedTestLog": "reports/memory-execution-boundary-final-fixed-tests-20261006.log",
+    "originalFailedFixtureLog": "reports/memory-execution-boundary-final-tests-20261006.log",
+    "actualNpmBlockedLog": "reports/memory-npm-active-job-block-proof-20261006.log",
+    "actualReleaseBlockedLog": "reports/memory-active-job-block-proof-20261006.log",
+    "fullRegressionDeferredUntilGpuCleanup": true
+  }
+}

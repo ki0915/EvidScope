@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-06T04:42:36.486Z",
+  "pagefileAllocatedMiB": 30720,
+  "initialMiB": 30720,
+  "maximumMiB": 30720,
+  "commitLimitGiB": 61.863,
+  "commitFreeGiBAtPersistence": 17.646,
+  "diskFreeGiB": 13.011,
+  "rebootPerformed": false,
+  "userApplicationsStopped": false,
+  "priorPartialFailurePreserved": true,
+  "evidenceDirectory": ".local/training/pagefile-resize-20261006-r1",
+  "evidenceSha256": {
+    "before.json": "23774a6a5707708c219b35d5c6ccc5ac6cb622a6eb1d42b51ba0f831403752a5",
+    "result.json": "6e0d63608024cd9bc23ead9d7bc52bcf470aad2b7623f138075807cd5eddba64",
+    "persistent-before.json": "e6f7404b5762131506957ae9e3f664e3c6c4d9c458851329e3474a8aef200213",
+    "persistent-result.json": "92143921007cb166136a28830237ec8dac33ad93868e3a404339cbacb8a55cc9"
+  },
+  "resourcePolicySha256": "cb047cea3b9eb1666b1ac696044ed92597185a7205a49727c4200cd43fb22d3d",
+  "readiness": {
+    "runId": "public-qa-gdiag-20261006-r3",
+    "state": "ready_check_only",
+    "allowed": true,
+    "reasons": [],
+    "samples": [
+      {
+        "observedAt": "2026-10-06T13:38:40.2092238+09:00",
+        "commitFreeGiB": 17.658,
+        "physicalFreeGiB": 6.863
+      },
+      {
+        "observedAt": "2026-10-06T13:38:52.2169126+09:00",
+        "commitFreeGiB": 17.646,
+        "physicalFreeGiB": 6.92
+      },
+      {
+        "observedAt": "2026-10-06T13:39:04.1850782+09:00",
+        "commitFreeGiB": 17.703,
+        "physicalFreeGiB": 6.914
+      }
+    ],
+    "trainingCompleted": false,
+    "promotionAllowed": false
+  },
+  "gpuJobExecutedByThisReadinessCheck": false,
+  "independentReviewPerformed": true,
+  "actualGenerationExecution": {
+    "runId": "public-qa-gdiag-20261006-r4",
+    "state": "process_completed",
+    "exitCode": 0,
+    "terminationConfirmed": true,
+    "jobUid": "b901d67b-e53f-42d1-ab89-d2360e7920ee",
+    "podUid": "45529f57-5e41-4c00-85fc-ba7682b0f554",
+    "modelCalls": 64,
+    "admittedRows": 64,
+    "excludedRows": 0,
+    "sourceTrainingRunId": "public-qa-grounding-20261005-r4",
+    "actualNewOptimizerSteps": 0,
+    "sourceOptimizerHistoryUpdates": 60,
+    "controllerSha256": "f1e3080d4f1174c0d4adcdcf97a3d558ed57551a3e067ee25b19295da30f97e6",
+    "responsesSha256": "2ea93203bb4c1b17e84d622bd7568d7e9e4d66f5a865e09a60ceeb8419b9730f",
+    "pvcExportFilesVerified": 68,
+    "observations": 58,
+    "minCommitFreeGiB": 7.251,
+    "minPhysicalFreeGiB": 3.904,
+    "peakCgroupMemoryGiB": 2.0003890991210938,
+    "peakGpuTotalUsedMiB": 8320,
+    "peakGpuTemperatureC": 70,
+    "cudaPeakAllocatedBytes": 6049228800,
+    "cudaPeakReservedBytes": 6192889856,
+    "oomKills": 0,
+    "resourceGuardStops": 0,
+    "gpuNodeStopped": true,
+    "originalDlpContainersChanged": false,
+    "qualityClaimAllowed": false,
+    "promotionAllowed": false,
+    "evaluationScope": "retrospective_regression_diagnosis_on_previously_observed_64_rows",
+    "finishedAt": "2026-10-06T04:53:21.348Z"
+  }
+}

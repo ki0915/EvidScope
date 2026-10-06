@@ -1,0 +1,6 @@
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.104s
+
+OK

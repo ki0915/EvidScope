@@ -1,6 +1,26 @@
-![EvidScope 문서](assets/document-cover.svg)
+![EvidScope 문서](assets/portfolio-cover.svg)
 
 # 문서 안내
+
+**2026-10-06 기준:** 개발 소스 **v0.1.2**, 검증된 이전 로컬 설치본 **v0.1.1**. v0.1.2 반복 검증은 8회 통과 뒤 9회차에 실패했으며 10회 완료가 아닙니다. 버전별 결과와 한계는 [검증 현황](verification-status.md)에 모았습니다.
+
+| 처음 알고 싶은 내용 | 읽을 문서 |
+|---|---|
+| 어떤 포트폴리오이며 무엇을 해결하는가 | [제품 소개·스택·기능·구현 사례·발전 방향](product-overview.md) |
+| 어떻게 구현했고 어디를 신뢰하는가 | [현재 아키텍처](architecture.md), [전체 흐름 SVG](assets/evidence-flow.svg) |
+| 실제 성과와 남은 한계는 무엇인가 | [검증 현황과 원본 근거](verification-status.md) |
+| 실행·검토·복구 방법은 무엇인가 | [설치·첫 사용](first-release-20261006.md), [v0.1.1 권한 패치](first-release-security-patch-20261006.md) |
+| 한국 거버넌스에서 무엇을 지원하는가 | [증거 계약](kr-governance-evidence.md), [공급사 조치 활용](kr-supplier-reliance.md) |
+
+아래 자료와 PDF는 각 작성 시점의 기록입니다. 기존 HTML 뷰어는 2026-09-09 설계를 설명하며 최신 상태는 위 제품·검증 문서를 따릅니다. 과거 문서의 `.local/`, `.test-runs/`, `releases/` 경로는 공개 저장소에 포함하지 않은 로컬 자료입니다.
+
+## 이전 개발 기록과 상세 문서
+
+**v0.1.0 당시 출시 기록:** [설치 안내](first-release-20261006.md) · [출시 결과](../reports/first-release-20261006.md). 이 기록의 756개 전체 검사·380개 반복 검사·Linux 38개는 당시 버전의 결과입니다.
+
+**2026-10-06 한국법 증거 검증 보강:** [한국법 조치 시험·문서·검토 계약](kr-governance-evidence.md) · [법령 확인 범위](legal-sources.md). 조건부 의무와 노력의무를 분리하고 현재 법령·시스템·원본 증거를 대조합니다. 최신 실제 검사 결과는 [검증 보고서](../reports/kr-ai-basic-governance-verification-20261006.md)를 확인하세요.
+
+**2026-09-12 1차 구현:** [기술 가이드](first-release-technical-guide-20260912.md) · [기능 명세서](first-release-functional-spec-20260912.md) · [실행 계획](first-release-execution-plan-20260912.md) · [최신 보안 모델 재검토](security-model-reassessment-20260912.md) · [검증 보고서](../reports/evidscope-v1-verification-20260912.md). 수집·가시성·거버넌스·격리/학습 경로와 UI는 코드로 구현했으며, 실제 모델 선택·가중치 반입·Pod 실측·학습은 아직 수행하지 않았습니다.
 
 **1차 결과물:** [개발 보고서 PDF](../output/pdf/evidscope-first-development-report.pdf) · [포트폴리오 PDF](../output/pdf/evidscope-portfolio.pdf) · [보고서 Markdown](../reports/first-development-report-20260909.md) · [포트폴리오 Markdown](portfolio.md). 실제 화면과 시험 결과, AI 협업의 역할, 미완료 항목을 구분했습니다. 기능 검증 기준은 `300c07f`입니다.
 
@@ -43,3 +63,7 @@
 - [규정 출처와 미확인 범위](legal-sources.md)
 
 문서 작성일이 모든 시험·법령의 재검증일을 뜻하지 않는다. 각 결과의 날짜·환경·소스 범위를 확인한다. 로컬 AI 시험 완료, Codex 실제 연동, Kubernetes 최신 버전 재배포, 운영 적합성·법률 검토는 별도 상태다.
+
+- [한국법 금융 증거 흐름·API·검증](finance-evidence-20260922.md)
+- [로컬 학습 전달 경로와 실측 조건](training-delivery-20260922.md)
+- [조직 OIDC 로그인·서명 접근 상태·세션 회수](oidc-authentication.md)

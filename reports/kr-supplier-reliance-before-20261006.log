@@ -1,0 +1,51 @@
+✖ reviewed supplier performance evidence supports only each scoped article34 measure without issuing a legal verdict (3.7116ms)
+✔ a bundle or acknowledgement cannot replace scoped supplier-performance review and exact evidence bindings (4.1373ms)
+✔ supplier alternatives cannot replace pre-review, oversight, documents or erase a selected failed measurement (1.0236ms)
+✖ actual supplier HTTP intake binds reviewed scope, survives restart and preserves signed tenant history (788.8087ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 890.0788
+
+✖ failing tests:
+
+test at test\kr-supplier-reliance.test.mjs:22:1
+✖ reviewed supplier performance evidence supports only each scoped article34 measure without issuing a legal verdict (3.7116ms)
+  AssertionError [ERR_ASSERTION]: KR-34-RISK
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/kr-supplier-reliance.test.mjs:25:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\kr-supplier-reliance.test.mjs:68:1
+✖ actual supplier HTTP intake binds reviewed scope, survives restart and preserves signed tenant history (788.8087ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  400 !== 202
+  
+      at TestContext.<anonymous> (file:///C:/Users/%EA%B8%B0%EB%AF%BC%EC%88%98/Documents/ChatGPT/EvidScope%20%E2%80%94%20AI%20Visibility%20&%20Governance%20SIEM/test/kr-supplier-reliance.test.mjs:79:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 400,
+    expected: 202,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

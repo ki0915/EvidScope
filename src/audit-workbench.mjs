@@ -28,8 +28,10 @@ export function createAuditWorkbench(store,key){
  const projectedEvaluations=(tenant,actionId)=>boundedRows('SELECT body FROM evaluations WHERE tenant=? AND action_id=? ORDER BY id DESC',[tenant,actionId],limits.evaluations);
  const projectedDecisions=(tenant,caseId)=>boundedRows("SELECT body FROM objects WHERE tenant=? AND type='case_decision' AND json_extract(body,'$.caseId')=? ORDER BY rowid DESC",[tenant,caseId],limits.decisions);
  const version=(tenant,actionId)=>store.db.prepare('SELECT version,analyzed FROM actions WHERE tenant=? AND id=?').get(tenant,actionId);
+ const verifyActions=tenant=>{try{store.checkActionProjection(tenant);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}};
  function getCase(p,id){const row=store.db.prepare("SELECT CASE WHEN length(CAST(body AS BLOB))<=? THEN body ELSE NULL END AS body FROM objects WHERE tenant=? AND type='case' AND id=?").get(limits.rowBytes,p.tenant,id);if(!row)fail(404,'사건을 찾을 수 없습니다');if(row.body===null)fail(413,'사건 기록 한도 초과');return JSON.parse(row.body);}
  function verifyContext(p,id){
+  verifyActions(p.tenant);
   const projectedCase=getCase(p,id),actionId=projectedCase.actionId;
   const events=[],evaluations=[],decisions=[];let originalCase=null,totalBytes=0,retainedCount=0;
   const collect=(arr,value,count)=>{if(arr.length>=count||(totalBytes+=bytes(value))>limits.contextBytes)fail(413,'사건 검토 자료 한도 초과: 부분 결과를 발급하지 않습니다');arr.push(value);};
@@ -87,22 +89,25 @@ export function createAuditWorkbench(store,key){
   return {...signed,signature:sign(null,Buffer.from(canonical(signed)),key).toString('base64'),publicKeyFingerprint};
  });}
  function investigations(p,params){
+  verifyActions(p.tenant);
   const q=cleanText(params.get('q')||'',200).trim(),filter=params.get('state')||'all';if(!['needs_review','reviewed','all'].includes(filter))fail(400,'검토 상태 필터 오류');
   const pageNumber=(name,fallback,max)=>{const s=params.get(name);if(s===null)return fallback;const n=Number(s);if(!Number.isSafeInteger(n)||n<0||(name==='limit'&&n<1)||n>max)fail(400,'목록 페이지 범위 오류');return n;};
   const limit=pageNumber('limit',50,100),offset=pageNumber('offset',0,10000000),pattern=`%${q.replace(/[\\%_]/g,'\\$&')}%`;
   const rows=store.db.prepare(`SELECT a.*, (SELECT MAX(received) FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id) AS last_seen FROM actions a WHERE a.tenant=? AND
    (?='' OR a.id LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id AND e.body LIKE ? ESCAPE '\\')) ORDER BY last_seen DESC,a.id`);
+  const latestDecisions=new Map(),caseIdsByAction=new Map(),caseOverflowActions=new Set();for(const value of store.cachedSignedObjects(p.tenant,['case','case_decision'])){if(value.type==='case_decision'){if(bytes(value.body)>limits.rowBytes)fail(413,'사람 판단 기록 크기 한도 초과');latestDecisions.set(value.body.actionId,value.body);}else if(value.type==='case'){const ids=caseIdsByAction.get(value.body.actionId)||[];if(ids.length>=1000){caseOverflowActions.add(value.body.actionId);continue;}ids.push(value.id);caseIdsByAction.set(value.body.actionId,ids);}}
   const items=[],counts={needsReview:0,reviewed:0,analysisPending:0};let total=0,itemBytes=4096;
   for(const row of rows.iterate(p.tenant,q,pattern,pattern)){
-   let events=[],evaluations=[],detailUnavailable=false;
-   try{events=projectedEvents(p.tenant,row.id);evaluations=projectedEvaluations(p.tenant,row.id);}catch(e){if(e.status!==413)throw e;detailUnavailable=true;}
-   const caseIds=[];for(const c of store.db.prepare("SELECT id FROM objects WHERE tenant=? AND type='case' AND json_extract(body,'$.actionId')=? ORDER BY id").iterate(p.tenant,row.id)){if(caseIds.length>=1000)fail(413,'행동에 연결된 사건 수가 조회 한도를 초과했습니다');caseIds.push(c.id);}
-   const last=store.db.prepare(`SELECT CASE WHEN length(CAST(body AS BLOB))<=${limits.rowBytes} THEN body ELSE NULL END AS body FROM objects WHERE tenant=? AND type='case_decision' AND json_extract(body,'$.actionId')=? ORDER BY rowid DESC LIMIT 1`).get(p.tenant,row.id);if(last?.body===null)fail(413,'사람 판단 기록 크기 한도 초과');
-   const latestDecision=last?JSON.parse(last.body):null,hash=detailUnavailable?null:contextHash(p.tenant,row.id,events,evaluations,row),reviewState=state(latestDecision,hash),pending=row.analyzed<row.version;
-   const latest=evaluations[0]||(detailUnavailable?boundedRows('SELECT body FROM evaluations WHERE tenant=? AND action_id=? ORDER BY id DESC LIMIT 1',[p.tenant,row.id],1)[0]:null),findings=latest?.findings||[];
+   let events,evaluations,detailUnavailable=false;
+   const latestDecision=latestDecisions.get(row.id)||null,pending=row.analyzed<row.version;let reviewState='unreviewed';
+   if(latestDecision){try{events=projectedEvents(p.tenant,row.id);evaluations=projectedEvaluations(p.tenant,row.id);}catch(e){if(e.status!==413)throw e;events=[];evaluations=[];detailUnavailable=true;}reviewState=state(latestDecision,detailUnavailable?null:contextHash(p.tenant,row.id,events,evaluations,row));}
    if(pending)counts.analysisPending++;if(reviewState==='reviewed')counts.reviewed++;else counts.needsReview++;
    if(filter==='reviewed'&&reviewState!=='reviewed'||filter==='needs_review'&&reviewState==='reviewed')continue;
    total++;if(total<=offset||items.length>=limit)continue;
+   if(events===undefined||evaluations===undefined)try{events=projectedEvents(p.tenant,row.id);evaluations=projectedEvaluations(p.tenant,row.id);}catch(e){if(e.status!==413)throw e;events=[];evaluations=[];detailUnavailable=true;}
+   if(caseOverflowActions.has(row.id))fail(413,'행동에 연결된 사건 수가 조회 한도를 초과했습니다');
+   const caseIds=(caseIdsByAction.get(row.id)||[]).slice().sort();
+   const latest=evaluations[0]||(detailUnavailable?boundedRows('SELECT body FROM evaluations WHERE tenant=? AND action_id=? ORDER BY id DESC LIMIT 1',[p.tenant,row.id],1)[0]:null),findings=latest?.findings||[];
    const analysisStatus=latest?.status==='quarantined_resource_limit'&&latest.version===row.version?'quarantined_resource_limit':pending?'pending':latest?'evaluated':'not_observed';
    const highestSeverity=['high','medium','low'].find(s=>findings.some(f=>f.severity===s))||(latest?'none':'unknown'),references=refs(events),attention=[];
    if(pending)attention.push('새 증거 또는 정책 변경에 대한 분석이 아직 완료되지 않았습니다');
@@ -115,10 +120,10 @@ export function createAuditWorkbench(store,key){
    const item={actionId:row.id,traceIds:[...new Set(events.map(e=>e.traceId).filter(Boolean))],actor:distinct(events,'actor'),tool:distinct(events,'tool'),operation:distinct(events,'action'),resource:distinct(events,'resource'),destination:distinct(events,'destination'),firstSeen:timestamps[0]||null,lastSeen:timestamps.at(-1)||row.last_seen||null,eventCount:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=? AND action_id=?').get(p.tenant,row.id).n,referenceCount:detailUnavailable?null:references.length,highestSeverity,findingCount:detailUnavailable?null:latest?.coverage?.totalFindings??findings.length,analysisStatus,pending,reviewState,latestDecision,caseIds,attention,outcome:detailUnavailable?'unconfirmed':result,authority:latest?.authority||'not_observed'};
    if((itemBytes+=bytes(item))>limits.reportBytes)fail(413,'조사 목록 응답 크기 한도 초과: limit를 줄여 다시 조회하세요');items.push(item);
   }
-  return {items,total,limit,offset,counts,scope:'검색어에 일치하는 테넌트 행동의 조회 사본 기준입니다. counts는 검토 상태 필터 적용 전입니다. 서명 원본·사본 무결성은 사건 검토 및 보고서 발급 시 대조합니다. 전체 AI 사용의 가시성 비율이 아닙니다.'};
+  return {items,total,limit,offset,counts,scope:'검색어에 일치하는 테넌트 행동의 조회 사본 기준입니다. counts는 검토 상태 필터 적용 전입니다. 이 조회에서 행동·이벤트·평가·사람 판단 사본을 서명 원장과 대조했습니다. 전체 AI 사용의 가시성 비율이 아닙니다.'};
  }
  function handle(p,method,url,x){human(p);const path=url.pathname;
-  if(path==='/api/investigations'&&method==='GET')return investigations(p,url.searchParams);
+  if(path==='/api/investigations'&&method==='GET')return store.transaction(()=>investigations(p,url.searchParams));
   const match=path.match(/^\/api\/cases\/([^/]+)\/(review-context|decisions|report)$/);if(!match)return undefined;
   const id=identifier(decodeURIComponent(match[1])),operation=match[2];
   if(operation==='review-context'&&method==='GET')return store.transaction(()=>verifyContext(p,id));

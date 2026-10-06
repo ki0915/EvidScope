@@ -3,3 +3,5 @@
 *.png binary
 *.jpg binary
 *.jpeg binary
+# Keep byte-level evidence hashes stable across Windows and Linux checkouts.
+reports/** -text

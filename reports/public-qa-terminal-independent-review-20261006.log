@@ -1,0 +1,32 @@
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (3.2902ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.2684ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.155ms)
+✔ successful telemetry does not query another Pod or change the sample (0.1314ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.4448ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.191ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.2388ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.1417ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.1626ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.2024ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.1795ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.1103ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.1086ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.1084ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.1735ms)
+✔ a missing runtime task waits briefly for the same container terminal status (0.3695ms)
+✔ a missing runtime task never substitutes a replacement Pod during delayed status (0.2072ms)
+✔ bounded late status polling does not infer an exit from a missing task alone (0.1961ms)
+✔ grounding is an explicit training mode with the approved interactive override (0.5891ms)
+✔ transient Windows socket read failure has a bounded retry and preserves fresh result (0.9261ms)
+✔ persistent socket errors stop after three reads and non-socket errors never retry (0.4471ms)
+✔ persistent Windows bind failure may use one fresh alternate read; unrelated errors cannot (0.2781ms)
+✔ grounding generation diagnosis cannot train or restore optimizer state (0.7871ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.2103ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.1783

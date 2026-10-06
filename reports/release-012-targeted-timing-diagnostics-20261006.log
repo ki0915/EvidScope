@@ -1,0 +1,10 @@
+✔ governance reviewer boundary rejects auditor mutation before signed state changes across gateways and restart (1101.4612ms)
+✔ KR-33 HTTP keeps mandatory review separate from optional request evidence and preserves frozen tenant history (1774.2306ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3064.4988

@@ -1,0 +1,336 @@
+{
+  "privateKeysCopied": false,
+  "sourceReport": "reports/kr-governance-six-cases-final-20261006.json",
+  "copiedFiles": [
+    {
+      "caseId": "baseline",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "4c03e6e051b2aae466c7545c62e7bdef780690473a34f24a35d584556419887c"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 227734,
+      "file": "finance-before.json",
+      "sha256": "bd3c580394d4605690522cc350a09dd2df9ff1f170f6e0b6c0bfbf83b80ec500"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 227734,
+      "file": "finance-after.json",
+      "sha256": "e2b299e83fb3da25f475f08874450232072285b2721753fe9eeeb97c76a80a3e"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 668268,
+      "file": "ledger-export.json",
+      "sha256": "0f0ded9c04a98522b1a075b14da5425d88beddc9582abd699aac5a7008276c75"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "3b145ad682670c24909204f9ead2172ee80c9e5fa8266910e66d2997d7604b4f"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 1015,
+      "file": "supplier-export.json",
+      "sha256": "042476b831ac80c945c07a765c894c1291448dff3a6dbf65499e90b33fc54087"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "b95b70c1241bc7fcfc9dd2e7dce2566c01ffc117953e26f175e9661741c2a508"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "c877cb54050de5688b11b7d7f0fdda0f816d7df390f45eea02f5067b4fd553e0"
+    },
+    {
+      "caseId": "baseline",
+      "bytes": 2283,
+      "file": "governance-documents-after.json",
+      "sha256": "c877cb54050de5688b11b7d7f0fdda0f816d7df390f45eea02f5067b4fd553e0"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "0e78cc4b148a6c24bc92c2fab9e2ba0f1412cb025f214d1a73fe3ae85bf8ec13"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 227734,
+      "file": "finance-before.json",
+      "sha256": "bc4cf9e95089250a383c9c6b888de09e5dbd1d50b25ca7161a2c64c26e5b4e27"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 228410,
+      "file": "finance-after.json",
+      "sha256": "aa7c434d11e6a50d55307579463ff2899c8dd848501e916c830b114f5389445f"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 672095,
+      "file": "ledger-export.json",
+      "sha256": "74d87fe00f4a7449f78489581351b765319806aad5d5add7ee2caa06c2a69bb6"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "17c9117f0241ebe8cd53bc9a0dffd3b8d98e6387589e08bf3d5e46f50f683216"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 1015,
+      "file": "supplier-export.json",
+      "sha256": "1c2e8b609308367e6092b1aa87b41d3a35a182d93d92f5f7b16629946eecb6f9"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "54af3b6e368025081328ec7677102c0cf6f34c5e9a89fd2898f70ca2aaeb1229"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "b6c0f925e7b762e503dd4e826a2a2761246af615c2ed3d12314dcc9a8b767625"
+    },
+    {
+      "caseId": "model-changed",
+      "bytes": 2283,
+      "file": "governance-documents-after.json",
+      "sha256": "b6c0f925e7b762e503dd4e826a2a2761246af615c2ed3d12314dcc9a8b767625"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "706e41a1a617dd445c86e1704afcacc960e0f7dac5a65aab2d9ed6dd0a444314"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 227734,
+      "file": "finance-before.json",
+      "sha256": "5baf2656d8977d313600047c7e4bf02571348c0616fd6d7dd640a1a4aaa40c0a"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 229003,
+      "file": "finance-after.json",
+      "sha256": "470860aff7b4f2d4f33cfdc7f7b477a90682af2f7a433ea813b4079a8348046c"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 675062,
+      "file": "ledger-export.json",
+      "sha256": "f62d53cf76ac8dfe90f14d0bda34538aaa29102c42b5d2121263afe01cd1987e"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "7b5a5374835c2e3a486f4c94e781e7b4ce962aa90c849263c38aef93312db0c3"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 1018,
+      "file": "supplier-export.json",
+      "sha256": "e56d7cf8335e5f08662ae94e80654cffd9753eca83655f1f3e10a1afc07c6587"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "fef1e5f8278c69b65dd37928a6593942852d3bb5bc3544fc737360d707e9c815"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "91dc6509b34b4b732b96c8ab8bc7b0bc4dcf91fafb21259c6cac3ae7185b48d3"
+    },
+    {
+      "caseId": "purpose-changed",
+      "bytes": 2283,
+      "file": "governance-documents-after.json",
+      "sha256": "91dc6509b34b4b732b96c8ab8bc7b0bc4dcf91fafb21259c6cac3ae7185b48d3"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "93210f90ebd1f454a1614f2fb175767d9ea4a3b240ccc1004fe41f46039f65ce"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 227734,
+      "file": "finance-before.json",
+      "sha256": "4ebeffa86ff190dd7763295f84c0fe62613e9c437d85a87373502e84a38efd93"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 228589,
+      "file": "finance-after.json",
+      "sha256": "bdb8f2504b3ad6b8b48cc2158dbf995817c348dae6d4c8285cd99934d18c07de"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 671533,
+      "file": "ledger-export.json",
+      "sha256": "9cd93d2ed37eb5f28a308376c9a835ce89b38e6aabf70c6c276e52bae5f205c5"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "2cdec742e5c9262ab5bc04a45737090f8194165ca923529d4ffb2e976ff18c9a"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 1015,
+      "file": "supplier-export.json",
+      "sha256": "5530dfe6bfd8ce0c698f2e16f0fc59f34e094496d16cee0171bad8b73237a1f5"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "207111dd73449f2530bf308a600fb4b0239f4beb96504d5eea6d0aa89718e4b5"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "cce5d58a313599c02fc81ad018dae05300c6ae1983b60cbda0abd8c3a151a5ca"
+    },
+    {
+      "caseId": "supplier-document-revised",
+      "bytes": 2283,
+      "file": "governance-documents-after.json",
+      "sha256": "cce5d58a313599c02fc81ad018dae05300c6ae1983b60cbda0abd8c3a151a5ca"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "43bfff3decb6a30fd045a8187d906721b67e89ac1c971918146b8f1109743361"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 227734,
+      "file": "finance-before.json",
+      "sha256": "20dae023c92c0a3433b23cebac8bd1a12f8fffc1aaec931ef370f5f67ea1d953"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 228595,
+      "file": "finance-after.json",
+      "sha256": "1127f39b39037ff3948eb4892dc6da7287a7bb4ea52994952c107682b9c8471e"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 671286,
+      "file": "ledger-export.json",
+      "sha256": "3a5f248ddaf79a4a3c5095f5de92c07a2b8ba3c5ae6e8c894ddc1ae2c78897bc"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "11a062bf0ba2823804b9c8140bbbed5134c23bd7c64823e9715ca8758b6de1e1"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 1015,
+      "file": "supplier-export.json",
+      "sha256": "f0b5540d227d17d8d6a331b7a324b8ce49eb4c705dbf5b9a955cf45d7af95cf7"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "9183afa4c26e0bd266223bd377e1d205792504cd984bc8cf4ce598478a1e5c34"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "daeae6a4f0f054b2caa9b32f264c67ba463deed9bc3c00d8466238529ae15cfc"
+    },
+    {
+      "caseId": "oversight-plan-revised",
+      "bytes": 1786,
+      "file": "governance-documents-after.json",
+      "sha256": "a0c6f0b6abbafa338b63fa7738f80ede233037a657d2deefd1587c1ec88cdd2b"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 113,
+      "file": "public-key.pem",
+      "sha256": "b547db46bc19933344389808ae54f39e1672b9823712b7255dcccfb2dfa0cf4d"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 224312,
+      "file": "finance-before.json",
+      "sha256": "a27835c06738d3f8bd45c1f004a8547f9c5ba219b393553cd9a812fe6481e374"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 224312,
+      "file": "finance-after.json",
+      "sha256": "f9a248fe04dcb29c47166ae4de5dad285a0e1acfed5d808050d325b51ddd1ece"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 655762,
+      "file": "ledger-export.json",
+      "sha256": "0415618691ee8ee87de83be5431cffd43a0d773cfc1fa0154ffba7cc23b3ebea"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 267,
+      "file": "checkpoint.json",
+      "sha256": "fc851ee90d25b10305f6f69ccba7dc95dff97b03c87390dfdef5b0c079edd61d"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 1015,
+      "file": "supplier-export.json",
+      "sha256": "91536ed6cfd7f6e467e898a6686245d8de728cf75e94c766078347643463e6c4"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 5929,
+      "file": "measurement-records.json",
+      "sha256": "3982cca277e21e4051ed5c3b5510881030a8cc15e0fe5240f50bb2c11a40820a"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 2283,
+      "file": "governance-documents-before.json",
+      "sha256": "61a2530fb0a446820e32d5ad366fb7b2136d161f2e3d9b4701eb69c8475f5840"
+    },
+    {
+      "caseId": "oversight-record-missing",
+      "bytes": 2283,
+      "file": "governance-documents-after.json",
+      "sha256": "61a2530fb0a446820e32d5ad366fb7b2136d161f2e3d9b4701eb69c8475f5840"
+    }
+  ],
+  "synthetic": true,
+  "destinationDirectory": "C:\\Users\\기민수\\Documents\\ChatGPT\\EvidScope — AI Visibility & Governance SIEM\\reports\\kr-governance-six-cases-evidence-20261006",
+  "sourceDirectory": "C:\\Users\\기민수\\AppData\\Local\\Temp\\evidscope-portfolio-governance-kXePFm",
+  "verifiedCopies": 54,
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T03:52:12.2789122Z"
+}

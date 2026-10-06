@@ -1,0 +1,40 @@
+✔ complete persisted synthetic evidence with BOM verifies consistency without claiming actual execution or quality (406.9875ms)
+✔ all 64 admitted rows require 128 paired calls and raw partials (383.4943ms)
+✔ production CLI rejects fixture pins and writes a failure receipt without overwriting controller evidence (335.2483ms)
+✔ rejects exit zero without successful controller (245.9018ms)
+✔ rejects missing termination confirmation (284.0705ms)
+✔ rejects nonzero process exit (232.1732ms)
+✔ rejects admission denied (242.1478ms)
+✔ rejects training mode passed as diagnostic (258.254ms)
+✔ rejects controller cannot mask generation error (257.47ms)
+✔ rejects different Pod UID (250.5052ms)
+✔ rejects different Job owner UID (866.2348ms)
+✔ rejects different generation Pod UID (863.7995ms)
+✔ rejects missing response file (794.3156ms)
+✔ rejects response bytes changed (710.0807ms)
+✔ rejects raw row differs despite recomputed response hash (365.4205ms)
+✔ rejects missing response ID despite recomputed hash (294.5497ms)
+✔ rejects invalid raw elapsed time (236.7685ms)
+✔ rejects negative token measurement (235.2716ms)
+✔ rejects excluded sample lacks error flag (339ms)
+✔ rejects admission crops full context (245.4287ms)
+✔ rejects model call total inconsistent (236.2163ms)
+✔ rejects stdout call omitted (331.7015ms)
+✔ rejects runtime code changed (245.5896ms)
+✔ rejects source failed controller overwritten (226.002ms)
+✔ rejects candidate adapter changed (226.6609ms)
+✔ rejects unexpected candidate file (249.9241ms)
+✔ rejects writable candidate live mount (248.2929ms)
+✔ rejects writable outputs escape diagnostic subtree (247.596ms)
+✔ rejects manifest mismatch (240.4209ms)
+✔ rejects source path escape (304.4228ms)
+✔ rejects missing raw row (230.7292ms)
+✔ rejects extra raw row (329.8391ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11062.0785

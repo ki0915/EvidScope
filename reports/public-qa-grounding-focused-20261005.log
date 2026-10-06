@@ -1,0 +1,13 @@
+✔ grounding is an explicit training mode with the approved interactive override (0.5459ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.8831ms)
+✔ balanced selection preserves authentic originals and excludes all previously exposed families (8.7316ms)
+✔ selection rejects altered human labels and cross-split families (0.4765ms)
+✔ real grounding workload resets training state, isolates warmstart and binds new data rather than diagnostic data (83.541ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.6493

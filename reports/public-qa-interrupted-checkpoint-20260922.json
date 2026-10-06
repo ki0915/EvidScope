@@ -1,0 +1,23 @@
+{
+  "verified": true,
+  "globalStep": 5,
+  "fileCount": 9,
+  "sourceRun": "public-qa-stage1-20260922-r2",
+  "trainingRunCompleted": false,
+  "resumeExecutionVerified": false,
+  "adapterSha256": "d8c6c157142863fe37b1398a148e2d9e76f459a37971f5a2f3d6187bb75b9f8b",
+  "adapterBytes": 27297032,
+  "loraBMatrixCount": 128,
+  "loraBElements": 2621440,
+  "nonzeroLoraBElements": 2621440,
+  "loraBMaxAbs": 0.0004518624336924404,
+  "allLoraBTensorsFinite": true,
+  "weightUpdatesPresent": true,
+  "optimizerStateVerification": {
+    "gpuUsed": false,
+    "method": "torch.load weights_only true in CPU-only network-isolated container",
+    "verified": true,
+    "stateCount": 256,
+    "allActualAdamSteps": 5
+  }
+}

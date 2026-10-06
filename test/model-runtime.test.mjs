@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {existsSync,readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {modelPolicy,primaryModelPolicy} from '../src/model-policy.mjs';
+import {modelRuntimeStatus,createModelRuntime,validateArtifactLock,withModelSession} from '../src/model-runtime.mjs';
+import {modelRuntimeManifest} from '../deploy/model-runtime/render.mjs';
+import {trainingManifest} from '../deploy/training/render.mjs';
+import {createKubectlModelAdapter} from '../deploy/model-runtime/kubectl-adapter.mjs';
+import {observeModelPods} from '../scripts/model-runtime.mjs';
+import {trainingAdmission,importHumanReviews,recordHash,reviewedPayloadHash} from '../scripts/model-training-data.mjs';
+import {promoteCandidate,rollbackCandidate} from '../scripts/model-promote.mjs';
+import {compareModelOutputs,comparisonHash} from '../scripts/model-evaluate.mjs';
+
+const sha='a'.repeat(64),revision='b'.repeat(40),image=`registry.local/model@sha256:${sha}`;
+const lock={modelId:'foundation-sec',revision,sha256:sha,image,licenseReviewed:true,files:[{path:'model.gguf',sha256:sha}]};
+const isolation={source:'measured_cluster_probe',observedAt:new Date().toISOString(),manifestHash:sha,checks:Object.fromEntries(['defaultDenyEgress','crossNamespaceDenied','serviceAccountUnavailable','hostFilesystemUnavailable','tlsPeerVerified','processExitObserved'].map(k=>[k,true]))};
+const options={modelId:'foundation-sec',runId:'run-1',artifactLock:lock,isolationReceipt:isolation};
+function fakeAdapter(){let gone=false;return {create:async()=>({uid:'job-uid',name:'job-1'}),observe:async()=>gone?{absent:true}:{uid:'job-uid',phase:'Running',ready:true},delete:async()=>{gone=true;},list:async()=>[]};}
+
+test('model policy defaults OFF and current bounds replace historical runtime settings',()=>{assert.equal(modelPolicy.enabledByDefault,false);assert.equal(primaryModelPolicy().maxResponses,1);assert.equal(primaryModelPolicy().generation.numCtx,2048);assert.equal(modelPolicy.cipher.maxChunks,8);assert.equal(modelRuntimeStatus().models[0].state,'unavailable');assert.equal(modelRuntimeStatus().models[0].terminationConfirmed,false);assert.equal(validateArtifactLock({...lock,revision:'main'}).valid,false);assert.equal(validateArtifactLock({...lock,image:'latest'}).valid,false);assert.equal(validateArtifactLock({...lock,files:[{path:'../secret',sha256:sha}]}).valid,false);});
+
+test('observed state expires and declared ready does not attest isolation',()=>{const receipt={schemaVersion:1,source:'kubernetes_api',observedAt:new Date().toISOString(),models:[{id:'foundation-sec',phase:'Running',ready:true,uid:'pod-uid'}]};assert.equal(modelRuntimeStatus({receipt}).models[0].state,'running');assert.equal(modelRuntimeStatus({receipt}).models[0].isolationVerified,false);assert.equal(modelRuntimeStatus({receipt,now:Date.now()+31000}).observationStatus,'unavailable');const result=observeModelPods({execute:()=>{throw Error('private error');}});assert.equal(result.source,'unavailable');assert.ok(!JSON.stringify(result).includes('private'));});
+
+test('lifecycle rejects unresolved artifacts and unmeasured isolation; excludes concurrent starts',async()=>{const runtime=createModelRuntime({adapter:fakeAdapter()});await assert.rejects(runtime.start({...options,artifactLock:{...lock,revision:null}}),/artifact_lock/);await assert.rejects(runtime.start({...options,isolationReceipt:{...isolation,checks:{}}}),/isolation_not/);assert.equal((await runtime.start(options)).state,'running');await assert.rejects(runtime.start(options),/concurrency/);assert.equal((await runtime.stop('foundation-sec','completed')).terminationConfirmed,true);});
+
+test('delete success is not termination and unknown cleanup keeps slot quarantined',async()=>{const adapter=fakeAdapter();adapter.delete=async()=>{};const runtime=createModelRuntime({adapter});await assert.rejects(withModelSession(runtime,options,async()=>({ok:true}),{wait:async()=>{}}),/MODEL_STOP_UNCONFIRMED/);await assert.rejects(runtime.start(options),/concurrency/);});
+
+test('finally cleanup runs for normal, failed and cancelled sessions',async()=>{for(const outcome of ['normal','failed','cancelled']){const adapter=fakeAdapter();let deleted=0;const del=adapter.delete;adapter.delete=async v=>{deleted++;return del(v);};const runtime=createModelRuntime({adapter}),controller=new AbortController();const run=withModelSession(runtime,options,async()=>{if(outcome==='failed')throw Error('work_failed');if(outcome==='cancelled'){controller.abort();await new Promise(resolve=>setTimeout(resolve,1));}return 'done';},{signal:controller.signal,wait:async()=>{}});if(outcome==='normal')assert.equal(await run,'done');else await assert.rejects(run);assert.equal(deleted,1);}});
+
+test('observation mismatch after create requests cleanup of the created UID',async()=>{let deleted;const adapter=fakeAdapter();adapter.observe=async()=>({uid:'different-uid',phase:'Running',ready:true});adapter.delete=async r=>{deleted=r.uid;};const runtime=createModelRuntime({adapter});await assert.rejects(runtime.start(options),/uid_mismatch/);assert.equal(deleted,'job-uid');});
+
+test('orphan reconciler addresses every matching job including duplicate model IDs',async()=>{const deleted=[];const adapter=fakeAdapter();adapter.list=async()=>['1','2'].map(n=>({modelId:'foundation-sec',uid:'uid'+n,name:'job'+n,runId:'orphan'+n,expiresAt:new Date(Date.now()+10000).toISOString()}));adapter.delete=async r=>{deleted.push(r.uid);};adapter.observe=async()=>({absent:true});await createModelRuntime({adapter}).reconcile();assert.deepEqual(deleted,['uid1','uid2']);});
+
+test('Kubernetes deletion binds UID and absence of Job is insufficient while a Pod remains',async()=>{let deleted;const adapter=createKubectlModelAdapter({frontendImage:image,isolationManifestHash:sha,execute:async(args,input)=>{if(args[0]==='delete'){deleted={args,input};return {};}if(args[1]==='jobs')return {items:[]};return {items:[{metadata:{ownerReferences:[{uid:'owned'}]},status:{phase:'Running',containerStatuses:[{state:{running:{}}},{state:{running:{}}}]}}]};}});assert.equal((await adapter.observe({name:'job',uid:'owned'})).absent,undefined);await adapter.delete({name:'job',uid:'owned'});assert.deepEqual(deleted.input.preconditions,{uid:'owned'});assert.equal(deleted.args[1],'--raw');});
+
+test('inference and training templates stay suspended, no egress or ambient credentials',()=>{for(const manifest of [modelRuntimeManifest(),trainingManifest()]){const deny=manifest.items.find(x=>x.kind==='NetworkPolicy'&&x.metadata.name==='deny-all');assert.deepEqual(deny.spec.egress,[]);for(const job of manifest.items.filter(x=>x.kind==='Job')){assert.equal(job.spec.suspend,true);assert.equal(job.spec.backoffLimit,0);const pod=job.spec.template.spec;assert.equal(pod.automountServiceAccountToken,false);assert.equal(pod.hostNetwork,false);assert.ok(pod.volumes.every(v=>!v.hostPath));for(const c of pod.containers){assert.equal(c.securityContext.readOnlyRootFilesystem,true);assert.equal(c.securityContext.allowPrivilegeEscalation,false);assert.deepEqual(c.securityContext.capabilities.drop,['ALL']);}}}const manifest=modelRuntimeManifest(),jobs=manifest.items.filter(x=>x.kind==='Job');assert.equal(jobs[0].spec.template.spec.containers[0].args.includes('127.0.0.1'),true);assert.ok(jobs[0].spec.template.spec.containers[0].args.includes('--no-context-shift'));});
+
+test('review imports bind original content, require explicit review, and current corpus remains blocked',()=>{const example=JSON.parse(readFileSync('data/role-evals/evidence-organizer/v1/tune.jsonl','utf8').split(/\r?\n/)[0]);assert.equal(trainingAdmission([example]).admitted,false);assert.throws(()=>importHumanReviews([example],[{id:example.id,recordHash:recordHash(example),approved:false}]),/review_incomplete/);assert.throws(()=>importHumanReviews([example],[{id:example.id,recordHash:'wrong'}]),/hash_mismatch/);});
+
+test('explicit reviews admit synthetic training scenarios, reject later edits and split leakage',()=>{
+ const records=['tune','validation','test'].flatMap((split,index)=>Array.from({length:[300,50,100][index]},(_,i)=>({id:`${split}-${i}`,roleId:'evidence-organizer',familyId:`family-${split}-${i}`,sourceId:'synthetic-test-fixture',language:i%2?'ko':'en',split,synthetic:true,humanReviewed:false,sourceConsent:true,prompt:`검토 ${split} ${i}`,evidence:[{id:`ref-${split}-${i}`,statement:`event ${i}`}],truth:{labels:['evidence'],requiredRefs:[`ref-${split}-${i}`],mustStateUnknown:false,mustRefuse:false}})));
+ const reviews=records.map(r=>({id:r.id,recordHash:recordHash(r),approved:true,sourceConsent:true,piiReviewed:true,reviewerId:'test-only-reviewer',reviewedAt:new Date().toISOString(),approvedOutput:{summary:'Test-only review',findings:[{claim:'Evidence exists',evidenceRefs:r.truth.requiredRefs,relation:'context_only',confidence:'low'}],uncertainties:[],limitations:['Test fixture'],recommendedFollowUps:[],abstained:false}}));
+ const imported=importHumanReviews(records,reviews);assert.equal(trainingAdmission(imported).admitted,true);assert.ok(records.every(r=>r.humanReviewed===false));const changed=structuredClone(imported);changed[0].prompt='changed after review';assert.ok(trainingAdmission(changed).reasons.includes('reviewed_payload_changed'));const leaked=structuredClone(imported);leaked.at(-1).familyId=leaked[0].familyId;assert.ok(trainingAdmission(leaked).reasons.includes('family split leakage'));
+});
+
+test('promotion demands independent human review and preserves rollback pointer',()=>{
+ // In-memory protocol fixtures only, never production reviews or measurements.
+ const baseline={},candidate={},records=Array.from({length:100},(_,i)=>{const id=`comparison-fixture-${i}`,output={summary:'Fixture',findings:[{claim:'Supplied fixture',evidenceRefs:[id],relation:'supports',confidence:'low'}],uncertainties:[],limitations:['Unit test fixture'],recommendedFollowUps:[],abstained:false};candidate[id]=output;baseline[id]=i>=50&&i<60?{...output,findings:[]}:output;const row={id,roleId:'evidence-organizer',split:'test',familyId:id,sourceId:'unit-test-fixture-only',language:i<50?'en':'ko',prompt:`Fixture ${i}`,evidence:[{id}],truth:{labels:['fixture'],requiredRefs:[id],mustStateUnknown:false},approvedOutput:output,humanReviewed:true,synthetic:false};return {...row,reviewedPayloadHash:reviewedPayloadHash(row)};});
+ const resources={cpuLimit:2,memoryLimitMiB:12288,gpuMemoryLimitMiB:7987,contextTokens:1024,maxOutputTokens:512,concurrency:1,requestTimeoutMs:120000,deviceId:'unit-test-device',quantization:'NF4',runtimeImageSha256:sha,seed:42,temperature:0};
+ const measurementReceipt={schemaVersion:1,source:'isolated_inference',synthetic:false,baseArtifactSha256:sha,candidateArtifactSha256:'c'.repeat(64),datasetSha256:comparisonHash(records),modelCalls:200,baseline:{outputsSha256:comparisonHash(baseline),exampleIds:records.map(r=>r.id).sort(),resourceConfiguration:resources},candidate:{outputsSha256:comparisonHash(candidate),exampleIds:records.map(r=>r.id).sort(),resourceConfiguration:resources}};
+ const report=compareModelOutputs(records,baseline,candidate,{baselineArtifactSha256:sha,candidateArtifactSha256:'c'.repeat(64),measurementReceipt}),registry={activeArtifactSha256:sha};
+ assert.throws(()=>promoteCandidate(registry,report,{}),/human_approval/);
+ const approval={reportHash:createHash('sha256').update(JSON.stringify(report)).digest('hex'),approved:true,semanticGroundingReviewed:true,koreanQualityReviewed:true,privacyReviewed:true,injectionReviewed:true,reviewerId:'test-reviewer',reviewedAt:new Date().toISOString()};
+ const promoted=promoteCandidate(registry,report,approval);assert.equal(promoted.deploymentChanged,false);assert.equal(rollbackCandidate(promoted).activeArtifactSha256,sha);
+});
+
+const bundled=join(process.env.USERPROFILE||'','\.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe');
+const python=process.env.EVIDSCOPE_PYTHON||(existsSync(bundled)?bundled:'python3');
+test('Python classifier and training gate behavioral tests (no model download/inference)',t=>{const result=spawnSync(python,['-B','deploy/model-runtime/test_cipher_service.py'],{encoding:'utf8',timeout:20000,windowsHide:true});if(result.error?.code==='ENOENT'){t.skip('Python unavailable; run test_cipher_service.py in the approved runtime');return;}assert.equal(result.status,0,result.stderr||result.error?.message);});

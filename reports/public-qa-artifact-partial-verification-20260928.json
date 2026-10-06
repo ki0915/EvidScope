@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-28T06:31:32.543Z",
+  "runId": "public-qa-resume-20260928-r1",
+  "artifactIntegrityVerified": true,
+  "controllerExecutionVerified": false,
+  "trainingRunCompleted": false,
+  "actualOptimizerUpdates": 20,
+  "optimizerUpdatesThisRun": 15,
+  "skippedOptimizerUpdates": 0,
+  "pairedEvaluationDiagnostic": {
+    "base_eval_loss": 1.2852251529693604,
+    "base_eval_model_preparation_time": 0.0023,
+    "base_eval_runtime": 113.3298,
+    "base_eval_samples_per_second": 0.565,
+    "base_eval_steps_per_second": 0.565,
+    "epoch": 1,
+    "eval_loss": 0.13406628370285034,
+    "eval_model_preparation_time": 0.0023,
+    "eval_runtime": 154.8787,
+    "eval_samples_per_second": 0.413,
+    "eval_steps_per_second": 0.413,
+    "total_flos": 14768843658362880,
+    "train_loss": 0.1502713557332754,
+    "train_runtime": 1125.357,
+    "train_samples_per_second": 0.284,
+    "train_steps_per_second": 0.018
+  },
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "inventories": [
+    {
+      "folder": "checkpoint-10",
+      "globalStep": 10,
+      "fileCount": 9,
+      "markerSha256": "b38d0da1501608dfa35817f3231b665ca45056fdaece613956f07adac5376149",
+      "files": [
+        {
+          "bytes": 5097,
+          "path": "README.md",
+          "sha256": "750fc598d587b498fff0283c8e775b8ced0fd89a259952f5e5690301b00274d5"
+        },
+        {
+          "bytes": 806,
+          "path": "adapter_config.json",
+          "sha256": "f4938603253d53db43f4de674b2c17adb4d2e1bcc453a43a75857c3ee221c15b"
+        },
+        {
+          "bytes": 27297032,
+          "path": "adapter_model.safetensors",
+          "sha256": "cc4ca82d75ab65d920f7974ee63778779f45dc337e9dd32738109afe7013b980"
+        },
+        {
+          "bytes": 54740730,
+          "path": "optimizer.pt",
+          "sha256": "59ee189b5021c82af5d0e3c9bac1d9b017f2def6ad70696f34aecff1adf52f0b"
+        },
+        {
+          "bytes": 14244,
+          "path": "rng_state.pth",
+          "sha256": "bcdf261a5226a475e4662355adf5f7e1f66c5ffdb6cbaaccbb7c2f757ba57481"
+        },
+        {
+          "bytes": 988,
+          "path": "scaler.pt",
+          "sha256": "20196fdcd6e066aadc548dcc3c9ff5244ea31938c846cb03623649ad99fe654f"
+        },
+        {
+          "bytes": 1064,
+          "path": "scheduler.pt",
+          "sha256": "06829946ff807c7143728448cc1bf384944e638865601317db4b29a92003bb11"
+        },
+        {
+          "bytes": 2221,
+          "path": "trainer_state.json",
+          "sha256": "2085f3d6d825aef375395ba262f38d982b8e79fd28dff17133582ed134ba28d5"
+        },
+        {
+          "bytes": 5368,
+          "path": "training_args.bin",
+          "sha256": "31daec587e2230b7605bed9013d47a3116a36ac3bd2e035a9e58bff1651acbe8"
+        }
+      ]
+    },
+    {
+      "folder": "checkpoint-20",
+      "globalStep": 20,
+      "fileCount": 9,
+      "markerSha256": "8aa6594ec8a86f13ad1593304de88b246d000b797e525d8bc9a8eed887fff81c",
+      "files": [
+        {
+          "bytes": 5097,
+          "path": "README.md",
+          "sha256": "750fc598d587b498fff0283c8e775b8ced0fd89a259952f5e5690301b00274d5"
+        },
+        {
+          "bytes": 806,
+          "path": "adapter_config.json",
+          "sha256": "f4938603253d53db43f4de674b2c17adb4d2e1bcc453a43a75857c3ee221c15b"
+        },
+        {
+          "bytes": 27297032,
+          "path": "adapter_model.safetensors",
+          "sha256": "77a10c126058028f635e686143188d8f66100890cc9652698ca45454b17b8993"
+        },
+        {
+          "bytes": 54740730,
+          "path": "optimizer.pt",
+          "sha256": "616b8139c7b69fb116c93b59bff715e4b048ed171dcbdf3f5972bc0787fd2579"
+        },
+        {
+          "bytes": 14244,
+          "path": "rng_state.pth",
+          "sha256": "65fc1c9e274c447db3974b1ae1672272b72964abac6dc38aafdaa234985d185a"
+        },
+        {
+          "bytes": 988,
+          "path": "scaler.pt",
+          "sha256": "64fa42f2512689bf79e71bb1d2ee1d6eaba4c92f757836f03915302480256c01"
+        },
+        {
+          "bytes": 1064,
+          "path": "scheduler.pt",
+          "sha256": "532138a5ca880d8da393ae449e5715b2766def36b8838785ca08d07228b119b7"
+        },
+        {
+          "bytes": 3639,
+          "path": "trainer_state.json",
+          "sha256": "6f74f3fd28dfadf491e68aa8336a8b407be58d4167996736cd0d572cf108aba9"
+        },
+        {
+          "bytes": 5368,
+          "path": "training_args.bin",
+          "sha256": "31daec587e2230b7605bed9013d47a3116a36ac3bd2e035a9e58bff1651acbe8"
+        }
+      ]
+    },
+    {
+      "folder": "candidate",
+      "globalStep": 20,
+      "fileCount": 7,
+      "markerSha256": "3b0905e517c7daf21bc4359fad5bde302d88e763633832d157aeec268ea228c1",
+      "files": [
+        {
+          "bytes": 5097,
+          "path": "README.md",
+          "sha256": "750fc598d587b498fff0283c8e775b8ced0fd89a259952f5e5690301b00274d5"
+        },
+        {
+          "bytes": 806,
+          "path": "adapter_config.json",
+          "sha256": "f4938603253d53db43f4de674b2c17adb4d2e1bcc453a43a75857c3ee221c15b"
+        },
+        {
+          "bytes": 27297032,
+          "path": "adapter_model.safetensors",
+          "sha256": "77a10c126058028f635e686143188d8f66100890cc9652698ca45454b17b8993"
+        },
+        {
+          "bytes": 575,
+          "path": "special_tokens_map.json",
+          "sha256": "e72e0fcd24428f9ef3c005bb065f30c9eea6c0b0ea2fa1bd735d0b7de0ba9de1"
+        },
+        {
+          "bytes": 17213680,
+          "path": "tokenizer.json",
+          "sha256": "1dc76a118061ce69cbfb78e3f3f3d830a338d4a9ed9d847b5253834777bd7a05"
+        },
+        {
+          "bytes": 57144,
+          "path": "tokenizer_config.json",
+          "sha256": "7e12e436e8b3236034d9b2581db430b300c234f59180b8ca4f0dc7c150751bc5"
+        },
+        {
+          "bytes": 3251,
+          "path": "training-receipt.json",
+          "sha256": "412415eed81fb8dc0a63168efa96154de580a1e30062a2b13e19888074a7907f"
+        }
+      ]
+    }
+  ],
+  "controllerSha256": "a855afe3b260a20a0563dcff2ef01f066c4f4c4340552c66dda8fa27a229b36c",
+  "trainingLogSha256": "2a0c2c19a4950e012fa6c29bfc70527facd13b0de10c1b91cd1a52a614bb9c6b",
+  "runtime": {
+    "elapsedSeconds": 1462.471,
+    "minWindowsCommitFreeGiB": 6.95,
+    "maxWholeGpuMemoryUsedMiB": 8778,
+    "maxWholeGpuTemperatureC": 75,
+    "maxContainerMemoryCurrentGiB": 1.9999771118164062,
+    "cudaPeakAllocatedBytes": 7963937280,
+    "cudaPeakReservedBytes": 8204058624
+  },
+  "limitation": "Controller lost terminal exit status to exec/container-exit race; stock full verification failed. Runtime event confirms same container exited before cleanup but does not explicitly display exit status."
+}

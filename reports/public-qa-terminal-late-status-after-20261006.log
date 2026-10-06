@@ -1,0 +1,30 @@
+✔ Running → exec failure → same Pod exit 0 returns its actual termination (4.4721ms)
+✔ Running → exec failure → same Pod exit 1 returns its actual termination (0.4453ms)
+✔ Running → exec failure → same Pod exit 137 returns its actual termination (0.2478ms)
+✔ successful telemetry does not query another Pod or change the sample (0.1931ms)
+✔ a telemetry failure while the same container remains live is not suppressed (0.7306ms)
+✔ Pod status lookup failure preserves the telemetry error rather than declaring completion (0.2651ms)
+✔ terminal status with changed uid cannot explain the original sample failure (0.287ms)
+✔ terminal status with changed name cannot explain the original sample failure (0.1561ms)
+✔ terminal status with changed owner cannot explain the original sample failure (0.2244ms)
+✔ terminal status with changed namespace cannot explain the original sample failure (0.2338ms)
+✔ terminal status with changed container cannot explain the original sample failure (0.3784ms)
+✔ terminal status with changed containerID cannot explain the original sample failure (0.2468ms)
+✔ terminal status with changed restartCount cannot explain the original sample failure (0.2977ms)
+✔ terminal status with changed restartPolicy cannot explain the original sample failure (0.1543ms)
+✔ Succeeded Pod phase without a training-container exit code is insufficient (0.3267ms)
+✔ a missing runtime task waits briefly for the same container terminal status (0.4616ms)
+✔ a missing runtime task never substitutes a replacement Pod during delayed status (0.347ms)
+✔ bounded late status polling does not infer an exit from a missing task alone (0.4536ms)
+✔ unequal label selection keeps human originals and excludes exposed families with unchanged symmetric behavior (9.6637ms)
+✔ continuation job binds the actual latest source and separate writable output with unchanged resource isolation (1.2412ms)
+✔ controller requires explicit bounded continuation and rejects conflicting modes (0.2462ms)
+✔ live mount checks accept explicit false PVC defaults while rejecting scope changes (1.0759ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130.0915

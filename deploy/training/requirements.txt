@@ -1,0 +1,7 @@
+# Declared compatibility candidate; requires image import and GPU pilot validation.
+torch==2.6.0
+transformers==4.51.3
+peft==0.15.2
+bitsandbytes==0.45.5
+accelerate==1.6.0
+safetensors==0.5.3

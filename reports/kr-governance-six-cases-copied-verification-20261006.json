@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-06T03:52:47.748Z",
+  "verified": true,
+  "synthetic": true,
+  "independentTrustAnchor": false,
+  "sourceReport": "reports/kr-governance-six-cases-final-20261006.json",
+  "copyReceipt": "reports/kr-governance-six-cases-copy-receipt-20261006.json",
+  "publicFilesHashVerified": 54,
+  "cases": [
+    {
+      "id": "baseline",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    },
+    {
+      "id": "model-changed",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    },
+    {
+      "id": "purpose-changed",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    },
+    {
+      "id": "supplier-document-revised",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    },
+    {
+      "id": "oversight-plan-revised",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    },
+    {
+      "id": "oversight-record-missing",
+      "snapshotSignaturesVerified": 2,
+      "tamperedSnapshotRejected": true,
+      "chainVerified": true,
+      "checkpointMatched": true
+    }
+  ]
+}

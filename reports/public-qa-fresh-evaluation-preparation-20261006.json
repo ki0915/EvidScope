@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "scope": "fresh_public_human_qa_preparation_and_leakage_check",
+  "preparationVerified": true,
+  "actualModelExecutionVerified": false,
+  "directory": ".local/public-training/grounding-continuation/20261006/fresh-evaluation",
+  "datasetSha256": "dc8a7bb0c9eb9de9abbc6f3cea39851453db8c60cc91602223f3a9aaeb628142",
+  "manifestSha256": "c131723029cd014d718974bb426098925f02f6d4ced914637791e3fb76596ed1",
+  "sourceHeldoutSha256": "681ceb8154dd4131c01679fcf8199e24d27c8d44e2abfe786588b2874bcb16e6",
+  "rows": 128,
+  "labelCounts": { "answerable": 64, "impossible": 64 },
+  "exposedInputRows": 1856,
+  "exposureInputs": {
+    "stage1TrainingAndValidation": 384,
+    "previousGroundingTrainingAndValidation": 704,
+    "observedDiagnostic": 64,
+    "continuationTrainingAndValidation": 704
+  },
+  "originalRowsExact": true,
+  "originalHumanLabelsPreserved": true,
+  "automaticallyGeneratedLabels": false,
+  "previousExposureOverlap": { "id": 0, "family": 0, "context": 0 },
+  "uniqueSelectedFamilies": 128,
+  "uniqueSelectedContexts": 128,
+  "maxContextCodepoints": 650,
+  "maxQuestionCodepoints": 240,
+  "maxHumanAnswerCodepoints": 49,
+  "excluded": {
+    "previousExposure": 118,
+    "contextTooLong": 4684,
+    "questionTooLong": 0,
+    "privacyPattern": 15
+  },
+  "availableCounts": { "answerable": 670, "impossible": 354 },
+  "frozenManifestLastModifiedAt": "2026-10-06T05:14:12.483Z",
+  "liveJobTimestampComparisonPerformed": false,
+  "trainingUsed": false,
+  "heldoutUsedForTraining": false,
+  "qualityClaimAllowed": false,
+  "promotionAllowed": false,
+  "validation": {
+    "selectorAndImmutableWriterTests": { "tests": 4, "passed": 4, "failed": 0, "skipped": 0 },
+    "separateSavedArtifactOriginalRowComparison": true,
+    "allSourceInputHashesRechecked": true,
+    "actualTokenizerPreadmissionPerformed": false
+  },
+  "limitations": [
+    "No model generation or local human semantic review was performed.",
+    "Prior exposure isolation covers recorded training, validation and diagnostics; pretraining corpus overlap remains unknown.",
+    "The basic privacy pattern filter is not a comprehensive privacy review.",
+    "The primary controller must bind the frozen hashes and compare the eventual live Job creation time against this freeze time before claiming that evaluation was frozen before training."
+  ]
+}

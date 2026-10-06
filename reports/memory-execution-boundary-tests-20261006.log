@@ -1,0 +1,11 @@
+✔ CPU verification can start with no owned public-QA lease (4.1767ms)
+✔ active GPU lease blocks CPU verification and preserves the original receipt (7.0511ms)
+✔ malformed or stale lease stays blocking; age and content do not authorize cleanup (6.2448ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.8297

@@ -1,0 +1,17 @@
+✔ shared generation guard accepts actual historical code and current inference helper without claiming execution (6.5615ms)
+✔ fully rebound changed generation code is rejected even if controller and ConfigMap hashes remain consistent (6.1138ms)
+✔ controller substitution and a changed unbound runtime file both fail closed (9.301ms)
+✔ grounding is an explicit training mode with the approved interactive override (0.9417ms)
+✔ transient Windows socket read failure has a bounded retry and preserves fresh result (0.8998ms)
+✔ persistent socket errors stop after three reads and non-socket errors never retry (0.5221ms)
+✔ persistent Windows bind failure may use one fresh alternate read; unrelated errors cannot (0.2961ms)
+✔ grounding generation diagnosis cannot train or restore optimizer state (0.7484ms)
+✔ grounding cannot silently mix warmstart with optimizer resume or diagnostic execution (0.1828ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.6289

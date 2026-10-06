@@ -17,17 +17,18 @@ export function createAnalysis(store,principals){
   CREATE INDEX IF NOT EXISTS analysis_lease_action ON analysis_leases(tenant,action_id,version,state,expires);
   CREATE TABLE IF NOT EXISTS analysis_quarantine(tenant TEXT,action_id TEXT,version INTEGER,reason TEXT,PRIMARY KEY(tenant,action_id,version));`);
  const worker=p=>{if(p?.role!=='worker'||!principals.some(v=>v.id===p.id&&v.role==='worker'&&v.tenant===p.tenant))fail(403,'인증된 분석 서비스 전용');};
- const snapshot=(tenant,actionId)=>store.verifiedAnalysisSnapshot(tenant,actionId,analysisLimits);
+ const snapshot=(tenant,actionId)=>store.cachedAnalysisSnapshot(tenant,actionId,analysisLimits);
  const coverage=()=>({quarantinedActions:store.db.prepare('SELECT COUNT(*) n FROM analysis_quarantine q JOIN actions a ON a.tenant=q.tenant AND a.id=q.action_id AND a.version=q.version WHERE a.analyzed<a.version').get().n});
  const backlog=()=>store.db.prepare('SELECT COUNT(*) n FROM actions WHERE analyzed<version').get().n;
+ const verifyActions=tenant=>{try{store.checkActionProjection(tenant);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}};
  function expireExceptions(now){
   for(const tenant of new Set(principals.map(p=>p.tenant)))for(const e of snapshot(tenant,null).exceptions||[])if(e.status==='approved'&&Date.parse(e.expiresAt)<=now){
    store.put({id:'analysis-expiration',tenant},'exception',e.id,{...e,status:'expired'});
-   store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run(tenant);
+   store.projectionMutation(()=>store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run(tenant));
   }
  }
  function claim(p){worker(p);return store.transaction(()=>{
-  const now=Date.now();expireExceptions(now);
+  for(const tenant of new Set(principals.map(value=>value.tenant)))verifyActions(tenant);const now=Date.now();expireExceptions(now);
   store.db.prepare("UPDATE analysis_leases SET state='expired' WHERE state='leased' AND expires<=?").run(now);
   const candidates=store.db.prepare(`SELECT a.* FROM actions a WHERE a.analyzed<a.version
    AND NOT EXISTS(SELECT 1 FROM analysis_quarantine q WHERE q.tenant=a.tenant AND q.action_id=a.id AND q.version=a.version)
@@ -41,7 +42,7 @@ export function createAnalysis(store,principals){
    if(over.length){
     const reason=`resource_limit:${over.join(',')}`,evaluation={id:randomUUID(),actionId:a.id,version:a.version,createdAt:new Date(now).toISOString(),status:'quarantined_resource_limit',findings:[],authority:'unverified_or_mismatch',effect:'unconfirmed',coverage:{evaluated:false,reason,observedEvents:data.observedEvents??data.events.length,observedEventsComplete:data.resourceLimit?.observedEventsComplete??true,snapshotBytesAtLeast:size,totalFindings:null,returnedFindings:0,truncated:false},limitations:['리소스 한도를 초과하여 분석하지 않았습니다. 관측 공백이며 무사고 판정이 아닙니다.']};
     store.append(a.tenant,'evaluation',evaluation,p.id);
-    store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(a.tenant,a.id,a.version,JSON.stringify(evaluation));
+     store.projectionMutation(()=>store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(a.tenant,a.id,a.version,JSON.stringify(evaluation)));
     store.db.prepare('INSERT INTO analysis_quarantine VALUES(?,?,?,?)').run(a.tenant,a.id,a.version,reason);continue;
    }
    const job={leaseId:randomUUID(),tenant:a.tenant,actionId:a.id,version:a.version,analysisTime:now,expiresAt:new Date(now+analysisLimits.leaseMs).toISOString(),...data};
@@ -76,7 +77,7 @@ export function createAnalysis(store,principals){
    return {accepted:true,duplicate:true,evaluationId:lease.evaluation_id,backlog:backlog()};
   }
   if(lease.state!=='leased'||lease.expires<=Date.now())fail(409,'분석 lease 만료: 다시 claim 하세요');
-  const a=store.db.prepare('SELECT * FROM actions WHERE tenant=? AND id=?').get(lease.tenant,lease.action_id);
+  verifyActions(lease.tenant);const a=store.db.prepare('SELECT * FROM actions WHERE tenant=? AND id=?').get(lease.tenant,lease.action_id);
   if(!a||a.version!==lease.version||a.analyzed>=lease.version)fail(409,'늦은 증거나 정책 변경으로 분석 버전이 갱신되었습니다');
   const data=snapshot(lease.tenant,lease.action_id);
   if(data.resourceLimit)fail(409,'분석 snapshot이 리소스 한도를 초과했습니다');
@@ -84,8 +85,8 @@ export function createAnalysis(store,principals){
   validateResult(body.result,data);
   const evaluation={...body.result,id:randomUUID(),actionId:lease.action_id,version:lease.version,createdAt:new Date().toISOString(),analysisTime:new Date(lease.analysis_time).toISOString(),status:'evaluated',worker:p.id,snapshotHash:lease.snapshot_hash};
   store.append(lease.tenant,'evaluation',evaluation,p.id);
-  store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(lease.tenant,lease.action_id,lease.version,JSON.stringify(evaluation));
-  store.db.prepare('UPDATE actions SET analyzed=? WHERE tenant=? AND id=? AND version=?').run(lease.version,lease.tenant,lease.action_id,lease.version);
+   store.projectionMutation(()=>store.db.prepare('INSERT INTO evaluations(tenant,action_id,version,body) VALUES(?,?,?,?)').run(lease.tenant,lease.action_id,lease.version,JSON.stringify(evaluation)));
+  store.projectionMutation(()=>store.db.prepare('UPDATE actions SET analyzed=? WHERE tenant=? AND id=? AND version=?').run(lease.version,lease.tenant,lease.action_id,lease.version));
   store.db.prepare("UPDATE analysis_leases SET state='completed',result_hash=?,evaluation_id=? WHERE id=?").run(resultHash,evaluation.id,lease.id);
   return {accepted:true,duplicate:false,evaluationId:evaluation.id,backlog:backlog()};
  });}

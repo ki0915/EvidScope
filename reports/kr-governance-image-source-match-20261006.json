@@ -1,0 +1,63 @@
+{
+  "verifiedAt": "2026-10-06T03:53:49.4227185Z",
+  "image": "evidscope:kr-governance-20261006-r18",
+  "schemaVersion": 1,
+  "verified": true,
+  "sourceMountUsed": false,
+  "matchedFiles": [
+    {
+      "file": "src/service.mjs",
+      "sha256": "99a7b4ac1c06a423b524b8733607a05105375a62aa6f0a921f9938203c6b0b86"
+    },
+    {
+      "file": "src/governance-policy.mjs",
+      "sha256": "ccdbacdb86e24f6c788711536ace0ebb74c83f1ea77a2a4b85196be4bc333073"
+    },
+    {
+      "file": "src/kr-governance-evidence.mjs",
+      "sha256": "dac1bebbbe0c7ede97f5007cc4ec7a1356655b8d4d2feb23e1eeb2f6846f9033"
+    },
+    {
+      "file": "src/governance-documents.mjs",
+      "sha256": "adfbb9e9c94f32dcc3d427b834fc19a0a0a621ceb6d0d91661f18d2249b65d3a"
+    },
+    {
+      "file": "src/model.mjs",
+      "sha256": "5314ddfb6ad2138a4b3585e36175e16eba622336fa41e629cca4367242920fa0"
+    },
+    {
+      "file": "src/server.mjs",
+      "sha256": "1d6ab1e9021885596dd9b6de97f8d9069bf427eac236062648bd244213a62b2a"
+    },
+    {
+      "file": "src/store.mjs",
+      "sha256": "e92a655257ec5d82a5059d52729ba0b4f9bc94e44c7de194b9b370e9be35c0af"
+    },
+    {
+      "file": "src/crypto.mjs",
+      "sha256": "90de5da5089d4735b74927e856aa41ff9d347b88fab97d3eb4bbfaf69f392eee"
+    },
+    {
+      "file": "src/finance-evidence.mjs",
+      "sha256": "fc58e70f16c25c7f8d016253b3d17392e121bbcb7f869c26880376df9a9cbc9b"
+    },
+    {
+      "file": "src/vault-recovery.mjs",
+      "sha256": "65a025e5208864e41be368f603b22179b6529a68b9d61ce0d75f9c187d802735"
+    },
+    {
+      "file": "data/requirements.json",
+      "sha256": "75775fe64fc1c053095ef6e0796a4858e161bef1b04d07aabfcf9a7d2f07e077"
+    },
+    {
+      "file": "public/app.js",
+      "sha256": "8a377d8b8b24e37b1c1496cf0e87a785ead2482d074e0b459a78cefe46fb16d3"
+    },
+    {
+      "file": "public/index.html",
+      "sha256": "08893b6ed79bf4ddcf69eb58a2716ec21246726ff99bfca17081f1088151d9d4"
+    }
+  ],
+  "network": "none",
+  "imageId": "sha256:d1f3e8fa61cff0cb1f6248acec240669dcbf5d1b51d2434bb0ce14fa9ba4f2b1"
+}
