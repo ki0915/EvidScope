@@ -4,8 +4,13 @@ import {randomUUID} from 'node:crypto';
 import {resolve,join} from 'node:path';
 import {initialize} from '../scripts/init.mjs';
 import {tick} from '../src/worker.mjs';
+import {rmSync} from 'node:fs';
+// Fixtures hold bearer tokens and private keys: remove them when this test file passes, unless a harness diagnostic was
+// written for them or EVIDSCOPE_KEEP_TEST_RUNS=1. A failing file keeps every fixture for diagnosis.
+const fixtures=new Set();process.on('exit',code=>{if(code===0&&process.env.EVIDSCOPE_KEEP_TEST_RUNS!=='1')for(const dir of fixtures)try{rmSync(dir,{recursive:true,force:true});}catch{}});
 export async function harness({vaultOnly=false}={}){
  mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','run-')),config=initialize(dir),children=[],servers=[];let vault;
+ fixtures.add(dir);
  const host=process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1';if(!['127.0.0.1','::1'].includes(host))throw Error('Tests require numeric loopback host');const urlHost=host==='::1'?'[::1]':host;
  const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),HOST:host,PORT:'0'};
  const redact=value=>{
@@ -20,6 +25,7 @@ export async function harness({vaultOnly=false}={}){
   return result;
  };
  const diagnose=(error,operation)=>{
+  fixtures.delete(dir);
   const path=join(dir,`harness-failure-${randomUUID()}.json`);
   // Allowlisted metadata only: never serialize request bodies, headers or config.
   const diagnostic={fixture:dir,occurredAt:new Date().toISOString(),operation,error:describeError(error),servers:servers.map(({mode,child,url,logs})=>({mode,url,pid:child.pid,exitCode:child.exitCode,signalCode:child.signalCode,killed:child.killed,connected:child.connected,combinedLog:redact(logs())}))};

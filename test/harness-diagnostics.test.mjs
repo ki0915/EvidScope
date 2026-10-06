@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
-import {readFileSync,readdirSync} from 'node:fs';
+import {readFileSync,readdirSync,rmSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {harness} from './harness.mjs';
 
@@ -28,4 +28,6 @@ test('harness API failure preserves the original error and cause with private fi
  for(const secret of [bodySecret,headerSecret,...h.config.principals.map(principal=>principal.token).filter(Boolean)])assert.equal(raw.includes(secret),false);
  assert.equal(Object.hasOwn(diagnostic.operation,'body'),false);assert.equal(Object.hasOwn(diagnostic.operation,'headers'),false);
  t.diagnostic(`Actual fixture failure recorded at ${path}; original cause ${originalCause.code}, audit PID ${audit.pid} exited 0; one fetch, no retry.`);
+ // The diagnostic above is intentional; once the test passed, its fixture (tokens, keys) need not be kept.
+ t.after(context=>{if(context.passed)rmSync(h.dir,{recursive:true,force:true});});
 });
