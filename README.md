@@ -128,7 +128,7 @@ npm start
 node --test --test-concurrency=1 test/action-integrity.test.mjs test/receipt-integrity.test.mjs test/governance-authorization.test.mjs test/finance-known-reference.test.mjs test/kr-governance-33-http.test.mjs test/governance-documents.test.mjs test/vault-recovery.test.mjs
 ```
 
-전체 검사는 `npm test`입니다. 일부 연구 테스트는 공개하지 않는 로컬 학습 영수증·모델 잠금 파일을 요구합니다. 새 clone과 과거 설치본의 시험 범위를 구분하고 [검증 안내](docs/verification-status.md)를 확인하세요. Windows 테스트의 IPv6 선택은 `$env:EVIDSCOPE_TEST_HOST='::1'`입니다.
+전체 검사는 `npm test`입니다. 일부 연구 테스트는 공개하지 않는 로컬 학습 영수증·모델 잠금 파일을 요구하며, 해당 파일 묶음이 없으면 경로와 이유를 표시하고 건너뜁니다. 연구 PC에서는 `$env:EVIDSCOPE_REQUIRE_RESEARCH_ARTIFACTS='1'`로 건너뛰기 대신 실패하게 합니다. `npm run check`는 문법·바이트 위생·줄 길이 기준을, `npm run test:ci`는 전체 검사와 CI 판정(실패·취소·이유 없는 건너뛰기 0)을 실행합니다. 모두 통과한 실행은 `.test-runs`에 만든 시험 자격·키를 지우며(진단 파일 `harness-failure-*.json`은 보존), 보존하려면 `$env:EVIDSCOPE_KEEP_TEST_RUNS='1'`을 설정합니다. 새 clone과 과거 설치본의 시험 범위를 구분하고 [검증 안내](docs/verification-status.md)를 확인하세요. Windows 테스트의 IPv6 선택은 `$env:EVIDSCOPE_TEST_HOST='::1'`입니다.
 
 ---
 

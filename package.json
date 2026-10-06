@@ -11,6 +11,7 @@
     "start": "node scripts/local.mjs",
     "demo": "node scripts/demo.mjs",
     "test": "node scripts/test-serial.mjs",
+    "test:ci": "node scripts/test-serial.mjs | node scripts/ci-tap-gate.mjs -",
     "check": "node scripts/check-source.mjs",
     "test:v1": "node --test --test-concurrency=1 test/ai-observations.test.mjs test/ai-visibility-integration.test.mjs test/content-screening.test.mjs test/governance-policy.test.mjs test/isolated-inference-client.test.mjs test/model-runtime.test.mjs test/multilingual-evals.test.mjs test/training-resource-guard.test.mjs test/ui-language-state.test.mjs",
     "test:development-agents": "node --test test/development-coordinator.test.mjs test/development-runs.test.mjs test/role-packages.test.mjs test/test-runtime.test.mjs",
