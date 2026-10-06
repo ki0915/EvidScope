@@ -139,7 +139,30 @@ export function headsSize(db, origin) {
   if (r.m !== r.n - 1) throw kinded('inconsistent', 'Truncated or inconsistent heads log');
   return r.n;
 }
-export const headsRow = (db, origin, idx) => db.prepare('SELECT idx,leaf,peaks,entries,note FROM tlog_heads WHERE origin=? AND idx=?').get(origin, idx) || null;
+// Normalized rows (entries = '') keep only the entries that changed at that row in tlog_heads_entries, so a row costs
+// O(changed tenants) instead of O(all tenants). The signed leaf still commits to the full sorted list: the list of row
+// idx is the newest entry of every log at or before idx (legacy rows hold the full JSON list), and verifyHeadsRow
+// checks it against the leaf like a stored list. A normalized log seeds every entry once at its first normalized row.
+const NORMALIZED = '';
+function headsEntriesAt(db, origin, idx) {
+  if (!hasTable(db, 'tlog_heads_entries')) throw kinded('inconsistent', 'Truncated or inconsistent heads log: normalized entries are missing');
+  const next = db.prepare('SELECT MIN(log) log FROM tlog_heads_entries WHERE origin=? AND log>?');
+  const at = db.prepare('SELECT size,root FROM tlog_heads_entries WHERE origin=? AND log=? AND idx<=? ORDER BY idx DESC LIMIT 1');
+  const entries = [];
+  for (let log = next.get(origin, '').log; log !== null; log = next.get(origin, log).log) {
+    const e = at.get(origin, log, idx);
+    if (e) entries.push({log, size: e.size, root: e.root});
+  }
+  return entries;
+}
+const headsDelta = (db, origin, idx) => db.prepare('SELECT log,size,root FROM tlog_heads_entries WHERE origin=? AND idx=?').all(origin, idx)
+  .map(e => ({log: e.log, size: e.size, root: e.root}));
+export function headsRow(db, origin, idx) {
+  const row = db.prepare('SELECT idx,leaf,peaks,entries,note FROM tlog_heads WHERE origin=? AND idx=?').get(origin, idx);
+  if (!row) return null;
+  if (row.entries === NORMALIZED) return {...row, normalized: true, entries: T.canonicalJson(T.sortHeadsEntries(headsEntriesAt(db, origin, idx)))};
+  return row;
+}
 const validEntry = e => e && Object.keys(e).length === 3 && typeof e.log === 'string' && /^[a-f0-9]{64}$/.test(e.root)
   && Number.isSafeInteger(e.size) && e.size > 0;
 // A row stores its frontier before the leaf and its own signed note, so every row authenticates itself in O(log n).
@@ -390,8 +413,16 @@ function checkHeadsMonotone(db, origin, from, to, violate) {
   let previous = null, expected = Math.max(0, from - 1);
   for (const row of rows.iterate(origin, expected, to)) {
     if (row.idx !== expected++) throw kinded('inconsistent', 'Truncated or inconsistent heads log');
-    const entries = JSON.parse(row.entries);
-    if (!Array.isArray(entries) || !entries.every(validEntry) || T.canonicalJson(T.sortHeadsEntries(entries)) !== row.entries
+    let entries;
+    if (row.entries !== NORMALIZED) entries = JSON.parse(row.entries);
+    else if (!previous) entries = headsEntriesAt(db, origin, row.idx);
+    else {
+      const next = new Map(previous);
+      for (const e of headsDelta(db, origin, row.idx)) next.set(e.log, e);
+      entries = [...next.values()];
+    }
+    const listed = T.canonicalJson(T.sortHeadsEntries(entries));
+    if (!Array.isArray(entries) || !entries.every(validEntry) || row.entries !== NORMALIZED && listed !== row.entries
       || !T.headsLeafHash(T.headsLeafContent(entries)).equals(Buffer.from(row.leaf))) {
       throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} entries differ from its leaf`);
     }
@@ -587,9 +618,9 @@ export function createTransparency({store, config, key, startup = null, probe = 
   const iso = () => new Date(now()).toISOString();
   const loadLatest = () => {
     const n = headsSize(db, hOrigin);
-    if (!n) return {size: 0, root: T.EMPTY_ROOT, peaks: [], entries: new Map(), note: null};
-    const v = verifyHeadsRow(headsRow(db, hOrigin, n - 1), hOrigin, logV);
-    return {size: n, root: v.root, peaks: v.peaks, entries: new Map(v.entries.map(e => [e.log, e])), note: v.note};
+    if (!n) return {size: 0, root: T.EMPTY_ROOT, peaks: [], entries: new Map(), note: null, normalized: true};
+    const row = headsRow(db, hOrigin, n - 1), v = verifyHeadsRow(row, hOrigin, logV);
+    return {size: n, root: v.root, peaks: v.peaks, entries: new Map(v.entries.map(e => [e.log, e])), note: v.note, normalized: !!row.normalized};
   };
   let heads = loadLatest(), busy = null, timer = null, stopped = false;
   // The pin only ever moves forward along a heads log that extends it, and never after a rollback, fork, tenant removal or
@@ -657,9 +688,14 @@ export function createTransparency({store, config, key, startup = null, probe = 
       const sorted = T.sortHeadsEntries(entries), leaf = T.headsLeafHash(T.headsLeafContent(sorted));
       const peaks = T.frontierAppend(heads.peaks, heads.size, leaf), root = T.frontierRoot(peaks), size = heads.size + 1;
       const note = T.signNote(T.formatCheckpoint({origin: hOrigin, size, root}), signer);
-      store.projectionMutation(() => db.prepare('INSERT INTO tlog_heads VALUES(?,?,?,?,?,?,?)')
-        .run(hOrigin, heads.size, leaf, T.peaksToBlob(heads.peaks), T.canonicalJson(sorted), note, iso()));
-      return {size, root, peaks, entries: new Map(sorted.map(e => [e.log, e])), note};
+      // Only changed entries are stored; after a legacy (full-list) row, the first normalized row seeds every entry.
+      const stored = heads.normalized ? sorted.filter(e => heads.entries.get(e.log)?.size !== e.size) : sorted;
+      store.projectionMutation(() => {
+        db.prepare('INSERT INTO tlog_heads VALUES(?,?,?,?,?,?,?)').run(hOrigin, heads.size, leaf, T.peaksToBlob(heads.peaks), NORMALIZED, note, iso());
+        const insert = db.prepare('INSERT INTO tlog_heads_entries VALUES(?,?,?,?,?)');
+        for (const e of stored) insert.run(hOrigin, e.log, heads.size, e.size, e.root);
+      });
+      return {size, root, peaks, entries: new Map(sorted.map(e => [e.log, e])), note, normalized: true};
     });
   }
   function cosignedCheckpoint(size) {

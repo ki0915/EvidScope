@@ -9,7 +9,7 @@ import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {createService} from '../src/service.mjs';
 import * as T from '../src/tlog.mjs';
-import {assertTransparencyAnchors, bootstrapPin, normalizeTransparencyConfig, probeTransparency, transparencyPinPath} from '../src/transparency.mjs';
+import {assertTransparencyAnchors, bootstrapPin, headsRow, normalizeTransparencyConfig, probeTransparency, transparencyPinPath} from '../src/transparency.mjs';
 import {BASE, principals, replaceDatabase, snapshot, tamper, transparencyFixture} from './support/transparency-fixture.mjs';
 
 const requirements = JSON.parse(readFileSync(new URL('../data/requirements.json', import.meta.url), 'utf8'));
@@ -221,7 +221,7 @@ test('every heads row after the pin keeps each tenant log monotone', async t => 
   // A key holder appends heads rows that the pin does not cover yet: each must keep every tenant log monotone.
   const forge = change => tamper(f.dataDir, db => {
     const n = db.prepare('SELECT COUNT(*) n FROM tlog_heads WHERE origin=?').get(hOrigin).n;
-    const last = db.prepare('SELECT * FROM tlog_heads WHERE origin=? AND idx=?').get(hOrigin, n - 1);
+    const last = headsRow(db, hOrigin, n - 1);
     let peaks = T.frontierAppend(T.blobToPeaks(last.peaks, n - 1), n - 1, Buffer.from(last.leaf));
     const rows = [JSON.parse(last.entries).filter(e => e.log !== beta), change(JSON.parse(last.entries))];
     rows.forEach((entries, i) => {
@@ -255,7 +255,7 @@ test('every heads row after the pin keeps each tenant log monotone', async t => 
   const witnessed = g.w.logs()[0].size;
   rmSync(transparencyPinPath(g.dataDir));
   tamper(g.dataDir, db => {
-    const last = db.prepare('SELECT * FROM tlog_heads WHERE origin=? AND idx=?').get(hOrigin, witnessed - 1);
+    const last = headsRow(db, hOrigin, witnessed - 1);
     const sorted = T.sortHeadsEntries(JSON.parse(last.entries).map(e => e.log === alpha ? T.headsEntry(alpha, gOld.size, Buffer.from(gOld.root)) : e));
     const leaf = T.headsLeafHash(T.headsLeafContent(sorted));
     const before = T.frontierAppend(T.blobToPeaks(last.peaks, witnessed - 1), witnessed - 1, Buffer.from(last.leaf));

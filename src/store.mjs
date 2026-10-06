@@ -16,13 +16,18 @@ import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,
 let transactionSequence=0n;
 // Per-tenant RFC 6962 trees (tlog_state), the deployment heads log (tlog_heads) and witness cosignatures. All three are
 // derivable caches plus proof material checked against signed notes; append-only triggers stay droppable like immutable_*.
-const tlogTables=['tlog_state','tlog_heads','tlog_cosignatures'];
+// tlog_heads_entries holds, for heads rows whose entries column is '', only the entries that changed at that row.
+const tlogTables=['tlog_state','tlog_heads','tlog_heads_entries','tlog_cosignatures'];
 const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHECK(tenant<>''),origin TEXT NOT NULL,size INTEGER NOT NULL CHECK(size>=0),peaks BLOB NOT NULL,root BLOB NOT NULL,note TEXT NOT NULL,PRIMARY KEY(tenant,origin));
    CREATE TRIGGER IF NOT EXISTS tlog_state_monotonic BEFORE UPDATE ON tlog_state WHEN NEW.size<OLD.size OR NEW.tenant<>OLD.tenant OR NEW.origin<>OLD.origin BEGIN SELECT RAISE(ABORT,'tlog size regression'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_state_immutable_delete BEFORE DELETE ON tlog_state BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TABLE IF NOT EXISTS tlog_heads(origin TEXT NOT NULL,idx INTEGER NOT NULL CHECK(idx>=0),leaf BLOB NOT NULL,peaks BLOB NOT NULL,entries TEXT NOT NULL,note TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(origin,idx));
    CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_update BEFORE UPDATE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_delete BEFORE DELETE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TABLE IF NOT EXISTS tlog_heads_entries(origin TEXT NOT NULL,log TEXT NOT NULL,idx INTEGER NOT NULL CHECK(idx>=0),size INTEGER NOT NULL CHECK(size>0),root TEXT NOT NULL,PRIMARY KEY(origin,log,idx));
+   CREATE INDEX IF NOT EXISTS tlog_heads_entries_by_idx ON tlog_heads_entries(origin,idx);
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_entries_immutable_update BEFORE UPDATE ON tlog_heads_entries BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_entries_immutable_delete BEFORE DELETE ON tlog_heads_entries BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TABLE IF NOT EXISTS tlog_cosignatures(origin TEXT NOT NULL,size INTEGER NOT NULL,key_id TEXT NOT NULL,name TEXT NOT NULL,timestamp INTEGER NOT NULL,line TEXT NOT NULL,received_at TEXT NOT NULL,PRIMARY KEY(origin,size,key_id));
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_refresh_only BEFORE UPDATE ON tlog_cosignatures WHEN NEW.timestamp<=OLD.timestamp OR NEW.origin<>OLD.origin OR NEW.size<>OLD.size OR NEW.key_id<>OLD.key_id BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_immutable_delete BEFORE DELETE ON tlog_cosignatures BEGIN SELECT RAISE(ABORT,'append only'); END;
