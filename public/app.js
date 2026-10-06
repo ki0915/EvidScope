@@ -41,7 +41,7 @@ const labels = {
   suppressed: '예외 적용', retired: '이전 버전', voluntary: '자율 적용',
   unverified_or_mismatch: '권한 미확인 또는 불일치', matched_at_event_time: '행동 시점 범위 일치', not_observed: '실행 미관측',
   independently_reported_success: '독립 서비스 성공 기록', independently_reported_failure: '독립 서비스 실패 기록', unconfirmed: '외부 결과 미확인',
-  authenticated_self_report: '인증된 AI 자기보고', authenticated_service_record: '인증된 서비스 기록',
+  authenticated_self_report: '인증된 AI 자기보고', authenticated_service_record: '인증된 서비스 기록', authenticated_telemetry_report: '인증된 텔레메트리 보고(OTLP)',
   receiving: '최근 수신됨', not_connected: '미연결', no_observation: '수신 이력 없음', started: '시작 기록', success: '성공 기록', failure: '실패 기록', registered: '등록됨',
   released: '보류 해제됨', executed: '파기 실행됨', quarantined_resource_limit: '분석 미완료 · 자원 한도',
   intent: '행동 요청', execution: '도구 실행 기록', result: '도구 결과 기록',

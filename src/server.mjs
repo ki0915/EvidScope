@@ -7,6 +7,7 @@ import {createService} from './service.mjs';
 import {HttpError} from './model.mjs';
 import {tick} from './worker.mjs';
 import {dataKeysFromEnv} from './data-keys.mjs';
+import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -19,6 +20,7 @@ const ingestPaths=new Set(['/api/ingest','/api/development-runs/events']);
 const authPaths=new Set(['/auth/config','/auth/login','/auth/callback','/auth/session','/auth/logout']);
 if(mode!=='vault'&&!/^https:/.test(base)&&!['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname))throw Error('Remote vault requires verified TLS');
 let service;if(mode==='vault')service=createService({dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
 const instance=(process.env.POD_NAME||'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,120);
@@ -55,10 +57,11 @@ async function upstream(path,method,headers,body){
 async function route(req,res){
  for(const[k,v]of Object.entries(security))res.setHeader(k,v);res.setHeader('Content-Type','application/json; charset=utf-8');
  if(instance)res.setHeader('x-evidscope-instance',instance);
- if(stopping||active>=100){res.writeHead(503);res.end(JSON.stringify({error:'서비스가 혼잡하거나 종료 중입니다'}));return;}
+ if(stopping||active>=100){if(otlp&&new URL(req.url,'http://localhost').pathname===OTLP_TRACES_PATH)return otlp.unavailable(req,res);res.writeHead(503);res.end(JSON.stringify({error:'서비스가 혼잡하거나 종료 중입니다'}));return;}
  active++;
  try{
   const url=new URL(req.url,'http://localhost');
+  if(otlp&&url.pathname===OTLP_TRACES_PATH){await otlp.handle(req,res,{originAllowed:origin=>origin===(mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host)});return;}
   if(req.headers.origin){const expected=mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host;if(req.headers.origin!==expected)throw new HttpError(403,'교차 출처 요청이 금지됩니다');}
   if(url.pathname==='/healthz'&&req.method==='GET'){
    if(mode==='vault')service.store.db.prepare('SELECT 1').get();
@@ -71,11 +74,11 @@ async function route(req,res){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   if(mode==='ingress'&&(!ingestPaths.has(url.pathname)||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
-  if(mode==='audit'&&(!url.pathname.startsWith('/api/')&&!authPaths.has(url.pathname)||ingestPaths.has(url.pathname)))throw new HttpError(403,'감사 게이트웨이에서 허용하지 않는 경로입니다');
+  if(mode==='audit'&&(!url.pathname.startsWith('/api/')&&!authPaths.has(url.pathname)||ingestPaths.has(url.pathname)||url.pathname==='/api/ingest/otlp'))throw new HttpError(403,'감사 게이트웨이에서 허용하지 않는 경로입니다');
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
-  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:url.pathname==='/api/governance/documents'?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384);
+  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp'?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384);
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
    const output=await service.handle(req.method,url,req.headers,body);res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));

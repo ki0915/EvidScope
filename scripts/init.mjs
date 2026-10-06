@@ -8,6 +8,7 @@ export function initialize(dir=resolve('.local')){
  const token=()=>randomBytes(32).toString('base64url');
  const principals=[...['alpha','beta'].flatMap(tenant=>[
   ...['agent','tool','authority','safety','telemetry'].map(kind=>({id:`${tenant}-${kind}`,tenant,role:'source',kind,token:token(),hmacSecret:token()})),
+  {id:`${tenant}-otlp`,tenant,role:'source',kind:'otlp',token:token()},
   ...['auditor','reviewer','admin'].map(role=>({id:`${tenant}-${role}`,tenant,role,token:token()}))]),{id:'analysis-worker',tenant:'internal',role:'worker',token:token()}];
  const config={profile:'synthetic-local',principals};
  const {privateKey,publicKey}=generateKeyPairSync('ed25519');

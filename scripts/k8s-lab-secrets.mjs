@@ -26,7 +26,8 @@ export function createLabSecrets({ out, openssl = process.env.EVIDSCOPE_TEST_OPE
   mkdirSync(destination, { mode: 0o700 }); // Atomic refusal if another process won creation.
   const output = (name, text) => writeFileSync(join(destination, name), text, { mode: 0o600, flag: 'wx' });
   const config = initialize(destination);
-  const collector = config.principals.filter(p => p.tenant === 'alpha' && p.role === 'source');
+  // HMAC collector sources only; OTLP sources use bearer tokens through /v1/traces.
+  const collector = config.principals.filter(p => p.tenant === 'alpha' && p.role === 'source' && p.kind !== 'otlp');
   const auditors = config.principals.filter(p => p.id === 'alpha-auditor' && p.role === 'auditor');
   const worker = config.principals.find(p => p.id === 'analysis-worker' && p.role === 'worker');
   if (collector.length !== 5 || auditors.length !== 1 || !worker) throw Error('Synthetic principal separation failed');

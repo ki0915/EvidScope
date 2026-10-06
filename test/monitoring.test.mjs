@@ -16,7 +16,7 @@ test('monitoring: receipt buckets, tenant/source boundaries, missing statuses an
  put('other-tenant',now,{tenant:'beta',source:'beta-tool'});put('claim',now,{source:'alpha-agent',sourceKind:'agent'});put('unknown',now,{status:undefined});put('gap',now,{kind:'gap',source:'alpha-telemetry',sourceKind:'telemetry'});
  const data=monitoring(s.store,config.principals,'alpha',new URLSearchParams(),now);
  assert.equal(data.points.length,60);assert.equal(data.points[0].received,1);assert.equal(data.points.at(-1).received,4);assert.equal(data.points.at(-1).success,1);assert.equal(data.points.at(-1).failure,0);assert.equal(data.points.at(-1).unknown,1);assert.equal(data.points.at(-1).gaps,1);assert.equal(data.points.at(-1).partial,true);
- assert.equal(data.sources.length,5);assert.ok(data.sources.every(s=>s.id.startsWith('alpha-')));
+ assert.equal(data.sources.length,6);assert.equal(data.sources.filter(s=>s.kind==='otlp').length,1);assert.ok(data.sources.every(s=>s.id.startsWith('alpha-')));
  const filtered=monitoring(s.store,config.principals,'alpha',new URLSearchParams({source:'alpha-tool'}),now);assert.equal(filtered.points.at(-1).received,2);
  for(const [range,length,bucket,refresh] of [['10m',20,30000,30000],['1h',60,60000,60000],['24h',288,300000,300000],['7d',168,3600000,900000]]){const result=monitoring(s.store,config.principals,'alpha',new URLSearchParams({range}),now);assert.equal(result.points.length,length);assert.equal(result.bucketMs,bucket);assert.equal(result.refreshMs,refresh);}
  for(const query of ['range=invalid','range=__proto__','source=beta-tool'])assert.throws(()=>monitoring(s.store,config.principals,'alpha',new URLSearchParams(query),now),e=>e.status===400);
