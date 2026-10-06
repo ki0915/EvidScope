@@ -466,8 +466,10 @@ export function createTransparency({store, config, key, startup = null, probe = 
       const t = result.transparency, scope = result.verificationScope;
       if (t?.present && t.unsignedTail) throw Error('Truncated or inconsistent tlog checkpoint: the signed tenant note lags the ledger');
       scope.checks = [...scope.checks, 'merkle_tree', 'heads_log', ...(config.witnesses.length ? ['witness_cosignatures', 'witness_freshness'] : [])];
-      scope.notChecked = t?.rollbackChecked ? [] : [...UNANCHORED];
-      return {...result, rollbackChecked: !!t?.rollbackChecked, transparency: {...t, mode: config.mode, runtime: status()}};
+      // A fresh cosignature only bounds rollback to its own time; a detected rollback or fork keeps this vault unanchored.
+      const anchored = !!t?.rollbackChecked && !violations.some(v => QUARANTINE_KINDS.has(v.kind) || v.kind === 'pin');
+      scope.notChecked = anchored ? [] : [...UNANCHORED];
+      return {...result, rollbackChecked: anchored, transparency: {...t, rollbackChecked: anchored, mode: config.mode, runtime: status()}};
     },
     quarantined(scope) {
       if (!store.quarantine) return null;
