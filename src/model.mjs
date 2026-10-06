@@ -7,7 +7,7 @@ export const fail=(status,message)=>{throw new HttpError(status,message);};
 export const cleanText=(s,max=1000)=>{if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(s)) fail(400,'문자열 형식 또는 길이가 유효하지 않습니다');return s;};
 export const identifier=s=>{if(typeof s!=='string'||!/^[a-zA-Z0-9._:@/-]{1,120}$/.test(s))fail(400,'잘못된 식별자');return s;};
 export const date=s=>{if(typeof s!=='string'||!/^\d{4}-\d\d-\d\dT/.test(s)||!Number.isFinite(Date.parse(s)))fail(400,'ISO 시각이 필요합니다');return new Date(s).toISOString();};
-const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check']};
+const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check'],otlp:['notice','self_report']};
 const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs'];
 export function validateReference(ref){
  if(!ref||Array.isArray(ref)||typeof ref!=='object'||Object.keys(ref).some(k=>!['id','kind','version','hash','role','locator','description'].includes(k)))fail(400,'참고 데이터는 허용된 참조 메타데이터만 제출할 수 있습니다');
@@ -39,7 +39,7 @@ export function validateEvent(raw,p) {
  if(e.kind==='human_oversight_review'&&(!knownGovernanceReference(e.reviewer)||!knownGovernanceReference(e.systemId)||!knownGovernanceReference(e.modelId)||!knownGovernanceReference(e.modelVersion)||!knownGovernanceReference(e.policyVersion)))fail(400,'사람 감독 수행 기록에는 확인 가능한 검토자·시스템·모델·정책 버전이 필요합니다');
  if(e.kind==='governance_check'&&(!e.governanceCheck||!['systemId','modelId','modelVersion','policyVersion'].every(k=>knownGovernanceReference(e[k]))))fail(400,'조항별 검증 기록에는 검증 내용·시스템·모델·정책 버전이 필요합니다');
  if(e.kind!=='governance_check'&&e.governanceCheck)fail(400,'조항별 검증 내용은 governance_check 기록에만 연결할 수 있습니다');
- return {...e,tenant:p.tenant,source:p.id,sourceKind:p.kind,receivedAt:new Date().toISOString(),fingerprint:digest(raw),assurance:p.kind==='agent'?'authenticated_self_report':'authenticated_service_record',late:Date.now()-Date.parse(e.occurredAt)>300000,payload:{minimization:'allowlist_metadata_only',originalContentStored:false}};
+ return {...e,tenant:p.tenant,source:p.id,sourceKind:p.kind,receivedAt:new Date().toISOString(),fingerprint:digest(raw),assurance:p.kind==='agent'?'authenticated_self_report':p.kind==='otlp'?'authenticated_telemetry_report':'authenticated_service_record',late:Date.now()-Date.parse(e.occurredAt)>300000,payload:{minimization:'allowlist_metadata_only',originalContentStored:false}};
 }
 export const ruleFields=['kind','tool','action','resource','destination','status','actor','note'];
 export function validateRule(x,p,version) {
