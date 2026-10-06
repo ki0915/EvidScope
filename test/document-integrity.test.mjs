@@ -5,7 +5,7 @@ import {appendFileSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} 
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {createService} from '../src/service.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {readBoundedRegularFile} from '../src/bounded-file.mjs';
 import {createGovernanceDocumentStorage,MAX_GOVERNANCE_DOCUMENT_BYTES} from '../src/governance-documents.mjs';
 import {checkDocumentFiles} from '../src/document-integrity.mjs';
@@ -41,9 +41,10 @@ test('accepted governance documents above 64 KiB through 4 MiB remain verifiable
  assert.equal((await h.call('/api/integrity')).valid,true);
  const backupDir=join(output,'backup'),restoreDir=join(output,'restored');
  const anchor=await createVaultBackup({dataDir:h.dir,backupDir,privateKey:h.privateKey,publicKey:h.publicKey});
- const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor});
- assert.equal(receipt.verified,true);assert.equal(receipt.governanceDocuments,4);assert.equal(receipt.documents,5);
- const restored=createService({dataDir:restoreDir,key:h.privateKey,config:{principals:h.principals},requirements});
+ const config={principals:h.principals},latest=await createVaultRecoveryFrontier({dataDir:h.dir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,config});
+ const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config});
+ assert.equal(receipt.verified,true);assert.equal(receipt.activationAccepted,true);assert.equal(receipt.governanceDocuments,4);assert.equal(receipt.documents,5);
+ const restored=createService({dataDir:restoreDir,key:h.privateKey,config,requirements});
  try{
   const call=(path,tenant='alpha')=>restored.handle('GET',new URL(path,'http://local'),{authorization:'Bearer '+h.principals.find(p=>p.tenant===tenant).token});
   assert.equal((await call('/api/integrity')).valid,true);
