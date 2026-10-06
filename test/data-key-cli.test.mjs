@@ -97,3 +97,20 @@ test('vault-backup CLI seals v2 backups with DATA_KEY_FILE and cannot restore th
  r=await run('scripts/vault-backup.mjs',['restore',backupDir,join(w.dir,'restored'),w.signingFile,w.publicFile,anchorFile],{DATA_KEY_FILE:keyFile});
   assert.equal(r.code,0,r.stderr);assert.equal(JSON.parse(r.stdout).verified,true);
 });
+
+test('vault-backup CLI refuses a signing-key-sealed backup of a separated vault without documents and of an enterprise vault',async t=>{
+ const w=workspace(t),keyFile=join(w.dir,'data-encryption.key');await run('scripts/data-key.mjs',['generate',keyFile]);
+ const principals=[{id:'alpha-reviewer',role:'reviewer',tenant:'alpha',token:'a'.repeat(40)}];
+ createService({dataDir:w.dataDir,key:w.privateKey,config:{principals},requirements,dataKey:readDataKeyFile(keyFile)}).store.close();
+ const create=(name,env)=>run('scripts/vault-backup.mjs',['create',w.dataDir,join(w.dir,name),w.signingFile,w.publicFile,join(w.dir,name+'.anchor.json')],env);
+ let r=await create('no-key');
+ assert.equal(r.code,1);assert.match(r.stderr,/key separation is active: data key\(s\) dk1-[a-f0-9]{32} are not configured/);
+ assert.equal(existsSync(join(w.dir,'no-key.anchor.json')),false);
+ r=await create('with-key',{DATA_KEY_FILE:keyFile});assert.equal(r.code,0,r.stderr);assert.equal(JSON.parse(r.stdout).backupEncryption,'data_key_hkdf');
+ const legacy=workspace(t),configFile=join(legacy.dir,'config.json');
+ createService({dataDir:legacy.dataDir,key:legacy.privateKey,config:{principals},requirements}).store.close();
+ writeFileSync(configFile,JSON.stringify({profile:'enterprise',principals}),{mode:0o600});
+ r=await run('scripts/vault-backup.mjs',['create',legacy.dataDir,join(legacy.dir,'b'),legacy.signingFile,legacy.publicFile,join(legacy.dir,'a.json')],
+  {CONFIG_FILE:configFile});
+ assert.equal(r.code,1);assert.match(r.stderr,/Enterprise profile requires DATA_KEY_FILE for a backup/);
+});

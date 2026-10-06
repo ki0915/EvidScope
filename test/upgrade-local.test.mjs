@@ -9,6 +9,8 @@ import {promisify} from 'node:util';
 import {initialize} from '../scripts/init.mjs';
 import {createLocalRuntime} from '../scripts/local.mjs';
 import {createService} from '../src/service.mjs';
+import {createGovernanceDocumentStorage} from '../src/governance-documents.mjs';
+import {dataKeyId} from '../src/data-keys.mjs';
 
 const execute = promisify(execFile), host = process.env.EVIDSCOPE_TEST_HOST || '127.0.0.1';
 const requirements = JSON.parse(readFileSync(new URL('../data/requirements.json', import.meta.url), 'utf8'));
@@ -101,4 +103,27 @@ test('upgrade-local leaves a restored vault config alone and refuses a directory
   t.after(() => rmSync(empty, {recursive: true, force: true}));
   const refused = await upgrade(empty);
   assert.equal(refused.code, 1); assert.match(refused.stderr, /No local install/);
+});
+
+test('upgrade-local finishes a document migration that failed after the data key was created', async t => {
+  const {dir} = await legacyInstall(t);
+  const signingKey = readFileSync(join(dir, 'signing-private.pem'), 'utf8');
+  const file = createGovernanceDocumentStorage(join(dir, 'data'), signingKey).location('alpha', sha(Buffer.from('legacy control text')));
+  const original = readFileSync(file);
+  writeFileSync(file, '{}'); // the migration aborts on this file after the key file exists
+  const failed = await upgrade(dir);
+  assert.equal(failed.code, 1); assert.match(failed.stderr, /document migration failed: .*Stop the vault and re-run/);
+  assert.ok(existsSync(join(dir, 'data-encryption.key')));
+  writeFileSync(file, original);
+  const kid = dataKeyId(readFileSync(join(dir, 'data-encryption.key')));
+  const dry = await upgrade(dir, '--dry-run');
+  assert.equal(dry.code, 0, dry.stderr);
+  assert.deepEqual(dry.json.steps[1], {step: 'data_key', status: 'would_migrate', kid, pendingFilesByKeyId: {'legacy-signing-v1': 1}});
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).kid, undefined, 'dry run rewrites nothing');
+  const resumed = await upgrade(dir);
+  assert.equal(resumed.code, 0, resumed.stderr); assert.equal(resumed.json.upgraded, true);
+  assert.equal(resumed.json.steps[1].status, 'migrated'); assert.deepEqual(resumed.json.steps[1].migration.reencryptedFrom, {'legacy-signing-v1': 1});
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).kid, kid);
+  const again = await upgrade(dir);
+  assert.equal(again.code, 0, again.stderr); assert.equal(again.json.steps[1].status, 'already_present'); assert.equal(again.json.upgraded, false);
 });

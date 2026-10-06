@@ -2,7 +2,8 @@
 //   node scripts/upgrade-local.mjs [--dir .local] [--transparency] [--dry-run]
 // Steps (each skipped when already done, so the command is idempotent):
 //   1. add a Bearer-only `<tenant>-otlp` source principal per tenant (OpenTelemetry /v1/traces intake);
-//   2. create data-encryption.key and re-encrypt stored documents under it (signing key no longer encrypts data);
+//   2. create data-encryption.key and re-encrypt stored documents under it (signing key no longer encrypts data); when the key
+//      already exists but referenced documents are still under another key id (an interrupted run), finish the migration;
 //   3. with --transparency, write transparency.json (monitor mode, local pin only) that `npm start` picks up.
 // Every file it changes is first copied to <dir>/upgrade-backup-<timestamp>/. Tokens and key bytes are never printed.
 import {copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
@@ -10,8 +11,8 @@ import {randomBytes} from 'node:crypto';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
-import {generateDataKeyFile, readDataKeyFile} from '../src/data-keys.mjs';
-import {migrateDocuments} from './data-key.mjs';
+import {dataKeyId, generateDataKeyFile, readDataKeyFile} from '../src/data-keys.mjs';
+import {documentKeyUsage, migrateDocuments} from './data-key.mjs';
 
 const RESTORATION_MARKER = 'vault-restoration.json';
 
@@ -56,24 +57,28 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
   }
 
   // 2. Data-encryption key separate from the signing key, then re-encrypt referenced documents under it.
-  const keyFile = join(dir, 'data-encryption.key');
+  const keyFile = join(dir, 'data-encryption.key'), hasDatabase = existsSync(join(dataDir, 'evidence.db'));
+  const migrate = kid => {
+    try {
+      const m = migrateDocuments({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey: readDataKeyFile(keyFile)});
+      return {tenants: m.tenants, reencryptedFrom: m.reencryptedFrom, retiredKeyIds: m.retiredKeyIds};
+    } catch (error) {
+      // The key file stays: data_key_usage may already reference it, and a vault without it would refuse to start.
+      throw Error(`Data key ${kid} is in place but document migration failed: ${error.message}. Stop the vault and re-run.`);
+    }
+  };
   if (existsSync(keyFile)) {
-    readDataKeyFile(keyFile);
-    steps.push({step: 'data_key', status: 'already_present'});
+    // An earlier run may have created the key and failed mid-migration; migrateDocuments is idempotent, so finish it.
+    const dataKey = readDataKeyFile(keyFile), kid = dataKeyId(dataKey);
+    const pending = Object.fromEntries(Object.entries(hasDatabase ? documentKeyUsage({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey}) : {})
+      .filter(([id]) => id !== kid));
+    if (!Object.keys(pending).length) steps.push({step: 'data_key', status: 'already_present'});
+    else if (dryRun) steps.push({step: 'data_key', status: 'would_migrate', kid, pendingFilesByKeyId: pending});
+    else steps.push({step: 'data_key', status: 'migrated', kid, pendingFilesByKeyId: pending, migration: migrate(kid)});
   } else if (dryRun) steps.push({step: 'data_key', status: 'would_create_and_migrate'});
   else {
     const kid = generateDataKeyFile(keyFile);
-    let migration = null;
-    if (existsSync(join(dataDir, 'evidence.db'))) {
-      try {
-        migration = migrateDocuments({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey: readDataKeyFile(keyFile)});
-      } catch (error) {
-        // The key file stays: data_key_usage may already reference it, and a vault without it would refuse to start.
-        throw Error(`Data key created (${kid}) but document migration failed: ${error.message}. Stop the vault and re-run.`);
-      }
-    }
-    steps.push({step: 'data_key', status: 'created', kid, file: keyFile, migration: migration && {
-      tenants: migration.tenants, reencryptedFrom: migration.reencryptedFrom, retiredKeyIds: migration.retiredKeyIds}});
+    steps.push({step: 'data_key', status: 'created', kid, file: keyFile, migration: hasDatabase ? migrate(kid) : null});
   }
 
   // 3. Transparency log in monitor mode with only the local pin as anchor; add witnesses later (docs/transparency-log.md).
@@ -87,7 +92,7 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
       note: 'Monitor mode with a local pin only detects rollback against that pin; add an independent witness for real assurance.'});
   }
 
-  const changed = !dryRun && steps.some(s => ['added', 'created'].includes(s.status));
+  const changed = !dryRun && steps.some(s => ['added', 'created', 'migrated'].includes(s.status));
   return {upgraded: changed, dryRun, dir, backupDir: changed && existsSync(backupDir) ? backupDir : null, steps,
     nextSteps: changed ? ['Start the service again with npm start.', 'Create a new vault backup; older backups stay readable with the signing key.'] : []};
 }

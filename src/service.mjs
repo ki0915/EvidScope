@@ -41,6 +41,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  const store=new Store(dataDir,key,tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}});
  const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
+ // Separation starts with the first start under DATA_KEY_FILE, not with the first document: from then on the vault, its backups and
+ // recovery frontiers refuse to run without this key (a backup sealed by the signing key would expose every retained event key).
+ if(keyring.currentKeyId)try{recordDataKeyUsage(store.db,keyring.currentKeyId);}catch(error){store.close();throw error;}
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
  const principals=config.principals||[];

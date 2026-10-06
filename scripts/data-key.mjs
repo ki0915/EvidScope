@@ -48,6 +48,19 @@ export function migrateDocuments({dataDir,signingKey,dataKey,previousDataKeys=[]
  }finally{store.close();}
 }
 
+// Referenced document files per data key id (read-only check, vault stopped). Callers use it to decide whether migrate is needed.
+export function documentKeyUsage({dataDir,signingKey,dataKey,previousDataKeys=[]}){
+ const store=new Store(dataDir,signingKey);
+ try{
+  const keyring=createKeyring({signingKey,dataKey,previousDataKeys}),counts={};
+  for(const {tenant} of store.db.prepare('SELECT DISTINCT tenant FROM ledger ORDER BY tenant').all()){
+   const checked=checkDocumentFiles({db:store.db,tenant,records:store.bundle(tenant).records,dataDir,keyring});
+   for(const [kid,n] of Object.entries(checked.keyIds))counts[kid]=(counts[kid]||0)+n;
+  }
+  return counts;
+ }finally{store.close();}
+}
+
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url){
  const [mode,...args]=process.argv.slice(2);
  try{

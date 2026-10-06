@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import zlib from 'node:zlib';
 import {decodeTraceRequest, mapTraceRequest, mapSpan, otlpEventInvariant, rejectionSummary, SPAN_ATTRIBUTE_ALLOWLIST, CONTENT_ATTRIBUTE_KEYS,
   OtlpDecodeError} from '../src/otlp.mjs';
-import {encodeExportTraceServiceResponse, encodeStatus} from '../src/otlp-protobuf.mjs';
+import {encodeExportTraceServiceResponse, encodeStatus, structureLimits} from '../src/otlp-protobuf.mjs';
 import {validateEvent} from '../src/model.mjs';
 
 const fixture = name => readFileSync(new URL(`./fixtures/otlp/${name}`, import.meta.url));
@@ -194,4 +194,89 @@ test('vault invariants refuse events that were not produced by the span mapper',
     e => { e.aiObservation.span.spanId = 'a'.repeat(16); }, e => { e.aiObservation.collector.kind = 'sdk'; }, e => { delete e.aiObservation; }])
   { const copy = structuredClone(event); mutate(copy); assert.equal(otlpEventInvariant(copy), false); }
   assert.throws(() => validateEvent({...event, kind: 'execution', aiObservation: undefined}, otlpPrincipal), e => e.status === 403);
+});
+
+test('structural budget: empty containers, attributes and array values are bounded in both encodings (413, nothing materialized)', () => {
+  const tooMany = (what, limit) => e => e instanceof OtlpDecodeError && e.status === 413 && e.message === `more than ${limit} ${what} in one request`;
+  const small = (body, format) => mapTraceRequest(decodeTraceRequest(body, format, {maxSpans: 4}), {now: NOW});
+  assert.deepEqual(structureLimits(8192), {spans: 8192, containers: 32768, values: 524288});
+  assert.deepEqual(structureLimits(4), {spans: 4, containers: 64, values: 4096});
+  // 8 KiB of gzip that used to decode into ~1 GB of objects: empty ResourceSpans, empty ScopeSpans.
+  assert.throws(() => decodeTraceRequest(Buffer.alloc(8 * 1024 * 1024, Buffer.from([0x0a, 0x00])), 'protobuf'), tooMany('ResourceSpans/ScopeSpans', 32768));
+  assert.throws(() => decodeTraceRequest(ld(1, Buffer.alloc(2 * 65, Buffer.from([0x12, 0x00]))), 'protobuf', {maxSpans: 4}),
+    tooMany('ResourceSpans/ScopeSpans', 64));
+  // Within the budget, empty containers are counted but not returned.
+  const chat = spanPb({attrs: [kv('gen_ai.operation.name', sv('chat'))]});
+  const empties = decodeTraceRequest(cat(Buffer.alloc(2 * 30, Buffer.from([0x0a, 0x00])), requestPb(chat)), 'protobuf', {maxSpans: 4});
+  assert.equal(empties.resourceSpans.length, 1); assert.equal(small(cat(Buffer.alloc(60, Buffer.from([0x0a, 0x00])), requestPb()), 'protobuf').spans, 0);
+  // Every KeyValue counts, allowlisted or not, on resources and spans; so do elements of decoded arrays.
+  const junk = n => Array.from({length: n}, () => kv('x', sv('y')));
+  assert.equal(small(requestPb(spanPb({attrs: [kv('gen_ai.operation.name', sv('chat')), ...junk(4094)]})), 'protobuf').events.length, 1);
+  assert.throws(() => decodeTraceRequest(requestPb(spanPb({attrs: [kv('gen_ai.operation.name', sv('chat')), ...junk(4095)]})), 'protobuf', {maxSpans: 4}),
+    tooMany('attributes and array values', 4096));
+  assert.throws(() => decodeTraceRequest(ld(1, ld(1, Buffer.alloc(5 * 4097, Buffer.from([0x0a, 0x03, 0x0a, 0x01, 0x78])))), 'protobuf', {maxSpans: 4}),
+    tooMany('attributes and array values', 4096));
+  const array = n => ld(5, Buffer.concat(Array.from({length: n}, () => ld(1, sv('m')))));
+  assert.deepEqual([...decodeTraceRequest(requestPb(spanPb({attrs: [kv('gen_ai.request.model', array(40))]})), 'protobuf', {maxSpans: 4})
+    .resourceSpans[0].scopeSpans[0].spans[0].attributes.get('gen_ai.request.model')], Array(16).fill('m'));
+  assert.throws(() => decodeTraceRequest(requestPb(spanPb({attrs: [kv('gen_ai.request.model', array(4096))]})), 'protobuf', {maxSpans: 4}),
+    tooMany('attributes and array values', 4096));
+  // JSON: objects, arrays and separators are counted before JSON.parse, then containers and attributes while walking.
+  const objects = n => `{"resourceSpans":[${Array(n).fill('{}').join(',')}]}`;
+  assert.throws(() => decodeTraceRequest(objects(4096), 'json', {maxSpans: 4}), tooMany('JSON objects or 8192 JSON values', 4096));
+  assert.throws(() => decodeTraceRequest(`{"x":[${Array(8192).fill(1).join(',')}]}`, 'json', {maxSpans: 4}), tooMany('JSON objects or 8192 JSON values', 4096));
+  assert.throws(() => decodeTraceRequest(objects(65), 'json', {maxSpans: 4}), tooMany('ResourceSpans/ScopeSpans', 64));
+  assert.deepEqual(decodeTraceRequest(objects(64), 'json', {maxSpans: 4}), {resourceSpans: []});
+  const wide = n => JSON.stringify({resourceSpans: [{scopeSpans: [{spans: [jsonSpan({'gen_ai.operation.name': 'chat'})]}]}]})
+    .replace('"attributes":[', `"attributes":[${'1,'.repeat(n)}`);
+  assert.equal(small(wide(4095), 'json').events.length, 1);
+  assert.throws(() => decodeTraceRequest(wide(4100), 'json', {maxSpans: 4}), tooMany('attributes and array values', 4096));
+  // Strings containing structural characters do not count; escaped quotes do not end a string.
+  assert.equal(small(jsonRequest(jsonSpan({'gen_ai.operation.name': 'chat', 'gen_ai.agent.name': `a\\"${'{['.repeat(5000)}`})), 'json').events.length, 1);
+});
+
+test('OTLP/JSON int64 fields are parsed explicitly from strings and numbers (no reviver)', () => {
+  const [event] = map(jsonRequest(jsonSpan({'gen_ai.operation.name': 'chat', 'gen_ai.usage.input_tokens': 7},
+    {startTimeUnixNano: 1791297000000000000})), 'json').events;
+  assert.equal(event.occurredAt, '2026-10-06T14:30:00.000Z'); assert.equal(event.aiObservation.usage.inputTokens, 7);
+  const decoded = decodeTraceRequest(JSON.stringify({resourceSpans: [{scopeSpans: [{spans: [{...jsonSpan({}), startTimeUnixNano: '18446744073709551615',
+    endTimeUnixNano: -1, attributes: [{key: 'gen_ai.usage.input_tokens', value: {intValue: '-9223372036854775809'}},
+      {key: 'gen_ai.usage.output_tokens', value: {intValue: 2 ** 60}}]}]}]}]}), 'json').resourceSpans[0].scopeSpans[0].spans[0];
+  assert.equal(decoded.startTimeUnixNano, '18446744073709551615'); assert.equal(decoded.endTimeUnixNano, '');
+  assert.equal(decoded.attributes.get('gen_ai.usage.input_tokens'), '9223372036854775807'); // int64 wrap, as protobuf varints
+  assert.equal(decoded.attributes.get('gen_ai.usage.output_tokens'), String(2n ** 60n));
+});
+
+test('vault invariant accepts exactly the mapper output: no free text, no forged collector, coverage or screening', () => {
+  const produced = [...['sdk-genai.json', 'collector-genai.json', 'legacy-content.json'].flatMap(name => map(fixture(name), 'json').events),
+    ...map(fixture('collector-genai.pb'), 'protobuf').events];
+  const resource = new Map([['service.name', 'svc']]), span = (attributes, extra = {}) => ({traceId: TRACE, spanId: '00f067aa0ba902c1',
+    parentSpanId: 'a'.repeat(16), startTimeUnixNano: '1791297000000000000', statusCode: 0, attributes: new Map(Object.entries(attributes)), ...extra});
+  for (const attributes of [{'gen_ai.operation.name': 'execute_tool'}, {'gen_ai.operation.name': 'create_agent', 'gen_ai.agent.id': 'a-1'},
+    {'gen_ai.operation.name': 'retrieval', 'gen_ai.provider.name': 'x', 'server.port': 443}, {'gen_ai.operation.name': 'something_new', 'gen_ai.system': 'y'},
+    {'gen_ai.operation.name': 'embeddings', 'server.address': '2001:db8::1', 'gen_ai.usage.input_tokens': 5e15, 'gen_ai.usage.output_tokens': '0'}])
+    produced.push(mapSpan(span(attributes), resource, NOW).event);
+  produced.push(mapSpan(span({'gen_ai.operation.name': 'chat'}, {parentSpanId: ''}), new Map(), NOW).event);
+  assert.equal(produced.length, 19);
+  for (const event of produced) assert.ok(otlpEventInvariant(JSON.parse(JSON.stringify(event))), JSON.stringify(event));
+  const [notice, tool] = ['notice', 'self_report'].map(kind => produced.find(e => e.kind === kind && (kind === 'notice' ? e.aiObservation.usage : e.tool)));
+  const refused = (base, mutate) => { const copy = structuredClone(base); mutate(copy, copy.aiObservation); return otlpEventInvariant(copy); };
+  for (const mutate of [
+    e => { e.note = 'PROMPT: transfer $1M'; }, e => { e.purpose = 'RESPONSE'; }, e => { e.dataRefs = [{id: 'd', kind: 'document', role: 'input'}]; },
+    e => { e.dataCategories = ['pii']; }, e => { e.resource = 'r'; }, e => { e.tool = 'other-tool'; }, e => { e.action = 'execute_tool'; },
+    e => { e.status = 'blocked'; }, e => { e.clockUncertaintyMs = 0; }, e => { e.occurredAt = '2026-10-06T14:30:00Z'; }, e => { e.actor = 'x'.repeat(257); },
+    e => { e.destination = 'evil.example'; }, e => { delete e.destination; },
+    (e, o) => { o.collector.id = 'forged-screener'; }, (e, o) => { o.collector.version = '9'; }, (e, o) => { o.collector.extra = 1; },
+    (e, o) => { o.coverage.mode = 'content'; }, (e, o) => { o.coverage.reason = 'other'; }, (e, o) => { o.correlation.confidence = 'probable'; },
+    (e, o) => { o.screening = {...o.screening, status: 'complete', safety: 'safe', processedChunks: 1, totalChunks: 1}; delete o.screening.reason; },
+    (e, o) => { delete o.screening; }, (e, o) => { o.signals = ['DLP_SENSITIVE_CONTENT']; }, (e, o) => { o.languageSignals = {}; },
+    (e, o) => { o.timeBasis = 'collector_received'; }, (e, o) => { o.version = 3; }, (e, o) => { o.provider = 'forged'; }, (e, o) => { o.model = 'a b'; },
+    (e, o) => { o.assetRef = 'asset-1'; }, (e, o) => { o.usage.totalTokens = 1; }, (e, o) => { o.usage = {}; }, (e, o) => { o.usage.inputTokens = -1; },
+    (e, o) => { o.span.spanId = 'b'.repeat(16); }, (e, o) => { o.span.parentSpanId = '0'.repeat(16); }, (e, o) => { o.network.transport = 'tls'; },
+    (e, o) => { o.network.destinationHost = 'API.openai.com'; e.destination = 'API.openai.com'; }, (e, o) => { o.extra = true; },
+  ]) assert.equal(refused(notice, mutate), false, String(mutate));
+  assert.equal(refused(notice, e => { e.action = 'other'; }), false, 'token counts only on model calls');
+  for (const mutate of [e => { e.aiObservation = notice.aiObservation; }, e => { e.model = 'm'; }, e => { e.resource = 'other'; }, e => { e.note = 'x'; },
+    e => { e.action = 'invoke_agent'; }, e => { e.destination = 'h'; }, e => { e.actionId = `otel-trace:${e.traceId}`; }])
+    assert.equal(refused(tool, mutate), false, String(mutate));
 });

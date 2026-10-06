@@ -6,7 +6,8 @@
 // and status messages never enter an event.
 import {validateAIObservation} from './ai-observations.mjs';
 import {screeningUnavailable} from './content-screening.mjs';
-import {decodeTraceRequestProtobuf, OtlpDecodeError} from './otlp-protobuf.mjs';
+import {canonical} from './crypto.mjs';
+import {decodeTraceRequestProtobuf, OtlpDecodeError, structureBudget, structureLimits, NO_ATTRIBUTES} from './otlp-protobuf.mjs';
 
 export {OtlpDecodeError};
 export const OTLP_MAPPING_VERSION = 'otel-genai-map-1';
@@ -70,33 +71,37 @@ function host(v) {
 
 // ---- OTLP/JSON -> internal shape -------------------------------------------------------------
 
-// Keeps int64 precision: integers beyond 2^53 come back as their decimal source text.
-const reviver = (key, value, context) =>
-  typeof value === 'number' && !Number.isSafeInteger(value) && context && /^-?\d+$/.test(context.source) ? context.source : value;
+// OTLP/JSON encodes int64 as decimal strings (the Collector and the JS SDK do). A JSON number is accepted too; beyond 2^53
+// it is the nearest double, so only such non-conforming producers can see a timestamp off by a few hundred nanoseconds.
+const int64 = (v, signed) => {
+  const n = typeof v === 'string' ? (/^-?\d{1,20}$/.test(v) ? BigInt(v) : undefined) : Number.isInteger(v) ? BigInt(v) : undefined;
+  if (n === undefined || (!signed && (n < 0n || n >= 2n ** 64n))) return undefined;
+  return (signed ? BigInt.asIntN(64, n) : n).toString();
+};
 
 function jsonScalar(v) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
   if (typeof v.stringValue === 'string') return v.stringValue;
   if (typeof v.boolValue === 'boolean') return v.boolValue;
-  if (v.intValue !== undefined) {
-    if (typeof v.intValue === 'number' && Number.isSafeInteger(v.intValue)) return String(v.intValue);
-    if (typeof v.intValue === 'string' && /^-?\d{1,20}$/.test(v.intValue)) return BigInt.asIntN(64, BigInt(v.intValue)).toString();
-    return undefined;
-  }
+  if (v.intValue !== undefined) return int64(v.intValue, true);
   if (typeof v.doubleValue === 'number') return v.doubleValue;
   return undefined;
 }
-function jsonValue(v) {
+function jsonValue(v, charge) {
   const values = v?.arrayValue?.values;
-  if (Array.isArray(values)) return values.slice(0, 16).map(jsonScalar).filter(x => x !== undefined);
-  return jsonScalar(v);
+  if (!Array.isArray(values)) return jsonScalar(v);
+  const items = values.slice(0, 16);
+  for (let i = 0; i < items.length; i++) charge('values');
+  return items.map(jsonScalar).filter(x => x !== undefined);
 }
-function jsonAttributes(list, allow) {
-  const out = new Map();
+function jsonAttributes(list, allow, charge) {
+  let out = NO_ATTRIBUTES;
   if (!Array.isArray(list)) return out;
   for (const kv of list) {
+    charge('values');
     if (!kv || typeof kv.key !== 'string' || !allow.has(kv.key) || out.has(kv.key)) continue;
-    out.set(kv.key, jsonValue(kv.value));
+    if (out === NO_ATTRIBUTES) out = new Map();
+    out.set(kv.key, jsonValue(kv.value, charge));
   }
   return out;
 }
@@ -109,44 +114,62 @@ const objectOf = (v, name) => {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new OtlpDecodeError(`${name} must be an object`);
   return v;
 };
-const nanos = v => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? String(v) : typeof v === 'string' && /^\d{1,20}$/.test(v) ? v : '';
+const nanos = v => typeof v === 'string' && /^\d{1,20}$/.test(v) ? v : int64(v, false) ?? '';
 const hexId = v => typeof v === 'string' ? v.toLowerCase() : '';
 
-export function decodeTraceRequestJson(textBody, {maxSpans = DEFAULT_LIMITS.maxSpans} = {}) {
+// Counts objects, arrays and value separators outside strings before JSON.parse materializes anything: 8 MiB of `{},`
+// would otherwise parse into ~180 MB of objects. UTF-8 continuation bytes never equal these ASCII bytes.
+function assertJsonShape(bytes, maxSpans) {
+  const limit = structureLimits(maxSpans).values;
+  let nodes = 0, tokens = 0, inString = false;
+  for (let i = 0; i < bytes.length; i++) {
+    const c = bytes[i];
+    if (inString) { if (c === 0x5c) i++; else if (c === 0x22) inString = false; }
+    else if (c === 0x22) inString = true;
+    else if (c === 0x7b || c === 0x5b) { nodes++; tokens++; }
+    else if (c === 0x2c) tokens++;
+  }
+  if (nodes > limit || tokens > 2 * limit) throw new OtlpDecodeError(`more than ${limit} JSON objects or ${2 * limit} JSON values in one request`, 413);
+}
+
+export function decodeTraceRequestJson(body, {maxSpans = DEFAULT_LIMITS.maxSpans} = {}) {
+  const bytes = Buffer.isBuffer(body) ? body : Buffer.from(String(body), 'utf8');
+  assertJsonShape(bytes, maxSpans);
   let parsed;
-  try { parsed = JSON.parse(textBody, reviver); } catch { throw new OtlpDecodeError('invalid JSON'); }
+  try { parsed = JSON.parse(bytes.toString('utf8')); } catch { throw new OtlpDecodeError('invalid JSON'); }
   objectOf(parsed, 'ExportTraceServiceRequest');
-  const out = {resourceSpans: []};
-  let spans = 0;
+  const out = {resourceSpans: []}, charge = structureBudget(maxSpans);
   for (const rs of arrayOf(parsed.resourceSpans, 'resourceSpans')) {
     objectOf(rs, 'ResourceSpans');
+    charge('containers');
     const resource = rs.resource === undefined ? {} : objectOf(rs.resource, 'Resource');
-    const entry = {resource: jsonAttributes(resource.attributes, RESOURCE_KEYS), scopeSpans: []};
+    let scopeSpans = null;
     for (const ss of arrayOf(rs.scopeSpans, 'scopeSpans')) {
       objectOf(ss, 'ScopeSpans');
-      const scoped = {spans: []};
+      charge('containers');
+      let spans = null;
       for (const s of arrayOf(ss.spans, 'spans')) {
         objectOf(s, 'Span');
-        if (++spans > maxSpans) throw new OtlpDecodeError(`more than ${maxSpans} spans in one request`, 413);
+        charge('spans');
         const status = s.status && typeof s.status === 'object' ? s.status : {};
-        scoped.spans.push({
+        (spans ||= []).push({
           traceId: hexId(s.traceId), spanId: hexId(s.spanId), parentSpanId: hexId(s.parentSpanId),
           kind: Number.isSafeInteger(s.kind) ? s.kind : 0,
           startTimeUnixNano: nanos(s.startTimeUnixNano), endTimeUnixNano: nanos(s.endTimeUnixNano),
           statusCode: status.code === undefined ? 0 : Number.isSafeInteger(status.code) ? status.code : STATUS_CODES.get(status.code) ?? -1,
-          attributes: jsonAttributes(s.attributes, SPAN_KEYS),
+          attributes: jsonAttributes(s.attributes, SPAN_KEYS, charge),
         });
       }
-      entry.scopeSpans.push(scoped);
+      if (spans) (scopeSpans ||= []).push({spans});
     }
-    out.resourceSpans.push(entry);
+    if (scopeSpans) out.resourceSpans.push({resource: jsonAttributes(resource.attributes, RESOURCE_KEYS, charge), scopeSpans});
   }
   return out;
 }
 
 export function decodeTraceRequest(body, format, limits = {}) {
   const maxSpans = limits.maxSpans ?? DEFAULT_LIMITS.maxSpans;
-  if (format === 'json') return decodeTraceRequestJson(Buffer.isBuffer(body) ? body.toString('utf8') : String(body), {maxSpans});
+  if (format === 'json') return decodeTraceRequestJson(body, {maxSpans});
   if (format === 'protobuf') return decodeTraceRequestProtobuf(body, {spanKeys: SPAN_KEYS, resourceKeys: RESOURCE_KEYS, maxSpans});
   throw new OtlpDecodeError('unsupported encoding', 415);
 }
@@ -255,15 +278,54 @@ export function mapTraceRequest(decoded, {now = Date.now()} = {}) {
   return {spans, events, rejected};
 }
 
-// Vault-side re-validation of OTLP invariants on an already schema-validated event.
+// Vault-side re-validation. An OTLP principal can POST /api/ingest/otlp itself (MODE=vault serves it on the public
+// listener), so every event must have exactly the shape mapSpan emits: no free-text fields such as note, purpose or
+// dataRefs, and an aiObservation that claims nothing the receiver does not do (metadata only, no content screening).
 const OTEL_ID = /^otel:([0-9a-f]{32}):([0-9a-f]{16})$/;
+const ISO_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const EVENT_KEYS = ['id', 'occurredAt', 'traceId', 'status', 'actor', 'clockUncertaintyMs', 'kind', 'actionId', 'action', 'tool', 'resource', 'model',
+  'destination', 'aiObservation'];
+const OBSERVATION_KEYS = ['version', 'assetRef', 'collector', 'provider', 'model', 'correlation', 'coverage', 'span', 'screening', 'signals', 'timeBasis',
+  'usage', 'network'];
+const NOTICE_ACTIONS = new Set([...KNOWN_OPERATIONS, 'other'].filter(a => a !== 'execute_tool' && !AGENT_OPERATIONS.has(a)));
+const PROVIDER_VALUES = new Set([...PROVIDERS.values(), 'other', 'unknown']);
+const plain = (v, keys) => !!v && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype
+  && Object.keys(v).every(k => keys.includes(k));
+const same = (v, expected) => plain(v, Object.keys(expected)) && canonical(v) === canonical(expected);
+const optional = (v, check) => v === undefined || check(v);
+const counter = v => Number.isSafeInteger(v) && v >= 0;
+
+function observationInvariant(o, event, traceId, spanId) {
+  if (!plain(o, OBSERVATION_KEYS) || o.version !== 2 || o.timeBasis !== 'source_observed' || !PROVIDER_VALUES.has(o.provider)) return false;
+  if (!same(o.collector, {kind: 'otlp', id: OTLP_COLLECTOR_ID, version: OTLP_MAPPING_VERSION}) || !same(o.correlation, {method: 'trace', confidence: 'exact'})
+    || !same(o.coverage, {mode: 'metadata', status: 'observed', reason: 'metadata_only'}) || !same(o.screening, screeningUnavailable())) return false;
+  if (!Array.isArray(o.signals) || o.signals.length !== 0) return false;
+  if (o.model !== 'unknown' && !(typeof o.model === 'string' && OBSERVATION_ID.test(o.model))) return false;
+  if (o.assetRef !== 'unregistered' && !(typeof o.assetRef === 'string' && /^otel-service:/.test(o.assetRef) && OBSERVATION_ID.test(o.assetRef))) return false;
+  const parent = o.span?.parentSpanId;
+  if (!plain(o.span, ['traceId', 'spanId', 'parentSpanId']) || o.span.traceId !== traceId || o.span.spanId !== spanId
+    || !optional(parent, v => typeof v === 'string' && HEX16.test(v) && !ZERO.test(v))) return false;
+  const usage = o.usage, network = o.network;
+  if (!optional(usage, u => MODEL_OPERATIONS.has(event.action) && plain(u, ['inputTokens', 'outputTokens']) && Object.keys(u).length > 0
+    && optional(u.inputTokens, counter) && optional(u.outputTokens, counter))) return false;
+  if (!optional(network, n => plain(n, ['destinationHost', 'destinationPort']) && Object.keys(n).length > 0
+    && optional(n.destinationHost, h => host(h) === h) && optional(n.destinationPort, p => counter(p) && p <= 65535))) return false;
+  return event.destination === network?.destinationHost;
+}
+
 export function otlpEventInvariant(raw) {
   const match = typeof raw?.id === 'string' && OTEL_ID.exec(raw.id);
-  if (!match || raw.traceId !== match[1]) return false;
-  if (raw.kind === 'self_report') return raw.actionId === raw.id && raw.aiObservation === undefined;
-  if (raw.kind !== 'notice') return false;
-  const o = raw.aiObservation;
-  return raw.actionId === `otel-trace:${match[1]}` && !!o && o.collector?.kind === 'otlp' && o.span?.traceId === match[1] && o.span?.spanId === match[2];
+  if (!match || !plain(raw, EVENT_KEYS) || raw.traceId !== match[1] || raw.clockUncertaintyMs !== 'unknown') return false;
+  if (!['success', 'failure', 'unknown'].includes(raw.status) || text(raw.actor) !== raw.actor) return false;
+  if (typeof raw.occurredAt !== 'string' || !ISO_MS.test(raw.occurredAt) || new Date(raw.occurredAt).toISOString() !== raw.occurredAt) return false;
+  if (!optional(raw.model, v => text(v) === v)) return false;
+  if (raw.kind === 'self_report') {
+    if (raw.actionId !== raw.id || raw.aiObservation !== undefined || raw.destination !== undefined) return false;
+    if (raw.action === 'execute_tool') return raw.model === undefined && raw.tool === raw.resource && optional(raw.tool, v => text(v) === v);
+    return AGENT_OPERATIONS.has(raw.action) && raw.tool === undefined && optional(raw.resource, v => text(v) === v);
+  }
+  if (raw.kind !== 'notice' || raw.actionId !== `otel-trace:${match[1]}` || raw.tool !== 'otel-genai' || raw.resource !== undefined) return false;
+  return NOTICE_ACTIONS.has(raw.action) && observationInvariant(raw.aiObservation, raw, match[1], match[2]);
 }
 
 export function rejectionSummary(rejected) {
