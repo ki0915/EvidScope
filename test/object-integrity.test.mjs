@@ -35,7 +35,8 @@ test('valid latest objects and every assistance profile version survive API veri
  h.put('assistance_profile','profile@1',{id:'profile',version:1,title:'First immutable version'});h.put('assistance_profile','profile@2',{id:'profile',version:2,title:'Second immutable version'});
  const rawBundle=h.store.rawBundle.bind(h.store);let scans=0;h.store.rawBundle=(...args)=>{scans++;return rawBundle(...args);};
  const result=await h.call();assert.equal(result.valid,true);assert.deepEqual(result.objectProjection,{valid:true,objects:21});assert.equal(result.projection.valid,true);assert.equal(scans,1,'integrity reuses the verified bundle for event and object checks');
- assert.deepEqual(result.verificationScope.checks,['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files']);
+ assert.deepEqual(result.verificationScope.checks,['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files',
+  'access_log']);
  assert.deepEqual(result.verificationScope.notChecked,['rollback','truncation','tenant_removal']);assert.equal(result.documentFiles.uniqueFiles,0);assert.equal(result.governanceDocumentProjection.revisions,0);
  const backupDir=join(h.root,'backup'),anchor=await createVaultBackup({dataDir:h.dataDir,backupDir,privateKey:h.privateKey,publicKey:h.publicKey});
  const latest=await createVaultRecoveryFrontier({dataDir:h.dataDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,config:h.config});

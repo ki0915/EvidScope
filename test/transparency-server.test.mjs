@@ -45,7 +45,9 @@ test('vault process refuses to start on an older database copy in enforce mode (
   await waitFor(() => witnessed() > 0, 'first cosigned heads checkpoint');
   snapshot(dataDir, join(root, 'older.db'));
   const before = witnessed();
-  for (let i = 0; i < 3; i++) assert.equal((await h.api('/api/overview')).status, 200);
+  // Reads no longer append ledger rows one by one (they are sealed in batches), so a signed write moves the ledger past the copy.
+  const rule = {id: 'advance', title: 'Advance the ledger', field: 'note', op: 'eq', value: 'x', severity: 'low'};
+  assert.equal((await h.api('/api/rules', {role: 'reviewer', body: rule})).status, 200);
   await waitFor(() => witnessed() > before, 'newer cosigned heads checkpoint');
   const vault = h.vault;
   vault.child.kill('SIGKILL');

@@ -29,14 +29,17 @@ import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysA
 import {createOtlpIngest} from './otlp-ingest.mjs';
 import {appendSourceEvent,assertAnalysisCapacity} from './event-ingest.mjs';
 import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparencyConfig} from './transparency.mjs';
+import {AccessLog} from './access-log.mjs';
 
-export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs}) {
+export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
  assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
  const legalSourceCoverage=krLegalSourceCoverage(requirements);
  if(config.profile==='enterprise'&&!dataKey)throw Error('Enterprise profile requires DATA_KEY_FILE (data-encryption key separate from the signing key)');
  const store=new Store(dataDir,key,{verifiedStateMaxAgeMs,...(tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}})});
+ // Reads are recorded in a separate hash-chained access log and sealed into the ledger in batches (src/access-log.mjs).
+ let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
  const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
@@ -51,6 +54,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  const human=p=>{if(!['auditor','reviewer','admin'].includes(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');};
  const reviewer=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'검토자 권한이 필요합니다');};
  const admin=p=>{if(p.role!=='admin')fail(403,'관리자 권한이 필요합니다');};
+ const auditReader=p=>{if(!['auditor','admin'].includes(p.role))fail(403,'접근 기록 조회에는 감사자 또는 관리자 권한이 필요합니다');};
+ const sealReads=(p,reason)=>{try{return accessLog.seal(p.tenant,reason,p.id);}catch(error){if(error.status)throw error;fail(409,'접근 기록을 봉인할 수 없습니다: '+error.message);}};
  const auth=(headers,method)=>{const session=identity.authenticate(headers,method);if(session)return session;const token=(headers.authorization||'').replace(/^Bearer /,'');const p=principals.find(x=>equal(x.token,token));if(!p||identity.enabled&&['auditor','reviewer','admin'].includes(p.role))fail(401,'인증이 필요합니다');return p;};
  const dirty=(tenant)=>store.projectionMutation(()=>store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run(tenant));
  const obj=(p,type,id)=>store.get(p.tenant,type,id)||fail(404,'대상을 찾을 수 없습니다');
@@ -127,7 +132,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
     }
    }
   });
-  transparency=createTransparency({store,config:tlogConfig,key,startup:tlogStartup,probe:prepared?.probe});
+  transparency=createTransparency({store,config:tlogConfig,key,startup:tlogStartup,probe:prepared?.probe,beforePublish:()=>accessLog.sealAll('checkpoint_publish')});
  }catch(error){store.close();throw error;}
 
  function report(p,systemId){
@@ -189,7 +194,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   human(p);
   if(!path.startsWith('/api/'))fail(404,'경로 없음');
   let x={};if(body){try{x=safeObject(JSON.parse(body));}catch(e){if(e.status)throw e;fail(400,'JSON 객체 필요');}}
-  if(method==='GET'&&path!=='/api/integrity')store.audit(p,'read',path);
+  // Recorded before routing, so 403/404/409 reads are logged too; /api/integrity still runs (and reports) on a head mismatch.
+  if(method==='GET')accessLog.record(p,{method,target:path,query:url.searchParams},{failClosed:path!=='/api/integrity'});
   const accessResult=identity.access(p,method,path,x);if(accessResult!==undefined)return accessResult;
   if(path.startsWith('/api/governance/')){const documentResult=governanceDocuments.handle(p,method,url,x);if(documentResult!==undefined)return documentResult;const result=finance.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
@@ -220,7 +226,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);return {items:actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));})};});
   }
   if(path==='/api/assets'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'asset').values()]}));
-  if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);return {vaultRssBytes:process.memoryUsage().rss,verifiedState:store.verifiedStateStatus(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:store.db.prepare('SELECT COUNT(*) n FROM ledger WHERE tenant=?').get(p.tenant).n,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
+  if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);return {vaultRssBytes:process.memoryUsage().rss,verifiedState:store.verifiedStateStatus(p.tenant),
+   accessLog:accessLog.status(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:store.db.prepare('SELECT COUNT(*) n FROM ledger WHERE tenant=?').get(p.tenant).n,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
   if(path==='/api/assets'&&method==='POST'){reviewer(p);const a={id:identifier(x.id),actor:cleanText(x.actor,256),tool:cleanText(x.tool,256),owner:cleanText(x.owner,200),purpose:cleanText(x.purpose||'',500),version:cleanText(x.version||'unknown',100),policyVersion:cleanText(x.policyVersion||'unknown',100),approvalRequired:x.approvalRequired===true||x.approvalRequired===false?x.approvalRequired:'unknown',validFrom:date(x.validFrom||new Date().toISOString()),destinations:(x.destinations||[]).slice(0,30).map(s=>cleanText(s,256)),updatedAt:new Date().toISOString()};if(x.validUntil){a.validUntil=date(x.validUntil);if(Date.parse(a.validUntil)<=Date.parse(a.validFrom))fail(400,'자산 정책 유효기간 역전');}return store.transaction(()=>{verifiedPolicyObjects(p,'asset');store.put(p,'asset',a.id,a);dirty(p.tenant);return a;});}
   if(path==='/api/cases'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'case').values()]}));
   if(path==='/api/cases'&&method==='POST'){
@@ -243,11 +250,18 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const end=date(x.expiresAt);if(Date.parse(end)<=Date.now()||Date.parse(end)>Date.now()+90*86400000)fail(400,'예외 유효기간은 현재 이후 최대 90일');const e={id:randomUUID(),ruleId:identifier(x.ruleId),actionId:identifier(x.actionId),reason:cleanText(x.reason,1000),owner:cleanText(x.owner,200),expiresAt:end,status:'pending',author:p.id};return store.transaction(()=>store.put(p,'exception',e.id,e));
   }
   if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
-  if(path==='/api/export'&&method==='GET')return store.transaction(()=>store.exportBundle(p.tenant));
+  // The export seals the unsealed reads first, so it carries the batch that covers its own read.
+  if(path==='/api/export'&&method==='GET'){sealReads(p,'export');return store.transaction(()=>store.exportBundle(p.tenant));}
+  if(path==='/api/audit/reads'&&method==='GET'){auditReader(p);const fromSeq=Math.max(1,Math.floor(Number(url.searchParams.get('fromSeq'))||1)),limit=Math.max(1,Math.min(500,Math.floor(Number(url.searchParams.get('limit'))||100)));
+   return store.transaction(()=>({items:accessLog.entries(p.tenant,{fromSeq,limit}),status:accessLog.status(p.tenant)}));}
+  if(path==='/api/audit/reads/proof'&&method==='GET'){auditReader(p);const seq=Number(url.searchParams.get('seq'));if(!Number.isSafeInteger(seq)||seq<1)fail(400,'seq 오류');
+   return store.transaction(()=>{const ledger=store.rawBundle(p.tenant);try{verifyBundle(ledger,publicKey,undefined,{chainOnly:true});}catch{fail(409,'서명 원장을 검증할 수 없습니다');}
+   let proof;try{proof=accessLog.proof(p.tenant,seq,ledger.records.filter(row=>row.type==='audit_access_batch'));}catch{fail(409,'접근 기록이 봉인 기록과 일치하지 않습니다');}if(!proof)fail(404,'봉인된 접근 기록이 없습니다');return proof;});}
   if(path==='/api/integrity'&&method==='GET'){
-   const verificationScope={checks:['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files'],notChecked:[...UNANCHORED],limitations:['document_files covers authenticated referenced local files at each read; unreferenced files and an atomic filesystem snapshot are not claimed']};
+   const verificationScope={checks:['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files',
+    'access_log'],notChecked:[...UNANCHORED],limitations:['document_files covers authenticated referenced local files at each read; unreferenced files and an atomic filesystem snapshot are not claimed']};
    const quarantined=transparency.quarantined(verificationScope);if(quarantined)return quarantined;
-   try{const result=store.transaction(()=>{const bundle=store.exportBundle(p.tenant),evaluations=bundle.records.filter(row=>row.type==='evaluation').map(row=>row.payload),events=store.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),documents=checkDocumentFiles({db:store.db,tenant:p.tenant,records:bundle.records,dataDir,keyring});return transparency.integrity({...verifyBundle(bundle,publicKey,undefined,transparency.bundleOptions()),projection:checkEventProjection(store.db,p.tenant,events),receiptProjection:checkReceiptProjection(store.db,p.tenant,bundle.records,events),developmentRunProjection:checkDevelopmentRunProjection(store.db,p.tenant,development),objectProjection:checkObjectProjection(store.db,p.tenant,bundle.records),evaluationProjection:checkEvaluationProjection(store.db,p.tenant,evaluations),actionProjection:store.checkActionProjection(p.tenant,{cold:true}),verifiedState:store.verifiedStateStatus(p.tenant),governanceDocumentProjection:documents.governanceDocumentProjection,documentFiles:documents.summary,keySeparation:keySeparation(documents.keyIds),verificationScope});});store.audit(p,'read',path);return result;}catch(e){let failureRecorded=true;try{store.transaction(()=>store.append(p.tenant,'integrity_failure',{message:e.message},p.id));}catch{failureRecorded=false;}return {valid:false,error:e.message,failureRecorded,requiresExternalIncidentRecord:!failureRecorded,verificationScope};}
+   try{accessLog.seal(p.tenant,'integrity',p.id);const result=store.transaction(()=>{const bundle=store.exportBundle(p.tenant),evaluations=bundle.records.filter(row=>row.type==='evaluation').map(row=>row.payload),events=store.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),documents=checkDocumentFiles({db:store.db,tenant:p.tenant,records:bundle.records,dataDir,keyring});return transparency.integrity({...verifyBundle(bundle,publicKey,undefined,transparency.bundleOptions()),projection:checkEventProjection(store.db,p.tenant,events),receiptProjection:checkReceiptProjection(store.db,p.tenant,bundle.records,events),developmentRunProjection:checkDevelopmentRunProjection(store.db,p.tenant,development),objectProjection:checkObjectProjection(store.db,p.tenant,bundle.records),evaluationProjection:checkEvaluationProjection(store.db,p.tenant,evaluations),actionProjection:store.checkActionProjection(p.tenant,{cold:true}),verifiedState:store.verifiedStateStatus(p.tenant),accessLog:accessLog.verify(p.tenant,bundle.records),governanceDocumentProjection:documents.governanceDocumentProjection,documentFiles:documents.summary,keySeparation:keySeparation(documents.keyIds),verificationScope});});return result;}catch(e){let failureRecorded=true;try{store.transaction(()=>store.append(p.tenant,'integrity_failure',{message:e.message},p.id));}catch{failureRecorded=false;}return {valid:false,error:e.message,failureRecorded,requiresExternalIncidentRecord:!failureRecorded,verificationScope};}
   }
   if(path==='/api/rebuild'&&method==='POST'){admin(p);verifyBundle(store.bundle(p.tenant),publicKey);return store.rebuild(p);}
   if(path==='/api/governance'&&method==='GET')return store.transaction(()=>({requirements,legalSourceCoverage,systems:[...verifiedPolicyObjects(p,'system').values()],supplierBundles:[...verifiedPolicyObjects(p,'supplier_bundle').values()],governanceDocuments:governanceDocuments.list(p),documentLimits:governanceDocuments.limits,assessments:[...verifiedPolicyObjects(p,'assessment').values()],tasks:[...verifiedPolicyObjects(p,'governance_task').values()]}));
@@ -287,5 +301,5 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,analysis,assistance,identity,governanceDocuments,transparency};
+  return {store,handle,analysis,assistance,identity,governanceDocuments,transparency,accessLog};
 }
