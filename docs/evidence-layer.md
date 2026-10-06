@@ -66,6 +66,8 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   IETF noa 초안은 equivocation 탐지를 범위 밖으로 둡니다.
 - **확인 방법:** `test/transparency-server.test.mjs`(예전 DB 사본으로 enforce 시작 거부), `test/litewitness-interop.test.mjs`(실제 litewitness에서 rollback
   거부, fork 422 → 격리). 운영은 [투명성 로그 가이드](transparency-log.md).
+- **아직 막지 못한 것:** 서명 키까지 가진 공격자는 heads 로그를 정상적으로 늘리면서 그 안의 tenant 하나만 예전 상태로 되돌릴 수 있습니다
+  (재검토에서 확인). tenant 로그를 위트니스에 직접 등록하는 작업이 끝나기 전까지 heads 기반 롤백 확인은 DB만 조작하는 공격자(S1) 기준입니다.
 - **모방 위험:** 중상. 암호 기법 자체가 아니라 fail-closed 운영 의미(tenant 삭제 탐지, 복구 epoch)와 고객 자체 위트니스 운영 패키지가 해자입니다.
 
 ### D2. 권한에 묶인 증거 사슬과 결정적 오프라인 정책 재생

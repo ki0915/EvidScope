@@ -13,7 +13,8 @@
 2. 모든 tenant의 머리(크기·루트)를 모은 **heads 로그** 하나를 따로 두고, 이 heads 체크포인트만 위트니스에 제출합니다.
    tenant 이름은 SHA-256으로 가려져 위트니스 목록에 노출되지 않습니다.
 3. 위트니스는 **C2SP tlog-witness** 규약으로 일관성 증명을 확인한 뒤에만 공동서명합니다. 이전보다 작은 크기(rollback)나
-   갈라진 이력(fork)에는 서명하지 않으므로, 서명 키를 훔친 공격자도 위트니스 몰래 이력을 바꿀 수 없습니다.
+   갈라진 이력(fork)에는 서명하지 않으므로, 서명 키를 훔친 공격자도 위트니스 몰래 **heads 로그**를 되돌리거나 갈라놓을 수 없습니다.
+   다만 tenant별 크기가 줄지 않는지는 현재 vault가 스스로 확인하므로, 아래 한계의 첫 항목을 함께 읽어 주세요.
 
 위트니스는 직접 만들지 않고 표준 구현을 씁니다. 운영 환경은 [litewitness](https://github.com/FiloSottile/torchwood)나
 [OmniWitness](https://github.com/transparency-dev/witness)를 권장합니다. 저장소의 `scripts/witness.mjs`는 개발·시험용이며
@@ -101,6 +102,10 @@ node scripts/verify-case-report.mjs report.json trust-anchor.pem --witness "<위
 
 ## 현재 한계
 
+- **서명 키까지 가진 공격자(S2)의 tenant 단위 되돌리기.** 위트니스는 heads 로그가 앞으로만 자라는지만 확인하고, 그 안의 tenant별 크기가
+  줄지 않는지는 확인하지 않습니다. 서명 키를 가진 공격자는 tenant 하나를 예전 크기로 되돌린 heads 잎을 새로 붙여 공동서명을 받을 수 있고,
+  오프라인 검증기는 이를 `rollbackChecked:true`로 보고합니다(적대적 재검토 확인). 따라서 현재 heads 기반 `rollbackChecked`는
+  **DB만 조작하는 공격자(S1)** 기준입니다. tenant 로그 자체를 위트니스에 등록해 tenant별 일관성을 외부에서 확인하는 작업을 다음 순서로 진행합니다.
 - 오프라인 검증기는 마지막 공동서명 이후 `maxStalenessSeconds` 안에서 일어난 rollback은 알 수 없습니다. 실행 중인 vault는 위트니스 조회로 잡습니다.
 - 백업에서 복구하면 위트니스가 본 마지막 크기보다 짧아지므로 enforce 모드에서는 새 origin epoch가 필요합니다. 진행 상황은 [개선 라운드 기록](improvement-rounds.md)에 남깁니다.
 - tenant별 고객 위트니스, 타일(tlog-tiles) 배포, ML-DSA 공동서명은 다음 라운드 범위입니다.
