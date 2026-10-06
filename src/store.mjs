@@ -142,6 +142,7 @@ export class Store {
  }
  append(tenant,type,payload,principal) {
   if(this.quarantine)throw Object.assign(Error('Transparency quarantine: '+this.quarantine.reason),{status:503});
+  if(this.readOnlyRequest)throw Error('Read-only request cannot append to the ledger');
   // One transaction makes the ledger row, v1 checkpoint and tlog note atomic for direct callers too.
   if(!this.ledgerTransaction)return this.transaction(()=>this.append(tenant,type,payload,principal));
   let head=this.ledgerTransaction.heads.get(tenant);
@@ -163,6 +164,25 @@ export class Store {
   this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash,...(head.peaks?{peaks:frontierAppend(head.peaks,head.seq,recordLeaf(hash))}:{})});this.ledgerTransaction.dirty.add(tenant);
   return {...record,hash};
  }
+ // Read-only scope (GET requests): one deferred WAL read snapshot for the whole request under PRAGMA query_only, so every
+ // write on this connection fails and Store.transaction inside it is a savepoint of that snapshot. What is verified is what
+ // is served; other connections may commit meanwhile (the next read then fails closed). The scope owns the ledger context,
+ // so verified-state candidates built in the snapshot are promoted when it ends.
+ beginReadOnly(){
+  if(this.db.isTransaction||this.ledgerTransaction)throw Error('Read-only scope must begin outside a transaction');
+  this.db.exec('PRAGMA query_only=ON');
+  try{this.db.exec('BEGIN DEFERRED');}catch(error){this.db.exec('PRAGMA query_only=OFF');throw error;}
+  this.readOnlyRequest=true;this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),external:false,readOnly:true};
+ }
+ endReadOnly(){
+  if(!this.readOnlyRequest)return;
+  const context=this.ledgerTransaction;this.readOnlyRequest=false;this.ledgerTransaction=null;
+  if(!this.db.isOpen)return;
+  try{if(this.db.isTransaction)this.db.exec('COMMIT');}finally{this.db.exec('PRAGMA query_only=OFF');}
+  for(const [tenant,candidate] of context.actionCandidates)this.actionProjectionCache.set(tenant,candidate);
+ }
+ // One read snapshot outside a request scope (long verifications that must not hold the write lock).
+ read(fn){if(this.readOnlyRequest||this.db.isTransaction)return this.transaction(fn);this.beginReadOnly();try{return this.transaction(fn);}finally{this.endReadOnly();}}
  audit(p,operation,target='') {return this.transaction(()=>this.append(p.tenant,'audit_access',{operation,target},p.id));}
  get(tenant,type,id) {const r=this.db.prepare('SELECT body FROM objects WHERE tenant=? AND type=? AND id=?').get(tenant,type,id);return r?JSON.parse(r.body):null;}
  list(tenant,type) {return this.db.prepare('SELECT body FROM objects WHERE tenant=? AND type=? ORDER BY id').all(tenant,type).map(r=>JSON.parse(r.body));}

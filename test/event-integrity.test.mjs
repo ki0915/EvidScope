@@ -53,11 +53,16 @@ test('unsigned action_id reassignment cannot change online correlation, metrics,
  await h.call('/api/rebuild',{role:'admin',method:'POST',body:{}});const repaired=await h.call('/api/integrity');assert.equal(repaired.valid,true);assert.equal((await h.call('/api/actions/work')).events.length,1);
 });
 
-test('event verification and indexed response share one writer-excluding snapshot',async t=>{
- const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.verifiedFacets.bind(h.store);let attempted=false,changed=false,blocked;
+test('event verification and indexed response share one read snapshot; a concurrent write is not served and fails the next read',async t=>{
+ const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.verifiedFacets.bind(h.store),checkpoint=h.store.checkpoint('alpha');
+ let attempted=false,changed=false;
  try{
   // /api/events verifies the event and event-key facets of the incremental verified state, then reads the indexed rows.
-  h.store.verifiedFacets=(...args)=>{const result=original(...args);if(!attempted){attempted=true;try{other.prepare("UPDATE events SET trace_id='changed' WHERE tenant='alpha'").run();changed=true;}catch(error){blocked=error;}}return result;};
-  const result=await h.call('/api/events');assert.equal(result.items.length,1);assert.equal(attempted,true);assert.equal(changed,false);assert.equal(blocked?.errcode,5);assert.match(blocked?.message||'',/locked|busy/i);
+  h.store.verifiedFacets=(...args)=>{const result=original(...args);if(!attempted){attempted=true;other.prepare("UPDATE events SET trace_id='changed' WHERE tenant='alpha'").run();changed=true;}return result;};
+  const result=await h.call('/api/events');assert.equal(result.items.length,1);assert.equal(attempted,true);assert.equal(changed,true,'the read did not hold the write lock');
+  assert.notEqual(result.items[0].traceId,'changed','indexed rows come from the verified snapshot');
+  h.store.verifiedFacets=original;
+  await assert.rejects(h.call('/api/events'),error=>error.status===409);
+  assert.deepEqual(h.store.checkpoint('alpha'),checkpoint,'no ledger row was appended or re-signed');
  }finally{other.close();}
 });

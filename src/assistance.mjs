@@ -67,10 +67,13 @@ export function createAssistance(store,workbench){
   let original=null;for(const row of store.verifiedRows(tenant,maxLedgerRowBytes)){if(row.oversized)fail(413,'원장 기록이 assistance 검증 한도를 초과했습니다');if(row.type==='catalog')original=row.payload;}
   const projected=store.get(tenant,'catalog','current');if(canonical(original)!==canonical(projected))fail(409,'catalog 조회 사본이 서명 원장과 일치하지 않습니다');return original||fail(404,'catalog를 찾을 수 없습니다');
  }
+ const profileVersions=tenant=>[...baseProfiles.map(clone),...verifiedList(tenant,'assistance_profile')];
+ const outdatedProfiles=all=>baseProfiles.map(base=>all.filter(p=>p.id===base.id).sort((a,b)=>b.version-a.version)[0]).filter(latest=>canonical(latest.modelPolicy)!==canonical(safeModelPolicy()));
+ // Reads inside a read-only request never upgrade; assistance.beforeRead applies a due upgrade first in its own transaction.
  const profiles=tenant=>{const load=()=>{
-  const custom=verifiedList(tenant,'assistance_profile'),all=[...baseProfiles.map(clone),...custom];
+  const all=profileVersions(tenant);if(store.readOnlyRequest)return all.sort((a,b)=>a.id.localeCompare(b.id)||a.version-b.version);
   // Append a new signed version; historical profiles and their package hashes remain valid.
-  for(const base of baseProfiles){const latest=all.filter(p=>p.id===base.id).sort((a,b)=>b.version-a.version)[0];if(canonical(latest.modelPolicy)===canonical(safeModelPolicy()))continue;const upgraded={...clone(latest),version:latest.version+1,modelPolicy:safeModelPolicy(),createdAt:nowIso(),createdBy:'repository-model-policy-upgrade'};delete upgraded.profileHash;upgraded.profileHash=digest(upgraded);store.put({id:upgraded.createdBy,tenant},'assistance_profile',`${upgraded.id}@${upgraded.version}`,upgraded);all.push(upgraded);}
+  for(const latest of outdatedProfiles(all)){const upgraded={...clone(latest),version:latest.version+1,modelPolicy:safeModelPolicy(),createdAt:nowIso(),createdBy:'repository-model-policy-upgrade'};delete upgraded.profileHash;upgraded.profileHash=digest(upgraded);store.put({id:upgraded.createdBy,tenant},'assistance_profile',`${upgraded.id}@${upgraded.version}`,upgraded);all.push(upgraded);}
   return all.sort((a,b)=>a.id.localeCompare(b.id)||a.version-b.version);
  };return store.db.isTransaction?load():store.transaction(load);};
  const profile=(tenant,id,version)=>profiles(tenant).find(v=>v.id===id&&v.version===version)||fail(404,'프로필 버전을 찾을 수 없습니다');
@@ -162,6 +165,18 @@ export function createAssistance(store,workbench){
    const reason=x.action==='reject'?requiredText(x.reason,2000,'거절 사유 필요'):cleanText(x.reason||'',2000);const item={id:randomUUID(),runId:id,packageId:run.packageId,caseId:run.caseId,contextHash:run.contextHash,action:x.action,draft,reason,reviewedBy:p.id,createdAt:nowIso(),boundary:'advisory_review_only_not_case_decision_or_compliance_approval'};return store.put(p,'assistance_review',item.id,item);
   });
  }
+ // Signed writes that assistance GETs depend on run before the request's read-only scope, each in its own write transaction
+ // and only when due: the model-policy upgrade of base profiles and the expiry of runs whose credentials lapsed.
+ function beforeRead(p,url){
+  if(!humanRoles.has(p.role))return;
+  const path=url.pathname,run=path.match(/^\/api\/assistance\/runs\/([^/]+)$/),id=run?identifier(decodeURIComponent(run[1])):undefined;
+  if(!/^\/api\/assistance\/(profiles|packages|runs)(\/|$)/.test(path))return;
+  if(store.read(()=>outdatedProfiles(profileVersions(p.tenant)).length))profiles(p.tenant);
+  if(path==='/api/assistance/runs'||run){
+   const due=store.read(()=>(id?[verifiedRun(p.tenant,id)]:runs(p.tenant)).some(candidate=>['queued','running'].includes(candidate.state)&&Date.parse(candidate.credentialExpiresAt)<=Date.now()));
+   if(due)reconcileExpired(p.tenant,id);
+  }
+ }
  function human(p,method,url,x){
   if(!humanRoles.has(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');const path=url.pathname;
   if(path==='/api/assistance/profiles'&&method==='GET'){const all=profiles(p.tenant);return {items:url.searchParams.get('history')==='true'?all:[...new Map(all.map(profile=>[profile.id,profile])).values()]};}
@@ -170,10 +185,10 @@ export function createAssistance(store,workbench){
   if(path==='/api/assistance/packages'&&method==='GET')return {items:verifiedList(p.tenant,'assistance_package').map(pkg=>decoratePackage(p,verifiedPackage(p.tenant,pkg.id)))};
   if(path==='/api/assistance/packages'&&method==='POST')return prepare(p,x);
   let match=path.match(/^\/api\/assistance\/packages\/([^/]+)(?:\/(dispatch))?$/);if(match){const id=identifier(decodeURIComponent(match[1]));if(match[2]&&method==='POST')return dispatch(p,id,x);if(!match[2]&&method==='GET')return decoratePackage(p,verifiedPackage(p.tenant,id));fail(405,'지원하지 않는 package 메서드');}
-  if(path==='/api/assistance/runs'&&method==='GET'){reconcileExpired(p.tenant);return {items:runs(p.tenant).map(run=>decorateRun(p,verifiedRun(p.tenant,run.id)))}};
-  match=path.match(/^\/api\/assistance\/runs\/([^/]+)(?:\/(review))?$/);if(match){const id=identifier(decodeURIComponent(match[1]));if(match[2]&&method==='POST')return review(p,id,x);if(!match[2]&&method==='GET'){reconcileExpired(p.tenant,id);return decorateRun(p,verifiedRun(p.tenant,id));}fail(405,'지원하지 않는 run 메서드');}
+  if(path==='/api/assistance/runs'&&method==='GET'){return {items:runs(p.tenant).map(run=>decorateRun(p,verifiedRun(p.tenant,run.id)))}};
+  match=path.match(/^\/api\/assistance\/runs\/([^/]+)(?:\/(review))?$/);if(match){const id=identifier(decodeURIComponent(match[1]));if(match[2]&&method==='POST')return review(p,id,x);if(!match[2]&&method==='GET')return decorateRun(p,verifiedRun(p.tenant,id));fail(405,'지원하지 않는 run 메서드');}
   return undefined;
  }
  function internal(method,url,headers,body){const match=url.pathname.match(/^\/internal\/assistance\/runs\/([^/]+)\/(package|result)$/);if(!match)return undefined;let x={};if(body){try{x=object(JSON.parse(body));}catch(error){if(error.status)throw error;fail(400,'JSON 객체가 필요합니다');}}const id=decodeURIComponent(match[1]);if(match[2]==='package'&&method==='GET')return claim(headers,id);if(match[2]==='result'&&method==='POST')return submit(headers,id,x);fail(405,'지원하지 않는 run-scoped 메서드');}
- return {human,internal,validateDraft};
+ return {human,internal,validateDraft,beforeRead};
 }

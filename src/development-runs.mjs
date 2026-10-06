@@ -62,7 +62,7 @@ export function createDevelopmentRuns(store,{now=()=>Date.now()}={}){
   if(!['auditor','reviewer','admin'].includes(principal?.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');
   if(store.accessLog)store.accessLog.record(principal,{method:'GET',target:'/api/development-runs',query:url.searchParams});else store.audit(principal,'read','/api/development-runs');
   const teamId=url.searchParams.get('teamId'),roleId=url.searchParams.get('roleId'),limit=Math.max(1,Math.min(200,Number(url.searchParams.get('limit'))||100)),offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
-  return store.transaction(()=>{try{store.checkDevelopmentRunProjection(principal.tenant);}catch{fail(409,'개발 실행 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}
+  return store.read(()=>{try{store.checkDevelopmentRunProjection(principal.tenant);}catch{fail(409,'개발 실행 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}
   if(teamId)identifier(teamId);if(roleId)identifier(roleId);const rows=store.db.prepare('SELECT body FROM development_run_events WHERE tenant=? ORDER BY occurred,received,event_id').all(principal.tenant).map(row=>JSON.parse(row.body));
   const groups=new Map(),knownRuns=new Set(rows.map(event=>`${event.source}|${event.runId}`));for(const event of rows){if(teamId&&event.teamId!==teamId||roleId&&event.roleId!==roleId)continue;const key=`${event.source}|${event.runId}`;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(event);}
   const all=[...groups.values()].map(events=>runView(events,knownRuns)).toSorted((a,b)=>b.startedAt.localeCompare(a.startedAt)||a.id.localeCompare(b.id)),items=all.slice(offset,offset+limit);const statuses={};for(const run of all)statuses[run.status]=(statuses[run.status]||0)+1;
