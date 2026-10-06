@@ -22,7 +22,16 @@ export function createFinanceEvidence({store,dataDir,key,keyring=asKeyring(key),
  const documents=createDocumentAdapter(dataDir,keyring);
  const get=(p,type,id)=>store.get(p.tenant,type,id)||fail(404,'동일 테넌트 대상을 찾을 수 없습니다');
  const review=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'검토자 권한이 필요합니다');};
+ // Nothing changes inside one read-only request snapshot, so a governance report citing several supplier bundles verifies
+ // the finance projections once per tenant and snapshot instead of once per citation.
+ const verifiedSnapshots=new WeakMap();
  function verifyProjection(p){
+  const scope=store.ledgerTransaction?.readOnly?store.ledgerTransaction:null;
+  if(scope&&verifiedSnapshots.get(scope)?.has(p.tenant))return;
+  verifyProjectionNow(p);
+  if(scope){if(!verifiedSnapshots.has(scope))verifiedSnapshots.set(scope,new Set());verifiedSnapshots.get(scope).add(p.tenant);}
+ }
+ function verifyProjectionNow(p){
   const types=['system','supplier_bundle','supplier_provenance_review','assessment','governance_task','finance_report'],latest=new Map(types.map(type=>[type,new Map()])),evaluations=[];let size=0;
   for(const row of store.verifiedRows(p.tenant,2*1024*1024)){if((size+=Buffer.byteLength(JSON.stringify(row)))>16*1024*1024)fail(413,'금융 검토 원장 한도 초과: 부분 보고서를 발급하지 않습니다');if(latest.has(row.type))latest.get(row.type).set(row.payload.id,row.payload);if(row.type==='evaluation')evaluations.push(row.payload);}
   // Looking up a document or system uses its SQL key, not just payload.id.

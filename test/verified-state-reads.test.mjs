@@ -5,7 +5,7 @@ import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {createService} from '../src/service.mjs';
-import {mac} from '../src/crypto.mjs';
+import {canonical,mac} from '../src/crypto.mjs';
 
 const requirements=JSON.parse(readFileSync(new URL('../data/requirements.json',import.meta.url),'utf8'));
 const system={id:'credit',name:'Synthetic credit',owner:'reviewer',purpose:'Loan assistance',markets:['KR'],krRoles:['deployer'],
@@ -148,4 +148,24 @@ test('development run events are verified incrementally and their projection fau
  h.store.db.prepare("UPDATE development_run_events SET run_id='forged' WHERE tenant='alpha' AND event_id='event-3'").run();
  assert.equal(await h.status('/api/development-runs'),409);
  assert.equal(await h.status('/api/cases'),200);assert.equal(await h.status('/api/overview'),200);
+});
+
+test('event filters and pages run in SQL with the same results as filtering the verified events; metrics counts come from the signed state',async t=>{
+ const h=fixture(t),source=h.principals[2];
+ for(let i=0;i<12;i++){
+  const raw={id:'e'+i,actionId:'action-'+(i%3),traceId:'trace-'+(i%2),kind:i%4?'result':'execution',status:'success',occurredAt:new Date().toISOString(),
+   note:'n'+i};
+  const body=JSON.stringify(raw),timestamp=String(Date.now()),nonce=randomUUID();
+  await h.service.handle('POST',new URL('/api/ingest','http://local'),{authorization:'Bearer '+source.token,'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,
+   'x-evid-signature':mac(source.hmacSecret,timestamp,nonce,body)},body);
+ }
+ const all=h.store.events('alpha');
+ for(const query of ['','kind=result','traceId=trace-1','kind=execution&traceId=trace-0','kind=','limit=5&offset=3',
+  'kind=result&limit=2&offset=1','q=n1','q=n1&kind=execution']){
+  const params=new URLSearchParams(query),kind=params.get('kind'),trace=params.get('traceId'),q=params.get('q')||'';
+  const limit=Math.max(1,Math.min(500,Number(params.get('limit'))||100)),offset=Math.max(0,Number(params.get('offset'))||0);
+  const expected=all.filter(e=>(!q||canonical(e).includes(q))&&(!kind||e.kind===kind)&&(!trace||e.traceId===trace));
+  assert.deepEqual(await h.call('/api/events?'+query),{items:expected.slice(offset,offset+limit),total:expected.length,offset,limit},query);
+ }
+ assert.equal((await h.call('/api/metrics')).ledgerRecords,h.ledgerRows());
 });

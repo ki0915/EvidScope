@@ -61,11 +61,12 @@ test('every GET runs in deferred read snapshots under query_only and appends not
 });
 
 test('a GET handler cannot write, and a failed GET leaves the connection writable',async t=>{
+ // A free-text events query reads the verified event rows through store.events inside the request snapshot.
  const h=await fixture(t),count=ledger(h.store),read=h.store.events.bind(h.store);
  h.store.events=(...args)=>{h.store.db.prepare("INSERT INTO counters VALUES('forbidden',1)").run();return read(...args);};
- await assert.rejects(h.call('/api/events'),/readonly database/);
+ await assert.rejects(h.call('/api/events?q=event'),/readonly database/);
  h.store.events=(...args)=>{h.store.put(principals[0],'rule','sneaky',{id:'sneaky'});return read(...args);};
- await assert.rejects(h.call('/api/events'),/Read-only request cannot append/);
+ await assert.rejects(h.call('/api/events?q=event'),/Read-only request cannot append/);
  h.store.events=read;
  assert.equal(h.store.db.prepare("SELECT COUNT(*) n FROM counters WHERE name='forbidden'").get().n,0);assert.equal(ledger(h.store),count);
  assert.equal(h.store.db.isTransaction,false);assert.equal(h.store.readOnlyRequest,false);

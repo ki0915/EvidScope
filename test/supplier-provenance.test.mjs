@@ -57,3 +57,15 @@ test('real-input origin reviews survive verified whole-vault recovery with their
  const anchor=await createVaultBackup({dataDir:f.dir,backupDir,...shared}),latest=await createVaultRecoveryFrontier({dataDir:f.dir,anchor,config:f.config,...shared}),restored=await restoreVaultBackup({backupDir,restoreDir:join(f.root,'restored'),anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:f.config,...shared});assert.equal(restored.activationAccepted,true);
  const service=createService({dataDir:restored.restoredDirectory,key:f.key,config:f.config,requirements:JSON.parse(readFileSync('data/requirements.json'))});try{assert.deepEqual(service.store.get('alpha','supplier_provenance_review',review.id),review);checkObjectProjection(service.store.db,'alpha',service.store.rawBundle('alpha').records);const view=await service.handle('GET',new URL('/api/governance/finance?systemId=credit','http://local'),{authorization:'Bearer '+f.config.principals[0].token});assert.equal(view.bundles[0].verification.provenance.reviewHash,digest(review));assert.equal(view.bundles[0].verification.provenance.sourceAuthentication,'not_independently_verified');}finally{service.store.close();}
 });
+
+test('a governance report verifies the finance projections once per read snapshot however many assessments cite supplier bundles',async t=>{
+ const f=await fixture(t),bundle=await f.call('/api/governance/bundles',input());
+ await f.call('/api/governance/bundles/bundle/provenance-reviews',{bundleHash:bundle.contentHash,decision:'verified',reason:'fixture origin checked',checks});
+ for(const requirementId of ['KR-34-RISK','KR-34-DOCUMENT','NIST-SUPPLY-CHAIN'])await f.call('/api/governance/assessments',{systemId:system.id,requirementId,applicability:'applicable',
+  assessment:'insufficient',legalReview:'pending',evidence:[{type:'document',ref:'supplier-bundle:bundle'}],control:'recorded review',owner:'reviewer',reason:'fixture',
+  nextReviewAt:'2099-01-01T00:00:00.000Z'});
+ const store=f.service.store,check=store.checkProjection.bind(store);let passes=0;store.checkProjection=(...args)=>{passes++;return check(...args);};
+ const report=await f.call('/api/governance/report?systemId=credit');
+ assert.equal(report.items.filter(item=>item.assessment?.evidence.some(e=>e.ref==='supplier-bundle:bundle')).length,3);assert.equal(passes,1);
+ passes=0;await f.call('/api/governance/report?systemId=credit');assert.equal(passes,1,'each request verifies its own snapshot');
+});

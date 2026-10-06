@@ -219,7 +219,15 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   if(path==='/api/agents'&&method==='GET')return store.transaction(()=>{verifiedActions(p);verifiedEvaluations(p,{values:false});const decisions=[...verifiedPolicyObjects(p,'case_decision').values()];return agentInventory(store,principals,p.tenant,url.searchParams,Date.now(),decisions);});
   if(path==='/api/events'&&method==='GET'){
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');
-   return store.transaction(()=>{verifiedEvents(p);let items=store.events(p.tenant).filter(e=>(!q||canonical(e).includes(q))&&(!kind||e.kind===kind)&&(!trace||e.traceId===trace));const total=items.length;const limit=Math.max(1,Math.min(500,Number(url.searchParams.get('limit'))||100));const offset=Math.max(0,Number(url.searchParams.get('offset'))||0);return {items:items.slice(offset,offset+limit),total,offset,limit};});
+   const limit=Math.max(1,Math.min(500,Number(url.searchParams.get('limit'))||100)),offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
+   return store.transaction(()=>{verifiedEvents(p);
+    // The verified events facet binds the kind/trace_id columns to the signed bodies, so those filters and the page run in SQL;
+    // free-text q keeps matching the canonical body in JS.
+    if(!q){const where='tenant=?'+(kind?' AND kind=?':'')+(trace?' AND trace_id=?':''),args=[p.tenant,...(kind?[kind]:[]),...(trace?[trace]:[])];
+     const total=store.db.prepare(`SELECT COUNT(*) n FROM events WHERE ${where}`).get(...args).n;
+     const items=store.db.prepare(`SELECT body FROM events WHERE ${where} ORDER BY received,source,id LIMIT ? OFFSET ?`).all(...args,limit,offset).map(row=>JSON.parse(row.body));
+     return {items,total,offset,limit};}
+    const items=store.events(p.tenant).filter(e=>canonical(e).includes(q)&&(!kind||e.kind===kind)&&(!trace||e.traceId===trace));return {items:items.slice(offset,offset+limit),total:items.length,offset,limit};});
   }
   if(path.startsWith('/api/actions/')&&method==='GET'){
    return store.transaction(()=>{verifiedActions(p);const actionId=decodeURIComponent(path.slice(13)),evaluations=verifiedEvaluations(p,{actionId}).reverse(),events=store.events(p.tenant,actionId);
@@ -231,8 +239,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);return {items:actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));})};});
   }
   if(path==='/api/assets'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'asset').values()]}));
-  if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);return {vaultRssBytes:process.memoryUsage().rss,verifiedState:store.verifiedStateStatus(p.tenant),
-   accessLog:accessLog.status(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:store.db.prepare('SELECT COUNT(*) n FROM ledger WHERE tenant=?').get(p.tenant).n,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
+  // ledgerRecords is the verified state's signed count (the checkpoint count), not a COUNT over the ledger.
+  if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);const verifiedState=store.verifiedStateStatus(p.tenant);return {vaultRssBytes:process.memoryUsage().rss,verifiedState,
+   accessLog:accessLog.status(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:verifiedState.count,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
   if(path==='/api/assets'&&method==='POST'){reviewer(p);const a={id:identifier(x.id),actor:cleanText(x.actor,256),tool:cleanText(x.tool,256),owner:cleanText(x.owner,200),purpose:cleanText(x.purpose||'',500),version:cleanText(x.version||'unknown',100),policyVersion:cleanText(x.policyVersion||'unknown',100),approvalRequired:x.approvalRequired===true||x.approvalRequired===false?x.approvalRequired:'unknown',validFrom:date(x.validFrom||new Date().toISOString()),destinations:(x.destinations||[]).slice(0,30).map(s=>cleanText(s,256)),updatedAt:new Date().toISOString()};if(x.validUntil){a.validUntil=date(x.validUntil);if(Date.parse(a.validUntil)<=Date.parse(a.validFrom))fail(400,'자산 정책 유효기간 역전');}return store.transaction(()=>{verifiedPolicyObjects(p,'asset');store.put(p,'asset',a.id,a);dirty(p.tenant);return a;});}
   if(path==='/api/cases'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'case').values()]}));
   if(path==='/api/cases'&&method==='POST'){
