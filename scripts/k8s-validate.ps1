@@ -29,11 +29,12 @@ foreach ($deployment in $deployments) {
     Require ($container.readinessProbe.httpGet.scheme -eq 'HTTPS' -and $container.livenessProbe.httpGet.scheme -eq 'HTTPS') "$component health checks must use TLS."
     Require (@($pod.volumes | Where-Object { $_.secret.secretName -eq "$component-tls" }).Count -eq 1) "$component TLS secret missing."
     if ($component -ne 'vault') {
-        Require (@($pod.volumes | Where-Object { $_.persistentVolumeClaim -or $_.secret.secretName -in @('vault-signing','vault-config') }).Count -eq 0) "$component can mount vault evidence/credentials/key."
+        Require (@($pod.volumes | Where-Object { $_.persistentVolumeClaim -or $_.secret.secretName -in @('vault-signing','vault-config','vault-data-key') }).Count -eq 0) "$component can mount vault evidence/credentials/key."
         Require (@($container.env | Where-Object { $_.name -eq 'VAULT_URL' -and $_.value -eq 'https://vault.evidscope.svc:8080' }).Count -eq 1) "$component vault connection must verify TLS."
     } else {
         Require ($deployment.spec.replicas -eq 1 -and $deployment.spec.strategy.type -eq 'Recreate') 'SQLite vault must remain a singleton.'
         Require (@($pod.volumes | Where-Object { $_.secret.secretName -eq 'vault-signing' }).Count -eq 1) 'Vault signing key missing.'
+        Require (@($pod.volumes | Where-Object { $_.secret.secretName -eq 'vault-data-key' }).Count -eq 1 -and @($container.env | Where-Object { $_.name -eq 'DATA_KEY_FILE' -and $_.value -eq '/data-key/data-encryption.key' }).Count -eq 1) 'Vault data-encryption key missing.'
     }
 }
 $defaultDeny = @($list.items | Where-Object { $_.kind -eq 'NetworkPolicy' -and $_.metadata.name -eq 'deny-all' })

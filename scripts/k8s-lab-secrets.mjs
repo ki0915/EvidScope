@@ -5,6 +5,7 @@ import { existsSync, lstatSync, realpathSync, mkdirSync, writeFileSync, readFile
 import { resolve, join, dirname, relative, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { X509Certificate, createPrivateKey, createPublicKey, createHash } from 'node:crypto';
+import { readDataKeyFile, dataKeyId } from '../src/data-keys.mjs';
 
 export function createLabSecrets({ out, openssl = process.env.EVIDSCOPE_TEST_OPENSSL || (process.platform === 'win32' ? 'C:\\Program Files\\Git\\usr\\bin\\openssl.exe' : 'openssl') } = {}) {
   const workspace = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
@@ -61,12 +62,13 @@ export function createLabSecrets({ out, openssl = process.env.EVIDSCOPE_TEST_OPE
   const expectedAnchor = createPublicKey(signing).export({ type: 'spki', format: 'der' });
   const actualAnchor = createPublicKey(readFileSync(join(destination, 'trust-anchor.pem'))).export({ type: 'spki', format: 'der' });
   if (signing.asymmetricKeyType !== 'ed25519' || !expectedAnchor.equals(actualAnchor)) throw Error('Signing key/trust anchor validation failed');
+  const dataKey = dataKeyId(readDataKeyFile(join(destination, 'data-encryption.key')));
   const report = { ready: true, profile: 'synthetic-private-kubernetes-lab-only', outputDirectory: destination, createdAt: new Date().toISOString(), opensslVersion,
     principalCounts: { vault: config.principals.length, collector: collector.length, auditor: auditors.length, worker: 1 },
     credentialSeparation: { collector: 'alpha source principals only', auditor: 'alpha-auditor only', worker: 'worker token only; no trailing newline' },
-    independentTlsKeyCount: keyFingerprints.size, caFingerprint256: ca.fingerprint256, certificates, files: readdirSync(destination).sort(),
+    independentTlsKeyCount: keyFingerprints.size, caFingerprint256: ca.fingerprint256, dataKeyId: dataKey, certificates, files: readdirSync(destination).sort(),
     clusterChanged: false, productionReady: false,
-    limitations: ['Synthetic credentials only; no production identity or organization PKI.', 'Keep ca.key and signing-private.pem out of collector, auditor and worker Pods.', 'Private file mode 0600 and directory mode 0700 are requested; Windows inherited ACLs require operator review.', 'This preparation verifies keys, certificate chain and hostnames, not live Kubernetes TLS or network isolation.'] };
+    limitations: ['Synthetic credentials only; no production identity or organization PKI.', 'Keep ca.key, signing-private.pem and data-encryption.key out of collector, auditor and worker Pods; mount data-encryption.key only as the vault-data-key Secret.', 'Private file mode 0600 and directory mode 0700 are requested; Windows inherited ACLs require operator review.', 'This preparation verifies keys, certificate chain and hostnames, not live Kubernetes TLS or network isolation.'] };
   output('metadata.json', JSON.stringify(report, null, 2) + '\n');
   return report;
 }
