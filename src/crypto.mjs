@@ -1,4 +1,5 @@
 import {createHash, createHmac, timingSafeEqual, sign, verify} from 'node:crypto';
+import {recordLeaf, verifyBundleTransparency} from './tlog.mjs';
 export function canonical(v) {
   if (v === null || typeof v !== 'object') return JSON.stringify(v);
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
@@ -16,17 +17,18 @@ export function verifyCheckpoint(cp,publicKey){
  const statement={format:cp.format,tenant:cp.tenant,count:cp.count,head:cp.head};
  if(!verify(null,Buffer.from(canonical(statement)),publicKey,Buffer.from(cp.signature,'base64')))throw Error('Checkpoint signature invalid');return true;
 }
-export function verifyBundle(bundle,publicKey,expectedCheckpoint,{chainOnly=false}={}) {
+// transparency (opt-in): {require, witnesses, quorum, originBase, maxStalenessSeconds, minimumCheckpoint}; see tlog.mjs.
+export function verifyBundle(bundle,publicKey,expectedCheckpoint,{chainOnly=false,transparency}={}) {
  const cp=bundle.checkpoint;
  if(!cp || cp.format!=='evidscope-checkpoint-v1') throw Error('Missing checkpoint');
  verifyCheckpoint(cp,publicKey);
  if(expectedCheckpoint && canonical(cp)!==canonical(expectedCheckpoint)) throw Error('External checkpoint mismatch: possible rollback');
- let previous='0'.repeat(64),sequence=0;
+ let previous='0'.repeat(64),sequence=0;const leaves=transparency?[]:null;
  for(const row of bundle.records) {
    if(row.seq!==++sequence || row.tenant!==cp.tenant || row.previous!==previous) throw Error('Sequence, tenant or previous hash mismatch');
    const {hash,...record}=row;
    if(digest(record)!==hash) throw Error('Record digest mismatch');
-   previous=hash;
+   previous=hash;if(leaves)leaves.push(recordLeaf(hash));
  }
  if(sequence!==cp.count || previous!==cp.head) throw Error('Truncated or inconsistent export');
  let disclosedEvents=0,erasedEvents=0;
@@ -44,5 +46,7 @@ export function verifyBundle(bundle,publicKey,expectedCheckpoint,{chainOnly=fals
   }
   if(disclosures.size)throw Error('Unexpected event disclosure');
  }
- return {valid:true,count:sequence,tenant:cp.tenant,rollbackChecked:!!expectedCheckpoint,disclosedEvents,erasedEvents,scope:'Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined.'};
+ const tlog=transparency?verifyBundleTransparency({bundle,leaves,publicKey,options:transparency}):null;
+ const rollbackChecked=!!expectedCheckpoint||!!tlog?.rollbackChecked;
+ return {valid:true,count:sequence,tenant:cp.tenant,rollbackChecked,disclosedEvents,erasedEvents,scope:'Minimized received records; source truth and external effects are separate. Authorized erased content cannot be re-examined.',...(tlog?{transparency:tlog}:{})};
 }

@@ -11,12 +11,27 @@ import {checkReceiptProjection,expectedReceiptProjection} from './receipt-integr
 import {checkObjectProjection,isSignedObjectType,signedObjectProjection} from './object-integrity.mjs';
 import {checkEvaluationProjection} from './evaluation-integrity.mjs';
 import {types} from 'node:util';
+import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,frontierRoot,logVkey,noteVerifier,openNote,parseCheckpoint,peaksToBlob,recordLeaf,rootsAtSizes,signNote,tenantOrigin,validateOriginBase} from './tlog.mjs';
 
 let transactionSequence=0n;
+// Per-tenant RFC 6962 trees (tlog_state), the deployment heads log (tlog_heads) and witness cosignatures. All three are
+// derivable caches plus proof material checked against signed notes; append-only triggers stay droppable like immutable_*.
+const tlogTables=['tlog_state','tlog_heads','tlog_cosignatures'];
+const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHECK(tenant<>''),origin TEXT NOT NULL,size INTEGER NOT NULL CHECK(size>=0),peaks BLOB NOT NULL,root BLOB NOT NULL,note TEXT NOT NULL,PRIMARY KEY(tenant,origin));
+   CREATE TRIGGER IF NOT EXISTS tlog_state_monotonic BEFORE UPDATE ON tlog_state WHEN NEW.size<OLD.size OR NEW.tenant<>OLD.tenant OR NEW.origin<>OLD.origin BEGIN SELECT RAISE(ABORT,'tlog size regression'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_state_immutable_delete BEFORE DELETE ON tlog_state BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TABLE IF NOT EXISTS tlog_heads(origin TEXT NOT NULL,idx INTEGER NOT NULL CHECK(idx>=0),leaf BLOB NOT NULL,peaks BLOB NOT NULL,entries TEXT NOT NULL,note TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(origin,idx));
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_update BEFORE UPDATE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_delete BEFORE DELETE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TABLE IF NOT EXISTS tlog_cosignatures(origin TEXT NOT NULL,size INTEGER NOT NULL,key_id TEXT NOT NULL,name TEXT NOT NULL,timestamp INTEGER NOT NULL,line TEXT NOT NULL,received_at TEXT NOT NULL,PRIMARY KEY(origin,size,key_id));
+   CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_refresh_only BEFORE UPDATE ON tlog_cosignatures WHEN NEW.timestamp<=OLD.timestamp OR NEW.origin<>OLD.origin OR NEW.size<>OLD.size OR NEW.key_id<>OLD.key_id BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_immutable_delete BEFORE DELETE ON tlog_cosignatures BEGIN SELECT RAISE(ABORT,'append only'); END;
+`+tlogTables.flatMap(table=>['insert','update','delete'].map(op=>`   CREATE TRIGGER IF NOT EXISTS ${table}_mutation_${op} AFTER ${op.toUpperCase()} ON ${table} BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;`)).join('\n');
 
 export class Store {
- constructor(dir,key) {
+ constructor(dir,key,options={}) {
   mkdirSync(dir,{recursive:true}); this.key=key; this.publicKey=createPublicKey(key);this.db=new DatabaseSync(join(dir,'evidence.db'));
+  this.tlog=options.tlog?{base:validateOriginBase(options.tlog.base),quorum:options.tlog.quorum||0,pub:ed25519RawPublic(this.publicKey),verified:new Map(),verifiers:new Map()}:null;this.quarantine=null;
   this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA secure_delete=ON;
    CREATE TABLE IF NOT EXISTS ledger(tenant TEXT, seq INTEGER, body TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(tenant,seq));
    CREATE TABLE IF NOT EXISTS checkpoints(tenant TEXT PRIMARY KEY, body TEXT NOT NULL);
@@ -58,11 +73,12 @@ export class Store {
     CREATE TRIGGER IF NOT EXISTS objects_mutation_delete AFTER DELETE ON objects BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
     CREATE TRIGGER IF NOT EXISTS evaluations_mutation_insert AFTER INSERT ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
     CREATE TRIGGER IF NOT EXISTS evaluations_mutation_update AFTER UPDATE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
-    CREATE TRIGGER IF NOT EXISTS evaluations_mutation_delete AFTER DELETE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;`);
+    CREATE TRIGGER IF NOT EXISTS evaluations_mutation_delete AFTER DELETE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
+   ${tlogSchema}`);
   this.actionProjectionCache=new Map();this.projectionMutationDepth=0;this.projectionMutationSerial=0;
   this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;
-   const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations']);
-   const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete']);
+   const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables]);
+   const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete',...tlogTables.flatMap(table=>['insert','update','delete'].map(op=>`${table}_mutation_${op}`))]);
   this.db.setAuthorizer((action,table,_column,_database,source)=>{
    if(action===sqlite.SQLITE_DROP_TRIGGER&&protectedTriggers.has(table)||[sqlite.SQLITE_DROP_TABLE,sqlite.SQLITE_ALTER_TABLE].includes(action)&&([...protectedTables,'projection_mutation_clock'].includes(table)))return sqlite.SQLITE_DENY;
    if([sqlite.SQLITE_INSERT,sqlite.SQLITE_UPDATE,sqlite.SQLITE_DELETE].includes(action)&&table==='projection_mutation_clock'&&!protectedTriggers.has(source))return sqlite.SQLITE_DENY;
@@ -91,7 +107,7 @@ export class Store {
   try{
    const out=fn();
    if(out&&typeof out.then==='function'){if(types.isPromise(out))out.catch(()=>{});throw TypeError('Store.transaction requires a synchronous callback');}
-   if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.db.prepare('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));}});
+   if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.db.prepare('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
    this.db.exec(nested?`RELEASE ${name}`:'COMMIT');
    if(ownsLedgerContext&&!this.ledgerTransaction.external)for(const [tenant,candidate] of this.ledgerTransaction.actionCandidates)this.actionProjectionCache.set(tenant,candidate);
    return out;
@@ -109,13 +125,17 @@ export class Store {
   return saved?JSON.parse(saved.body):makeCheckpoint(tenant,0,'0'.repeat(64),this.key);
  }
  append(tenant,type,payload,principal) {
-  let head=this.ledgerTransaction?.heads.get(tenant);
+  if(this.quarantine)throw Object.assign(Error('Transparency quarantine: '+this.quarantine.reason),{status:503});
+  // One transaction makes the ledger row, v1 checkpoint and tlog note atomic for direct callers too.
+  if(!this.ledgerTransaction)return this.transaction(()=>this.append(tenant,type,payload,principal));
+  let head=this.ledgerTransaction.heads.get(tenant);
   if(!head){
    head=this.db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
    const saved=this.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
    if(head){const checkpoint=saved&&JSON.parse(saved.body);verifyCheckpoint(checkpoint,this.publicKey);if(checkpoint.tenant!==tenant||checkpoint.count!==head.seq||checkpoint.head!==head.hash)throw Error('Ledger head differs from previously signed checkpoint; refusing to re-seal');}
    else if(saved)throw Error('Ledger is missing beneath an existing checkpoint');
-   if(this.ledgerTransaction)this.ledgerTransaction.heads.set(tenant,head||{seq:0,hash:'0'.repeat(64)});
+   head=head||{seq:0,hash:'0'.repeat(64)};if(this.tlog)head={...head,peaks:this._tlogHeadPeaks(tenant,head)};
+   this.ledgerTransaction.heads.set(tenant,head);
   }
   const seq=(head?.seq||0)+1;
   if(type==='event'){
@@ -124,8 +144,7 @@ export class Store {
   }
   const record={tenant,seq,previous:head?.hash||'0'.repeat(64),type,recordedAt:new Date().toISOString(),principal,payload};
   const hash=digest(record);this.projectionMutation(()=>this.db.prepare('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,canonical(record),hash));
-  if(this.ledgerTransaction){this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash});this.ledgerTransaction.dirty.add(tenant);}
-  else this.projectionMutation(()=>this.db.prepare('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,record.seq,hash,this.key))));
+  this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash,...(head.peaks?{peaks:frontierAppend(head.peaks,head.seq,recordLeaf(hash))}:{})});this.ledgerTransaction.dirty.add(tenant);
   return {...record,hash};
  }
  audit(p,operation,target='') {return this.transaction(()=>this.append(p.tenant,'audit_access',{operation,target},p.id));}
@@ -151,11 +170,13 @@ export class Store {
   });
  }
  bundle(tenant){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});const events=this.decodeRecords(b);const encrypted=new Set(b.records.filter(r=>r.type==='event'&&r.payload.format==='evidscope-encrypted-event-v1').map(r=>r.seq));b.disclosures=events.filter(e=>encrypted.has(e.seq)).map(e=>{const {seq,hash,...event}=e;return {seq,event};});return b;}
+ // Export only: internal readers (rawBundle/bundle) never pay for transparency proofs.
+ exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant):null;return transparency?{...b,transparency}:b;}
  ledgerEvents(tenant,actionId){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return this.decodeRecords(b).filter(e=>!actionId||e.actionId===actionId).sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id));}
  ledgerObjects(tenant,type){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return [...new Map(b.records.filter(r=>r.type===type&&r.payload.id).map(r=>[r.payload.id,r.payload])).values()];}
  // Consume this iterator to exhaustion before using any rows: final signed checkpoint
  // verification runs after the last row. A single oversized row is hashed in chunks.
- *verifiedRows(tenant,maxRowBytes){
+ *verifiedRows(tenant,maxRowBytes,{hashesOnly=false}={}){
   const cp=this.checkpoint(tenant);verifyCheckpoint(cp,this.publicKey);
   if(cp.tenant!==tenant)throw Error('Checkpoint tenant mismatch');
   let previous='0'.repeat(64),sequence=0;
@@ -174,7 +195,7 @@ export class Store {
     hash=hasher.digest('hex');
    }
    if(hash!==row.hash)throw Error('Record digest mismatch');previous=hash;
-   yield row.body===null?{oversized:true,bytes:row.bytes,seq:row.seq}:{...JSON.parse(row.body),hash:row.hash,recordBytes:row.bytes};
+   yield row.body===null?{oversized:true,bytes:row.bytes,seq:row.seq,hash:row.hash}:hashesOnly?{seq:row.seq,hash:row.hash}:{...JSON.parse(row.body),hash:row.hash,recordBytes:row.bytes};
   }
   if(sequence!==cp.count||previous!==cp.head)throw Error('Truncated or inconsistent export');
  }
@@ -390,6 +411,63 @@ export class Store {
    if(row.type==='development_run_event')events.push(row.payload);
   }
   return checkDevelopmentRunProjection(this.db,tenant,events);
+ }
+ _tlogOrigin(tenant){return tenantOrigin(this.tlog.base,tenant);}
+ _tlogRow(tenant){return this.tlog?this.db.prepare('SELECT size,peaks,root,note FROM tlog_state WHERE tenant=? AND origin=?').get(tenant,this._tlogOrigin(tenant))||null:null;}
+ _tlogVerifier(origin){let v=this.tlog.verifiers.get(origin);if(!v){v=noteVerifier(logVkey(origin,this.publicKey));this.tlog.verifiers.set(origin,v);}return v;}
+ // I2: the stored frontier folds to the signed root, and the signed note names this tenant origin and size.
+ _tlogVerifiedPeaks(tenant,row){
+  const origin=this._tlogOrigin(tenant),peaks=blobToPeaks(row.peaks,row.size),root=frontierRoot(peaks);
+  if(!root.equals(Buffer.from(row.root)))throw Error('Ledger tlog frontier differs from its signed root; refusing to re-seal');
+  if(this.tlog.verified.get(tenant)!==row.note){
+   const c=parseCheckpoint(openNote(row.note,[this._tlogVerifier(origin)]).text);
+   if(c.origin!==origin||c.size!==row.size||!c.root.equals(root))throw Error('Ledger tlog checkpoint differs from its signed note; refusing to re-seal');this.tlog.verified.set(tenant,row.note);}
+  return peaks;
+ }
+ _tlogHeadPeaks(tenant,head){
+  const row=this._tlogRow(tenant);
+  if(!head.seq){if(row?.size)throw Error('Ledger is missing beneath an existing tlog checkpoint');return [];}
+  if(!row)return this._tlogRebuild(tenant).peaks;
+  if(row.size!==head.seq)throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');
+  const peaks=this._tlogVerifiedPeaks(tenant,row);
+  if(row.size%2===1&&!peaks.at(-1).equals(recordLeaf(head.hash)))throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');
+  return peaks;
+ }
+ // Legacy or lost cache: rebuild only from history that verifies against the signed v1 checkpoint (no re-sealing of unsigned rows).
+ _tlogRebuild(tenant,sizes=[]){
+  const leaves=function*(rows){for(const row of rows)yield recordLeaf(row.hash);};
+  const {roots,size,peaks}=rootsAtSizes(leaves(this.verifiedRows(tenant,16*1024*1024,{hashesOnly:true})),sizes);
+  return {roots,size,peaks};
+ }
+ _writeTlog(tenant,size,peaks){
+  const origin=this._tlogOrigin(tenant),root=frontierRoot(peaks),note=signNote(formatCheckpoint({origin,size,root}),{name:origin,privateKey:this.key,pub:this.tlog.pub});
+  this.db.prepare('INSERT INTO tlog_state VALUES(?,?,?,?,?,?) ON CONFLICT(tenant,origin) DO UPDATE SET size=excluded.size,peaks=excluded.peaks,root=excluded.root,note=excluded.note').run(tenant,origin,size,peaksToBlob(peaks),root,note);
+  this.tlog.verified.set(tenant,note);
+ }
+ // Committed note, or the unsigned pending head inside a transaction: notes are signed only at commit.
+ tlogCheckpoint(tenant){
+  if(!this.tlog)return null;
+  const origin=this._tlogOrigin(tenant),pending=this.ledgerTransaction?.dirty.has(tenant)&&this.ledgerTransaction.heads.get(tenant);
+  if(pending?.peaks)return {origin,size:pending.seq,root:frontierRoot(pending.peaks),note:null,pending:true};
+  const row=this._tlogRow(tenant);
+  return row?{origin,size:row.size,root:Buffer.from(row.root),note:row.note,pending:false}:{origin,size:0,root:EMPTY_ROOT,note:null,pending:false};
+ }
+ // Startup migration: create or extend tlog state for every ledger tenant before any request can append.
+ syncTlog(){
+  if(!this.tlog)return {tenants:0,rebuilt:0};
+  const tenants=this.db.prepare('SELECT DISTINCT tenant FROM ledger ORDER BY tenant').all().map(r=>r.tenant);let rebuilt=0;
+  for(const tenant of tenants){
+   const row=this._tlogRow(tenant),head=this.db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
+   if(row&&row.size===head.seq){this._tlogHeadPeaks(tenant,head);continue;}
+   if(row&&row.size>head.seq)throw Error('Truncated or inconsistent ledger: tenant is behind its signed tlog checkpoint (rollback)');
+   if(row)this._tlogVerifiedPeaks(tenant,row);
+   const result=this._tlogRebuild(tenant,row?[row.size]:[]);
+   if(row&&!result.roots.get(row.size)?.equals(Buffer.from(row.root)))throw Error('Ledger conflicts with its signed tlog checkpoint (fork)');
+   this.projectionMutation(()=>this._writeTlog(tenant,result.size,result.peaks));rebuilt++;
+  }
+  const prefix=this.tlog.base+'/t/';
+  for(const {tenant} of this.db.prepare('SELECT tenant FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length,prefix))if(!tenants.includes(tenant))throw Error('Ledger is missing beneath an existing tlog checkpoint (tenant removal)');
+  return {tenants:tenants.length,rebuilt};
  }
  rebuild(p) {return this.transaction(()=>{const bundle=this.rawBundle(p.tenant);verifyBundle(bundle,this.publicKey,undefined,{chainOnly:true});const original=this.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),receipts=expectedReceiptProjection(p.tenant,bundle.records,original);this.db.prepare('DELETE FROM events WHERE tenant=?').run(p.tenant);this.db.prepare('DELETE FROM receipts WHERE tenant=?').run(p.tenant);for(const e of original)this.project(e);for(const value of receipts.entries.values())this.db.prepare('INSERT OR REPLACE INTO receipts VALUES(?,?,?,?)').run(p.tenant,value.source,value.id,value.fingerprint);this.db.prepare('DELETE FROM development_run_events WHERE tenant=?').run(p.tenant);for(const e of development)this.db.prepare('INSERT INTO development_run_events VALUES(?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.eventId,e.runId,e.occurredAt,e.receivedAt,e.fingerprint,JSON.stringify(e));this.append(p.tenant,'projection_rebuild',{projections:['events','receipts','development_run_events']},p.id);return {rebuilt:original.length,receipts:receipts.entries.size,developmentEvents:development.length};});}
  project(e) {this.projectionMutation(()=>{this.db.prepare('INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint,e.actionId,e.traceId,e.kind,e.receivedAt,JSON.stringify(e));this.db.prepare('INSERT OR IGNORE INTO receipts VALUES(?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint);});}

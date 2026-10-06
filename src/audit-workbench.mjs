@@ -86,7 +86,8 @@ export function createAuditWorkbench(store,key){
   const context=verifyContext(p,id),checkpoint=JSON.parse(store.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(p.tenant).body);
   const snapshot={tenant:p.tenant,exportedAt:new Date().toISOString(),exportedBy:p.id,case:context.case,action:{actionId:context.case.actionId,events:context.events,references:context.references,evaluations:context.evaluations,analysis:context.analysis},review:{state:context.reviewState,latestDecision:context.latestDecision,decisions:context.decisions,contextHash:context.contextHash},checkpoint,limitations:[...limitations,'이 서명은 EvidScope 서버가 이 보고서 문맥을 발급했다는 증명이며 외부 사실 확인·독립 시각 봉인·법적 결론 보증이 아닙니다.','전체 서명 원장과 독립 신뢰 기준점은 별도 /api/export로 확보해야 합니다. 공개키 지문은 신뢰할 수 있는 별도 경로로 대조하세요.','테넌트 이벤트 조회 사본과 이 사건·분석·인간 판단 사본을 서명 원장과 대조했습니다.']};
   const signed={format:'evidscope-case-report-v1',snapshot};if(bytes(signed)>limits.reportBytes-1024)fail(413,'서명 보고서 크기 한도 초과');
-  return {...signed,signature:sign(null,Buffer.from(canonical(signed)),key).toString('base64'),publicKeyFingerprint};
+  const transparency=store.tlogReport?.(p.tenant,checkpoint,context.events);
+  return {...signed,signature:sign(null,Buffer.from(canonical(signed)),key).toString('base64'),publicKeyFingerprint,...(transparency?{transparency}:{})};
  });}
  function investigations(p,params){
   verifyActions(p.tenant);

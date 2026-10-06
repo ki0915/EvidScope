@@ -8,6 +8,7 @@ import {HttpError} from './model.mjs';
 import {tick} from './worker.mjs';
 import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
+import {prepareTransparency} from './transparency.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -19,7 +20,9 @@ const runtimeReceipt=()=>{if(!runtimeReceiptFile)return undefined;try{const raw=
 const ingestPaths=new Set(['/api/ingest','/api/development-runs/events']);
 const authPaths=new Set(['/auth/config','/auth/login','/auth/callback','/auth/session','/auth/logout']);
 if(mode!=='vault'&&!/^https:/.test(base)&&!['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname))throw Error('Remote vault requires verified TLS');
-let service;if(mode==='vault')service=createService({dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+// Async witness probe before createService, which stays synchronous and re-checks the pin before opening Store.
+const transparency=mode==='vault'?await prepareTransparency({dataDir:process.env.DATA_DIR||join(root,'.local','data'),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8')}):undefined;
+let service;if(mode==='vault')service=createService({transparency,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
 const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
@@ -88,7 +91,7 @@ async function route(req,res){
  finally{active--;}
 }
 const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
-server.listen(port,host,()=>{const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
+server.listen(port,host,()=>{service?.transparency.start();const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
 const workerTimer=mode==='worker'?setInterval(async()=>{if(workerBusy||stopping)return;workerBusy=true;try{await tick(base,process.env.WORKER_TOKEN);lastWorkerSuccess=Date.now();}catch(e){process.stderr.write(`worker unavailable ${e.name} ${e.status||''}\n`);}finally{workerBusy=false;}},200):null;
-function shutdown(){if(stopping)return;stopping=true;if(workerTimer)clearInterval(workerTimer);server.close(()=>{service?.store.close();process.exit(0);});setTimeout(()=>process.exit(1),8000).unref();}
+function shutdown(){if(stopping)return;stopping=true;if(workerTimer)clearInterval(workerTimer);const transparencyStopped=service?.transparency.stop();server.close(async()=>{await transparencyStopped;service?.store.close();process.exit(0);});setTimeout(()=>process.exit(1),8000).unref();}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);process.on('message',m=>{if(m==='shutdown')shutdown();});
