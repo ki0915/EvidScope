@@ -25,16 +25,19 @@ import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
 import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
+import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysAvailable} from './data-keys.mjs';
 
-export function createService({dataDir,config,key,requirements=[],runtimeReceipt=()=>undefined}) {
+export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined}) {
  assertRecoveryActivation({dataDir,key,config});
  const legalSourceCoverage=krLegalSourceCoverage(requirements);
+ if(config.profile==='enterprise'&&!dataKey)throw Error('Enterprise profile requires DATA_KEY_FILE (data-encryption key separate from the signing key)');
  const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
+ let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
  const principals=config.principals||[];
  const analysis=createAnalysis(store,principals);
- const finance=createFinanceEvidence({store,dataDir,key,requirements,governanceReport:report});
+ const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
@@ -65,8 +68,12 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
   for(const row of rows){let value;try{value=JSON.parse(row.body);}catch{fail(409,'정책 조회 사본이 서명 원장과 일치하지 않습니다');}if(!latest.has(row.id)||canonical(value)!==canonical(latest.get(row.id)))fail(409,'정책 조회 사본이 서명 원장과 일치하지 않습니다');}
   return latest;
  }
+ function keySeparation(fileKeyIds){
+  const status=keyring.status(),legacyFiles=fileKeyIds['legacy-signing-v1']||0;
+  return {status:!status.configured?'not_separated':legacyFiles?'migration_pending':'separated',...status,documentFilesByKeyId:fileKeyIds,backupEncryption:'not_checked_online',eventKeys:{storage:'same_database_unwrapped',purpose:'crypto_shredding_of_ledger_ciphertext',confidentialityAgainstDatabaseReader:false,liveProjectionPlaintext:true},limitations:['Signing and data keys are separate secrets but are both loaded by the vault process; a host or root attacker on the vault reads both.','Legacy signing-key-derived ciphertext remains decryptable with the signing key until re-encrypted and old backups are retired.']};
+ }
  const policyObject=(p,type,id)=>verifiedPolicyObjects(p,type).get(id)||fail(404,'대상을 찾을 수 없습니다');
- const governanceDocuments=createGovernanceDocuments({store,dataDir,key,getSystem:(p,id)=>policyObject(p,'system',id)});
+ const governanceDocuments=createGovernanceDocuments({store,dataDir,keyring,getSystem:(p,id)=>policyObject(p,'system',id)});
  function verifiedEvaluations(p){
   const signed=[];
   for(const row of store.verifiedRows(p.tenant,2*1024*1024)){
@@ -243,7 +250,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
   if(path==='/api/export'&&method==='GET')return store.transaction(()=>store.bundle(p.tenant));
   if(path==='/api/integrity'&&method==='GET'){
    const verificationScope={checks:['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files'],notChecked:[],limitations:['document_files covers authenticated referenced local files at each read; unreferenced files and an atomic filesystem snapshot are not claimed']};
-   try{const result=store.transaction(()=>{const bundle=store.bundle(p.tenant),evaluations=bundle.records.filter(row=>row.type==='evaluation').map(row=>row.payload),events=store.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),documents=checkDocumentFiles({db:store.db,tenant:p.tenant,records:bundle.records,dataDir,key});return {...verifyBundle(bundle,publicKey),projection:checkEventProjection(store.db,p.tenant,events),receiptProjection:checkReceiptProjection(store.db,p.tenant,bundle.records,events),developmentRunProjection:checkDevelopmentRunProjection(store.db,p.tenant,development),objectProjection:checkObjectProjection(store.db,p.tenant,bundle.records),evaluationProjection:checkEvaluationProjection(store.db,p.tenant,evaluations),actionProjection:store.checkActionProjection(p.tenant),governanceDocumentProjection:documents.governanceDocumentProjection,documentFiles:documents.summary,verificationScope};});store.audit(p,'read',path);return result;}catch(e){let failureRecorded=true;try{store.transaction(()=>store.append(p.tenant,'integrity_failure',{message:e.message},p.id));}catch{failureRecorded=false;}return {valid:false,error:e.message,failureRecorded,requiresExternalIncidentRecord:!failureRecorded,verificationScope};}
+   try{const result=store.transaction(()=>{const bundle=store.bundle(p.tenant),evaluations=bundle.records.filter(row=>row.type==='evaluation').map(row=>row.payload),events=store.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),documents=checkDocumentFiles({db:store.db,tenant:p.tenant,records:bundle.records,dataDir,keyring});return {...verifyBundle(bundle,publicKey),projection:checkEventProjection(store.db,p.tenant,events),receiptProjection:checkReceiptProjection(store.db,p.tenant,bundle.records,events),developmentRunProjection:checkDevelopmentRunProjection(store.db,p.tenant,development),objectProjection:checkObjectProjection(store.db,p.tenant,bundle.records),evaluationProjection:checkEvaluationProjection(store.db,p.tenant,evaluations),actionProjection:store.checkActionProjection(p.tenant),governanceDocumentProjection:documents.governanceDocumentProjection,documentFiles:documents.summary,keySeparation:keySeparation(documents.keyIds),verificationScope};});store.audit(p,'read',path);return result;}catch(e){let failureRecorded=true;try{store.transaction(()=>store.append(p.tenant,'integrity_failure',{message:e.message},p.id));}catch{failureRecorded=false;}return {valid:false,error:e.message,failureRecorded,requiresExternalIncidentRecord:!failureRecorded,verificationScope};}
   }
   if(path==='/api/rebuild'&&method==='POST'){admin(p);verifyBundle(store.bundle(p.tenant),publicKey);return store.rebuild(p);}
   if(path==='/api/governance'&&method==='GET')return store.transaction(()=>({requirements,legalSourceCoverage,systems:[...verifiedPolicyObjects(p,'system').values()],supplierBundles:[...verifiedPolicyObjects(p,'supplier_bundle').values()],governanceDocuments:governanceDocuments.list(p),documentLimits:governanceDocuments.limits,assessments:[...verifiedPolicyObjects(p,'assessment').values()],tasks:[...verifiedPolicyObjects(p,'governance_task').values()]}));

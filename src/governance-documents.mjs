@@ -1,9 +1,9 @@
-import {createCipheriv,createDecipheriv,createHash,createPrivateKey,randomBytes,randomUUID} from 'node:crypto';
-import {existsSync,mkdirSync,renameSync,writeFileSync} from 'node:fs';
+import {createHash,randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {canonical,digest} from './crypto.mjs';
 import {cleanText,fail,identifier} from './model.mjs';
-import {readBoundedRegularFile} from './bounded-file.mjs';
+import {asKeyring} from './data-keys.mjs';
+import {createEncryptedDocumentStore} from './document-envelope.mjs';
 
 export const MAX_GOVERNANCE_DOCUMENT_BYTES=4*1024*1024;
 const MAX_DOCUMENT_BYTES=MAX_GOVERNANCE_DOCUMENT_BYTES;
@@ -26,32 +26,7 @@ function decodeBase64(value){
 }
 
 export function createGovernanceDocumentStorage(dataDir,key){
- const root=join(dataDir,'governance-documents');
- const privateKey=typeof key==='string'||Buffer.isBuffer(key)?createPrivateKey(key):key;
- const master=createHash('sha256').update('evidscope-governance-documents-v1').update(privateKey.export({type:'pkcs8',format:'der'})).digest();
- const location=(tenant,hash)=>{
-  if(!/^[a-f0-9]{64}$/.test(hash))throw Error('Invalid document digest');
-  return join(root,sha256(Buffer.from(tenant)),hash+'.json');
- };
- function read(tenant,hash){
-  const path=location(tenant,hash),saved=JSON.parse(readBoundedRegularFile(path,MAX_ENVELOPE_BYTES).toString('utf8'));
-  const fields=['iv','tag','data'];if(!saved||typeof saved!=='object'||Array.isArray(saved)||Object.keys(saved).length!==fields.length||fields.some(name=>typeof saved[name]!=='string'||Buffer.from(saved[name],'base64').toString('base64')!==saved[name]))throw Error('Invalid encrypted document envelope');
-  const iv=Buffer.from(saved.iv,'base64'),tag=Buffer.from(saved.tag,'base64'),data=Buffer.from(saved.data,'base64');if(iv.length!==12||tag.length!==16||!data.length)throw Error('Invalid encrypted document envelope');
-  const decipher=createDecipheriv('aes-256-gcm',master,iv);
-  decipher.setAAD(Buffer.from(`${tenant}:${hash}`));decipher.setAuthTag(tag);
-  const bytes=Buffer.concat([decipher.update(data),decipher.final()]);
-  if(bytes.length>MAX_DOCUMENT_BYTES||sha256(bytes)!==hash)throw Error('Document hash mismatch');return bytes;
- }
- function put(tenant,bytes){
-  const hash=sha256(bytes),path=location(tenant,hash);if(existsSync(path)){read(tenant,hash);return hash;}
-  mkdirSync(join(root,sha256(Buffer.from(tenant))),{recursive:true});
-  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',master,iv);cipher.setAAD(Buffer.from(`${tenant}:${hash}`));
-  const encrypted=Buffer.concat([cipher.update(bytes),cipher.final()]);
-  const temporary=path+'.'+randomUUID()+'.tmp';
-  writeFileSync(temporary,JSON.stringify({iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')}),{flag:'wx',mode:0o600});
-  renameSync(temporary,path);read(tenant,hash);return hash;
- }
- return {read,put};
+ return createEncryptedDocumentStore({root:join(dataDir,'governance-documents'),purpose:'governanceDocument',keyring:asKeyring(key),maxEnvelopeBytes:MAX_ENVELOPE_BYTES,maxPlaintextBytes:MAX_DOCUMENT_BYTES});
 }
 
 function validateSignedMetadata(value){
@@ -78,9 +53,9 @@ export function checkGovernanceDocumentProjection(db,tenant,records){
  return {valid:true,documents:latest.size,revisions:history.length,latest,history};
 }
 
-export function createGovernanceDocuments({store,dataDir,key,getSystem}){
+export function createGovernanceDocuments({store,dataDir,key,keyring=asKeyring(key),getSystem}){
  if(typeof getSystem!=='function')throw Error('Governance document system resolver is required');
- const storage=createGovernanceDocumentStorage(dataDir,key);
+ const storage=createGovernanceDocumentStorage(dataDir,keyring);
  store.db.exec('CREATE TABLE IF NOT EXISTS governance_documents(tenant TEXT NOT NULL,id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(tenant,id))');
  const review=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'거버넌스 문서는 검토자 또는 관리자만 접근할 수 있습니다');};
  function verifiedState(p){

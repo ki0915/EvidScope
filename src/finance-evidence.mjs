@@ -1,10 +1,10 @@
-import {createHash,createCipheriv,createDecipheriv,randomBytes,randomUUID,sign,createPublicKey,createPrivateKey} from 'node:crypto';
-import {mkdirSync,writeFileSync,renameSync,existsSync} from 'node:fs';
+import {createHash,randomUUID,sign,createPublicKey} from 'node:crypto';
 import {join} from 'node:path';
 import {canonical,digest} from './crypto.mjs';
 import {identifier,cleanText,fail} from './model.mjs';
 import {checkEvaluationProjection} from './evaluation-integrity.mjs';
-import {readBoundedRegularFile} from './bounded-file.mjs';
+import {asKeyring} from './data-keys.mjs';
+import {createEncryptedDocumentStore} from './document-envelope.mjs';
 import {knownGovernanceReference} from './kr-governance-evidence.mjs';
 import {normalizeSupplierProvenance,normalizeSupplierProvenanceReview} from './supplier-provenance.mjs';
 
@@ -15,14 +15,11 @@ const limitations=['로컬 문서 보관입니다. 자료 유형은 제출자가
 
 // Content-addressed encrypted local adapter. Paths never contain uploaded names or IDs.
 export function createDocumentAdapter(dataDir,key){
- const root=join(dataDir,'finance-documents'),master=createHash('sha256').update('evidscope-finance-documents-v1').update((typeof key==='string'||Buffer.isBuffer(key)?createPrivateKey(key):key).export({type:'pkcs8',format:'der'})).digest();
- const location=(tenant,hash)=>{if(!/^[a-f0-9]{64}$/.test(hash))fail(400,'문서 SHA-256 오류');return join(root,sha(Buffer.from(tenant)),hash+'.json');};
- function read(tenant,hash){const file=location(tenant,hash),saved=JSON.parse(readBoundedRegularFile(file,131072).toString('utf8')),fields=['iv','tag','data'];if(!saved||typeof saved!=='object'||Array.isArray(saved)||Object.keys(saved).length!==fields.length||fields.some(name=>typeof saved[name]!=='string'||Buffer.from(saved[name],'base64').toString('base64')!==saved[name]))throw Error('Invalid encrypted document envelope');const iv=Buffer.from(saved.iv,'base64'),tag=Buffer.from(saved.tag,'base64'),data=Buffer.from(saved.data,'base64');if(iv.length!==12||tag.length!==16||!data.length)throw Error('Invalid encrypted document envelope');const decipher=createDecipheriv('aes-256-gcm',master,iv);decipher.setAAD(Buffer.from(tenant+':'+hash));decipher.setAuthTag(tag);const bytes=Buffer.concat([decipher.update(data),decipher.final()]);if(sha(bytes)!==hash)throw Error('Document hash mismatch');return bytes;}
- return {read,put(tenant,bytes){const hash=sha(bytes),path=location(tenant,hash);if(existsSync(path)){read(tenant,hash);return hash;}mkdirSync(join(root,sha(Buffer.from(tenant))),{recursive:true});const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',master,iv);cipher.setAAD(Buffer.from(tenant+':'+hash));const encrypted=Buffer.concat([cipher.update(bytes),cipher.final()]);const temporary=path+'.'+randomUUID()+'.tmp';writeFileSync(temporary,JSON.stringify({iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')}),{flag:'wx',mode:0o600});renameSync(temporary,path);return hash;}};
+ return createEncryptedDocumentStore({root:join(dataDir,'finance-documents'),purpose:'financeDocument',keyring:asKeyring(key),maxEnvelopeBytes:131072,maxPlaintextBytes:64*1024,invalidHash:()=>fail(400,'문서 SHA-256 오류')});
 }
 
-export function createFinanceEvidence({store,dataDir,key,requirements,governanceReport}){
- const documents=createDocumentAdapter(dataDir,key);
+export function createFinanceEvidence({store,dataDir,key,keyring=asKeyring(key),requirements,governanceReport}){
+ const documents=createDocumentAdapter(dataDir,keyring);
  const get=(p,type,id)=>store.get(p.tenant,type,id)||fail(404,'동일 테넌트 대상을 찾을 수 없습니다');
  const review=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'검토자 권한이 필요합니다');};
  function verifyProjection(p){

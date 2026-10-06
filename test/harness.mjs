@@ -7,7 +7,7 @@ import {tick} from '../src/worker.mjs';
 export async function harness({vaultOnly=false}={}){
  mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','run-')),config=initialize(dir),children=[],servers=[];let vault;
  const host=process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1';if(!['127.0.0.1','::1'].includes(host))throw Error('Tests require numeric loopback host');const urlHost=host==='::1'?'[::1]':host;
- const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),HOST:host,PORT:'0'};
+ const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),DATA_KEY_FILE:join(dir,'data-encryption.key'),HOST:host,PORT:'0'};
  const redact=value=>{
   let text=String(value);for(const principal of config.principals)if(principal.token)text=text.split(principal.token).join('[REDACTED]');return text;
  };

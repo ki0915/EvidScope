@@ -164,10 +164,10 @@ test('actual restored HTTP vault serves supplier bytes and preserves tenant acce
  const h=await harness();t.after(()=>h.close());
  assert.equal((await h.api('/api/governance/systems',{role:'reviewer',body:system})).status,200);
  assert.equal((await h.api('/api/governance/bundles',{role:'reviewer',body:bundle()})).status,200);
- const privateKey=readFileSync(join(h.dir,'signing-private.pem')),backupDir=join(h.dir,'backup'),restoreDir=join(h.dir,'restored');
- const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,publicKey:h.publicKey});
- const latest=await createVaultRecoveryFrontier({dataDir:join(h.dir,'data'),privateKey,publicKey:h.publicKey,anchor,config:h.config});
- const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(receipt.activationAccepted,true);
+ const privateKey=readFileSync(join(h.dir,'signing-private.pem')),dataKey=readFileSync(join(h.dir,'data-encryption.key')),backupDir=join(h.dir,'backup'),restoreDir=join(h.dir,'restored');
+ const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,publicKey:h.publicKey,dataKey});
+ const latest=await createVaultRecoveryFrontier({dataDir:join(h.dir,'data'),privateKey,publicKey:h.publicKey,dataKey,anchor,config:h.config});
+ const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey:h.publicKey,dataKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(receipt.activationAccepted,true);
  const restored=await h.start('vault',{DATA_DIR:restoreDir});
  const document=await h.api('/api/governance/bundles/bundle/export',{base:restored.url});assert.equal(document.status,200);assert.equal(document.body.documents[0].contentBase64,bundle().documents[0].contentBase64);
  assert.equal((await h.api('/api/governance/bundles/bundle/export',{base:restored.url,tenant:'beta'})).status,404);

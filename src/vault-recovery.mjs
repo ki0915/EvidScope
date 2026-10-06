@@ -13,17 +13,19 @@ import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
 import {signRecoveryFrontier,verifyRecoveryFrontier,applyRecoveryFrontier} from './recovery-frontier.mjs';
+import {createKeyring,PURPOSES,LEGACY_KEY_ID,KEY_ID_PATTERN} from './data-keys.mjs';
 import {sealRestorationState,pinRestorationState,recoveryPinPath} from './recovery-state.mjs';
 
-const FORMAT='evidscope-vault-backup-v1';
+const FORMAT='evidscope-vault-backup-v1',FORMAT_V2='evidscope-vault-backup-v2';
+const backupAad=(format,keyId)=>Buffer.from(format===FORMAT?FORMAT:canonical({format,keyId}));
 const contained=(root,path)=>{const rel=relative(root,path);return !rel||!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep);};
 const hashBytes=bytes=>createHash('sha256').update(bytes).digest('hex');
 const publicDer=key=>createPublicKey(key).export({format:'der',type:'spki'});
-function keys(privateKey,publicKey){
+function keys(privateKey,publicKey,{dataKey,previousDataKeys=[]}={}){
  const key=typeof privateKey==='object'&&privateKey.type==='private'?privateKey:createPrivateKey(privateKey);
  const pub=typeof publicKey==='object'&&publicKey.type==='public'?publicKey:createPublicKey(publicKey);
  if(key.asymmetricKeyType!=='ed25519'||!publicDer(key).equals(pub.export({format:'der',type:'spki'})))throw Error('Independent trust key does not match vault key');
- return {key,pub,encryption:createHash('sha256').update('evidscope-vault-backup-encryption-v1').update(key.export({format:'der',type:'pkcs8'})).digest()};
+ return {key,pub,keyring:createKeyring({signingKey:key,dataKey,previousDataKeys})};
 }
 function noLinks(path){
  const absolute=resolve(path);let current=absolute;
@@ -46,7 +48,7 @@ function files(root,prefix=''){
 function readonlyStore(file,key){const store=Object.create(Store.prototype);store.key=key;store.publicKey=createPublicKey(key);store.db=new DatabaseSync(file,{readOnly:true,timeout:5000});return store;}
 
 // Examine a fixed SQLite snapshot, never the source while it is still changing.
-function inspectDatabase(file,dataDir,key,expectedCheckpoints){
+function inspectDatabase(file,dataDir,key,keyring,expectedCheckpoints){
  const store=readonlyStore(file,key),documents=new Map(),tenants=[];
  try{
   if(store.db.prepare('PRAGMA integrity_check').all().some(r=>r.integrity_check!=='ok'))throw Error('SQLite integrity check failed');
@@ -66,7 +68,7 @@ function inspectDatabase(file,dataDir,key,expectedCheckpoints){
     if(row.type==='development_run_event')development.push(row.payload);
    }
    const objectProjection=checkObjectProjection(store.db,tenant,bundle.records);
-   const checkedDocuments=checkDocumentFiles({db:store.db,tenant,records:bundle.records,dataDir,key});
+   const checkedDocuments=checkDocumentFiles({db:store.db,tenant,records:bundle.records,dataDir,keyring});
    for(const document of checkedDocuments.files)documents.set(document.path,document);
    checkEvaluationProjection(store.db,tenant,evaluations);
    checkActionProjection(store.db,tenant,bundle.records,store.decodeRecords(bundle));
@@ -80,8 +82,8 @@ function inspectDatabase(file,dataDir,key,expectedCheckpoints){
  }finally{store.close();}
 }
 
-export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey}){
- const {key,pub,encryption}=keys(privateKey,publicKey),source=noLinks(dataDir),output=noLinks(backupDir);
+export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,dataKey,previousDataKeys}){
+ const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),format=keyring.separated?FORMAT_V2:FORMAT,keyId=keyring.writeKeyId,encryption=keyring.key('vaultBackup',keyId),source=noLinks(dataDir),output=noLinks(backupDir);
  if(existsSync(output)||contained(source,output))throw Error('Backup requires a new directory outside the source');
  const sourceFile=member(source,'evidence.db');if(!lstatSync(sourceFile).isFile())throw Error('Missing vault database');
  mkdirSync(output,{mode:0o700});
@@ -89,16 +91,16 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey}
  try{
   sourceDb=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});
   await backup(sourceDb,temporary);sourceDb.close();sourceDb=null;chmodSync(temporary,0o600);
-  const snapshot=inspectDatabase(temporary,source,key);
+  const snapshot=inspectDatabase(temporary,source,key,keyring);
   const inventory=[];
   for(const path of snapshot.documents){const input=member(source,path),target=member(output,path);mkdirSync(dirname(target),{recursive:true,mode:0o700});copyFileSync(input,target);chmodSync(target,0o600);inventory.push({path,bytes:lstatSync(target).size,sha256:await hashFile(target)});}
   // Read copied ciphertext back, so concurrent loss or corruption cannot be sealed.
-  inspectDatabase(temporary,output,key,Object.fromEntries(snapshot.tenants.map(t=>[t.tenant,t.checkpoint])));
-  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',encryption,iv);cipher.setAAD(Buffer.from(FORMAT));
+  inspectDatabase(temporary,output,key,keyring,Object.fromEntries(snapshot.tenants.map(t=>[t.tenant,t.checkpoint])));
+  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',encryption,iv);cipher.setAAD(backupAad(format,keyId));
   const encrypted=join(output,'evidence.db.enc');
   await pipeline(createReadStream(temporary),cipher,createWriteStream(encrypted,{flags:'wx',mode:0o600}));
   inventory.unshift({path:'evidence.db.enc',bytes:lstatSync(encrypted).size,sha256:await hashFile(encrypted)});
-  const statement={format:FORMAT,createdAt:new Date().toISOString(),keyFingerprint:hashBytes(pub.export({format:'der',type:'spki'})),database:{algorithm:'aes-256-gcm',iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),plaintextSha256:await hashFile(temporary)},files:inventory,tenants:snapshot.tenants,scope:'Whole local vault; credentials and private key excluded. Historical supplier and first-party governance document ciphertext included. This snapshot does not prove elapsed five-year retention. External backups and later erasures require separate disposition.'};
+  const statement={format,createdAt:new Date().toISOString(),keyFingerprint:hashBytes(pub.export({format:'der',type:'spki'})),database:{algorithm:'aes-256-gcm',...(format===FORMAT_V2?{kdf:'hkdf-sha256',info:PURPOSES.vaultBackup,keyId}:{}),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),plaintextSha256:await hashFile(temporary)},files:inventory,tenants:snapshot.tenants,scope:'Whole local vault; credentials, signing private key and data-encryption keys excluded. Historical supplier and first-party governance document ciphertext included. This snapshot does not prove elapsed five-year retention. External backups and later erasures require separate disposition.'};
   const manifest={...statement,signature:sign(null,Buffer.from(canonical(statement)),key).toString('base64')};
   unlinkSync(temporary);
   writeFileSync(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o600});
@@ -109,7 +111,7 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey}
 async function verifyArchive(backupDir,pub,anchor){
  const root=noLinks(backupDir),path=member(root,'manifest.json');if(lstatSync(path).size>16*1024*1024)throw Error('Backup manifest too large');
  const manifest=JSON.parse(readFileSync(path,'utf8')),{signature,...statement}=manifest;
- if(statement.format!==FORMAT||!verify(null,Buffer.from(canonical(statement)),pub,Buffer.from(signature||'','base64')))throw Error('Backup signature invalid');
+ if(![FORMAT,FORMAT_V2].includes(statement.format)||!verify(null,Buffer.from(canonical(statement)),pub,Buffer.from(signature||'','base64')))throw Error('Backup signature invalid');
  const fingerprint=hashBytes(pub.export({format:'der',type:'spki'}));
  if(!anchor||anchor.format!=='evidscope-recovery-anchor-v1'||anchor.manifestSha256!==digest(manifest)||anchor.keyFingerprint!==fingerprint||statement.keyFingerprint!==fingerprint)throw Error('Independent recovery anchor mismatch');
  if(!Array.isArray(statement.files)||!statement.files.length||!Array.isArray(statement.tenants)||!anchor.checkpoints)throw Error('Invalid recovery manifest');
@@ -122,21 +124,21 @@ async function verifyArchive(backupDir,pub,anchor){
  return manifest;
 }
 
-export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,anchor,config}){
- const {key,pub}=keys(privateKey,publicKey),source=noLinks(dataDir),sourceFile=member(source,'evidence.db');
+export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,config}){
+ const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),source=noLinks(dataDir),sourceFile=member(source,'evidence.db');
  if(!config||typeof config!=='object')throw Error('Recovery frontier requires current credential/config binding');
  const stage=mkdtempSync(join(dirname(source),'.recovery-frontier-')),snapshotFile=join(stage,'snapshot.db');let db,store;
  try{
   db=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});await backup(db,snapshotFile);db.close();db=null;
-  const checked=inspectDatabase(snapshotFile,source,key);store=readonlyStore(snapshotFile,key);
+  const checked=inspectDatabase(snapshotFile,source,key,keyring);store=readonlyStore(snapshotFile,key);
   return signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
  }finally{
   store?.close();db?.close();for(const name of ['snapshot.db','snapshot.db-wal','snapshot.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}rmdirSync(stage);
  }
 }
 
-export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,anchor,frontier,frontierAnchor,config}){
- const {key,pub,encryption}=keys(privateKey,publicKey),root=noLinks(backupDir),target=noLinks(restoreDir);
+export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,frontier,frontierAnchor,config}){
+ const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),root=noLinks(backupDir),target=noLinks(restoreDir);
  if(existsSync(target)||contained(root,target))throw Error('Restore requires a new directory outside the backup');
  if(existsSync(recoveryPinPath(target)))throw Error('External restoration pin already exists; refusing overwrite');
  const manifest=await verifyArchive(root,pub,anchor);
@@ -145,19 +147,21 @@ export async function restoreVaultBackup({backupDir,restoreDir,privateKey,public
  const stage=mkdtempSync(join(dirname(target),'.'+basename(target)+'-incomplete-'));chmodSync(stage,0o700);
  const database=join(stage,'evidence.db');
  try{
-  if(manifest.database.algorithm!=='aes-256-gcm')throw Error('Unsupported backup encryption');
-  const decipher=createDecipheriv('aes-256-gcm',encryption,Buffer.from(manifest.database.iv,'base64'));decipher.setAAD(Buffer.from(FORMAT));decipher.setAuthTag(Buffer.from(manifest.database.tag,'base64'));
+  const enc=manifest.database,v2=manifest.format===FORMAT_V2;
+  if(enc.algorithm!=='aes-256-gcm'||v2&&(enc.kdf!=='hkdf-sha256'||enc.info!==PURPOSES.vaultBackup||!KEY_ID_PATTERN.test(enc.keyId||''))||!v2&&['kdf','info','keyId'].some(name=>Object.hasOwn(enc,name)))throw Error('Unsupported backup encryption');
+  const keyId=v2?enc.keyId:LEGACY_KEY_ID;
+  const decipher=createDecipheriv('aes-256-gcm',keyring.key('vaultBackup',keyId),Buffer.from(enc.iv,'base64'));decipher.setAAD(backupAad(manifest.format,keyId));decipher.setAuthTag(Buffer.from(manifest.database.tag,'base64'));
   await pipeline(createReadStream(member(root,'evidence.db.enc')),decipher,createWriteStream(database,{flags:'wx',mode:0o600}));
   if(await hashFile(database)!==manifest.database.plaintextSha256)throw Error('Restored database digest mismatch');
   for(const f of manifest.files.filter(f=>f.path!=='evidence.db.enc')){const output=member(stage,f.path);mkdirSync(dirname(output),{recursive:true,mode:0o700});copyFileSync(member(root,f.path),output);chmodSync(output,0o600);if(await hashFile(output)!==f.sha256)throw Error('Document changed during restoration');}
-  const restored=inspectDatabase(database,stage,key,anchor.checkpoints);
+  const restored=inspectDatabase(database,stage,key,keyring,anchor.checkpoints);
   if(canonical(restored.tenants)!==canonical(manifest.tenants)||canonical(restored.documents)!==canonical(manifest.files.filter(f=>f.path!=='evidence.db.enc').map(f=>f.path).sort()))throw Error('Restored evidence differs from signed inventory');
   const store=new Store(stage,key);let activation;
   try{
    if(activationAccepted)applyRecoveryFrontier({store,frontier,anchor:frontierAnchor,archiveAnchor:anchor,config});
    activation=sealRestorationState({store,dataDir:stage,archiveAnchor:anchor,frontier,config,activationAccepted});
   }finally{store.close();}
-  const accepted=inspectDatabase(database,stage,key);
+  const accepted=inspectDatabase(database,stage,key,keyring);
   const activationPin=pinRestorationState({dataDir:target,marker:activation,key});
   // Reserve the final path against accidental overwrite. Only this empty directory is removed.
   mkdirSync(target,{mode:0o700});

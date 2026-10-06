@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {createService} from './service.mjs';
 import {HttpError} from './model.mjs';
 import {tick} from './worker.mjs';
+import {dataKeysFromEnv} from './data-keys.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -17,7 +18,7 @@ const runtimeReceipt=()=>{if(!runtimeReceiptFile)return undefined;try{const raw=
 const ingestPaths=new Set(['/api/ingest','/api/development-runs/events']);
 const authPaths=new Set(['/auth/config','/auth/login','/auth/callback','/auth/session','/auth/logout']);
 if(mode!=='vault'&&!/^https:/.test(base)&&!['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname))throw Error('Remote vault requires verified TLS');
-let service;if(mode==='vault')service=createService({dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+let service;if(mode==='vault')service=createService({dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
 const instance=(process.env.POD_NAME||'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,120);
