@@ -26,5 +26,7 @@ export function monitoring(store, principals, tenant, params, now = Date.now()) 
  const sources=registered.map(p=>{const lastSeen=seen.find(s=>s.source===p.id)?.lastSeen||null;return {id:p.id,kind:p.kind,lastSeen,status:!lastSeen?'not_connected':now-Date.parse(lastSeen)>300000?'stale':'receiving'};});
  return {range,source,generatedAt:new Date(now).toISOString(),bucketMs:step,refreshMs,points,sources,
  scope:'tenant_retained_event_projection_by_received_time',
- limitations:['수신 시각 기준 현재 보존 중인 조회 사본 집계; 파기 후 과거 수치가 줄 수 있습니다','도구 결과의 상태 미확인은 result 기록의 상태가 없거나 success/failure가 아닌 경우입니다. 결과 자체가 없는 행동의 수가 아닙니다','수신 0은 수집 기록 없음이며 실행 없음·안전·연결 정상의 증명이 아닙니다','telemetryFailures는 OTLP span이 자기 보고한 오류 수이며 독립 도구 결과(success/failure)에 합산하지 않습니다','운영 집계는 서명된 감사 증거를 대체하지 않습니다']};
+ limitations:['수신 시각 기준 현재 보존 중인 조회 사본 집계; 파기 후 과거 수치가 줄 수 있습니다',
+  '도구 결과의 상태 미확인은 result 기록의 상태가 없거나 success/failure가 아닌 경우입니다. 결과 자체가 없는 행동의 수가 아닙니다','수신 0은 수집 기록 없음이며 실행 없음·안전·연결 정상의 증명이 아닙니다',
+  'telemetryFailures는 OTLP span이 자기 보고한 오류 수이며 독립 도구 결과(success/failure)에 합산하지 않습니다','운영 집계는 서명된 감사 증거를 대체하지 않습니다']};
 }

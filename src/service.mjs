@@ -73,7 +73,10 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  }
  function keySeparation(fileKeyIds){
   const status=keyring.status(),legacyFiles=fileKeyIds['legacy-signing-v1']||0;
-  return {status:!status.configured?'not_separated':legacyFiles?'migration_pending':'separated',...status,documentFilesByKeyId:fileKeyIds,backupEncryption:'not_checked_online',eventKeys:{storage:'same_database_unwrapped',purpose:'crypto_shredding_of_ledger_ciphertext',confidentialityAgainstDatabaseReader:false,liveProjectionPlaintext:true},limitations:['Signing and data keys are separate secrets but are both loaded by the vault process; a host or root attacker on the vault reads both.','Legacy signing-key-derived ciphertext remains decryptable with the signing key until re-encrypted and old backups are retired.']};
+  const eventKeys={storage:'same_database_unwrapped',purpose:'crypto_shredding_of_ledger_ciphertext',confidentialityAgainstDatabaseReader:false,liveProjectionPlaintext:true};
+  return {status:!status.configured?'not_separated':legacyFiles?'migration_pending':'separated',...status,documentFilesByKeyId:fileKeyIds,backupEncryption:'not_checked_online',eventKeys,limitations:[
+   'Signing and data keys are separate secrets but are both loaded by the vault process; a host or root attacker on the vault reads both.',
+   'Legacy signing-key-derived ciphertext remains decryptable with the signing key until re-encrypted and old backups are retired.']};
  }
  const policyObject=(p,type,id)=>verifiedPolicyObjects(p,type).get(id)||fail(404,'대상을 찾을 수 없습니다');
  const governanceDocuments=createGovernanceDocuments({store,dataDir,keyring,getSystem:(p,id)=>policyObject(p,'system',id)});

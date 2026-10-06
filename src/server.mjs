@@ -78,7 +78,8 @@ async function route(req,res){
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
-  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp'?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384);
+  const largeBody=url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp';
+  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384);
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
    const output=await service.handle(req.method,url,req.headers,body);res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
