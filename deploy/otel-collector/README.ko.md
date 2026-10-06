@@ -77,6 +77,9 @@ OpenLLMetry는 `TRACELOOP_TRACE_CONTENT=false`). 직접 전송 시에는 본문�
 
 서버 측 조정 값(ingress/vault 환경 변수): `OTLP_MAX_BODY_BYTES`(4 MiB), `OTLP_MAX_DECODED_BYTES`(8 MiB), `OTLP_MAX_SPANS`(8192),
 `OTLP_MAX_INFLIGHT`(8), `OTLP_FORWARD_TIMEOUT_MS`(15000), `ANALYSIS_BACKLOG_LIMIT_PER_TENANT`(10000, vault).
+수신기는 본문을 읽기 전에 vault에 Bearer 토큰을 확인하고(토큰 해시별 결과를 허용 30초·거부 5초 캐시), 해석 비용은 `OTLP_MAX_SPANS`에서
+정한 구조 한도로 묶습니다: ResourceSpans+ScopeSpans ≤ 4×, 속성(KeyValue)+배열 값 ≤ 64×(JSON은 객체·배열 ≤ 64×, 값 ≤ 128×,
+최소 64/4,096). 넘으면 413입니다. 분석 적체 한도는 묶음이 새로 추가할 행동 수까지 더해 판단하며, 적체가 0이면 한도보다 큰 묶음도 받습니다.
 
 ## 5. 무엇이 어떻게 기록되나 (매핑 `otel-genai-map-1`)
 

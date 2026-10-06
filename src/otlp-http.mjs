@@ -3,6 +3,7 @@
 // answers per the OTLP/HTTP spec: the response uses the request's Content-Type, partial success is
 // 200 + partialSuccess, transient failures are 503 + Retry-After (never 500: exporters drop data on 500).
 import zlib from 'node:zlib';
+import {createHash} from 'node:crypto';
 import {promisify} from 'node:util';
 import {decodeTraceRequest, mapTraceRequest, rejectionSummary, OTLP_BATCH_FORMAT, OTLP_MAPPING_VERSION} from './otlp.mjs';
 import {encodeExportTraceServiceResponse, encodeStatus} from './otlp-protobuf.mjs';
@@ -65,6 +66,34 @@ export function localForwarder(service) {
   };
 }
 
+// The body is read, decompressed and decoded only for a token the vault accepts as an OTLP source: before this check an
+// unauthenticated 8 KiB gzip body cost seconds of CPU and up to 1 GB of heap. The probe is an empty batch (one principal
+// lookup at the vault, also served by vaults that predate it). Verdicts are cached per token hash for a short time; the
+// vault still authenticates every real batch, so a cached "allowed" never stores anything by itself.
+export const OTLP_AUTH_PROBE = JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: OTLP_MAPPING_VERSION, events: []});
+export function tokenGate(check, {allowMs = 30000, denyMs = 5000, maxEntries = 1024, now = Date.now} = {}) {
+  const verdicts = new Map(), pending = new Map();
+  async function lookup(key, authorization) {
+    let denied = null;
+    try { await check(authorization); } catch (error) { if (error?.status !== 401 && error?.status !== 403) throw error; denied = error; }
+    const verdict = {denied, until: now() + (denied ? denyMs : allowMs)};
+    if (verdicts.size >= maxEntries) verdicts.delete(verdicts.keys().next().value);
+    verdicts.set(key, verdict);
+    return verdict;
+  }
+  return async authorization => {
+    const key = createHash('sha256').update(authorization).digest('base64url');
+    let verdict = verdicts.get(key);
+    if (!verdict || verdict.until <= now()) {
+      verdicts.delete(key);
+      let running = pending.get(key); // concurrent requests with one token share one vault call
+      if (!running) { running = lookup(key, authorization).finally(() => pending.delete(key)); pending.set(key, running); }
+      verdict = await running;
+    }
+    if (verdict.denied) throw new OtlpHttpError(verdict.denied.status, verdict.denied.message);
+  };
+}
+
 const mediaType = value => String(value || '').split(';')[0].trim().toLowerCase();
 
 async function readBody(req, limit) {
@@ -93,7 +122,8 @@ async function decompress(raw, encoding, limit) {
   }
 }
 
-export function createOtlpHttp({forward, limits = otlpLimits(), log = () => {}}) {
+export function createOtlpHttp({forward, authenticate = tokenGate(authorization => forward(authorization, OTLP_AUTH_PROBE)), limits = otlpLimits(),
+  log = () => {}}) {
   let inflight = 0;
   function send(res, type, status, body, headers = {}) {
     res.statusCode = status;
@@ -123,6 +153,7 @@ export function createOtlpHttp({forward, limits = otlpLimits(), log = () => {}})
       if (encoding === undefined) throw new OtlpHttpError(415, 'unsupported Content-Encoding; use gzip, deflate, zstd or none');
       const authorization = req.headers.authorization || '';
       if (!/^Bearer [\x21-\x7e]+$/.test(authorization)) throw new OtlpHttpError(401, 'bearer token required');
+      await authenticate(authorization);
       if (inflight >= limits.maxInflight) throw busy('receiver busy; retry later', 1);
       inflight++;
       try {

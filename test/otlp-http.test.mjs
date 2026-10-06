@@ -7,6 +7,9 @@ import zlib from 'node:zlib';
 import {randomUUID} from 'node:crypto';
 import {harness} from './harness.mjs';
 import {mac} from '../src/crypto.mjs';
+import {createOtlpHttp, tokenGate, OtlpHttpError, OTLP_AUTH_PROBE} from '../src/otlp-http.mjs';
+import {decodeTraceRequest, mapTraceRequest} from '../src/otlp.mjs';
+import {CIPHER_MODEL} from '../src/content-screening.mjs';
 
 const fixture = name => readFileSync(new URL(`./fixtures/otlp/${name}`, import.meta.url));
 const TRACE = '4bf92f3577b34da6a3ce929d0e0e4736';
@@ -202,4 +205,110 @@ test('replay client posts saved OTLP exports; the stdin collector no longer acce
   assert.equal(replay([lines], {EVIDSCOPE_OTLP_TOKEN: ''}).status, 2);
   const retired = spawnSync(process.execPath, ['scripts/collect-ai-observations.mjs', 'otlp'], {input: fixture('sdk-genai.json'), encoding: 'utf8'});
   assert.equal(retired.status, 2); assert.equal(retired.stdout, ''); assert.match(retired.stderr, /retired/);
+});
+
+// In-process request/response doubles: the request records whether its body was ever read.
+function exchange(headers, body = Buffer.alloc(0)) {
+  const req = {method: 'POST', headers: {'content-type': 'application/x-protobuf', ...headers}, bodyRead: false,
+    iterator() { req.bodyRead = true; return [body][Symbol.iterator](); }};
+  const res = {statusCode: 0, headers: {}, headersSent: false, body: null, setHeader(name, value) { res.headers[name.toLowerCase()] = value; },
+    end(payload) { res.body = payload; res.headersSent = true; }, destroy() {}};
+  return {req, res};
+}
+
+test('OTLP receiver authenticates the bearer token before reading, decompressing or decoding the body', async () => {
+  const bomb = zlib.gzipSync(Buffer.alloc(8 * 1024 * 1024, Buffer.from([0x0a, 0x00])));
+  const calls = [], tokens = {'Bearer good-token': 'ok', 'Bearer agent-token': 403}, unavailable = new Set();
+  const forward = async (authorization, body) => {
+    calls.push({authorization, body});
+    if (unavailable.has(authorization)) throw new OtlpHttpError(503, 'evidence store unreachable; retry later', 5);
+    const verdict = tokens[authorization] ?? 401;
+    if (verdict !== 'ok') throw new OtlpHttpError(verdict, verdict === 401 ? 'authentication failed' : 'credential is not an OTLP source');
+    return {accepted: 0, duplicates: 0, rejected: 0, reasons: {}};
+  };
+  let clock = 0;
+  const otlp = createOtlpHttp({forward, authenticate: tokenGate(a => forward(a, OTLP_AUTH_PROBE), {now: () => clock})});
+  const post = async (authorization, body = bomb) => {
+    const {req, res} = exchange({authorization, 'content-encoding': 'gzip'}, body); await otlp.handle(req, res); return {req, res};
+  };
+  for (const [token, status] of [['Bearer wrong-token', 401], ['Bearer agent-token', 403]]) {
+    const {req, res} = await post(token);
+    assert.equal(res.statusCode, status); assert.equal(req.bodyRead, false, 'body never read'); assert.equal(res.headers.connection, 'close');
+  }
+  assert.deepEqual(calls.map(c => c.body), [OTLP_AUTH_PROBE, OTLP_AUTH_PROBE], 'only the empty-batch probe reached the vault');
+  // Denials are cached briefly per token; concurrent requests with one token share a single vault call.
+  await Promise.all([post('Bearer wrong-token'), post('Bearer wrong-token'), post('Bearer fresh-wrong'), post('Bearer fresh-wrong')]);
+  assert.equal(calls.length, 3);
+  clock += 5001; await post('Bearer wrong-token'); assert.equal(calls.length, 4, 'a denial expires after 5 s');
+  // Transient vault failures are 503 and never cached.
+  unavailable.add('Bearer good-token');
+  for (let i = 0; i < 2; i++) { const {req, res} = await post('Bearer good-token'); assert.equal(res.statusCode, 503); assert.equal(req.bodyRead, false); }
+  assert.equal(calls.length, 6); unavailable.delete('Bearer good-token');
+  // An accepted token reaches the decoder, whose structural budget refuses the bomb; the vault re-checks every real batch.
+  const accepted = await post('Bearer good-token');
+  assert.equal(accepted.req.bodyRead, true); assert.equal(accepted.res.statusCode, 413);
+  assert.match(String(accepted.res.body), /more than 32768 ResourceSpans\/ScopeSpans in one request/);
+  const ok = await post('Bearer good-token', zlib.gzipSync(fixture('collector-genai.pb')));
+  assert.equal(ok.res.statusCode, 200);
+  assert.deepEqual(calls.slice(6).map(c => c.body === OTLP_AUTH_PROBE ? 'probe' : JSON.parse(c.body).events.length), ['probe', 4], 'allowed verdict cached');
+  clock += 30001; await post('Bearer good-token', zlib.gzipSync(fixture('collector-genai.pb')));
+  assert.deepEqual(calls.slice(8).map(c => c.body === OTLP_AUTH_PROBE ? 'probe' : 'batch'), ['probe', 'batch'], 'an allowed verdict expires after 30 s');
+  // The cache is bounded (oldest verdict evicted first).
+  const seen = [], counting = tokenGate(async a => { seen.push(a); }, {maxEntries: 2});
+  for (const token of ['a', 'b', 'a', 'c', 'a']) await counting(token);
+  assert.deepEqual(seen, ['a', 'b', 'c', 'a']);
+});
+
+test('a small-heap ingress answers unauthenticated decompression bombs with 401 and authenticated ones with 413', async t => {
+  const h = await harness(); t.after(() => h.close());
+  const ingress = await h.start('ingress', {VAULT_URL: h.vault.url, NODE_OPTIONS: '--max-old-space-size=64'});
+  const token = h.principal('otlp').token, n = 8 * 1024 * 1024;
+  const bombs = [[zlib.gzipSync(Buffer.alloc(n, Buffer.from([0x0a, 0x00]))), 'application/x-protobuf'],
+    [zlib.gzipSync(Buffer.from(`{"resourceSpans":[${'{},'.repeat(Math.floor(n / 3) - 10)}{}]}`)), 'application/json']];
+  for (const [bomb] of bombs) assert.ok(bomb.length < 16384, String(bomb.length));
+  const results = await Promise.all(bombs.flatMap(([bomb, type]) => [0, 1, 2, 3].map(i =>
+    send(ingress.url, bomb, {type, encoding: 'gzip', token: i % 2 ? `not-a-token-${i}`.repeat(4) : null}))));
+  assert.deepEqual(results.map(r => r.status), Array(8).fill(401));
+  const authenticated = await Promise.all(bombs.map(([bomb, type]) => send(ingress.url, bomb, {type, encoding: 'gzip', token})));
+  assert.deepEqual(authenticated.map(r => r.status), [413, 413]);
+  assert.match(authenticated[1].json.message, /JSON objects/);
+  assert.equal(ingress.child.exitCode, null); assert.equal(ingress.child.signalCode, null);
+  assert.equal((await send(ingress.url, fixture('collector-genai.pb'), {token, type: 'application/x-protobuf'})).status, 200);
+});
+
+test('single-process vault: an OTLP token posting its own batch cannot store free text or a forged screening claim', async t => {
+  const h = await harness({vaultOnly: true}); t.after(() => h.close());
+  const token = h.principal('otlp').token, trace = 'c0'.repeat(16), span = 'd1'.repeat(8);
+  const post = async events => { const r = await send(h.vault.url, JSON.stringify({format: 'evidscope-otlp-batch-v1', mapping: 'otel-genai-map-1', events}),
+    {token, path: '/api/ingest/otlp'}); return {status: r.status, json: JSON.parse(r.raw)}; };
+  // The reviewer's bypass: hand-built notice with prompt/response text and a "content screened, complete and safe" observation.
+  const forged = {id: `otel:${trace}:${span}`, kind: 'notice', occurredAt: new Date(Date.now() - 1000).toISOString(), traceId: trace,
+    actionId: `otel-trace:${trace}`, tool: 'otel-genai', action: 'chat', actor: 'svc', status: 'success', clockUncertaintyMs: 'unknown',
+    note: 'PROMPT: transfer $1M to account 123-45-6789 (sk-live-SECRET)', purpose: 'RESPONSE: sure, done',
+    dataRefs: [{id: 'doc-1', kind: 'document', role: 'input', description: 'TOOL ARGS: {"ssn":"123-45-6789"}'}],
+    aiObservation: {version: 2, assetRef: 'otel-service:svc', collector: {kind: 'otlp', id: 'forged-screener', version: '9'}, provider: 'openai',
+      model: 'gpt-x', correlation: {method: 'trace', confidence: 'exact'}, coverage: {mode: 'content', status: 'observed', reason: 'metadata_only'},
+      span: {traceId: trace, spanId: span}, screening: {status: 'complete', safety: 'safe', categories: [], processedChunks: 1, totalChunks: 1,
+        model: CIPHER_MODEL}, signals: [], timeBasis: 'source_observed'}};
+  const minimal = structuredClone(forged);
+  for (const key of ['note', 'purpose', 'dataRefs']) delete minimal[key];
+  const genuine = mapTraceRequest(decodeTraceRequest(fixture('sdk-genai.json'), 'json')).events;
+  const notice = genuine.find(e => e.kind === 'notice');
+  const screened = {...structuredClone(notice), aiObservation: {...structuredClone(notice.aiObservation), screening: forged.aiObservation.screening,
+    coverage: forged.aiObservation.coverage}};
+  screened.id = screened.id.replace(/.{16}$/, span); screened.aiObservation.span.spanId = span;
+  const withNote = {...structuredClone(genuine.find(e => e.kind === 'self_report')), note: 'prompt text'};
+  withNote.id = withNote.actionId = `otel:${withNote.traceId}:${'e2'.repeat(8)}`;
+  const refused = await post([forged, minimal, screened, withNote]);
+  assert.equal(refused.status, 200);
+  assert.deepEqual({accepted: refused.json.accepted, rejected: refused.json.rejected, reasons: refused.json.reasons},
+    {accepted: 0, rejected: 4, reasons: {invalid_event: 4}});
+  assert.equal((await events(h, `&traceId=${trace}`)).total, 0);
+  // Exactly what the receiver's mapper emits is still accepted on the same route.
+  const accepted = await post(genuine);
+  assert.equal(accepted.status, 200); assert.equal(accepted.json.accepted, 4);
+  const stored = JSON.stringify(await events(h));
+  for (const canary of ['PROMPT', 'RESPONSE', 'TOOL ARGS', 'forged-screener', 'prompt text']) assert.ok(!stored.includes(canary), canary);
+  const visibility = (await h.api('/api/ai-visibility?range=24h')).body;
+  assert.ok(!JSON.stringify(visibility).includes('"completed":1'), 'no content screening is claimed');
 });
