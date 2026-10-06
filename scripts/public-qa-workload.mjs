@@ -37,9 +37,9 @@ export function setupManifest(){
  const stager={apiVersion:'v1',kind:'Pod',metadata:{name:'public-qa-stager',namespace:QA_NAMESPACE,labels:{app:'public-qa-stager'}},spec:podSpec({readOnly:false})};
  return {apiVersion:'v1',kind:'List',items:[ns,deny,...claims,stager]};
 }
-export function trainingJob(runId,{resumeProvenance}={}){
+export function trainingJob(runId,{resumeProvenance,inputs}={}){
  if(!/^public-qa-[a-z0-9-]{1,35}$/.test(runId))throw Error('invalid_run_id');
- const inputs=publicQaInputs(),spec=podSpec({gpu:true}),container=spec.containers[0];
+ inputs??=publicQaInputs();const spec=podSpec({gpu:true}),container=spec.containers[0];
  spec.volumes.push({name:'runtime',configMap:{name:inputs.runtimeConfigMap}});container.volumeMounts.push({name:'runtime',mountPath:'/runtime',readOnly:true});
  container.command=['python','/runtime/train-public-qa.py'];
  const stageTwo=resumeProvenance?.value?.schemaVersion===2;
