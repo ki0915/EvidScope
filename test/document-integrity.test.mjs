@@ -81,7 +81,7 @@ test('integrity authenticates every referenced finance and governance file while
  const orphanDir=join(h.dir,'finance-documents',sha(Buffer.from('alpha')));mkdirSync(orphanDir,{recursive:true});writeFileSync(join(orphanDir,'f'.repeat(64)+'.json'),'unreferenced corrupt orphan');
  const result=await h.call('/api/integrity');assert.equal(result.valid,true);assert.deepEqual(result.governanceDocumentProjection,{valid:true,documents:1,revisions:2});
  assert.deepEqual(result.documentFiles,{valid:true,financeFiles:1,governanceFiles:2,uniqueFiles:3,plaintextBytes:supplier.length+governance1.length+governance2.length,verification:'referenced_ciphertext_decrypted_authenticated_and_hashed_per_file',unreferencedFilesScanned:false,filesystemSnapshotProven:false});
- assert.deepEqual(result.verificationScope.notChecked,[]);assert.match(result.verificationScope.limitations[0],/unreferenced files/);
+ assert.deepEqual(result.verificationScope.notChecked,['rollback','truncation','tenant_removal']);assert.match(result.verificationScope.limitations[0],/unreferenced files/);
 });
 
 test('a corrupt historical supplier file fails integrity and backup even when the latest revision is retrievable',async t=>{

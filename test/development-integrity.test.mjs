@@ -39,7 +39,7 @@ test('unsigned run reassignment cannot alter development views or admit new sign
  await assert.rejects(h.call('/api/development-runs'),error=>error.status===409);
  const source=h.principals.find(p=>p.tenant==='alpha'&&p.role==='source'),raw={eventId:'new-event',eventName:'run.completed',runId:'run-one',teamId:'team-one',roleId:'role-one',status:'completed',occurredAt:new Date().toISOString(),toolName:'unknown'},body=JSON.stringify(raw),timestamp=String(Date.now()),nonce='development-nonce-0001';
  await assert.rejects(h.call('/api/development-runs/events',{role:'source',method:'POST',body,headers:{'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,'x-evid-signature':mac(source.hmacSecret,timestamp,nonce,body)}}),error=>error.status===409);
- const integrity=await h.call('/api/integrity');assert.equal(integrity.valid,false);assert.match(integrity.error,/Development projection/);assert.ok(integrity.verificationScope.checks.includes('development_run_projections'));assert.deepEqual(integrity.verificationScope.notChecked,[]);
+ const integrity=await h.call('/api/integrity');assert.equal(integrity.valid,false);assert.match(integrity.error,/Development projection/);assert.ok(integrity.verificationScope.checks.includes('development_run_projections'));assert.deepEqual(integrity.verificationScope.notChecked,['rollback','truncation','tenant_removal']);
  assert.equal((await h.call('/api/integrity',{tenant:'beta'})).valid,true);
  const rebuilt=await h.call('/api/rebuild',{role:'admin',method:'POST',body:'{}'});assert.equal(rebuilt.developmentEvents,1);assert.equal((await h.call('/api/development-runs')).items[0].runId,'run-one');assert.equal((await h.call('/api/integrity')).valid,true);
 });
