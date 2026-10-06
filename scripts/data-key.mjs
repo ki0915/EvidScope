@@ -44,7 +44,7 @@ if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.u
  try{
   if(mode==='generate'&&args.length===1)console.log(JSON.stringify({created:true,file:resolve(args[0]),kid:generateDataKeyFile(resolve(args[0]))}));
   else if(mode==='id'&&args.length===1)console.log(JSON.stringify({kid:dataKeyId(readDataKeyFile(resolve(args[0])))}));
-  else if(mode==='migrate'&&args.length===2)console.log(JSON.stringify(migrateDocuments({dataDir:resolve(args[0]),signingKey:readFileSync(resolve(args[1]),'utf8'),...dataKeysFromEnv(process.env)})));
+  else if(mode==='migrate'&&args.length===2)console.log(JSON.stringify(migrateDocuments({dataDir:resolve(args[0]),signingKey:readFileSync(resolve(args[1]),'utf8'),...dataKeysFromEnv({...process.env,DATA_DIR:resolve(args[0])})})));
   else throw Error('Usage: generate OUT_FILE | id KEY_FILE | migrate DATA_DIR SIGNING_KEY_FILE (env DATA_KEY_FILE, DATA_KEY_PREVIOUS_FILES)');
  }catch(error){console.error(JSON.stringify({ok:false,error:error.message}));process.exitCode=1;}
 }
