@@ -25,6 +25,8 @@ import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
 import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
+import {createOtlpIngest} from './otlp-ingest.mjs';
+import {appendSourceEvent,assertAnalysisCapacity} from './event-ingest.mjs';
 
 export function createService({dataDir,config,key,requirements=[],runtimeReceipt=()=>undefined}) {
  assertRecoveryActivation({dataDir,key,config});
@@ -36,6 +38,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
  const analysis=createAnalysis(store,principals);
  const finance=createFinanceEvidence({store,dataDir,key,requirements,governanceReport:report});
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
+ const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
  const human=p=>{if(!['auditor','reviewer','admin'].includes(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');};
@@ -172,14 +175,11 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
     store.db.prepare('INSERT INTO nonces VALUES(?,?,?)').run(p.id,nonce,Date.now()+600000);
     const prev=store.db.prepare('SELECT fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?').get(p.tenant,p.id,e.id);
     if(prev){if(prev.fingerprint!==e.fingerprint)fail(409,'동일 출처 이벤트 ID의 내용 충돌');store.count('duplicates');return {accepted:true,duplicate:true,durability:'sqlite_full_commit',analysis:'asynchronous',externalSeal:false};}
-    const backlog=store.db.prepare('SELECT COUNT(*) n FROM actions WHERE analyzed<version').get().n;if(backlog>10000)fail(503,'분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
-    const record=store.append(p.tenant,'event',e,p.id);
-    store.append(p.tenant,'event_receipt',{format:'evidscope-event-receipt-v1',basis:'source_ingest',source:e.source,id:e.id,fingerprint:e.fingerprint,eventSeq:record.seq,eventHash:record.hash},p.id);
-    store.project({...e,seq:record.seq,hash:record.hash});
-    store.projectionMutation(()=>store.db.prepare('INSERT INTO actions(tenant,id,version) VALUES(?,?,1) ON CONFLICT(tenant,id) DO UPDATE SET version=version+1').run(p.tenant,e.actionId));
+    assertAnalysisCapacity(store,p.tenant);appendSourceEvent(store,p,e);
     store.count('accepted');return {accepted:true,duplicate:false,durability:'sqlite_full_commit',analysis:'asynchronous',externalSeal:false};
    });
   }
+  if(path==='/api/ingest/otlp'&&method==='POST')return ingestOtlp(p,body);
   if(path==='/internal/claim'&&method==='POST')return analysis.claim(p);
   if(path==='/internal/complete'&&method==='POST'){let result;try{result=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}return analysis.commit(p,result);}
   if(path==='/internal/analyze'&&method==='POST'){if(p.role!=='worker')fail(403,'분석 서비스 전용');fail(410,'분산 분석 claim/complete API로 전환되었습니다');}
