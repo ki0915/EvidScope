@@ -1,6 +1,6 @@
 import {DatabaseSync,backup} from 'node:sqlite';
 import {createHash,createPrivateKey,createPublicKey,createCipheriv,createDecipheriv,randomBytes,sign,verify} from 'node:crypto';
-import {mkdirSync,mkdtempSync,lstatSync,existsSync,readdirSync,readFileSync,writeFileSync,copyFileSync,unlinkSync,renameSync,chmodSync,createReadStream,createWriteStream} from 'node:fs';
+import {mkdirSync,mkdtempSync,lstatSync,existsSync,readdirSync,readFileSync,writeFileSync,copyFileSync,unlinkSync,renameSync,chmodSync,createReadStream,createWriteStream,rmdirSync} from 'node:fs';
 import {resolve,join,dirname,basename,relative,isAbsolute,sep} from 'node:path';
 import {pipeline} from 'node:stream/promises';
 import {Store} from './store.mjs';
@@ -12,8 +12,11 @@ import {checkActionProjection} from './action-integrity.mjs';
 import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
+import {signRecoveryFrontier,verifyRecoveryFrontier,applyRecoveryFrontier} from './recovery-frontier.mjs';
+import {sealRestorationState,pinRestorationState,recoveryPinPath} from './recovery-state.mjs';
 
 const FORMAT='evidscope-vault-backup-v1';
+const contained=(root,path)=>{const rel=relative(root,path);return !rel||!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep);};
 const hashBytes=bytes=>createHash('sha256').update(bytes).digest('hex');
 const publicDer=key=>createPublicKey(key).export({format:'der',type:'spki'});
 function keys(privateKey,publicKey){
@@ -79,7 +82,7 @@ function inspectDatabase(file,dataDir,key,expectedCheckpoints){
 
 export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey}){
  const {key,pub,encryption}=keys(privateKey,publicKey),source=noLinks(dataDir),output=noLinks(backupDir);
- if(existsSync(output)||output===source||output.startsWith(source+sep))throw Error('Backup requires a new directory outside the source');
+ if(existsSync(output)||contained(source,output))throw Error('Backup requires a new directory outside the source');
  const sourceFile=member(source,'evidence.db');if(!lstatSync(sourceFile).isFile())throw Error('Missing vault database');
  mkdirSync(output,{mode:0o700});
  const temporary=join(output,'.snapshot.db');let sourceDb;
@@ -119,10 +122,26 @@ async function verifyArchive(backupDir,pub,anchor){
  return manifest;
 }
 
-export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,anchor}){
+export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,anchor,config}){
+ const {key,pub}=keys(privateKey,publicKey),source=noLinks(dataDir),sourceFile=member(source,'evidence.db');
+ if(!config||typeof config!=='object')throw Error('Recovery frontier requires current credential/config binding');
+ const stage=mkdtempSync(join(dirname(source),'.recovery-frontier-')),snapshotFile=join(stage,'snapshot.db');let db,store;
+ try{
+  db=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});await backup(db,snapshotFile);db.close();db=null;
+  const checked=inspectDatabase(snapshotFile,source,key);store=readonlyStore(snapshotFile,key);
+  return signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
+ }finally{
+  store?.close();db?.close();for(const name of ['snapshot.db','snapshot.db-wal','snapshot.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}rmdirSync(stage);
+ }
+}
+
+export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,anchor,frontier,frontierAnchor,config}){
  const {key,pub,encryption}=keys(privateKey,publicKey),root=noLinks(backupDir),target=noLinks(restoreDir);
- if(existsSync(target)||target===root||target.startsWith(root+sep))throw Error('Restore requires a new directory outside the backup');
+ if(existsSync(target)||contained(root,target))throw Error('Restore requires a new directory outside the backup');
+ if(existsSync(recoveryPinPath(target)))throw Error('External restoration pin already exists; refusing overwrite');
  const manifest=await verifyArchive(root,pub,anchor);
+ const activationAccepted=frontier!==undefined||frontierAnchor!==undefined||config!==undefined;
+ if(activationAccepted){if(!frontier||!frontierAnchor||!config)throw Error('Activation requires frontier, independent frontier anchor and current config');verifyRecoveryFrontier({frontier,anchor:frontierAnchor,archiveAnchor:anchor,publicKey:pub,config});}
  const stage=mkdtempSync(join(dirname(target),'.'+basename(target)+'-incomplete-'));chmodSync(stage,0o700);
  const database=join(stage,'evidence.db');
  try{
@@ -133,10 +152,17 @@ export async function restoreVaultBackup({backupDir,restoreDir,privateKey,public
   for(const f of manifest.files.filter(f=>f.path!=='evidence.db.enc')){const output=member(stage,f.path);mkdirSync(dirname(output),{recursive:true,mode:0o700});copyFileSync(member(root,f.path),output);chmodSync(output,0o600);if(await hashFile(output)!==f.sha256)throw Error('Document changed during restoration');}
   const restored=inspectDatabase(database,stage,key,anchor.checkpoints);
   if(canonical(restored.tenants)!==canonical(manifest.tenants)||canonical(restored.documents)!==canonical(manifest.files.filter(f=>f.path!=='evidence.db.enc').map(f=>f.path).sort()))throw Error('Restored evidence differs from signed inventory');
+  const store=new Store(stage,key);let activation;
+  try{
+   if(activationAccepted)applyRecoveryFrontier({store,frontier,anchor:frontierAnchor,archiveAnchor:anchor,config});
+   activation=sealRestorationState({store,dataDir:stage,archiveAnchor:anchor,frontier,config,activationAccepted});
+  }finally{store.close();}
+  const accepted=inspectDatabase(database,stage,key);
+  const activationPin=pinRestorationState({dataDir:target,marker:activation,key});
   // Reserve the final path against accidental overwrite. Only this empty directory is removed.
   mkdirSync(target,{mode:0o700});
-  try{const {rmdirSync}=await import('node:fs');rmdirSync(target);renameSync(stage,target);}catch(error){throw Error('Restore publication failed: '+error.message);}
-  return {verified:true,restoredDirectory:target,manifestSha256:digest(manifest),tenants:restored.tenants,documents:restored.documents.length,governanceDocuments:restored.documents.filter(path=>path.startsWith('governance-documents/')).length,rollbackChecked:true,servicesStarted:false,scope:'Snapshot recovery verified; not elapsed five-year retention, HA, remote retention, source truth, or legal sufficiency certification.'};
+  try{rmdirSync(target);renameSync(stage,target);}catch(error){throw Error('Restore publication failed: '+error.message);}
+  return {verified:true,restoredDirectory:target,activationPin,manifestSha256:digest(manifest),tenants:accepted.tenants,documents:accepted.documents.length,governanceDocuments:accepted.documents.filter(path=>path.startsWith('governance-documents/')).length,rollbackChecked:true,activationAccepted,activationStatus:activation.status,frontierSha256:activation.frontierSha256,servicesStarted:false,scope:'Snapshot integrity verified. Activation requires independently pinned latest access/erasure frontier; its freshness remains an operator responsibility. External restoration pin must remain protected outside the data directory. Not elapsed five-year retention, HA, remote retention, source truth, or legal sufficiency certification.'};
  }catch(error){
   // Keep encrypted documents for diagnosis; remove known plaintext DB files only.
   for(const name of ['evidence.db','evidence.db-wal','evidence.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}

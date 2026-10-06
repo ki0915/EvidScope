@@ -45,7 +45,7 @@ test('a verified tool execution alone leaves risk control insufficient until a s
  h.service.store.transaction(()=>{const record=h.service.store.append(h.principal.tenant,'event',event,h.principal.id);h.service.store.project({...event,seq:record.seq,hash:record.hash});});
  await h.call('/api/governance/assessments',assessment('KR-34-RISK',[{type:'event',ref:'credit-tool/execution'}]));
  let item=(await h.call('/api/governance/report?systemId=credit')).items.find(v=>v.requirement.id==='KR-34-RISK');
- assert.equal(item.status,'evidence_insufficient');assert.equal(item.technicalStatus,'typed_evidence_insufficient');assert.deepEqual(item.technicalEvidence.missingChecks,['high_impact_risk_management']);
+ assert.equal(item.status,'evidence_insufficient');assert.equal(item.technicalStatus,'typed_evidence_insufficient');assert.deepEqual(item.technicalEvidence.missingChecks,['high_impact_risk_management|supplier_risk_reliance']);
  const task=(await h.call('/api/governance')).tasks.find(v=>v.requirementId==='KR-34-RISK');assert.equal(task.status,'open');
  await assert.rejects(h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Execution happened'}),error=>error.status===409);
  const bytes=Buffer.from('Synthetic documented risk policy, organisation, mitigation test and residual risk review');

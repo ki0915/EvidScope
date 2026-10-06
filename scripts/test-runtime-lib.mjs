@@ -7,7 +7,22 @@ export const TEST_RUNTIME_SCOPE=Object.freeze({container:'evidscope-ollama-assis
 function failure(message,code='TEST_RUNTIME_INVALID'){const error=Error(message);error.code=code;throw error;}
 function command(program,args){const result=spawnSync(program,args,{encoding:'utf8',windowsHide:true,shell:false});return {status:result.status??1,stdout:result.stdout||'',stderr:result.stderr||'',error:result.error};}
 function readJson(path){try{return JSON.parse(readFileSync(path,'utf8'));}catch(error){if(error.code==='ENOENT')return null;throw error;}}
-function atomic(path,value){const temporary=`${path}.${process.pid}.${Date.now()}.tmp`;writeFileSync(temporary,JSON.stringify(value,null,2)+'\n',{flag:'wx'});renameSync(temporary,path);}
+const leaseRenameWaits=Object.freeze([20,40,60,80]);
+const leaseRenameWaitArray=new Int32Array(new SharedArrayBuffer(4));
+const leaseRenamePause=milliseconds=>Atomics.wait(leaseRenameWaitArray,0,0,milliseconds);
+export function writeTestRuntimeLease(path,value,{renameFile=renameSync,platform=process.platform,pause=leaseRenamePause}={}){
+ const temporary=`${path}.${process.pid}.${randomUUID()}.tmp`;
+ writeFileSync(temporary,JSON.stringify(value,null,2)+'\n',{flag:'wx'});
+ // Retry only publication of these already-written bytes to this same target.
+ // Never remove the target or replay resource commands. Failed temps remain.
+ for(let attempt=0;;attempt++){
+  try{renameFile(temporary,path);return;}
+  catch(error){
+   if(platform!=='win32'||!['EPERM','EBUSY'].includes(error.code)||attempt>=leaseRenameWaits.length)throw error;
+   pause(leaseRenameWaits[attempt]);
+  }
+ }
+}
 function assertSuccess(result,label){if(result.error||result.status!==0)failure(`${label} 실패`,result.error?.code||'TEST_RUNTIME_COMMAND');return result.stdout.trim();}
 function alive(pid){if(!Number.isInteger(pid)||pid<=0)return false;try{process.kill(pid,0);return true;}catch{return false;}}
 
@@ -18,7 +33,7 @@ export function createTestRuntime({root=resolve('.'),run=command,clock=()=>Date.
  function kubeconfigState(){if(!existsSync(expectedKubeconfig))return {path:expectedKubeconfig,exists:false,context:'unknown',valid:false};const result=run('kubectl',['--kubeconfig',expectedKubeconfig,'config','current-context']);const context=result.status===0?result.stdout.trim():'unknown';return {path:expectedKubeconfig,exists:true,context,valid:context===TEST_RUNTIME_SCOPE.context};}
  function leaseState(){const lease=readJson(leasePath);if(!lease)return null;const ownerAlive=lease.mode==='wrapper'?pidAlive(lease.ownerPid):null,idleExpired=clock()>=lease.idleExpiresAt;return {...lease,ownerAlive,idleExpired,reconciliationRequired:(lease.mode==='wrapper'&&!ownerAlive)||(lease.mode==='manual'&&idleExpired)};}
  function status(){return {scope:TEST_RUNTIME_SCOPE,ollama:dockerState(),k3d:clusterState(),kubeconfig:kubeconfigState(),lease:leaseState(),defaultState:'stopped_unless_explicit_test_start'};}
- function updateLease(lease){lease.updatedAt=clock();atomic(leasePath,lease);}
+ function updateLease(lease){lease.updatedAt=clock();writeTestRuntimeLease(leasePath,lease);}
  function ensureLease(leaseId){const lease=readJson(leasePath);if(!lease)failure('활성 test-runtime lease가 없습니다','TEST_RUNTIME_NO_LEASE');if(lease.leaseId!==leaseId)failure('leaseId 불일치','TEST_RUNTIME_OWNER');return lease;}
  function stopAttempted(lease){const stopped=[];for(const resource of [...lease.startAttempted].reverse()){
    if(resource==='k3d'){const state=clusterState();if(state.running){assertSuccess(run('k3d',['cluster','stop',TEST_RUNTIME_SCOPE.cluster]),'전용 k3d stop');stopped.push('k3d');}}

@@ -23,7 +23,8 @@ SYSTEM = "제공된 문서에서 질문의 답을 그대로 인용하세요. JSO
 
 
 def grounding_helper(stage=None):
-    name = "public_qa_grounding_continuation" if stage == "public_qa_grounding_continuation_v1" else "public_qa_grounding"
+    name = {"public_qa_grounding_continuation_v1": "public_qa_grounding_continuation",
+            "public_qa_grounding_balanced_v1": "public_qa_grounding_balanced"}.get(stage, "public_qa_grounding")
     path = Path(__file__).with_name(name + ".py")
     if not path.is_file():
         path = Path(__file__).with_name(name.replace("_", "-") + ".py")
@@ -180,7 +181,7 @@ def train(args, rows, manifest):
         raise RuntimeError("base_weight_shard_unverified")
     identity = {"baseRepository": "fdtn-ai/Foundation-Sec-8B-Reasoning", "baseRevision": args.base_revision, "baseArtifactLockSha256": sha(root / "artifact-lock.json"), "datasetSha256": sha(args.data), "manifestSha256": sha(args.manifest), "trainerSha256": sha(__file__), "artifactHelperSha256": sha(Path(__file__).with_name("training_artifacts.py")), "bindingHelperSha256": sha(helper_path), "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", ""), "rank": 8, "sequenceLength": 1024, "gpuMemoryFraction": args.gpu_memory_fraction, "batchSize": 1, "gradientAccumulationSteps": 16, "seed": 42, "learningRate": 0.0001, "maxSteps": args.max_steps, "stage": stage_for_max_steps(args.max_steps)}
     grounding_lineage = None
-    continuation = manifest.get("stage") == "public_qa_grounding_continuation_v1"
+    continuation = manifest.get("stage") in ("public_qa_grounding_continuation_v1", "public_qa_grounding_balanced_v1")
     if getattr(args, "grounding_provenance", None):
         grounding = grounding_helper(manifest.get("stage"))
         if args.max_steps != 20 or args.resume_from_checkpoint or args.resume_provenance or not args.warmstart_adapter:
@@ -399,7 +400,7 @@ def main():
     if not 0.1 <= args.gpu_memory_fraction <= 0.65:
         raise ValueError("gpu_memory_fraction_invalid")
     rows, manifest = admission(args.data, args.manifest)
-    grounding = manifest.get("stage") in ("public_qa_grounding_v1", "public_qa_grounding_continuation_v1")
+    grounding = manifest.get("stage") in ("public_qa_grounding_v1", "public_qa_grounding_continuation_v1", "public_qa_grounding_balanced_v1")
     if grounding:
         grounding_helper(manifest.get("stage")).verify_grounding_data(rows, manifest, args.manifest)
         if not args.grounding_provenance or not args.warmstart_adapter or args.max_steps != 20 or args.resume_from_checkpoint or args.resume_provenance:

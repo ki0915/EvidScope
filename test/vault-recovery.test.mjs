@@ -9,7 +9,7 @@ import {Store} from '../src/store.mjs';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createService} from '../src/service.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {canonical,digest,mac} from '../src/crypto.mjs';
 import {harness} from './harness.mjs';
 
@@ -24,7 +24,7 @@ async function fixture(t){
  for(const tenant of ['alpha','beta']){await call('/api/governance/systems',system,tenant);await call('/api/governance/bundles',bundle(tenant+' 합성 문서'),tenant);}
  const source=principals.find(p=>p.role==='source'),body=JSON.stringify({id:'event-1',actionId:'a-1',traceId:'t-1',kind:'intent',occurredAt:new Date().toISOString(),note:'합성 수집 원본'}),stamp=String(Date.now()),nonce=randomUUID();
  await service.handle('POST',new URL('/api/ingest','http://localhost'),{authorization:'Bearer '+source.token,'x-evid-timestamp':stamp,'x-evid-nonce':nonce,'x-evid-signature':mac(source.hmacSecret,stamp,nonce,body)},body);
- return {root,data,privateKey,publicKey,config,service,call,options:{dataDir:data,backupDir:join(root,'backup'),privateKey,publicKey},restore:(backupDir,anchor,restoreDir=join(root,'restored'))=>restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,anchor})};
+ return {root,data,privateKey,publicKey,config,service,call,options:{dataDir:data,backupDir:join(root,'backup'),privateKey,publicKey},restore:(backupDir,anchor,restoreDir=join(root,'restored'),activation={})=>restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,anchor,...activation})};
 }
 
 test('online WAL snapshot restores both tenants, historic documents, signed report and exact evidence',async t=>{
@@ -38,7 +38,8 @@ test('online WAL snapshot restores both tenants, historic documents, signed repo
  assert.equal(manifest.files.some(x=>/pem|config/.test(x.path)),false);
  // The live source keeps accepting changes after the snapshot is sealed.
  await f.call('/api/governance/systems',{...system,modelVersion:'v2'});
- const receipt=await f.restore(f.options.backupDir,anchor);assert.equal(receipt.documents,3);assert.equal(receipt.rollbackChecked,true);assert.equal(receipt.servicesStarted,false);
+ const latest=await createVaultRecoveryFrontier({dataDir:f.data,privateKey:f.privateKey,publicKey:f.publicKey,anchor,config:f.config});
+ const receipt=await f.restore(f.options.backupDir,anchor,join(f.root,'restored'),{frontier:latest.frontier,frontierAnchor:latest.anchor,config:f.config});assert.equal(receipt.documents,3);assert.equal(receipt.rollbackChecked,true);assert.equal(receipt.servicesStarted,false);assert.equal(receipt.activationAccepted,true);
  const restored=createService({dataDir:receipt.restoredDirectory,key:f.privateKey,config:f.config,requirements});t.after(()=>restored.store.close());
  assert.equal(restored.store.get('alpha','system','credit').modelVersion,'v1');
  assert.equal(restored.store.events('alpha').length,1);assert.equal(restored.store.events('beta').length,0);
@@ -46,6 +47,14 @@ test('online WAL snapshot restores both tenants, historic documents, signed repo
  const original=f.service.store.events('alpha');assert.deepEqual(restored.store.events('alpha'),original);
  const restoredApi=path=>restored.handle('GET',new URL(path,'http://localhost'),{authorization:'Bearer '+f.config.principals[0].token});
  const exported=await restoredApi('/api/governance/bundles/bundle/export');assert.equal(Buffer.from(exported.documents[0].contentBase64,'base64').toString(),'alpha 합성 변경 문서');
+});
+
+test('a verified snapshot without current frontier remains quarantined before service opens',async t=>{
+ const f=await fixture(t),anchor=await createVaultBackup(f.options),receipt=await f.restore(f.options.backupDir,anchor);
+ assert.equal(receipt.verified,true);assert.equal(receipt.activationAccepted,false);assert.equal(receipt.activationStatus,'quarantined');
+ const before=readFileSync(join(receipt.restoredDirectory,'evidence.db'));
+ assert.throws(()=>createService({dataDir:receipt.restoredDirectory,key:f.privateKey,config:f.config,requirements}),/Recovery activation rejected: snapshot quarantined/);
+ assert.deepEqual(readFileSync(join(receipt.restoredDirectory,'evidence.db')),before);
 });
 
 test('ciphertext tamper, extra members and stale independent anchors fail before publication',async t=>{
@@ -157,7 +166,8 @@ test('actual restored HTTP vault serves supplier bytes and preserves tenant acce
  assert.equal((await h.api('/api/governance/bundles',{role:'reviewer',body:bundle()})).status,200);
  const privateKey=readFileSync(join(h.dir,'signing-private.pem')),backupDir=join(h.dir,'backup'),restoreDir=join(h.dir,'restored');
  const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,publicKey:h.publicKey});
- await restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey:h.publicKey,anchor});
+ const latest=await createVaultRecoveryFrontier({dataDir:join(h.dir,'data'),privateKey,publicKey:h.publicKey,anchor,config:h.config});
+ const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(receipt.activationAccepted,true);
  const restored=await h.start('vault',{DATA_DIR:restoreDir});
  const document=await h.api('/api/governance/bundles/bundle/export',{base:restored.url});assert.equal(document.status,200);assert.equal(document.body.documents[0].contentBase64,bundle().documents[0].contentBase64);
  assert.equal((await h.api('/api/governance/bundles/bundle/export',{base:restored.url,tenant:'beta'})).status,404);

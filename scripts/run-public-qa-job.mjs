@@ -55,7 +55,9 @@ export async function observePublicQaPod({pod,jobUid,diagnostic=false,diagnostic
  try{return {sample:await measure(pod.metadata.name)};}
  catch(error){
   const before=pod.status.containerStatuses?.find(c=>c.name===pod.spec.containers[0].name),cid=before?.containerID?.replace(/^containerd:\/\//,''),message=String(error.stderr||error.message||'');
-  const delayedRuntimeExit=!!cid&&message.includes('task '+cid+' not found')&&/failed to (?:create )?exec/.test(message);
+  const missingTask=message.includes('task '+cid+' not found')&&/failed to (?:create )?exec/.test(message);
+  const missingNamedContainer=message.includes('unable to upgrade connection: container not found ("'+before?.name+'")');
+  const delayedRuntimeExit=!!cid&&(missingTask||missingNamedContainer);
   for(let attempt=0;;attempt++){
   let current;try{current=await readPod(pod.metadata.name);}catch{throw error;}
   if(!pod.metadata.uid||current?.metadata?.uid!==pod.metadata.uid||current.metadata.name!==pod.metadata.name)throw Error('training_sample_failed_pod_identity_changed',{cause:error});
@@ -75,7 +77,9 @@ export async function observePublicQaPod({pod,jobUid,diagnostic=false,diagnostic
   }
  }
 }
-export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=false,diagnosticStageTwo=false,grounding=false,groundingContinuation=false,groundingDiagnostic=false,freshEvaluation=false,interactiveUseApproved=false,resumeProvenancePath,runId=`public-qa-${Date.now()}`}={}){
+export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=false,diagnosticStageTwo=false,grounding=false,groundingContinuation=false,groundingBalanced=false,groundingDiagnostic=false,freshEvaluation=false,interactiveUseApproved=false,resumeProvenancePath,runId=`public-qa-${Date.now()}`}={}){
+ if(groundingBalanced&&(groundingContinuation||freshEvaluation||groundingDiagnostic||diagnostic||diagnosticStageTwo||pilot||resumeProvenancePath))throw Error('balanced_cannot_use_other_execution_modes');
+ if(groundingBalanced)grounding=true;
  if(freshEvaluation&&(grounding||groundingContinuation||groundingDiagnostic||diagnostic||diagnosticStageTwo||pilot||resumeProvenancePath))throw Error('fresh_evaluation_cannot_use_other_execution_modes');
  if(groundingContinuation)grounding=true;
  if(groundingDiagnostic&&(grounding||diagnostic||pilot||resumeProvenancePath))throw Error('grounding_diagnostic_cannot_use_other_execution_modes');
@@ -83,7 +87,7 @@ export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=
  if(diagnosticStageTwo&&!diagnostic)throw Error('stage2_requires_diagnostic_mode');
  if(diagnostic&&(pilot||resumeProvenancePath))throw Error('diagnostic_cannot_train_pilot_or_resume');
  if(!/^public-qa-[a-z0-9-]{1,35}$/.test(runId))throw Error('invalid_run_id');
- const root=resolve('.local/training/public-qa-run',runId);if((diagnostic||groundingDiagnostic||groundingContinuation||freshEvaluation)&&existsSync(root))throw Error(groundingContinuation?'continuation_run_directory_must_be_new':'diagnostic_run_directory_must_be_new');mkdirSync(root,{recursive:true});
+ const root=resolve('.local/training/public-qa-run',runId);if((diagnostic||groundingDiagnostic||groundingContinuation||groundingBalanced||freshEvaluation)&&existsSync(root))throw Error(groundingBalanced?'balanced_run_directory_must_be_new':groundingContinuation?'continuation_run_directory_must_be_new':'diagnostic_run_directory_must_be_new');mkdirSync(root,{recursive:true});
  const report={schemaVersion:1,runId,startedAt:new Date().toISOString(),profile:PUBLIC_QA_RESOURCE_PROFILE,mode:diagnostic?'explicit_public_qa_diagnostic':'explicit_public_human_qa_stage1',automaticGovernanceGateClaimed:false,qualityClaimAllowed:false,promotionAllowed:false,trainingRunCompleted:false,startSamples:[],observations:[]};
  if(diagnostic||groundingDiagnostic||freshEvaluation)report.diagnosticOnly=true;
  report.interactiveUseApproved=interactiveUseApproved===true;
@@ -101,7 +105,7 @@ export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=
    report.requestedResumeProvenance={sha256:digest,localPath,schemaVersion:value?.schemaVersion};
    if(pilot)throw Error('resource_pilot_cannot_resume_training');
   }
-  if(grounding)groundingWorkload=await import(groundingContinuation?'./public-qa-grounding-continuation-workload.mjs':'./public-qa-grounding-workload.mjs');
+  if(grounding)groundingWorkload=await import(groundingBalanced?'./public-qa-grounding-balanced-workload.mjs':groundingContinuation?'./public-qa-grounding-continuation-workload.mjs':'./public-qa-grounding-workload.mjs');
   if(groundingDiagnostic)groundingWorkload=await import('./public-qa-grounding-diagnostic-workload.mjs');
   if(freshEvaluation)freshWorkload=await import('./public-qa-fresh-workload.mjs');
   report.inputs=freshEvaluation?await freshWorkload.publicQaFreshEvaluationInputs({runId}):groundingDiagnostic?await groundingWorkload.publicQaGroundingDiagnosticInputs():grounding?await groundingWorkload.publicQaGroundingInputs({runId}):diagnostic?publicQaDiagnosticInputs({stageTwo:diagnosticStageTwo}):publicQaInputs();
@@ -109,7 +113,7 @@ export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=
   report.manifest=freshEvaluation?freshWorkload.freshEvaluationJob(runId,report.inputs):groundingDiagnostic?groundingWorkload.groundingDiagnosticJob(runId,report.inputs):grounding?groundingWorkload.groundingJob(runId,report.inputs):diagnostic?diagnosticJob(runId,report.inputs):trainingJob(runId,{resumeProvenance:report.inputs.resumeProvenance});
   if(freshEvaluation)report.mode='explicit_public_qa_fresh_evaluation';
   if(groundingDiagnostic)report.mode='explicit_public_qa_grounding_diagnostic';
-  if(grounding)report.mode=groundingContinuation?'explicit_public_human_qa_grounding_continuation_v1':'explicit_public_human_qa_grounding_v1';
+  if(grounding)report.mode=groundingBalanced?'explicit_public_human_qa_grounding_balanced_v1':groundingContinuation?'explicit_public_human_qa_grounding_continuation_v1':'explicit_public_human_qa_grounding_v1';
   if(report.manifest.metadata.annotations['evidscope.io/run-kind']==='explicit-public-human-qa-stage2')report.mode='explicit_public_human_qa_stage2';
   save();
   for(let i=0;i<3;i++){if(i)await wait(10500);if(aborted)throw Error('cancelled_before_start');const measured=await measurePublicQa();report.startSamples.push(measured);console.log(JSON.stringify({phase:'resource_preflight',sample:i+1,windows:measured.windows,gpu:measured.host.gpu,guest:measured.guest}));}
@@ -186,13 +190,13 @@ export async function runPublicQa({executeTraining=false,pilot=false,diagnostic=
 }
 export function publicQaControllerOptions(argv){
  const [mode,runId,interactive,resumeOption,resumePath,...extra]=argv;
- if(!['--check-only','--execute-explicit-request','--execute-resource-pilot','--execute-diagnostic','--execute-diagnostic-stage2','--execute-grounding','--execute-grounding-continuation','--execute-grounding-diagnostic','--execute-fresh-evaluation'].includes(mode))throw Error('explicit_execution_mode_required');
+ if(!['--check-only','--execute-explicit-request','--execute-resource-pilot','--execute-diagnostic','--execute-diagnostic-stage2','--execute-grounding','--execute-grounding-continuation','--execute-grounding-balanced','--execute-grounding-diagnostic','--execute-fresh-evaluation'].includes(mode))throw Error('explicit_execution_mode_required');
  if(interactive&&interactive!=='--allow-interactive-use')throw Error('unknown_execution_argument');
  if(resumeOption&&(resumeOption!=='--resume-provenance'||!resumePath||extra.length))throw Error('invalid_resume_arguments');
  if(['--execute-diagnostic','--execute-diagnostic-stage2'].includes(mode)&&resumeOption)throw Error('diagnostic_cannot_train_pilot_or_resume');
- if(['--execute-grounding','--execute-grounding-continuation'].includes(mode)&&resumeOption)throw Error('grounding_cannot_use_other_execution_modes');
+ if(['--execute-grounding','--execute-grounding-continuation','--execute-grounding-balanced'].includes(mode)&&resumeOption)throw Error('grounding_cannot_use_other_execution_modes');
  if(mode==='--execute-grounding-diagnostic'&&resumeOption)throw Error('grounding_diagnostic_cannot_use_other_execution_modes');
  if(mode==='--execute-fresh-evaluation'&&resumeOption)throw Error('fresh_evaluation_cannot_use_other_execution_modes');
- return {executeTraining:mode!=='--check-only',pilot:mode==='--execute-resource-pilot',diagnostic:['--execute-diagnostic','--execute-diagnostic-stage2'].includes(mode),diagnosticStageTwo:mode==='--execute-diagnostic-stage2',grounding:['--execute-grounding','--execute-grounding-continuation'].includes(mode),...(mode==='--execute-grounding-continuation'?{groundingContinuation:true}:{}),groundingDiagnostic:mode==='--execute-grounding-diagnostic',...(mode==='--execute-fresh-evaluation'?{freshEvaluation:true}:{}),interactiveUseApproved:interactive==='--allow-interactive-use',resumeProvenancePath:resumePath,...(runId?{runId}:{})};
+ return {executeTraining:mode!=='--check-only',pilot:mode==='--execute-resource-pilot',diagnostic:['--execute-diagnostic','--execute-diagnostic-stage2'].includes(mode),diagnosticStageTwo:mode==='--execute-diagnostic-stage2',grounding:['--execute-grounding','--execute-grounding-continuation','--execute-grounding-balanced'].includes(mode),...(mode==='--execute-grounding-continuation'?{groundingContinuation:true}:{}),...(mode==='--execute-grounding-balanced'?{groundingBalanced:true}:{}),groundingDiagnostic:mode==='--execute-grounding-diagnostic',...(mode==='--execute-fresh-evaluation'?{freshEvaluation:true}:{}),interactiveUseApproved:interactive==='--allow-interactive-use',resumeProvenancePath:resumePath,...(runId?{runId}:{})};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){const r=await runPublicQa(publicQaControllerOptions(process.argv.slice(2)));process.exitCode=r.state==='process_completed'||r.state==='ready_check_only'?0:2;}

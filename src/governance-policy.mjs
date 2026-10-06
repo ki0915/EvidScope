@@ -1,10 +1,62 @@
 import {cleanText,identifier,date,fail} from './model.mjs';
 import {digest} from './crypto.mjs';
+import {krLegalSourceCoverage} from './kr-legal-source-coverage.mjs';
 
-export const applicabilityPolicyVersion='evidscope-applicability-2026-10-06';
+export const applicabilityPolicyVersion='evidscope-applicability-2026-10-06-other-law-v1';
 const tri=(value)=>value===true||value===false?value:'unknown';
 const text=(value,max=200)=>cleanText(value??'unknown',max);
 const nonNegative=(value)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:'unknown';
+const otherLawBases=Object.freeze({
+ 'loan_credit_explanation':Object.freeze({requirementId:'KR-34-EXPLAIN',recognitionLaw:'CREDIT_INFORMATION_ACT',annexItem:'2다',measureCodes:Object.freeze(['article_35_2_explanation','article_36_2_1_procedure'])}),
+ 'loan_consumer_protection':Object.freeze({requirementId:'KR-34-PROTECT',recognitionLaw:'FINANCIAL_CONSUMER_PROTECTION_ACT',annexItem:'3나',measureCodes:Object.freeze(['article_10_all_obligations'])}),
+});
+const otherLawBasis=code=>Object.hasOwn(otherLawBases,code)?otherLawBases[code]:undefined;
+const otherLawSource=Object.freeze({sourceUrl:'https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201',sourceSha256:'8d25709613ecb05ead23c517f58b39c1e681a6f3d4bd47a8ba0edd09cc880ec8',checkedAt:'2026-10-06',legalBasis:'법 제34조제3항 · 시행령 제27조제5항 · 별표1'});
+const knownReference=value=>typeof value==='string'&&value.trim()!==''&&!['unknown','not_recorded','not_provided','미확인','없음'].includes(value.normalize('NFKC').trim().toLowerCase());
+function normalizeOtherLawClaims(value){
+ if(value===undefined)return [];
+ if(!Array.isArray(value)||value.length>10)fail(400,'다른 법령 인정 검토는 최대 10개입니다');
+ const strict=(item,keys)=>{if(!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).some(key=>!keys.includes(key)))fail(400,'다른 법령 인정 검토 필드 오류');};
+ const claims=value.map(item=>{
+  strict(item,['id','basisCode','requirementId','recognitionLaw','systemId','modelId','modelVersion','purpose','loanReview','performedMeasures','reviewer','reviewedAt']);
+  if(!Array.isArray(item.performedMeasures)||item.performedMeasures.length>10)fail(400,'구체적인 이행 조치 목록은 최대 10개입니다');
+  const performedMeasures=item.performedMeasures.map(measure=>{
+   strict(measure,['code','description','performed','evidenceRef','contentHash']);
+   const contentHash=measure.contentHash===undefined?'not_provided':measure.contentHash;if(typeof contentHash!=='string'||contentHash!=='not_provided'&&!/^[a-f0-9]{64}$/.test(contentHash))fail(400,'이행 근거 문서 SHA-256 오류');
+   return {code:identifier(measure.code),description:text(measure.description,1000),performed:tri(measure.performed),evidenceRef:text(measure.evidenceRef,1000),contentHash};
+  });
+  if(new Set(performedMeasures.map(measure=>measure.code)).size!==performedMeasures.length)fail(400,'이행 조치 코드가 중복됩니다');
+  return {id:identifier(item.id),basisCode:identifier(item.basisCode),requirementId:identifier(item.requirementId),recognitionLaw:text(item.recognitionLaw),systemId:identifier(item.systemId),modelId:text(item.modelId),modelVersion:text(item.modelVersion),purpose:text(item.purpose,1000),loanReview:tri(item.loanReview),performedMeasures,reviewer:text(item.reviewer),reviewedAt:item.reviewedAt&&item.reviewedAt!=='unknown'?date(item.reviewedAt):'unknown'};
+ });
+ if(new Set(claims.map(claim=>claim.id)).size!==claims.length)fail(400,'다른 법령 인정 검토 ID가 중복됩니다');
+ return claims;
+}
+
+// Separate Article 34(3) review from supplier reliance under Decree 27(3).
+// These supplied facts are NOT independently checked document/measure evidence.
+export function otherLawRecognitionReview(requirement,system){
+ const claims=(system.otherLawRecognitionClaims||[]).filter(claim=>claim.requirementId===requirement.id||otherLawBasis(claim.basisCode)?.requirementId===requirement.id);
+ const items=claims.map(claim=>{
+  const basis=otherLawBasis(claim.basisCode),reasons=[];
+  if(!basis)reasons.push('recognition_basis_not_mapped');
+  else{
+   if(basis.requirementId!==claim.requirementId||basis.requirementId!==requirement.id)reasons.push('recognition_requirement_mismatch');
+   if(basis.recognitionLaw!==claim.recognitionLaw)reasons.push('recognition_law_mismatch');
+   for(const code of basis.measureCodes){const measure=claim.performedMeasures.find(item=>item.code===code);if(!measure)reasons.push('measure_missing:'+code);else{
+    if(measure.performed!==true)reasons.push('measure_performance_unconfirmed:'+code);
+    if(!knownReference(measure.description)||!knownReference(measure.evidenceRef)||!measure.evidenceRef.startsWith('governance-document:')||measure.evidenceRef==='governance-document:'||typeof measure.contentHash!=='string'||!/^[a-f0-9]{64}$/.test(measure.contentHash))reasons.push('measure_document_binding_incomplete:'+code);
+   }}
+   if(claim.performedMeasures.some(item=>!basis.measureCodes.includes(item.code)))reasons.push('measure_scope_not_mapped');
+  }
+  if(claim.loanReview!==true)reasons.push('loan_review_scope_unconfirmed');
+  if(system.aiBusinessOperator!==true)reasons.push('ai_business_operator_unconfirmed');
+  if(claim.systemId!==system.id)reasons.push('target_system_mismatch');
+  for(const field of ['modelId','modelVersion','purpose'])if(!knownReference(system[field])||!knownReference(claim[field])||claim[field]!==system[field])reasons.push('target_'+field+'_mismatch_or_unconfirmed');
+  if(!knownReference(claim.reviewer)||claim.reviewedAt==='unknown')reasons.push('reviewer_or_review_time_missing');
+  return {claim,claimHash:digest(claim),...(basis?{mappedRequirementId:basis.requirementId,annexItem:basis.annexItem,requiredMeasureCodes:[...basis.measureCodes]}:{}),status:'human_review_required',declaredScopeComplete:reasons.length===0,reasons,evidenceVerification:'declared_references_not_fetched',reviewerVerification:'declared_reviewer_not_authenticated',automaticLegalVerdict:false,supportsHumanAssessment:false};
+ });
+ return {schemaVersion:1,route:'other_law_recognition',supplierReliance:false,status:items.length?'human_review_required':'not_recorded',source:{...otherLawSource},items,automaticLegalVerdict:false,supportsHumanAssessment:false,limitations:['입력한 이행 조치·문서 참조·검토자 선언은 원본 문서 복구·출처 인증·실제 이행 검증을 대체하지 않습니다.','대출 심사 범위를 별도로 검토합니다. 금융사 또는 개인신용평가라는 명칭만으로 대출 심사에 해당한다고 확정하지 않습니다.','공급사 조치 활용(시행령 제27조제3항)과 별개입니다. 다른 법령 인정은 해당 별표 항목과 대응 조치 범위를 사람이 검토하며 전체 제34조 책무를 자동 인정하지 않습니다.','개인정보보호법의 인정은 개인정보 처리·보호의 상응 범위이며 이 두 대출 검토 경로 또는 전체 AI 책무의 자동 대체가 아닙니다.']};
+}
 
 export function normalizeSystemFacts(x){
  const array=(value,max)=>{if(!Array.isArray(value??[])||(value??[]).length>max)fail(400,'시스템 사실관계 목록 한도 오류');return (value??[]).map(v=>text(v,100));};
@@ -15,6 +67,7 @@ export function normalizeSystemFacts(x){
  if(result.krRoles.some(r=>!['developer','deployer'].includes(r)))fail(400,'한국 사업자 역할 코드 오류');
  if(result.euRoles.some(r=>!['provider','deployer','importer','distributor'].includes(r)))fail(400,'EU 역할 코드 오류');
  if(x.marketEntryAt)result.marketEntryAt=date(x.marketEntryAt);
+ if(x.otherLawRecognitionClaims!==undefined)result.otherLawRecognitionClaims=normalizeOtherLawClaims(x.otherLawRecognitionClaims);
  return result;
 }
 
@@ -76,7 +129,7 @@ export function applicabilityCandidate(requirement,system){
   if(id==='EU-50-2'&&!system.marketEntryAt)missingFacts.push('marketEntryAt');
   if(requirement.sourceTextStatus==='amendment_consolidation_unverified')reason='공식 안내 페이지가 개정 반영 전임을 표시합니다. 통합 원문과 전환 조건을 검토하세요';
  }
- return {status,reason,missingFacts:[...new Set(missingFacts)],policyVersion:applicabilityPolicyVersion,decision:'human_review_required'};
+ return {status,reason,missingFacts:[...new Set(missingFacts)],policyVersion:applicabilityPolicyVersion,decision:'human_review_required',...(id.startsWith('KR-34')?{otherLawRecognitionReview:otherLawRecognitionReview(requirement,system)}:{})};
 }
 
 // Deterministic server-side capture of the facts and policy result used at review time.
@@ -87,6 +140,6 @@ export function applicabilityAssessmentSnapshot(requirement,system){
 }
 
 export function applicabilityCatalogIdentity(requirements){
- const identity={schemaVersion:1,requirementsHash:digest(requirements),policyVersion:applicabilityPolicyVersion};
+ const identity={schemaVersion:2,requirementsHash:digest(requirements),policyVersion:applicabilityPolicyVersion,legalSourceCoverageHash:krLegalSourceCoverage(requirements).hash};
  return {...identity,hash:digest(identity)};
 }

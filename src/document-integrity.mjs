@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {createDocumentAdapter} from './finance-evidence.mjs';
-import {createGovernanceDocumentStorage,checkGovernanceDocumentProjection} from './governance-documents.mjs';
+import {createGovernanceDocumentStorage,checkGovernanceDocumentProjection,MAX_GOVERNANCE_DOCUMENT_BYTES} from './governance-documents.mjs';
 
 const MAX_REFERENCED_FILES=4096;
 const MAX_REFERENCED_BYTES=256*1024*1024;
@@ -13,7 +13,8 @@ export function documentPath(kind,tenant,hash){
 }
 
 function addReference(files,{kind,tenant,sha256,bytes}){
- if(!validHash(sha256)||!Number.isSafeInteger(bytes)||bytes<1||bytes>64*1024)throw Error('Document file metadata is invalid');
+ const maximumBytes=kind==='governance'?MAX_GOVERNANCE_DOCUMENT_BYTES:64*1024;
+ if(!validHash(sha256)||!Number.isSafeInteger(bytes)||bytes<1||bytes>maximumBytes)throw Error('Document file metadata is invalid');
  const key=`${kind}:${sha256}`,existing=files.get(key);
  if(existing&&existing.bytes!==bytes)throw Error('Document file length metadata conflicts with signed history');
  if(!existing){

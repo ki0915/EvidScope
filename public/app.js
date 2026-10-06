@@ -46,6 +46,7 @@ const labels = {
   released: '보류 해제됨', executed: '파기 실행됨', quarantined_resource_limit: '분석 미완료 · 자원 한도',
   intent: '행동 요청', execution: '도구 실행 기록', result: '도구 결과 기록',
   grant: '권한 부여', revoke: '권한 철회', human_approval: '외부 사람 승인', automated_review: '자동 검토', delegation: '위임 자기보고',
+  block_registered: '차단 등록',
   governance_check: '보고된 조치 시험', human_oversight_review: '사람 감독 수행 기록',
   document: '문서', dataset: '데이터셋', record: '레코드', retrieval: '검색 참조', artifact: '산출물',
   input: '입력', retrieved: '검색된 자료', output: '출력', self_reported_reference: 'AI가 보고한 참조', service_reported_reference: '서비스가 보고한 참조',
@@ -595,6 +596,7 @@ function exceptionEditor() {
 
 async function governanceView() {
   const data = await api('/api/governance'); const node = el('div');
+  node.append(governanceLegalSourceCoverage(data.legalSourceCoverage));
   const systems = card('한국 AI 기본법 · 금융 AI 증거 검토', '외부 대출·신용평가 AI의 공급사 근거와 실제 운영을 대조합니다. 금융 분야만으로 고영향 여부를 확정하지 않습니다.');
   systems.querySelector('.card-header').append(button('+ 시스템 등록', () => systemEditor(), 'primary small'));
   systems.append(table(['시스템', '담당자', '목적', '역할 / 시장', '한국 고영향 상태', '검토'], data.systems.map((system) => {
@@ -619,6 +621,24 @@ async function governanceView() {
     return [task.title || task.reason, task.systemId, task.owner, badge(task.status || 'open'), actions];
   }))); node.append(tasks); }
   node.append(limits(['기술 관측, 증거 충분성, 법적 적용성과 인간 법률 검토는 별개입니다.', '한국 고영향 분류와 EU 고위험 분류를 같은 것으로 취급하지 않습니다.'])); return node;
+}
+function governanceLegalSourceCoverage(coverage) {
+  const node = card('한국법 지원 범위와 미확인 출처', '등록된 조치의 기술 근거와 법률 전체의 지원 범위는 별도로 확인합니다.');
+  if (!coverage || coverage.schemaVersion !== 1 || !Number.isSafeInteger(coverage.registeredRequirements)) {
+    node.append(el('p', 'message warning', '지원 범위 정보 미수신 · 한국법 전체 지원 여부 판단 보류. 현재 등록된 요구사항과 별도의 미확인 법률 출처를 확인해야 합니다.'));
+    return node;
+  }
+  node.append(el('p', 'message warning', `현재 등록된 한국 요구사항 ${coverage.registeredRequirements}개를 검토합니다. 한국법 전체 지원 완료나 법률 준수 인증을 의미하지 않습니다.`));
+  if (coverage.checkedAt) node.append(el('p', 'muted', `출처 검토 기준일 ${date(coverage.checkedAt)}`));
+  for (const source of (Array.isArray(coverage.unresolvedSources) ? coverage.unresolvedSources : []).slice(0, 20)) {
+    node.append(el('p', 'wrap', `${source.article || '관련 조항 미확인'} · ${source.title || '하위 출처'}: 원문·현재 적용 범위 미확인`));
+    if (Array.isArray(source.affectedRequirementIds) && source.affectedRequirementIds.length) {
+      node.append(el('p', 'muted wrap', `관련 등록 조치: ${source.affectedRequirementIds.join(', ')}`));
+    }
+  }
+  if (coverage.unverifiedDetailNoticeRequirementIds?.length) node.append(el('p', 'muted wrap', `세부 고시 확인이 남은 등록 조치: ${coverage.unverifiedDetailNoticeRequirementIds.join(', ')}`));
+  node.append(el('p', 'muted', '미확인 출처를 법 위반이나 의무 부존재로 판단하지 않습니다. 담당자가 공식 원문과 적용 범위를 확인해야 합니다.'));
+  return node;
 }
 function governanceDocumentMaximum(data) {
   const maximum = data.documentLimits?.maximumBytes;
@@ -739,6 +759,13 @@ const systemTriFacts = [['substantialModification', '공급받은 AI의 목적·
 const systemNumberFacts = [['trainingCompute', '학습 연산량 (FLOP)'], ['previousYearTotalRevenueKrw', '직전 연도 전체 매출액 (원)'], ['previousYearAiRevenueKrw', '직전 연도 AI 관련 매출액 (원)'], ['domesticDailyAverageUsersLast3Months', '최근 3개월 국내 일평균 이용자 수']];
 function systemFactsPayload(input) {
   const values = { ...input }, split = value => String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+  if (Object.hasOwn(values, 'otherLawRecognitionJson')) {
+    const raw = String(values.otherLawRecognitionJson || '').trim(); delete values.otherLawRecognitionJson;
+    if (raw.length > 65536) throw Error('다른 법령 인정 검토 JSON 입력은 공백 포함 65,536자 이내로 작성하세요.');
+    let claims; try { claims = raw ? JSON.parse(raw) : []; } catch { throw Error('다른 법령 인정 검토 JSON 형식을 확인하세요. 목록은 [ ]로 감싸세요.'); }
+    if (!Array.isArray(claims) || claims.length > 10 || claims.some(claim => !claim || typeof claim !== 'object' || Array.isArray(claim))) throw Error('다른 법령 인정 검토는 객체 목록으로 최대 10개 입력하세요.');
+    values.otherLawRecognitionClaims = claims;
+  }
   values.markets = split(values.markets); values.dataCategories = split(values.dataCategories);
   values.highImpactDomains = split(values.highImpactDomains);
   for (const key of ['generative', ...systemTriFacts.map(([key]) => key)]) values[key] = values[key] === 'true' ? true : values[key] === 'false' ? false : 'unknown';
@@ -749,6 +776,8 @@ function systemFactsPayload(input) {
   for (const key of ['modelVersion', 'policyVersion']) values[key] = String(values[key] || '').trim() || 'unknown';
   for (const [key, title] of systemNumberFacts) { const value = String(values[key] ?? '').trim(); if (value && value !== 'unknown' && (!Number.isFinite(Number(value)) || Number(value) < 0)) throw Error(`${title}은 0 이상의 숫자로 입력하세요. 알 수 없으면 비워 두세요.`); values[key] = value && value !== 'unknown' ? Number(value) : 'unknown'; }
   for (const key of ['marketEntryAt', 'providedAt']) { if (values[key]) values[key] = new Date(values[key]).toISOString(); else delete values[key]; }
+  // Match the /api/governance/systems requestBody contract after formatting is removed.
+  if (new TextEncoder().encode(JSON.stringify(values)).byteLength > 16384) throw Error('시스템 저장 JSON 요청은 들여쓰기를 정리한 전체 전송 내용이 UTF-8 16 KiB 이내여야 합니다. 다른 법령 선언이나 시스템 설명을 줄이세요.');
   return values;
 }
 async function financeEvidenceView(systemId, requirements) {
@@ -756,11 +785,23 @@ async function financeEvidenceView(systemId, requirements) {
   node.append(el('p', 'selection-note', `${data.system.name} · ${data.system.modelId || '모델 미확인'} / ${data.system.modelVersion || '버전 미확인'}`));
   const controls = card('1. 관련 조치와 사실관계', '제34조 위험관리·설명·이용자보호의 공급사 근거를 검토합니다. 인간 감독·문서 보관은 별도로 판단합니다.');
   controls.append(button('조문별 적용성·사람 평가', () => governanceReport(systemId, requirements), 'small'), button('시스템 정보 수정', () => systemEditor(data.system), 'small'), button('당시 승인 정책 등록', () => financeApprovalPolicyEditor(systemId), 'small')); node.append(controls);
-  const bundles = card('2. 공급사 근거', '합성 문서 바이트를 해시 검증하고 보관합니다. 변경·복구 실패는 재검토 대상입니다.');
+  const bundles = card('2. 공급사 근거', '문서 바이트의 복구·해시와 신고된 출처를 구분해 검토합니다. 해시 일치나 수동 출처 검토만으로 공급사 진위를 보증하지 않습니다.');
   bundles.append(button('증빙 JSON 가져오기', () => financeBundleImport(systemId, requirements), 'primary small'));
   if (!data.bundles.length) bundles.append(empty('공급사 증빙 없음', '모델·목적·시험 범위와 연결된 근거를 등록하세요.'));
   for (const bundle of data.bundles) {
     const item = el('article', 'list-item'); item.append(el('h3', '', `${bundle.id} · 개정 ${bundle.revision}`), el('p', '', `${bundle.supplierId} / ${bundle.modelId} / ${bundle.modelVersion}`), el('p', '', bundle.testScope));
+    const real = bundle.synthetic === false, provenance = bundle.verification.provenance;
+    item.append(el('p', 'selection-note', real ? '실제 공급사 자료로 신고됨 · 출처 진위 자동 인증 없음' : bundle.synthetic === true ? '합성 시험 자료 · 실제 공급사 증빙 아님' : '자료 유형 미확인 · 실제·합성 여부 확인 필요'));
+    if (real) {
+      const channels = {supplier_portal:'공급사 포털',email:'이메일',contract_attachment:'계약 첨부',manual_upload:'수동 업로드'}, status = {unreviewed:'출처 검토 미완료',reviewed:'출처 확인 검토 기록 있음',rejected:'출처 검토 거부',stale:'현재 증빙과 출처 검토 불일치 · 재검토 필요'};
+      item.append(el('p', '', `신고 수신 경로: ${channels[bundle.provenance?.channel] || bundle.provenance?.channel || '미확인'} · 전달 참조: ${bundle.provenance?.reference || '미확인'} · 공급 일시: ${date(bundle.provenance?.suppliedAt)}`), el('p', '', status[provenance?.status] || '출처 검토 상태 미확인'), el('p', 'muted', '독립적인 출처 인증은 수행되지 않았습니다. 아래 기록은 담당자의 수동 확인 진술입니다.'));
+      if (provenance?.review) {
+        const record = provenance.review, decision = {verified:'출처 확인 검토',unverified:'출처 미확인',rejected:'출처 거부'};
+        item.append(el('p', '', `최근 검토: ${decision[record.decision] || '미확인'} · 검토자: ${record.reviewer || '미확인'} · 일시: ${date(record.reviewedAt)}`), el('p', '', `검토 사유: ${record.reason || '미확인'}`));
+        if (provenance.reviewHash) item.append(el('p', 'muted', `출처 검토 기록 해시: ${provenance.reviewHash}`));
+      }
+      item.append(button('출처 검토 기록', () => financeBundleProvenanceReview(bundle, systemId, requirements), 'small'));
+    }
     item.append(el('p', 'muted', bundle.verification.issues.length ? `재검토 사유: ${bundle.verification.issues.map(financeIssueLabel).join(', ')}` : '문서 복구·해시·대상 정보 일치. 법적 활용 인정은 사람 검토 필요.'));
     item.append(table(['문서', '현재 복구·해시', '보관 정책 기한'], bundle.verification.documents.map(d => [d.name, d.status === 'hash_verified_and_retrievable' ? '복구·해시 확인' : '복구 불가 또는 변조', date(bundle.retentionUntil)])));
     item.append(button('증빙 JSON 내보내기', async () => { const value = await api(`/api/governance/bundles/${encodeURIComponent(bundle.id)}/export`); downloadArtifact('supplier-evidence.json', 'application/json', JSON.stringify(value, null, 2)); }, 'small'), el('p', 'muted', `평가 연결 참조: supplier-bundle:${bundle.id}`)); bundles.append(item);
@@ -781,15 +822,29 @@ async function financeEvidenceView(systemId, requirements) {
   node.append(review, limits(data.limitations)); showDetail('금융 AI · 한국법 이행 증거 대조', node);
 }
 function financeIssueLabel(code) {
-  const supplied = {SUPPLIED_MODEL_VERSION_UNKNOWN:'공급 당시 모델 버전 미확인',SUPPLIED_MODEL_VERSION_MISMATCH:'공급 당시 모델 버전과 현재 사용·증빙 불일치',SUPPLIED_PURPOSE_UNKNOWN:'공급 당시 사용 목적 미확인',SUPPLIED_PURPOSE_MISMATCH:'공급 당시 목적과 현재 사용·증빙 불일치'};
+  const supplied = {SUPPLIED_MODEL_VERSION_UNKNOWN:'공급 당시 모델 버전 미확인',SUPPLIED_MODEL_VERSION_MISMATCH:'공급 당시 모델 버전과 현재 사용·증빙 불일치',SUPPLIED_PURPOSE_UNKNOWN:'공급 당시 사용 목적 미확인',SUPPLIED_PURPOSE_MISMATCH:'공급 당시 목적과 현재 사용·증빙 불일치',REAL_PROVENANCE_REVIEW_REQUIRED:'실제 자료 출처 검토 필요',REAL_PROVENANCE_REJECTED:'실제 자료 출처 검토 거부',REAL_PROVENANCE_REVIEW_STALE:'실제 자료 출처 재검토 필요',REAL_PROVENANCE_METADATA_MISSING:'실제 자료 출처 정보 미확인'};
   if (Object.hasOwn(supplied, code)) return supplied[code];
   return ({MODEL_VERSION_MISMATCH:'모델 버전 불일치',MODEL_ID_MISMATCH:'모델 불일치',PURPOSE_MISMATCH:'사용 목적 불일치',SUPPLIER_MISMATCH:'공급사 불일치',DOCUMENT_EVIDENCE_MISSING:'문서 복구 불가·변조·부족',DEPLOYER_ROLE_UNCONFIRMED:'이용사업자 역할 미확인',SUBSTANTIAL_CHANGE_REVIEW:'중대한 변경 검토 필요',SUBSTANTIAL_CHANGE_UNKNOWN:'중대한 변경 여부 미확인',MODEL_ID_UNKNOWN:'모델 식별자 미확인',MODEL_VERSION_UNKNOWN:'모델 버전 미확인',PURPOSE_UNKNOWN:'목적 미확인',SUPPLIER_UNKNOWN:'공급사 미확인'})[code] || '추가 사실 확인 필요';
 }
 function financeBundleImport(systemId, requirements) {
-  const node = el('div'); node.append(el('p', 'muted', '합성 공급사 증빙 JSON을 선택하거나 붙여넣으세요. 문서 해시·모델·목적·시험 범위를 함께 제출합니다. 실제 고객 자료는 받지 않습니다.'));
+  const node = el('div'); node.append(el('p', 'muted', '공급사 증빙 JSON을 선택하거나 붙여넣으세요. 문서 바이트·해시·모델·목적·시험 범위를 함께 제출합니다. 합성 시험 자료는 synthetic:true, 실제 공급사 자료로 신고할 때는 synthetic:false를 명시하세요. 실제 자료에는 provenance.channel(supplier_portal, email, contract_attachment, manual_upload), reference와 선택 공급 일시 suppliedAt을 기록합니다. 출처는 별도 수동 검토가 필요하며 입력만으로 진위를 인증하지 않습니다. 전달 참조 URL을 자동으로 가져오지 않습니다.'));
   const editor = form([field('증빙 JSON', 'bundle', { required: true, multiline: true, wide: true, maxLength: 131072 })], '검증하여 가져오기', async values => { let value; try { value = JSON.parse(values.bundle); } catch { throw Error('올바른 JSON이 아닙니다.'); } if (value.systemId !== systemId) throw Error('선택한 시스템과 증빙의 systemId가 다릅니다.'); await api('/api/governance/bundles', 'POST', value); await financeEvidenceView(systemId, requirements); });
   const file = field('JSON 파일 선택', 'bundleFile', {type:'file'}), input = file.querySelector('input'); input.accept = '.json,application/json'; input.addEventListener('change', async () => { try { const selected=input.files?.[0]; if (!selected) return; if(selected.size>131072) throw Error('JSON 파일 한도는 128KiB입니다.'); editor.querySelector('textarea').value=await selected.text(); } catch(error) { notice(error.message,true); } });
-  node.append(file, editor); showDetail('공급사 합성 증빙 가져오기', node);
+  node.append(file, editor); showDetail('공급사 증빙 가져오기', node);
+}
+function financeBundleProvenanceReview(bundle, systemId, requirements) {
+  if (bundle.synthetic !== false) throw Error('합성 시험 자료는 실제 자료의 출처 검토 대상이 아닙니다.');
+  const node = el('div'); node.append(el('p', 'muted', '현재 증빙의 출처를 담당자가 확인한 범위대로 기록하세요. 확인하지 않은 항목은 선택하지 마세요. 이 기록은 수동 확인 진술이며 독립적인 공급사 인증이나 법적 충분성 판정이 아닙니다.'));
+  const definitions = [['supplierIdentityChecked','공급사 신원 확인'],['deliveryReferenceChecked','전달 참조 확인'],['modelPurposeScopeChecked','모델·목적·시험 범위 확인']], checks = definitions.map(([name,title]) => { const control = field(title,name,{type:'checkbox',value:'on'}); control.querySelector('input').checked = false; return control; });
+  node.append(form([field('검토 결과','decision',{choices:[{value:'unverified',label:'출처 미확인'},{value:'verified',label:'출처 확인 검토'},{value:'rejected',label:'출처 거부'}]}), ...checks, field('검토 사유','reason',{required:true,multiline:true,wide:true,maxLength:1000})], '출처 검토 저장', async values => {
+    const decision = values.decision, reason = String(values.reason || '').trim(), checked = Object.fromEntries(definitions.map(([name]) => [name,values[name] === 'on']));
+    if (!['verified','unverified','rejected'].includes(decision)) throw Error('검토 결과를 선택하세요.');
+    if (!reason || reason.length > 1000) throw Error('검토 사유를 1~1000자로 입력하세요.');
+    if (decision === 'verified' && !Object.values(checked).every(value => value === true)) throw Error('출처 확인 검토는 공급사 신원·전달 참조·모델 목적 범위를 모두 확인한 경우에만 저장할 수 있습니다.');
+    if (!/^[a-f0-9]{64}$/.test(bundle.contentHash || '')) throw Error('현재 증빙 해시가 없습니다. 증빙을 다시 조회하세요.');
+    await api(`/api/governance/bundles/${encodeURIComponent(bundle.id)}/provenance-reviews`, 'POST', {bundleHash:bundle.contentHash,decision,reason,checks:checked});
+    await financeEvidenceView(systemId, requirements); notice('담당자의 수동 출처 검토를 기록했습니다. 독립적인 출처 인증은 아닙니다.');
+  })); showDetail('공급사 출처 검토 기록', node);
 }
 function financeApprovalPolicyEditor() {
   showDetail('행동 시점 승인 정책 등록', form([
@@ -813,6 +868,15 @@ function systemEditor(old = {}) {
   const roleGuide = el('a', 'source-link', 'NIA 역할 판단 안내 ↗'); roleGuide.href = 'https://www.nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=28987&cbIdx=99835&parentSeq=28987'; roleGuide.target = '_blank'; roleGuide.rel = 'noopener noreferrer'; krRoles.append(roleGuide);
   for (const [code, title] of [['developer', '인공지능개발사업자'], ['deployer', '인공지능이용사업자']]) { const option = el('label'), input = el('input'); input.type = 'checkbox'; input.name = `krRole_${code}`; input.checked = (old.krRoles || []).includes(code); option.append(input, document.createTextNode(title)); krRoles.append(option); }
   extraFields.append(krRoles, roles); additional.append(extraFields);
+  const otherLaw = el('details', 'wide');
+  otherLaw.append(el('summary', '', '다른 법령에 따른 조치 인정 검토 · 선택 입력'), el('p', 'muted', '법 제34조제3항·시행령 제27조제5항의 검토이며 공급사 조치 활용과 별개입니다. 문서 참조·검토자는 선언 정보로 저장되며 진위·실제 이행은 아직 검증하지 않습니다. 입력만으로 의무 충족이나 법적 인정을 확정하지 않습니다.'));
+  otherLaw.append(field('검토 JSON 목록 · 전체 저장 요청 16 KiB · 빈칸 또는 []로 저장하면 현재 등록 검토를 비웁니다', 'otherLawRecognitionJson', {multiline:true,wide:true,maxLength:65536,value:JSON.stringify(old.otherLawRecognitionClaims || [], null, 2)}));
+  const examples = el('details'); examples.append(el('summary', '', '대출 설명·이용자 보호 입력 형식 보기'));
+  const sample = (basisCode, requirementId, recognitionLaw, measureCodes) => ({id:basisCode,basisCode,requirementId,recognitionLaw,systemId:old.id || 'system-id',modelId:old.modelId || 'unknown',modelVersion:old.modelVersion || 'unknown',purpose:old.purpose || 'unknown',loanReview:'unknown',performedMeasures:measureCodes.map(code=>({code,description:'해당 조치의 실제 이행 내용과 범위를 기록',performed:'unknown',evidenceRef:'governance-document:document-id',contentHash:'not_provided'})),reviewer:'unknown',reviewedAt:'unknown'});
+  examples.append(el('p', 'muted', '예시의 미확인은 그대로 검토 보류됩니다. 실제 대출 심사 여부, 이행 범위, 접수 문서의 참조·SHA-256, 검토자·ISO 일시를 확인해 입력하세요. 금융기관이나 신용평가라는 이름만으로 대출 심사로 확정하지 않습니다.'), el('pre', 'wrap', JSON.stringify([
+    sample('loan_credit_explanation','KR-34-EXPLAIN','CREDIT_INFORMATION_ACT',['article_35_2_explanation','article_36_2_1_procedure']),
+    sample('loan_consumer_protection','KR-34-PROTECT','FINANCIAL_CONSUMER_PROTECTION_ACT',['article_10_all_obligations']),
+  ], null, 2))); otherLaw.append(examples);
   showDetail(old.id ? 'AI 시스템 사실관계 수정' : 'AI 시스템 등록', form([
     field('시스템 ID', 'id', { required: true, value: old.id || '' }), field('시스템 이름', 'name', { required: true, value: old.name || '' }), field('책임자', 'owner', { required: true, value: old.owner || '' }), field('사업자 역할', 'role', { required: true, value: old.role || '', placeholder: '예: provider, deployer' }),
     field('제공 국가·시장', 'markets', { required: true, value: (old.markets || []).join(', '), placeholder: '예: KR, EU' }), field('사용 분야', 'domain', { required: true, value: old.domain || '', placeholder: '예: customer_support, hiring' }),
@@ -820,7 +884,7 @@ function systemEditor(old = {}) {
     field('한국 고영향 검토 상태', 'highImpact', { choices: ['unknown', 'candidate', 'confirmed', 'no'], value: old.highImpact || 'unknown' }),
     field('EU 고위험 검토 상태 (별도 분류)', 'euHighRisk', { value: old.euHighRisk || 'unknown' }), field('데이터 범주', 'dataCategories', { value: (old.dataCategories || []).join(', '), placeholder: '쉼표로 구분' }), field('이용자·영향받는 사람', 'affectedPeople', { wide: true, value: old.affectedPeople || '' }),
     field('공급사 식별자', 'supplierId', {value: old.supplierId || '', placeholder: '미확인이면 비우기'}), field('모델 식별자', 'modelId', {value: old.modelId || ''}), field('심사에 미치는 영향', 'decisionInfluence', {choices: [{value:'unknown',label:'미확인'},{value:'advisory',label:'참고·보조'},{value:'material',label:'심사에 중대한 영향'},{value:'automated',label:'자동 결정'}],value:old.decisionInfluence||'unknown'}), field('공급받은 모델 버전', 'suppliedModelVersion', {value:old.suppliedModelVersion||''}), field('공급받은 사용 목적', 'suppliedPurpose', {value:old.suppliedPurpose||'',wide:true}),
-    field('모델 버전', 'modelVersion', { value: old.modelVersion === 'unknown' ? '' : old.modelVersion || '', placeholder: '미확인이면 비우기' }), field('정책 버전', 'policyVersion', { value: old.policyVersion === 'unknown' ? '' : old.policyVersion || '', placeholder: '미확인이면 비우기' }), additional,
+    field('모델 버전', 'modelVersion', { value: old.modelVersion === 'unknown' ? '' : old.modelVersion || '', placeholder: '미확인이면 비우기' }), field('정책 버전', 'policyVersion', { value: old.policyVersion === 'unknown' ? '' : old.policyVersion || '', placeholder: '미확인이면 비우기' }), additional, otherLaw,
   ], '인벤토리 저장', async (input) => {
     const values = systemFactsPayload(input);
     await api('/api/governance/systems', 'POST', values); $('#detail-dialog').close(); await navigate('governance'); notice('시스템을 등록했습니다. 요구사항별 적용성과 증거를 검토하세요.');
@@ -836,9 +900,37 @@ function localDate(value) {
   const d = new Date(value); if (Number.isNaN(d.getTime())) return '';
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
+function governanceOtherLawReview(item, title = '다른 법령에 따른 조치 인정 검토') {
+  const review = item.applicability?.otherLawRecognitionReview, id = typeof item.requirement === 'object' ? item.requirement.id : item.requirement;
+  const entries = Array.isArray(review?.items) ? review.items : [];
+  if (!['KR-34-EXPLAIN','KR-34-PROTECT'].includes(id) && !entries.length) return null;
+  const node = card(title, '법률 검토 필요 · 공급사 조치 활용과 별개 · 입력만으로 자동 충족하지 않습니다.');
+  node.append(el('p', 'muted', '문서 참조·해시와 검토자는 선언 정보입니다. 원본 문서 복구·해시·실제 이행 및 검토자 신원은 이 입력 경로에서 아직 검증하지 않습니다.'));
+  if (review?.schemaVersion !== 1 || !entries.length) { node.append(el('p', 'muted', '다른 법령 인정 검토가 미등록이거나 현재 검토 정보가 없습니다. 법적 인정 여부는 보류합니다.')); return node; }
+  const measureLabels = {article_35_2_explanation:'신용정보법 제35조의2 설명 의무',article_36_2_1_procedure:'신용정보법 제36조의2제1항 설명 절차',article_10_all_obligations:'금융소비자보호법 제10조 책무 전체'};
+  const reasonLabels = {recognition_requirement_not_linked:'대응 조문을 연결하지 못해 시스템 수준에서 검토 보류',recognition_basis_not_mapped:'인정 근거의 법적 범위 미확인',recognition_requirement_mismatch:'인정 대상 조치 불일치',recognition_law_mismatch:'인정 법령 불일치',measure_missing:'필수 이행 조치 누락',measure_performance_unconfirmed:'실제 이행 여부 미확인',measure_document_binding_incomplete:'조치 근거 문서의 참조·해시 부족',measure_scope_not_mapped:'이행 조치의 대응 범위 미확인',loan_review_scope_unconfirmed:'대출 심사 해당 범위 미확인',ai_business_operator_unconfirmed:'AI 사업자 해당성 미확인',target_system_mismatch:'대상 시스템 불일치',target_modelId_mismatch_or_unconfirmed:'대상 모델 불일치·미확인',target_modelVersion_mismatch_or_unconfirmed:'대상 모델 버전 불일치·미확인',target_purpose_mismatch_or_unconfirmed:'사용 목적 불일치·미확인',reviewer_or_review_time_missing:'검토자·검토 일시 미확인'};
+  for (const entry of entries.slice(0,10)) {
+    const claim = entry.claim || {}, section = el('article', 'list-item'), basisLabels = {loan_credit_explanation:'대출 설명',loan_consumer_protection:'대출 이용자 보호'};
+    const reviewedAt = typeof claim.reviewedAt === 'string' && Number.isFinite(Date.parse(claim.reviewedAt)) ? date(claim.reviewedAt) : '미확인';
+    section.append(el('h4', '', `${claim.id || '검토 ID 미확인'} · ${(Object.hasOwn(basisLabels, claim.basisCode) ? basisLabels[claim.basisCode] : claim.basisCode) || '근거 미확인'}`), el('p', 'muted', `법률 검토 필요 · ${entry.declaredScopeComplete === true ? '입력 항목의 범위 연결은 갖춰짐 · 진위 미검증' : '입력 범위·근거 보완 필요'}`));
+    section.append(el('p', 'wrap', `선언 대상: ${claim.systemId || '미확인'} · 모델 ${claim.modelId || '미확인'} / ${claim.modelVersion || '미확인'} · 목적 ${claim.purpose || '미확인'}`), el('p', 'muted', `선언 법령: ${claim.recognitionLaw || '미확인'} · 대상 조치 ${claim.requirementId || '미확인'} · 별표 항목 ${entry.annexItem || '미확인'} · 검토자 ${claim.reviewer || '미확인'} / ${reviewedAt}`));
+    for (const reason of Array.isArray(entry.reasons) ? entry.reasons : []) { const [code,measure] = String(reason).split(':'); section.append(el('p', 'muted', `보완·보류: ${Object.hasOwn(reasonLabels, code) ? reasonLabels[code] : String(reason)}${measure ? ' · '+(Object.hasOwn(measureLabels, measure) ? measureLabels[measure] : measure) : ''}`)); }
+    const measures = Array.isArray(claim.performedMeasures) ? claim.performedMeasures : [];
+    section.append(table(['특정 이행 조치 / 내용','선언 이행 여부','선언 문서 참조 / SHA-256'],measures.slice(0,10).map(measure=>[`${(Object.hasOwn(measureLabels, measure.code) ? measureLabels[measure.code] : measure.code) || '미확인'} · ${measure.description || '내용 미확인'}`,measure.performed===true?'이행했다고 입력 · 미검증':measure.performed===false?'미이행으로 입력':'미확인',`${measure.evidenceRef || '미확인'} / ${measure.contentHash || '미확인'}`]))); node.append(section);
+  }
+  node.append(limits(review.limitations)); return node;
+}
+function governanceUnlinkedOtherLawReview(system, items = []) {
+  const linked = new Set(items.flatMap(item => (item.applicability?.otherLawRecognitionReview?.items || []).map(entry => entry.claim?.id)));
+  const claims = (system.otherLawRecognitionClaims || []).filter(claim => !linked.has(claim.id));
+  if (!claims.length) return null;
+  return governanceOtherLawReview({requirement:{id:'unlinked'},applicability:{otherLawRecognitionReview:{schemaVersion:1,status:'human_review_required',automaticLegalVerdict:false,supportsHumanAssessment:false,items:claims.map(claim=>({claim,declaredScopeComplete:false,reasons:['recognition_requirement_not_linked']}))}}}, '조문 미연결 · 다른 법령 인정 검토 보류');
+}
 async function governanceReport(systemId, requirements) {
   const data = await api(`/api/governance/report?systemId=${encodeURIComponent(systemId)}`); const node = el('div');
   node.append(el('p', 'selection-note', `${data.system.name} · 책임자 ${data.system.owner} · 목적 ${data.system.purpose}`), limits(data.limitations));
+  node.append(governanceLegalSourceCoverage(data.legalSourceCoverage));
+  const unlinked = governanceUnlinkedOtherLawReview(data.system, data.items || []); if (unlinked) node.append(unlinked);
   const list = el('div', 'list');
   for (const item of data.items || []) {
     const req = typeof item.requirement === 'object' ? item.requirement : requirements.find((r) => r.id === item.requirement) || { id: item.requirement, title: item.requirement };
@@ -848,6 +940,7 @@ async function governanceReport(systemId, requirements) {
       section.append(el('p', 'muted', `사실관계 기반 분류: ${candidateLabels[item.applicability.status] || '미확인'} · ${item.applicability.reason || '인간 적용성 검토 필요'}`));
       if (item.applicability.missingFacts?.length) section.append(el('p', 'muted wrap', `추가 확인할 사실: ${item.applicability.missingFacts.join(', ')}`));
     }
+    const otherLawReview = governanceOtherLawReview(item); if (otherLawReview) section.append(otherLawReview);
     section.append(governanceTechnicalEvidence(item));
     if (item.assessment) section.append(el('p', 'muted', `사람 평가: 적용성 ${label(item.assessment.applicability)} · 증거 충분성 ${label(item.assessment.assessment)} · 법률 검토 ${label(item.assessment.legalReview)} · 담당자 ${item.assessment.owner || '미지정'}`));
     else section.append(el('p', 'muted', '아직 인간 평가가 없습니다. 적용 대상과 필요한 근거를 확인하세요.'));

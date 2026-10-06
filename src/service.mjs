@@ -1,6 +1,7 @@
 import {randomUUID,createPublicKey} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {Store} from './store.mjs';
+import {assertRecoveryActivation} from './recovery-state.mjs';
 import {canonical,digest,mac,equal,verifyBundle} from './crypto.mjs';
 import {fail,cleanText,identifier,date,validateEvent,validateRule,matches} from './model.mjs';
 import {createRetention} from './retention.mjs';
@@ -16,6 +17,7 @@ import {normalizeSystemFacts,applicabilityCandidate,applicabilityPolicyVersion,a
 import {createFinanceEvidence} from './finance-evidence.mjs';
 import {createGovernanceDocuments} from './governance-documents.mjs';
 import {evaluateKrGovernanceEvidence} from './kr-governance-evidence.mjs';
+import {krLegalSourceCoverage} from './kr-legal-source-coverage.mjs';
 import {createIdentity} from './identity.mjs';
 import {checkObjectProjection} from './object-integrity.mjs';
 import {checkEvaluationProjection} from './evaluation-integrity.mjs';
@@ -25,6 +27,8 @@ import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
 
 export function createService({dataDir,config,key,requirements=[],runtimeReceipt=()=>undefined}) {
+ assertRecoveryActivation({dataDir,key,config});
+ const legalSourceCoverage=krLegalSourceCoverage(requirements);
  const store=new Store(dataDir,key);const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
@@ -110,7 +114,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
    for(const {tenant,catalogs,systems,assessments} of states){
     const previous=catalogs.get('current');
     if(previous?.hash!==hash){
-     const p={id:'catalog-loader',tenant},snapshot={...identity,requirements,createdAt:new Date().toISOString()};store.put(p,'catalog','current',snapshot);
+     const p={id:'catalog-loader',tenant},snapshot={...identity,requirements,legalSourceCoverage,createdAt:new Date().toISOString()};store.put(p,'catalog','current',snapshot);
      if(previous)for(const a of assessments.values()){const id=randomUUID();store.put(p,'governance_task',id,{id,systemId:a.systemId,requirementId:a.requirementId,title:'규정 출처/적용 후보 정책 버전 변경에 따른 재검토',owner:a.owner,status:'open',previousHash:previous.hash,currentHash:hash,previousPolicyVersion:previous.policyVersion||'not_recorded',currentPolicyVersion:identity.policyVersion});}
     }
     const p={id:'system-facts-migration-v4',tenant};
@@ -146,7 +150,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
    const stale=assessment&&(assessment.requirementHash!==digest(requirement)||assessment.systemHash!==digest(system)||Date.parse(assessment.nextReviewAt)<=Date.now()||missingLinkedEvidence||documentStale||applicabilityReview.status==='review_required');
    const status=!assessment?'evidence_missing':stale?'review_required':assessment.applicability==='not_applicable'?(technical.supportsHumanAssessment?'human_marked_not_applicable':'evidence_insufficient'):assessment.assessment==='sufficient'&&assessment.evidence.length&&technical.supportsHumanAssessment?'human_evidence_assessed':'evidence_insufficient';
    return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,legalStatus:stale?'review_required':assessment?.legalReview||'pending'};
-  });const catalog=applicabilityCatalogIdentity(requirements);return {system,items,tasks,applicabilityPolicyVersion,applicabilityPolicyIdentityHash:catalog.hash,limitations:['법적 적용성은 사실관계와 인간 검토를 요구합니다','증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다','한국 고영향과 EU 고위험 분류를 공유하지 않습니다','ISO/IEC 42001 본문 미확보: 조항 매핑 미지원']};
+   });const catalog=applicabilityCatalogIdentity(requirements);return {system,items,tasks,legalSourceCoverage,applicabilityPolicyVersion,applicabilityPolicyIdentityHash:catalog.hash,limitations:['법적 적용성은 사실관계와 인간 검토를 요구합니다','증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다','한국 고영향과 EU 고위험 분류를 공유하지 않습니다','ISO/IEC 42001 본문 미확보: 조항 매핑 미지원']};
   });
  }
  async function handle(method,url,headers,body=''){
@@ -242,7 +246,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
    try{const result=store.transaction(()=>{const bundle=store.bundle(p.tenant),evaluations=bundle.records.filter(row=>row.type==='evaluation').map(row=>row.payload),events=store.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),documents=checkDocumentFiles({db:store.db,tenant:p.tenant,records:bundle.records,dataDir,key});return {...verifyBundle(bundle,publicKey),projection:checkEventProjection(store.db,p.tenant,events),receiptProjection:checkReceiptProjection(store.db,p.tenant,bundle.records,events),developmentRunProjection:checkDevelopmentRunProjection(store.db,p.tenant,development),objectProjection:checkObjectProjection(store.db,p.tenant,bundle.records),evaluationProjection:checkEvaluationProjection(store.db,p.tenant,evaluations),actionProjection:store.checkActionProjection(p.tenant),governanceDocumentProjection:documents.governanceDocumentProjection,documentFiles:documents.summary,verificationScope};});store.audit(p,'read',path);return result;}catch(e){let failureRecorded=true;try{store.transaction(()=>store.append(p.tenant,'integrity_failure',{message:e.message},p.id));}catch{failureRecorded=false;}return {valid:false,error:e.message,failureRecorded,requiresExternalIncidentRecord:!failureRecorded,verificationScope};}
   }
   if(path==='/api/rebuild'&&method==='POST'){admin(p);verifyBundle(store.bundle(p.tenant),publicKey);return store.rebuild(p);}
-  if(path==='/api/governance'&&method==='GET')return store.transaction(()=>({requirements,systems:[...verifiedPolicyObjects(p,'system').values()],supplierBundles:[...verifiedPolicyObjects(p,'supplier_bundle').values()],governanceDocuments:governanceDocuments.list(p),documentLimits:governanceDocuments.limits,assessments:[...verifiedPolicyObjects(p,'assessment').values()],tasks:[...verifiedPolicyObjects(p,'governance_task').values()]}));
+  if(path==='/api/governance'&&method==='GET')return store.transaction(()=>({requirements,legalSourceCoverage,systems:[...verifiedPolicyObjects(p,'system').values()],supplierBundles:[...verifiedPolicyObjects(p,'supplier_bundle').values()],governanceDocuments:governanceDocuments.list(p),documentLimits:governanceDocuments.limits,assessments:[...verifiedPolicyObjects(p,'assessment').values()],tasks:[...verifiedPolicyObjects(p,'governance_task').values()]}));
   if(path==='/api/governance/systems'&&method==='POST'){
    reviewer(p);
    const s=normalizeSystemFacts(x);
@@ -255,7 +259,7 @@ export function createService({dataDir,config,key,requirements=[],runtimeReceipt
    if(!['applicable','not_applicable','unknown'].includes(x.applicability)||!['sufficient','insufficient','unknown'].includes(x.assessment)||!['pending','reviewed'].includes(x.legalReview))fail(400,'평가 상태 오류');
    if(!Array.isArray(x.evidence)||x.evidence.length>30)fail(400,'증거는 최대 30개');
    const events=x.evidence.some(e=>e.type==='event')?verifiedEventReferences(p):new Map();
-   const evidence=x.evidence.map(e=>{if(!['document','event','test','attestation'].includes(e.type))fail(400,'증거 유형 오류');const ref=cleanText(e.ref,1000);const supplier=ref.startsWith('supplier-bundle:')?finance.evidence(p,ref,x.systemId):null,document=ref.startsWith('governance-document:')?governanceDocuments.evidence(p,ref,x.systemId):null;if((supplier||document)&&e.type!=='document')fail(400,'문서 증빙 참조는 document 유형입니다');if(supplier&&x.assessment==='sufficient'&&!supplier.measures.includes(x.requirementId))fail(400,'공급사 증빙의 조치 범위 밖 요구사항은 충분으로 평가할 수 없습니다');if(supplier&&x.assessment==='sufficient'&&supplier.verification.status!=='technical_match_human_review_required')fail(400,'미확인·변경·복구 불가 공급사 증빙으로 충분 평가할 수 없습니다');const event=e.type==='event'?events.get(ref):null;if(e.type==='event'&&!event)fail(400,'동일 tenant 원본 이벤트 참조를 찾을 수 없습니다');const eventSnapshot=event?{kind:event.kind,sourceKind:event.sourceKind,systemId:event.systemId||'not_recorded',modelId:event.modelId||'not_recorded',modelVersion:event.modelVersion||'not_recorded',policyVersion:event.policyVersion||'not_recorded',reviewer:event.reviewer||'not_recorded',occurredAt:event.occurredAt,receivedAt:event.receivedAt,clockUncertaintyMs:event.clockUncertaintyMs??'unknown',...(event.governanceCheck?{governanceCheck:event.governanceCheck}:{})}:null;return {type:e.type,ref,version:document?.version||cleanText(e.version||'unknown',200),notes:cleanText(e.notes||'',1000),contentHash:document?.contentHash||supplier?.contentHash||(event?digest(event):cleanText(e.contentHash||'not_provided',100)),...(document?{documentSnapshotHash:document.documentSnapshotHash}:{}),...(event?{eventSnapshot,eventSnapshotHash:digest(eventSnapshot)}:{}),verification:document?.verification||(supplier?'supplier_bundle_verified_at_assessment':event?'linked_verified_minimized_record':'human_supplied_reference_not_fetched')};});
+   const evidence=x.evidence.map(e=>{if(!['document','event','test','attestation'].includes(e.type))fail(400,'증거 유형 오류');const ref=cleanText(e.ref,1000);const supplier=ref.startsWith('supplier-bundle:')?finance.evidence(p,ref,x.systemId):null,document=ref.startsWith('governance-document:')?governanceDocuments.evidence(p,ref,x.systemId):null;if((supplier||document)&&e.type!=='document')fail(400,'문서 증빙 참조는 document 유형입니다');if(supplier&&x.assessment==='sufficient'&&!supplier.measures.includes(x.requirementId))fail(400,'공급사 증빙의 조치 범위 밖 요구사항은 충분으로 평가할 수 없습니다');if(supplier&&x.assessment==='sufficient'&&supplier.verification.status!=='technical_match_human_review_required')fail(400,'미확인·변경·복구 불가 공급사 증빙으로 충분 평가할 수 없습니다');const event=e.type==='event'?events.get(ref):null;if(e.type==='event'&&!event)fail(400,'동일 tenant 원본 이벤트 참조를 찾을 수 없습니다');const eventSnapshot=event?{kind:event.kind,sourceKind:event.sourceKind,systemId:event.systemId||'not_recorded',modelId:event.modelId||'not_recorded',modelVersion:event.modelVersion||'not_recorded',policyVersion:event.policyVersion||'not_recorded',reviewer:event.reviewer||'not_recorded',occurredAt:event.occurredAt,receivedAt:event.receivedAt,clockUncertaintyMs:event.clockUncertaintyMs??'unknown',...(event.governanceCheck?{governanceCheck:event.governanceCheck}:{})}:null;return {type:e.type,ref,version:document?.version||cleanText(e.version||'unknown',200),notes:cleanText(e.notes||'',1000),contentHash:document?.contentHash||supplier?.contentHash||(event?digest(event):cleanText(e.contentHash||'not_provided',100)),...(document?{documentSnapshotHash:document.documentSnapshotHash}:{}),...(supplier&&Object.hasOwn(supplier,'provenanceReviewHash')?{provenanceReviewHash:supplier.provenanceReviewHash}:{}),...(event?{eventSnapshot,eventSnapshotHash:digest(eventSnapshot)}:{}),verification:document?.verification||(supplier?'supplier_bundle_verified_at_assessment':event?'linked_verified_minimized_record':'human_supplied_reference_not_fetched')};});
    if(x.assessment==='sufficient'&&!evidence.length)fail(400,'증거 없이 충분으로 평가할 수 없습니다');
    const applicabilityCapture=applicabilityAssessmentSnapshot(requirement,system);
    const a={id:randomUUID(),systemId:x.systemId,systemHash:digest(system),requirementId:x.requirementId,requirementHash:digest(requirement),requirementSnapshot:requirement,applicabilityPolicyVersion,applicabilitySnapshot:applicabilityCapture.snapshot,applicabilitySnapshotHash:applicabilityCapture.hash,applicability:x.applicability,evidence,control:cleanText(x.control,1000),owner:cleanText(x.owner,200),assessment:x.assessment,legalReview:x.legalReview,reason:cleanText(x.reason,2000),nextReviewAt:date(x.nextReviewAt),reviewer:p.id,createdAt:new Date().toISOString()};

@@ -49,7 +49,7 @@ function fixture() {
   const packageFunction = source.slice(source.indexOf('  function packagePreview('), source.indexOf('  function credentialPanel('));
   const requestFunctions = source.slice(source.indexOf('  function governanceRequirementPicker('), source.indexOf('  async function requestBuilder('));
   const appSource = readFileSync('public/app.js', 'utf8'), systemFunctions = appSource.slice(appSource.indexOf('const systemTriFacts ='), appSource.indexOf('function systemEditor('));
-  const helpers = { ...core, stringify: value => JSON.stringify(value, null, 2), rlabel: value => ({ accept: '채택', reject: '반려' }[value] || value) };
+  const helpers = { ...core, TextEncoder, stringify: value => JSON.stringify(value, null, 2), rlabel: value => ({ accept: '채택', reject: '반려' }[value] || value) };
   vm.runInNewContext(functions + packageFunction + requestFunctions + systemFunctions + '\nglobalThis.helpers = { draftDiff, reviewHistory, packagePreview, governanceRequirementPicker, assistanceRequestOptions, systemFactsPayload };', helpers);
   return { console: sandbox.window.EvidScopeConsole, helpers: helpers.helpers, core, routes, calls, navigations, responses };
 }
