@@ -482,6 +482,57 @@ export function headsLeafContent(entries) {
 export const headsLeafData = leaf => Buffer.from(canonicalJson({entries: leaf.entries, entriesRoot: leaf.entriesRoot, format: HEADS_LEAF_FORMAT}), 'utf8');
 export const headsLeafHash = leaf => leafHash(headsLeafData(leaf));
 
+// ---------- tlog epochs ----------
+// A restore forks the log: the restored ledger continues under a new origin base, and one signed `tlog_epoch` ledger
+// record per tenant states what survived from the previous origin and what was lost. The records are ordinary chained
+// ledger records, so the vault key and the tenant tree authenticate them.
+export const TLOG_EPOCH_TYPE = 'tlog_epoch';
+export const TLOG_EPOCH_FORMAT = 'evidscope-tlog-epoch-v1';
+const EPOCH_KEYS = ['format', 'originBase', 'previousOriginBase', 'origin', 'previousOrigin', 'restoredSize', 'restoredRoot', 'previousCheckpoint',
+  'restoredHeadsSize', 'previousCosignedCheckpoint', 'witnessedHeadsSize', 'lostRange', 'lostHeadsRange', 'freshness', 'acceptLoss', 'archiveManifestSha256'];
+const isCount = v => Number.isSafeInteger(v) && v >= 0;
+const plainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
+export const lostHeadsRangeOf = (restoredHeadsSize, witnessedHeadsSize) =>
+  (witnessedHeadsSize !== null && witnessedHeadsSize > restoredHeadsSize ? [restoredHeadsSize + 1, witnessedHeadsSize] : null);
+// Structure only; the restored root and the previous notes are checked by verifyTlogEpochs (offline) or the vault startup check.
+export function tlogEpochPayload(record) {
+  const p = record?.payload, fail = what => { throw Error(`Transparency epoch at sequence ${record?.seq} is invalid: ${what}`); };
+  if (!plainObject(p) || Object.keys(p).length !== EPOCH_KEYS.length || !EPOCH_KEYS.every(k => Object.hasOwn(p, k))) fail('fields');
+  if (p.format !== TLOG_EPOCH_FORMAT) fail('format');
+  for (const k of ['originBase', 'previousOriginBase']) if (typeof p[k] !== 'string' || !ORIGIN_BASE_RE.test(p[k]) || Buffer.byteLength(p[k]) > 200) fail(k);
+  if (p.originBase === p.previousOriginBase) fail('origin base unchanged');
+  if (p.origin !== tenantOrigin(p.originBase, record.tenant) || p.previousOrigin !== tenantOrigin(p.previousOriginBase, record.tenant)) {
+    fail('origin is not bound to the tenant');
+  }
+  if (!isCount(p.restoredSize) || p.restoredSize >= record.seq || typeof p.restoredRoot !== 'string' || !/^[a-f0-9]{64}$/.test(p.restoredRoot)) {
+    fail('restored size or root');
+  }
+  if (!isCount(p.restoredHeadsSize) || !(p.witnessedHeadsSize === null || isCount(p.witnessedHeadsSize))) fail('heads sizes');
+  if (canonicalJson(p.lostHeadsRange) !== canonicalJson(lostHeadsRangeOf(p.restoredHeadsSize, p.witnessedHeadsSize))) fail('lost heads range');
+  const lost = p.lostRange;
+  if (lost !== null && !(Array.isArray(lost) && lost.length === 2 && lost[0] === p.restoredSize + 1
+    && (lost[1] === null || Number.isSafeInteger(lost[1]) && lost[1] >= lost[0]))) fail('lost range');
+  for (const k of ['previousCheckpoint', 'previousCosignedCheckpoint']) if (p[k] !== null && typeof p[k] !== 'string') fail(k);
+  if (!plainObject(p.freshness) || typeof p.freshness.established !== 'boolean') fail('freshness');
+  if (p.acceptLoss !== null && !(plainObject(p.acceptLoss) && typeof p.acceptLoss.reason === 'string' && p.acceptLoss.reason.trim())) fail('acceptLoss');
+  if (!p.freshness.established && p.acceptLoss === null) fail('previous origin state is neither fresh nor acknowledged as lost');
+  if (typeof p.archiveManifestSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(p.archiveManifestSha256)) fail('archive manifest');
+  return p;
+}
+// Deterministic summary of a tenant's epoch chain (oldest first), shipped additively as bundle.transparency.epochs.
+export function tlogEpochSummaries(records) {
+  const out = [];
+  for (const r of records) {
+    if (r.type !== TLOG_EPOCH_TYPE) continue;
+    const p = tlogEpochPayload(r);
+    if (out.length && out.at(-1).originBase !== p.previousOriginBase) throw Error(`Transparency epoch at sequence ${r.seq} does not continue the epoch chain`);
+    out.push({seq: r.seq, hash: r.hash, originBase: p.originBase, previousOriginBase: p.previousOriginBase, restoredSize: p.restoredSize,
+      lostRange: p.lostRange, restoredHeadsSize: p.restoredHeadsSize, witnessedHeadsSize: p.witnessedHeadsSize, lostHeadsRange: p.lostHeadsRange,
+      freshnessEstablished: p.freshness.established, lossAccepted: p.acceptLoss !== null, ...(p.acceptLoss ? {acceptLossReason: p.acceptLoss.reason} : {})});
+  }
+  return out;
+}
+
 // ---------- EvidScope verifier ----------
 export const DEFAULT_MAX_STALENESS_SECONDS = 86400;
 const nowSeconds = now => Math.floor((now ?? Date.now()) / 1000);
@@ -490,11 +541,12 @@ const policyOf = options => {
   const witnesses = (options.witnesses || []).length;
   return {witnesses, quorum: options.quorum ?? (witnesses ? 1 : 0), maxStalenessSeconds: options.maxStalenessSeconds ?? DEFAULT_MAX_STALENESS_SECONDS};
 };
-function originBaseFor(tenant, origin, originBase) {
+function originBaseFor(tenant, origin, originBase, epochs = []) {
   if (originBase !== undefined && originBase !== null) {
     validateOriginBase(originBase);
-    if (origin !== undefined && origin !== tenantOrigin(originBase, tenant)) throw Error('Transparency origin differs from pinned origin base');
-    return originBase;
+    if (origin === undefined || origin === tenantOrigin(originBase, tenant)) return originBase;
+    // A base pinned before a restore stays usable when the signed epoch chain retired it in favour of the exported origin.
+    if (!epochs.some(e => e.previousOriginBase === originBase)) throw Error('Transparency origin differs from pinned origin base');
   }
   return originBaseOf(origin, tenant);
 }
@@ -548,22 +600,70 @@ function finishResult(result, options) {
 const headsResult = (heads, material, base) => ({
   origin: headsOrigin(base), size: heads.cp.size, leafIndex: material.heads.leafIndex, witnessedTenantSize: heads.entry.size, ...heads.summary,
 });
+const rangeText = r => (r ? `${r[0]}-${r[1] ?? 'unknown'}` : 'none');
+function epochLossText(epoch, size) {
+  const covered = epoch.lostRange && size >= epoch.lostRange[0] && (epoch.lostRange[1] === null || size <= epoch.lostRange[1]);
+  return `; sequence numbers after ${epoch.restoredSize} were replaced at the tlog epoch at sequence ${epoch.seq} (lost range ${rangeText(epoch.lostRange)}`
+    + `${covered ? ', acknowledged as lost' : ', this size is not acknowledged as lost'})`;
+}
 // Prefix semantics: a minimum checkpoint (C2SP note of the tenant log, or an evidscope-checkpoint-v1 object) must be
-// a prefix of the export; a larger or conflicting minimum means rollback, truncation or a fork.
-function checkMinimum(minimumCheckpoint, {tenant, tOrigin, publicKey, records, count, rootAt}) {
+// a prefix of the export; a larger or conflicting minimum means rollback, truncation or a fork. A note of an origin the
+// epoch chain retired is a prefix only up to that epoch's restored size; anything beyond is reported with the lost range.
+function checkMinimum(minimumCheckpoint, {tenant, tOrigin, publicKey, records, count, rootAt, epochs = []}) {
+  const lossAfter = size => epochs.find(e => size > e.restoredSize);
   if (typeof minimumCheckpoint === 'object' && minimumCheckpoint?.format === 'evidscope-checkpoint-v1') {
     const size = minimumCheckpoint.count, head = minimumCheckpoint.head;
     if (minimumCheckpoint.tenant !== tenant || !Number.isSafeInteger(size) || size < 0) throw Error('Minimum checkpoint tenant mismatch');
     if (size > count) throw Error('Export is older than the minimum checkpoint: possible rollback or truncation');
-    if (size > 0 ? records[size - 1]?.hash !== head : head !== '0'.repeat(64)) throw Error('Export conflicts with the minimum checkpoint (fork)');
+    if (size > 0 ? records[size - 1]?.hash !== head : head !== '0'.repeat(64)) {
+      const epoch = lossAfter(size);
+      throw Error('Export conflicts with the minimum checkpoint (fork)' + (epoch ? epochLossText(epoch, size) : ''));
+    }
     return {kind: 'v1', size, satisfied: true};
   }
   if (typeof minimumCheckpoint !== 'string') throw Error('Unsupported minimum checkpoint');
+  const claimed = parseCheckpoint(noteText(minimumCheckpoint)).origin, epoch = epochs.find(e => tenantOrigin(e.previousOriginBase, tenant) === claimed);
+  if (epoch && claimed !== tOrigin) {
+    const {checkpoint} = openLogNote(minimumCheckpoint, claimed, publicKey);
+    if (checkpoint.size > epoch.restoredSize) {
+      throw Error('Export is older than the minimum checkpoint: possible rollback or truncation' + epochLossText(epoch, checkpoint.size));
+    }
+    if (!rootAt(checkpoint.size).equals(checkpoint.root)) throw Error('Export conflicts with the minimum checkpoint (fork)');
+    return {kind: 'note', size: checkpoint.size, origin: claimed, epochSeq: epoch.seq, satisfied: true};
+  }
   if (!tOrigin) throw Error('A C2SP minimum checkpoint needs the export transparency origin or an origin base');
   const {checkpoint} = openLogNote(minimumCheckpoint, tOrigin, publicKey);
   if (checkpoint.size > count) throw Error('Export is older than the minimum checkpoint: possible rollback or truncation');
   if (!rootAt(checkpoint.size).equals(checkpoint.root)) throw Error('Export conflicts with the minimum checkpoint (fork)');
   return {kind: 'note', size: checkpoint.size, satisfied: true};
+}
+// Offline epoch checks against the exported records: the restored prefix root, the previous origin's own signed checkpoint
+// (a prefix of these records), the newest previous cosigned heads checkpoint, and the link from the last epoch to the export.
+function verifyTlogEpochs({records, summaries, publicKey, rootAt, verifiers, base}) {
+  if (base && summaries.length && summaries.at(-1).originBase !== base) throw Error('Transparency origin base differs from the latest tlog epoch');
+  const bySeq = new Map(records.filter(r => r.type === TLOG_EPOCH_TYPE).map(r => [r.seq, r.payload]));
+  return summaries.map(s => {
+    const p = bySeq.get(s.seq), at = `Transparency epoch at sequence ${s.seq}`;
+    if (!rootAt(p.restoredSize).equals(Buffer.from(p.restoredRoot, 'hex'))) throw Error(`${at}: restored root differs from exported records (fork)`);
+    let previousCheckpointSize = null, previousCosigned = null;
+    if (p.previousCheckpoint !== null) {
+      const c = openLogNote(p.previousCheckpoint, p.previousOrigin, publicKey).checkpoint;
+      if (c.size > p.restoredSize || !rootAt(c.size).equals(c.root)) {
+        throw Error(`${at}: previous origin checkpoint is not a prefix of the exported records (fork)`);
+      }
+      previousCheckpointSize = c.size;
+    }
+    if (p.previousCosignedCheckpoint !== null) {
+      const o = openLogNote(p.previousCosignedCheckpoint, headsOrigin(p.previousOriginBase), publicKey, verifiers);
+      if (o.checkpoint.size > Math.max(p.restoredHeadsSize, p.witnessedHeadsSize ?? 0)) {
+        throw Error(`${at}: previous cosigned checkpoint exceeds the acknowledged heads size`);
+      }
+      const cosigners = o.note.sigs.filter(sig => verifiers.some(v => v.name === sig.name && v.id.toString('hex') === sig.id));
+      const witnesses = cosigners.map(sig => ({name: sig.name, keyId: sig.id, timestamp: cosignatureTimestamp(sig.raw)}));
+      previousCosigned = {size: o.checkpoint.size, witnesses};
+    }
+    return {...s, previousCheckpointSize, previousCosigned};
+  });
 }
 // Full-export verification: every leaf is present, so prefix roots are recomputed instead of shipping consistency proofs.
 // leaves: leaf hashes of seq 1..count, already chain-verified by the caller.
@@ -571,7 +671,11 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
   const tenant = bundle.checkpoint.tenant, count = leaves.length, material = bundle.transparency;
   const hasMinimum = options.minimumCheckpoint !== undefined && options.minimumCheckpoint !== null;
   if (material && material.format !== TRANSPARENCY_FORMAT) throw Error('Unsupported transparency evidence');
-  const base = material || options.originBase ? originBaseFor(tenant, material?.origin, options.originBase) : null;
+  const epochs = tlogEpochSummaries(bundle.records);
+  if (material?.epochs !== undefined && canonicalJson(material.epochs) !== canonicalJson(epochs)) {
+    throw Error('Transparency epoch summary differs from the signed epoch records');
+  }
+  const base = material || options.originBase ? originBaseFor(tenant, material?.origin, options.originBase, epochs) : null;
   const tOrigin = base ? tenantOrigin(base, tenant) : null;
   const tenantNote = material ? openLogNote(material.checkpoint, tOrigin, publicKey).checkpoint : null;
   if (tenantNote && tenantNote.size > count) throw Error('Transparency checkpoint is ahead of exported records: Truncated or inconsistent export');
@@ -582,7 +686,7 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
     if (!cache.has(size)) { const {roots} = rootsAtSizes(leaves, [size]); cache.set(size, roots.get(size)); }
     return cache.get(size);
   };
-  const sizes = [count, ...(tenantNote ? [tenantNote.size] : []), ...(heads ? [heads.entry.size] : [])];
+  const sizes = [count, ...(tenantNote ? [tenantNote.size] : []), ...(heads ? [heads.entry.size] : []), ...epochs.map(e => e.restoredSize)];
   for (const [k, v] of rootsAtSizes(leaves, sizes).roots) cache.set(k, v);
   const result = {present: !!material, count, exportRoot: b64(rootAt(count)), heads: null};
   if (tenantNote) {
@@ -594,7 +698,13 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
     if (rootAt(heads.entry.size).toString('hex') !== heads.entry.root) throw Error('Witnessed tenant head differs from exported records (fork)');
     result.heads = headsResult(heads, material, base);
   }
-  if (hasMinimum) result.minimumCheckpoint = checkMinimum(options.minimumCheckpoint, {tenant, tOrigin, publicKey, records: bundle.records, count, rootAt});
+  if (epochs.length) {
+    result.epochs = verifyTlogEpochs({records: bundle.records, summaries: epochs, publicKey, rootAt, verifiers, base: material ? base : null});
+    if (options.originBase && options.originBase !== base) result.pinnedOriginBase = options.originBase;
+  }
+  if (hasMinimum) {
+    result.minimumCheckpoint = checkMinimum(options.minimumCheckpoint, {tenant, tOrigin, publicKey, records: bundle.records, count, rootAt, epochs});
+  }
   return finishResult(result, options);
 }
 // Case reports carry only the action's records: inclusion proofs bind them to the signed tenant tree and a

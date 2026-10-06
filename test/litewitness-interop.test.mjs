@@ -13,9 +13,10 @@ import {DatabaseSync} from 'node:sqlite';
 import {verifyBundle} from '../src/crypto.mjs';
 import * as T from '../src/tlog.mjs';
 import {normalizeTransparencyConfig, transparencyPinPath} from '../src/transparency.mjs';
-import {witnessCommands} from '../scripts/transparency.mjs';
+import {newEpochConfig, witnessCommands} from '../scripts/transparency.mjs';
+import {createVaultBackup, createVaultRecoveryFrontier, restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {startSshAgent} from './support/ssh-agent.mjs';
-import {BASE, replaceDatabase, snapshot, transparencyFixture} from './support/transparency-fixture.mjs';
+import {BASE, principals, replaceDatabase, snapshot, transparencyFixture} from './support/transparency-fixture.mjs';
 
 const LW = process.env.EVIDSCOPE_LITEWITNESS_BIN;
 const skip = !LW ? 'EVIDSCOPE_LITEWITNESS_BIN is not set' : !existsSync(LW) ? `litewitness binary not found at ${LW}` : false;
@@ -38,14 +39,12 @@ function register(db, config, key) {
   return 'sqlite';
 }
 
-test('vault heads log interoperates with litewitness: cosign, consistency, rollback refusal and fork (422)', {skip}, async t => {
-  const f = await transparencyFixture(t, {witness: false});
+// Starts litewitness on a fresh database; before(db, url) registers logs before it serves.
+async function startLitewitness(t, before) {
   const run = mkdtempSync(join(tmpdir(), 'evs-lw-')), sock = join(run, 'a.sock'), db = join(run, 'w.db'), port = await freePort();
   t.after(() => rmSync(run, {recursive: true, force: true}));
-  const agent = await startSshAgent(sock, V.witness_key.seed_hex);
-  const raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url: `http://127.0.0.1:${port}`}], intervalMs: 100, timeoutMs: 5000};
-  const config = (mode, dir = f.dataDir) => normalizeTransparencyConfig({...raw, mode}, {dataDir: dir});
-  const registration = register(db, config('enforce'), f.privateKey);
+  const agent = await startSshAgent(sock, V.witness_key.seed_hex), url = `http://127.0.0.1:${port}`;
+  const registration = before(db, url);
   const lw = spawn(LW, ['-db', db, '-name', V.witness_key.key_name, '-key', agent.fingerprint, '-ssh-agent', sock, '-listen', `127.0.0.1:${port}`]);
   let logs = '';
   lw.stderr.on('data', d => { logs += d; });
@@ -59,8 +58,19 @@ test('vault heads log interoperates with litewitness: cosign, consistency, rollb
     await agent.close();
   });
   for (let i = 0; i < 200 && !/verifier key/.test(logs); i++) await delay(25);
-  for (let i = 0; i < 100; i++) { try { await fetch(`http://127.0.0.1:${port}/metrics`); break; } catch { await delay(50); } }
+  for (let i = 0; i < 100; i++) { try { await fetch(`${url}/metrics`); break; } catch { await delay(50); } }
   assert.equal((logs.match(/msg="verifier key" vkey=(\S+)/) || [])[1], V.witness_key.vkey, logs);
+  return {run, db, url, registration};
+}
+
+test('vault heads log interoperates with litewitness: cosign, consistency, rollback refusal and fork (422)', {skip}, async t => {
+  const f = await transparencyFixture(t, {witness: false});
+  let raw = null;
+  const config = (mode, dir = f.dataDir) => normalizeTransparencyConfig({...raw, mode}, {dataDir: dir});
+  const {run, registration} = await startLitewitness(t, (db, url) => {
+    raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url}], intervalMs: 100, timeoutMs: 5000};
+    return register(db, config('enforce'), f.privateKey);
+  });
 
   const s = await f.open('enforce', {cfg: config('enforce')});
   assert.equal(s.transparency.status().witnesses[0].status, 'consistent');
@@ -105,4 +115,48 @@ test('vault heads log interoperates with litewitness: cosign, consistency, rollb
   t.diagnostic(JSON.stringify({litewitness: LW, registration, witnessVkey: V.witness_key.vkey, cosignedHeadsSize: witnessedSize,
     exportVerified: {rollbackChecked: verified.rollbackChecked, quorumMet: verified.transparency.heads.quorumMet},
     olderCopy: refused, forkStatus: fork.witnesses[0], forkRestart: refusedFork}));
+});
+
+test('restore epochs interoperate with litewitness: freshness of the old heads origin and registration of the new one', {skip}, async t => {
+  const f = await transparencyFixture(t, {witness: false});
+  let raw = null;
+  const {db} = await startLitewitness(t, (file, url) => {
+    raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url}], intervalMs: 100, timeoutMs: 5000};
+    return register(file, normalizeTransparencyConfig(raw, {dataDir: f.dataDir}), f.privateKey);
+  });
+  const s = await f.open('enforce', {cfg: normalizeTransparencyConfig(raw, {dataDir: f.dataDir})});
+  f.write(s, 'alpha', 3);
+  await s.transparency.pump();
+  const backupDir = join(f.root, 'backup'), serviceConfig = {principals};
+  const anchor = await createVaultBackup({dataDir: f.dataDir, backupDir, privateKey: f.privateKey, publicKey: f.publicKey});
+  const archived = {heads: s.transparency.status().heads.size, alpha: s.store._tlogRow('alpha').size};
+  f.write(s, 'alpha', 2);
+  await s.transparency.pump();
+  const witnessed = s.transparency.status().heads.size;
+  assert.equal(s.transparency.status().witnesses[0].status, 'consistent');
+  const latest = await createVaultRecoveryFrontier({dataDir: f.dataDir, privateKey: f.privateKey, publicKey: f.publicKey, anchor, config: serviceConfig,
+    transparency: raw});
+  await f.close(s);
+  const NEW = 'vault.test/evidscope-lw2', next = newEpochConfig(raw, NEW);
+  const restore = (name, transparency) => restoreVaultBackup({backupDir, restoreDir: join(f.root, name), privateKey: f.privateKey, publicKey: f.publicKey,
+    anchor, frontier: latest.frontier, frontierAnchor: latest.anchor, config: serviceConfig, transparency});
+  // litewitness answers the archive's heads checkpoint with 409 (it holds more): freshness needs the frontier companion.
+  await assert.rejects(restore('stale', {config: next, previous: raw}),
+    new RegExp(`witnessed up to heads size ${witnessed}, beyond the archive \\(${archived.heads}\\)`));
+  const receipt = await restore('epoch', {config: next, previous: raw, frontierTransparency: latest.transparency});
+  assert.equal(receipt.freshnessEstablished, true);
+  assert.deepEqual([receipt.transparency.witnesses[0].status, receipt.transparency.witnessedHeadsSize], ['consistent', witnessed]);
+  // The operator registers the new heads origin at the running witness with the printed witnessctl lines.
+  const dir = join(f.root, 'epoch'), cfg = normalizeTransparencyConfig(next, {dataDir: dir});
+  for (const line of witnessCommands({config: cfg, key: f.privateKey, db})) execFileSync(join(dirname(LW), 'witnessctl'), line.split(' ').slice(1));
+  const restored = await f.open('enforce', {dir, cfg});
+  f.write(restored, 'alpha', 1);
+  await restored.transparency.pump();
+  assert.equal(restored.transparency.status().witnesses[0].status, 'consistent');
+  const exported = await f.call(restored, '/api/export');
+  const policy = {witnesses: [V.witness_key.vkey], quorum: 1, originBase: BASE, require: true};
+  const verified = verifyBundle(exported, f.publicKey, undefined, {transparency: policy});
+  assert.equal(verified.transparency.pinnedOriginBase, BASE);
+  assert.deepEqual(verified.transparency.epochs[0].lostRange, [archived.alpha + 1, archived.alpha + 2]);
+  assert.equal(verified.transparency.heads.quorumMet, true);
 });

@@ -16,13 +16,18 @@ import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,
 let transactionSequence=0n;
 // Per-tenant RFC 6962 trees (tlog_state), the deployment heads log (tlog_heads) and witness cosignatures. All three are
 // derivable caches plus proof material checked against signed notes; append-only triggers stay droppable like immutable_*.
-const tlogTables=['tlog_state','tlog_heads','tlog_cosignatures'];
+// tlog_heads_entries holds, for heads rows whose entries column is '', only the entries that changed at that row.
+const tlogTables=['tlog_state','tlog_heads','tlog_heads_entries','tlog_cosignatures'];
 const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHECK(tenant<>''),origin TEXT NOT NULL,size INTEGER NOT NULL CHECK(size>=0),peaks BLOB NOT NULL,root BLOB NOT NULL,note TEXT NOT NULL,PRIMARY KEY(tenant,origin));
    CREATE TRIGGER IF NOT EXISTS tlog_state_monotonic BEFORE UPDATE ON tlog_state WHEN NEW.size<OLD.size OR NEW.tenant<>OLD.tenant OR NEW.origin<>OLD.origin BEGIN SELECT RAISE(ABORT,'tlog size regression'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_state_immutable_delete BEFORE DELETE ON tlog_state BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TABLE IF NOT EXISTS tlog_heads(origin TEXT NOT NULL,idx INTEGER NOT NULL CHECK(idx>=0),leaf BLOB NOT NULL,peaks BLOB NOT NULL,entries TEXT NOT NULL,note TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(origin,idx));
    CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_update BEFORE UPDATE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_heads_immutable_delete BEFORE DELETE ON tlog_heads BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TABLE IF NOT EXISTS tlog_heads_entries(origin TEXT NOT NULL,log TEXT NOT NULL,idx INTEGER NOT NULL CHECK(idx>=0),size INTEGER NOT NULL CHECK(size>0),root TEXT NOT NULL,PRIMARY KEY(origin,log,idx));
+   CREATE INDEX IF NOT EXISTS tlog_heads_entries_by_idx ON tlog_heads_entries(origin,idx);
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_entries_immutable_update BEFORE UPDATE ON tlog_heads_entries BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_heads_entries_immutable_delete BEFORE DELETE ON tlog_heads_entries BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TABLE IF NOT EXISTS tlog_cosignatures(origin TEXT NOT NULL,size INTEGER NOT NULL,key_id TEXT NOT NULL,name TEXT NOT NULL,timestamp INTEGER NOT NULL,line TEXT NOT NULL,received_at TEXT NOT NULL,PRIMARY KEY(origin,size,key_id));
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_refresh_only BEFORE UPDATE ON tlog_cosignatures WHEN NEW.timestamp<=OLD.timestamp OR NEW.origin<>OLD.origin OR NEW.size<>OLD.size OR NEW.key_id<>OLD.key_id BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_immutable_delete BEFORE DELETE ON tlog_cosignatures BEGIN SELECT RAISE(ABORT,'append only'); END;
@@ -171,7 +176,7 @@ export class Store {
  }
  bundle(tenant){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});const events=this.decodeRecords(b);const encrypted=new Set(b.records.filter(r=>r.type==='event'&&r.payload.format==='evidscope-encrypted-event-v1').map(r=>r.seq));b.disclosures=events.filter(e=>encrypted.has(e.seq)).map(e=>{const {seq,hash,...event}=e;return {seq,event};});return b;}
  // Export only: internal readers (rawBundle/bundle) never pay for transparency proofs.
- exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant):null;return transparency?{...b,transparency}:b;}
+ exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant,b.records):null;return transparency?{...b,transparency}:b;}
  ledgerEvents(tenant,actionId){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return this.decodeRecords(b).filter(e=>!actionId||e.actionId===actionId).sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id));}
  ledgerObjects(tenant,type){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return [...new Map(b.records.filter(r=>r.type===type&&r.payload.id).map(r=>[r.payload.id,r.payload])).values()];}
  // Consume this iterator to exhaustion before using any rows: final signed checkpoint
@@ -426,8 +431,11 @@ export class Store {
  }
  _tlogHeadPeaks(tenant,head){
   const row=this._tlogRow(tenant);
+  // Only the startup syncTlog rebuilds lost state; at runtime a missing row or a head below its witnessed heads entry is a tamper.
+  const floor=this.tlogHeadsFloor?.(this._tlogOrigin(tenant))||0;
+  if(head.seq<floor)throw Error(`Ledger head (size ${head.seq}) is behind its heads log entry (size ${floor}) (rollback); refusing to re-seal`);
   if(!head.seq){if(row?.size)throw Error('Ledger is missing beneath an existing tlog checkpoint');return [];}
-  if(!row)return this._tlogRebuild(tenant).peaks;
+  if(!row)throw Error('Truncated or inconsistent tlog state: the tenant checkpoint is missing beneath existing history; refusing to re-seal');
   if(row.size!==head.seq)throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');
   const peaks=this._tlogVerifiedPeaks(tenant,row);
   if(row.size%2===1&&!peaks.at(-1).equals(recordLeaf(head.hash)))throw Error('Ledger head differs from previously signed tlog checkpoint; refusing to re-seal');
