@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
 import zlib from 'node:zlib';
 import {randomUUID} from 'node:crypto';
 import {harness} from './harness.mjs';
@@ -162,4 +164,21 @@ test('per-tenant analysis backlog answers 503 + Retry-After for that tenant only
   const retried = await send(h.ingress.url, tools('e2'.repeat(16)), {token: alpha});
   assert.equal(retried.status, 200); assert.deepEqual(retried.json, {});
   assert.equal((await events(h, `&traceId=${'e2'.repeat(16)}`)).total, 3);
+});
+
+test('replay client posts saved OTLP exports; the stdin collector no longer accepts OTLP', async t => {
+  const h = await harness(); t.after(() => h.close());
+  const dir = mkdtempSync(join(h.dir, 'replay-')), lines = join(dir, 'spans.jsonl'), gz = join(dir, 'trace.pb.gz');
+  writeFileSync(lines, [otlpJson([span('f1'.repeat(8), {'gen_ai.operation.name': 'chat'})]), otlpJson([span('f2'.repeat(8), {'http.request.method': 'GET'})])].join('\n'));
+  writeFileSync(gz, zlib.gzipSync(fixture('collector-genai.pb')));
+  const replay = (files, env) => spawnSync(process.execPath, ['scripts/replay-otlp.mjs', `${h.ingress.url}/v1/traces`, ...files], {env: {...process.env, ...env}, encoding: 'utf8'});
+  const ok = replay([new URL('./fixtures/otlp/sdk-genai.json', import.meta.url).pathname, lines, gz], {EVIDSCOPE_OTLP_TOKEN: h.principal('otlp').token});
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.deepEqual(JSON.parse(ok.stdout), {requests: 4, delivered: 4, rejectedSpans: 1, failed: 0, statuses: {200: 4}});
+  assert.equal((await events(h)).total, 5);
+  const denied = replay([lines], {EVIDSCOPE_OTLP_TOKEN: h.principal('agent').token});
+  assert.equal(denied.status, 1); assert.deepEqual(JSON.parse(denied.stdout).statuses, {403: 2}); assert.ok(!denied.stdout.includes(h.principal('agent').token));
+  assert.equal(replay([lines], {EVIDSCOPE_OTLP_TOKEN: ''}).status, 2);
+  const retired = spawnSync(process.execPath, ['scripts/collect-ai-observations.mjs', 'otlp'], {input: fixture('sdk-genai.json'), encoding: 'utf8'});
+  assert.equal(retired.status, 2); assert.equal(retired.stdout, ''); assert.match(retired.stderr, /retired/);
 });

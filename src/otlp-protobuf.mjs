@@ -188,3 +188,19 @@ export function encodeExportTraceServiceResponse(rejected = 0, message = '') {
 export function encodeStatus(code, message) {
   return Buffer.concat([code ? Buffer.concat([Buffer.from([0x08]), encodeVarint(code)]) : Buffer.alloc(0), field(0x12, Buffer.from(message, 'utf8'))]);
 }
+
+// Client side (scripts/replay-otlp.mjs): ExportTraceServiceResponse -> {rejectedSpans, errorMessage}.
+export function decodeExportTraceServiceResponse(buf) {
+  const out = {rejectedSpans: 0n, errorMessage: ''};
+  fields(buf, [0, buf.length], (field, wireType, r) => {
+    if (field !== 1) return false;
+    expect(wireType, 2, 'partial_success');
+    fields(buf, length(r), (f2, w2, r2) => {
+      if (f2 === 1) { expect(w2, 0, 'rejected_spans'); out.rejectedSpans = BigInt.asIntN(64, varint(r2)); return true; }
+      if (f2 === 2) { expect(w2, 2, 'error_message'); out.errorMessage = text(buf, length(r2)); return true; }
+      return false;
+    });
+    return true;
+  });
+  return out;
+}
