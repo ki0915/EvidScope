@@ -76,7 +76,13 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   서명된 결과와 대조할 수 있습니다.
 - **경쟁 제품과의 차이:** IETF noa 초안은 "검증자는 이 필드로 순서를 추론하면 안 된다", 오프라인 정책 재생은 범위 밖이라고 적습니다.
   AGT는 시도를 기록할 뿐 결과를 기록하지 않는다고 스스로 밝힙니다. OTel GenAI semconv에는 승인·권한·정책 속성이 없습니다.
-- **현재 상태:** 이번 라운드에서 정책 재생 검증을 구현 중입니다. 결과는 [개선 라운드 기록](improvement-rounds.md)에 반영합니다.
+- **이번 라운드 구현:** 분석 기록이 입력 이벤트 순번·규칙 버전·예외 수·엔진 ID(`evidscope-evaluate-v1`)를 함께 서명하도록 했고,
+  검증기가 각 분석 기록보다 앞선 원장 레코드만으로 결과를 다시 계산해 서명된 결과와 정확히 비교합니다.
+  운영자가 발견사항을 숨기거나 지어낸 뒤 사슬 전체를 다시 서명해도 서명 검증은 통과하지만 재생에서 `mismatch`로 잡힙니다.
+  분석 뒤에 승인된 규칙을 소급 적용하는 것도 잡힙니다. 도구 실행보다 뒤에 기록된 승인은 출처가 시각을 앞당겨 적어도
+  `approvalRecordedAfterExecution`으로 드러납니다. 입력 이벤트가 정당하게 파기된 기록은 `not_replayable`로 이유와 함께 보고합니다.
+- **확인 방법:** `node scripts/verify.mjs export.json trust-anchor.pem --replay` 또는 `node scripts/replay-findings.mjs export.json trust-anchor.pem`
+  (위트니스 옵션을 함께 주면 순서를 공동서명된 체크포인트에 고정). 시험은 `test/policy-replay.test.mjs`.
 
 ### D3. 조문 단위 한국 규제 증거 묶음
 
@@ -95,6 +101,9 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 ### D5. 위트니스 체크포인트에 연결된 OCSF 발견사항 (가장 약함)
 
 - 발견사항을 OCSF Detection Finding(2004)으로 내보내 기존 SIEM에서 받고, 각 발견사항이 증거 로그의 체크포인트를 가리키게 합니다.
+  `GET /api/export/ocsf?version=1.3.0|1.9.0`, `scripts/export-ocsf.mjs`(검증 후 NDJSON, 선택적으로 Splunk HEC 전송).
+  1.9.0의 `attestation_list`는 원장 레코드 해시를 fingerprint로, 투명성 로그를 켠 경우 tenant의 C2SP origin을 `chain_uid`로 담아
+  SIEM 분석가가 발견사항 하나를 위트니스가 서명한 로그까지 거슬러 검증할 수 있습니다.
   스키마 기능이라 누구나 따라 할 수 있으므로 단독 차별점이 아니라 D1·D2의 연동 증명으로 봅니다. Amazon Security Lake 사용자 정의 소스는
   OCSF 1.3까지만 받으므로 1.3 하위 호환 출력을 기본으로 둡니다.
 
@@ -113,7 +122,7 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 | 외부 위트니스·fork 탐지 | 예(이번 라운드) | 타임스탬프만 | 외부 앵커 없음 | 아니오 | 범위 밖 |
 | rollback·tenant 삭제 fail-closed | 예(enforce) | 부분 | 아니오 | 아니오 | 아니오 |
 | 에이전트가 승인을 주장할 수 없음 | 예 | 서버 대조 | 승인자 ID가 해시 밖 | 아니오 | 아니오 |
-| 오프라인 정책 재생 | 구현 중 | 아니오 | 온라인 Decision BOM | 아니오 | 범위 밖 |
+| 오프라인 정책 재생 | 예(이번 라운드) | 아니오 | 온라인 Decision BOM | 아니오 | 범위 밖 |
 | 검증 가능한 파기 순서 | 예 | 불명 | 아니오 | 삭제만 | 아니오 |
 | 한국 인공지능기본법·금융 가이드라인 | 예 | 아니오 | 아니오 | 아니오 | 아니오 |
 
