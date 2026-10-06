@@ -10,6 +10,7 @@
     "init": "node scripts/init.mjs",
     "start": "node scripts/local.mjs",
     "demo": "node scripts/demo.mjs",
+    "upgrade:local": "node scripts/upgrade-local.mjs",
     "test": "node scripts/test-serial.mjs",
     "test:ci": "node scripts/test-serial.mjs | node scripts/ci-tap-gate.mjs -",
     "check": "node scripts/check-source.mjs",

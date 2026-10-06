@@ -52,7 +52,7 @@ export function createLocalRuntime(options=localOptions()){
     if(stopping)throw Error('Local startup cancelled');
     const port=portBase===0?0:portBase+index;
     const address=await new Promise((res,rej)=>{
-     const child=fork(join(root,'src/server.mjs'),[],{cwd:root,execArgv:[],env:{...process.env,MODE:mode,PORT:String(port),HOST:host,DATA_DIR:join(directory,'data'),CONFIG_FILE:join(directory,'config.json'),SIGNING_KEY_FILE:join(directory,'signing-private.pem'),...(existsSync(join(directory,'data-encryption.key'))?{DATA_KEY_FILE:join(directory,'data-encryption.key')}:{}),VAULT_URL:endpoints.vault||`http://${host==='::1'?'[::1]':host}:${port}`,WORKER_TOKEN:worker.token},stdio:['ignore','inherit','inherit','ipc']});
+     const child=fork(join(root,'src/server.mjs'),[],{cwd:root,execArgv:[],env:{...process.env,MODE:mode,PORT:String(port),HOST:host,DATA_DIR:join(directory,'data'),CONFIG_FILE:join(directory,'config.json'),SIGNING_KEY_FILE:join(directory,'signing-private.pem'),...(existsSync(join(directory,'data-encryption.key'))?{DATA_KEY_FILE:join(directory,'data-encryption.key')}:{}),...(!process.env.TRANSPARENCY_CONFIG_FILE&&existsSync(join(directory,'transparency.json'))?{TRANSPARENCY_CONFIG_FILE:join(directory,'transparency.json')}:{}),VAULT_URL:endpoints.vault||`http://${host==='::1'?'[::1]':host}:${port}`,WORKER_TOKEN:worker.token},stdio:['ignore','inherit','inherit','ipc']});
      children.push(child);
      let settled=false;
      const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(error)rej(error);else res(value);};

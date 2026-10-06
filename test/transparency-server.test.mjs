@@ -64,9 +64,10 @@ test('case reports carry inclusion proofs that the offline verifier checks again
     assert.equal((await submit(h.ingress.url, h.principal(source), {...base, ...event})).status, 202);
   }
   await h.analyze();
+  // Read before the case write: the pump may cosign the new head before the POST returns.
+  const before = witnessed();
   const created = await h.api('/api/cases', {body: {title: 'transparency case', owner: 'audit-team', actionId: base.actionId}});
   assert.equal(created.status, 200);
-  const before = witnessed();
   await waitFor(() => witnessed() > before, 'cosigned heads checkpoint covering the case');
   const report = (await h.api(`/api/cases/${created.body.id}/report`)).body;
   assert.equal(report.transparency.format, 'evidscope-transparency-v1');
