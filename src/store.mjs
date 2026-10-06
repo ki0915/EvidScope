@@ -17,7 +17,7 @@ let transactionSequence=0n;
 export class Store {
  constructor(dir,key) {
   mkdirSync(dir,{recursive:true}); this.key=key; this.publicKey=createPublicKey(key);this.db=new DatabaseSync(join(dir,'evidence.db'));
-  this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
+  this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA secure_delete=ON;
    CREATE TABLE IF NOT EXISTS ledger(tenant TEXT, seq INTEGER, body TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(tenant,seq));
    CREATE TABLE IF NOT EXISTS checkpoints(tenant TEXT PRIMARY KEY, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS events(tenant TEXT, source TEXT, id TEXT, fingerprint TEXT, action_id TEXT, trace_id TEXT, kind TEXT, received TEXT, body TEXT, PRIMARY KEY(tenant,source,id));
@@ -73,6 +73,15 @@ export class Store {
  }
  projectionMutation(fn){if(this.projectionMutationDepth===0)this._syncProjectionMutationClock();this.projectionMutationDepth++;try{return fn();}finally{this.projectionMutationDepth--;if(this.projectionMutationDepth===0)this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;}}
  _syncProjectionMutationClock(){const actual=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;if(actual!==this.observedProjectionMutationClock){this.projectionMutationSerial++;this.observedProjectionMutationClock=actual;}}
+ // secure_delete zeroes freed cells and pages, but older page images survive in the WAL until it is reset.
+ // Called after an erasure commits; never waits for readers (an online backup) and retries in the background.
+ checkpointAfterErasure(attempt=0){
+  if(!this.db.isOpen)return {busy:1,log:-1,checkpointed:-1};
+  let result={busy:1,log:-1,checkpointed:-1};
+  if(!this.db.isTransaction){this.db.exec('PRAGMA busy_timeout=0');try{result=this.db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();}finally{this.db.exec('PRAGMA busy_timeout=5000');}}
+  if(result.busy&&attempt<5)setTimeout(()=>{try{this.checkpointAfterErasure(attempt+1);}catch{}},1000*(attempt+1)).unref();
+  return result;
+ }
  transaction(fn) {
   if(typeof fn!=='function'||types.isAsyncFunction(fn))throw TypeError('Store.transaction requires a synchronous callback');
   const nested=this.db.isTransaction,name=`evidscope_transaction_${++transactionSequence}`,ownsLedgerContext=!this.ledgerTransaction;

@@ -41,7 +41,7 @@ export function createRetention(store){
   if(/^\/api\/retention\/holds\/[^/]+\/release$/.test(path)&&method==='POST'){review(p);return store.transaction(()=>{verifyProjection(p);const hold=get(p,'retention_hold',path.split('/')[4]);if(hold.author===p.id)fail(403,'다른 검토자가 보존 hold 해제를 검토해야 합니다');if(hold.status!=='active')fail(409,'활성 hold가 아닙니다');hold.status='released';hold.releasedBy=p.id;hold.releaseReason=cleanText(x.reason,1000);hold.releasedAt=new Date().toISOString();return store.put(p,'retention_hold',hold.id,hold);});}
   if(path==='/api/retention/plans'&&method==='POST'){review(p);return store.transaction(()=>{const selected=inventory(p).items.filter(i=>i.eligible).slice(0,1000);if(!selected.length)fail(409,'기간이 끝나고 보존 hold·미종결 사건이 없는 이벤트가 없습니다');const plan={id:randomUUID(),author:p.id,status:'pending',reason:cleanText(x.reason,1000),items:selected,selectionHash:digest(selected),createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()};return store.put(p,'retention_plan',plan.id,plan);});}
   if(/^\/api\/retention\/plans\/[^/]+\/approve$/.test(path)&&method==='POST'){review(p);return store.transaction(()=>{verifyProjection(p);const plan=get(p,'retention_plan',path.split('/')[4]);if(plan.author===p.id)fail(403,'자신의 파기 계획을 승인할 수 없습니다');if(plan.status!=='pending'||Date.parse(plan.expiresAt)<=Date.now())fail(409,'계획이 만료됐거나 승인 가능한 상태가 아닙니다');plan.status='approved';plan.approvedBy=p.id;plan.approvedAt=new Date().toISOString();plan.approvalReason=cleanText(x.reason,1000);return store.put(p,'retention_plan',plan.id,plan);});}
-  if(/^\/api\/retention\/plans\/[^/]+\/execute$/.test(path)&&method==='POST'){admin(p);return store.transaction(()=>{
+  if(/^\/api\/retention\/plans\/[^/]+\/execute$/.test(path)&&method==='POST'){admin(p);const executed=store.transaction(()=>{
    try{store.checkActionProjection(p.tenant);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}
    const currentInventory=inventory(p);
    const plan=get(p,'retention_plan',path.split('/')[4]);if(plan.status!=='approved'||!plan.approvedBy||plan.approvedBy===plan.author||Date.parse(plan.expiresAt)<=Date.now())fail(409,'유효한 두 사람 승인 계획 필요');
@@ -55,7 +55,7 @@ export function createRetention(store){
    store.append(p.tenant,'retention_disposition',disposition,p.id);plan.status='executed';plan.disposition=disposition;store.put(p,'retention_plan',plan.id,plan);
    for(const a of store.list(p.tenant,'assessment').filter(a=>a.evidence.some(e=>e.type==='event'&&plan.items.some(i=>`${i.source}/${i.eventId}`===e.ref)))){const id=randomUUID();store.put(p,'governance_task',id,{id,systemId:a.systemId,requirementId:a.requirementId,title:'연결 증거 보존 종료: 충분성 재검토',owner:a.owner,status:'open',dispositionId:disposition.id});}
    return disposition;
-  });}
+  });store.checkpointAfterErasure();return executed;}
   return undefined;
  }
  return {handle,inventory};

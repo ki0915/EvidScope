@@ -118,7 +118,7 @@ export function verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey,
 // It cannot establish that the operator supplied the latest frontier and pin.
 export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,config}){
  const statement=verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey:store.publicKey,config}),frontierHash=digest(frontier);
- return store.transaction(()=>{
+ const applied=store.transaction(()=>{
   const actualTenants=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts ORDER BY tenant').all().map(row=>row.tenant);
   requireValue(same(actualTenants,Object.keys(archiveAnchor.checkpoints).sort()),'restored tenant set mismatch');
   let identities=0,erased=0,plansApplied=0;
@@ -140,4 +140,6 @@ export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,confi
   }
   return {applied:true,frontierSha256:frontierHash,identityStatesApplied:identities,eventsErased:erased,executedPlansApplied:plansApplied,freshnessEstablished:false,limitations:['A stale frontier with a matching external pin cannot be identified as latest by this module.','Replay removes live restored event keys and search projections, not existing backups or physical media.']};
  });
+ if(applied.eventsErased)store.checkpointAfterErasure?.();
+ return applied;
 }
