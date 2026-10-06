@@ -171,7 +171,7 @@ export class Store {
  }
  bundle(tenant){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});const events=this.decodeRecords(b);const encrypted=new Set(b.records.filter(r=>r.type==='event'&&r.payload.format==='evidscope-encrypted-event-v1').map(r=>r.seq));b.disclosures=events.filter(e=>encrypted.has(e.seq)).map(e=>{const {seq,hash,...event}=e;return {seq,event};});return b;}
  // Export only: internal readers (rawBundle/bundle) never pay for transparency proofs.
- exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant):null;return transparency?{...b,transparency}:b;}
+ exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant,b.records):null;return transparency?{...b,transparency}:b;}
  ledgerEvents(tenant,actionId){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return this.decodeRecords(b).filter(e=>!actionId||e.actionId===actionId).sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id));}
  ledgerObjects(tenant,type){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return [...new Map(b.records.filter(r=>r.type===type&&r.payload.id).map(r=>[r.payload.id,r.payload])).values()];}
  // Consume this iterator to exhaustion before using any rows: final signed checkpoint

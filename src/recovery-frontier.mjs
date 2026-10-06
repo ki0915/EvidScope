@@ -115,8 +115,9 @@ export function verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey,
 }
 
 // An externally pinned matching frontier authenticates a chosen safety snapshot.
-// It cannot establish that the operator supplied the latest frontier and pin.
-export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,config}){
+// It cannot by itself establish that the operator supplied the latest frontier and pin; a restore's witness check can.
+// freshness (optional): the restore's witness check for the previous transparency origin (transparency-epoch.mjs).
+export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,config,freshness}){
  const statement=verifyRecoveryFrontier({frontier,anchor,archiveAnchor,publicKey:store.publicKey,config}),frontierHash=digest(frontier);
  const applied=store.transaction(()=>{
   const actualTenants=store.db.prepare('SELECT tenant FROM ledger UNION SELECT tenant FROM checkpoints UNION SELECT tenant FROM objects UNION SELECT tenant FROM events UNION SELECT tenant FROM actions UNION SELECT tenant FROM event_keys UNION SELECT tenant FROM receipts UNION SELECT tenant FROM tlog_state ORDER BY tenant').all().map(row=>row.tenant);
@@ -138,7 +139,7 @@ export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,confi
    const after=store.bundle(tenant);verifyBundle(after,store.publicKey);store.checkActionProjection(tenant);checkObjectProjection(store.db,tenant,after.records);const decoded=store.decodeRecords(after);checkEventProjection(store.db,tenant,decoded);checkReceiptProjection(store.db,tenant,after.records,decoded);
    store.append(tenant,'recovery_frontier_applied',{format:FORMAT,frontierHash,archiveManifestSha256:statement.archiveManifestSha256,sourceCheckpoint:entry.currentCheckpoint},actor.id);
   }
-  return {applied:true,frontierSha256:frontierHash,identityStatesApplied:identities,eventsErased:erased,executedPlansApplied:plansApplied,freshnessEstablished:false,limitations:['A stale frontier with a matching external pin cannot be identified as latest by this module.','Replay removes live restored event keys and search projections, not existing backups or physical media.']};
+  return {applied:true,frontierSha256:frontierHash,identityStatesApplied:identities,eventsErased:erased,executedPlansApplied:plansApplied,freshnessEstablished:freshness?.established===true,...(freshness?{transparencyFreshness:freshness}:{}),limitations:[freshness?.established?'Freshness covers what the witness quorum cosigned for the previous origin; records newer than its latest cosigned heads checkpoint stay undetectable.':'A stale frontier with a matching external pin cannot be identified as latest by this module.','Replay removes live restored event keys and search projections, not existing backups or physical media.']};
  });
  if(applied.eventsErased)store.checkpointAfterErasure?.();
  return applied;

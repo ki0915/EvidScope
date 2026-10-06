@@ -2,7 +2,7 @@
 // C2SP tlog-witness submission, runtime quarantine, and export/report evidence. Format code lives in tlog.mjs.
 import {closeSync, existsSync, fsyncSync, lstatSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync} from 'node:fs';
 import {basename, dirname, join, resolve} from 'node:path';
-import {createPublicKey, randomBytes} from 'node:crypto';
+import {createHash, createPublicKey, randomBytes} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import * as T from './tlog.mjs';
 
@@ -71,19 +71,25 @@ export function loadTransparencyConfig({dataDir, env = process.env} = {}) {
 }
 
 // ---------- pin file ----------
-function readPin(config, publicKey) {
-  const file = config.pinFile;
+function readPinFile(file) {
   noLinks(file);
   if (!existsSync(file)) return null;
   const st = lstatSync(file);
   if (!st.isFile() || st.size > 1024 * 1024) throw Error('Transparency pin file invalid');
   const pin = JSON.parse(readFileSync(file, 'utf8'));
-  if (pin?.format !== PIN_FORMAT || pin.origin !== config.headsOrigin || typeof pin.checkpoint !== 'string') {
+  if (pin?.format !== PIN_FORMAT || typeof pin.origin !== 'string' || typeof pin.checkpoint !== 'string') {
     throw Error('Transparency pin file invalid or bound to another origin');
   }
-  const logV = T.noteVerifier(T.logVkey(config.headsOrigin, publicKey));
-  const opened = T.openNote(pin.checkpoint, [logV, ...config.witnesses.map(w => w.verifier)]), c = T.parseCheckpoint(opened.text);
-  if (!opened.sigs.some(s => s.name === logV.name && s.id === logV.id.toString('hex')) || c.origin !== config.headsOrigin) {
+  return pin;
+}
+// A pin holds a heads checkpoint signed by this vault plus the cosignatures known when it was written.
+export function openPin(pin, origin, publicKey, witnesses = []) {
+  if (pin?.format !== PIN_FORMAT || pin.origin !== origin || typeof pin.checkpoint !== 'string') {
+    throw Error('Transparency pin file invalid or bound to another origin');
+  }
+  const logV = T.noteVerifier(T.logVkey(origin, publicKey));
+  const opened = T.openNote(pin.checkpoint, [logV, ...witnesses.map(w => w.verifier)]), c = T.parseCheckpoint(opened.text);
+  if (!opened.sigs.some(s => s.name === logV.name && s.id === logV.id.toString('hex')) || c.origin !== origin) {
     throw Error('Transparency pin is not a heads checkpoint signed by this vault');
   }
   return {size: c.size, root: c.root, note: pin.checkpoint, cosignatures: opened.sigs.length - 1};
@@ -97,19 +103,19 @@ function writePin(config, size, checkpoint) {
   try { renameSync(tmp, file); } catch (error) { rmSync(tmp, {force: true}); throw error; }
 }
 
-// ---------- heads log rows ----------
-const hasTable = (db, name) => !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name);
-function headsSize(db, origin) {
+// ---------- heads log rows (also used by transparency-epoch.mjs on restore archives) ----------
+export const hasTable = (db, name) => !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name);
+export function headsSize(db, origin) {
   const r = db.prepare('SELECT MAX(idx) m, COUNT(*) n FROM tlog_heads WHERE origin=?').get(origin);
   if (!r.n) return 0;
   if (r.m !== r.n - 1) throw kinded('inconsistent', 'Truncated or inconsistent heads log');
   return r.n;
 }
-const headsRow = (db, origin, idx) => db.prepare('SELECT idx,leaf,peaks,entries,note FROM tlog_heads WHERE origin=? AND idx=?').get(origin, idx) || null;
+export const headsRow = (db, origin, idx) => db.prepare('SELECT idx,leaf,peaks,entries,note FROM tlog_heads WHERE origin=? AND idx=?').get(origin, idx) || null;
 const validEntry = e => e && Object.keys(e).length === 3 && typeof e.log === 'string' && /^[a-f0-9]{64}$/.test(e.root)
   && Number.isSafeInteger(e.size) && e.size > 0;
 // A row stores its frontier before the leaf and its own signed note, so every row authenticates itself in O(log n).
-function verifyHeadsRow(row, origin, logV) {
+export function verifyHeadsRow(row, origin, logV) {
   if (!row) throw kinded('inconsistent', 'Truncated or inconsistent heads log: row missing');
   const entries = JSON.parse(row.entries), leaf = Buffer.from(row.leaf), peaksBefore = T.blobToPeaks(row.peaks, row.idx);
   if (!Array.isArray(entries) || !entries.every(validEntry) || T.canonicalJson(T.sortHeadsEntries(entries)) !== row.entries) {
@@ -134,14 +140,14 @@ function* headsLeaves(db, origin, from = 0, to = Infinity) {
   }
 }
 // Proof m -> n built from the verified frontier at m plus stored leaves, checked locally before it leaves the vault.
-function headsConsistencyProof(db, origin, logV, m, n, rootN) {
+export function headsConsistencyProof(db, origin, logV, m, n, rootN) {
   const at = verifyHeadsRow(headsRow(db, origin, m - 1), origin, logV), leaves = [...headsLeaves(db, origin, m, n)];
   if (leaves.length !== n - m) throw kinded('inconsistent', 'Truncated or inconsistent heads log');
   const proof = T.consistencyProofFromFrontier(m, at.peaks, leaves);
   if (!T.verifyConsistency(m, n, at.root, rootN, proof)) throw kinded('inconsistent', 'Truncated or inconsistent heads log: stored history is not consistent');
   return proof;
 }
-function* ledgerLeaves(db, tenant) {
+export function* ledgerLeaves(db, tenant) {
   let expected = 0;
   for (const r of db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq').iterate(tenant)) {
     if (r.seq !== ++expected) throw kinded('inconsistent', 'Truncated or inconsistent ledger sequence for tenant');
@@ -151,7 +157,7 @@ function* ledgerLeaves(db, tenant) {
 
 // ---------- witness exchange (shared by the startup probe and the pump) ----------
 // One add-checkpoint submission with a single 409 resynchronisation. Protocol outcomes never throw.
-async function exchange({w, size, note, old, proofFor, logV, config, fetchImpl, now}) {
+export async function exchange({w, size, note, old, proofFor, logV, config, fetchImpl, now}) {
   for (let attempt = 0; ; attempt++) {
     if (old > size) return {status: 'rollback', size: old, message: `witness holds heads size ${old} but the local heads log has ${size} (rollback)`};
     let proof;
@@ -212,19 +218,26 @@ export async function prepareTransparency({dataDir, key, env = process.env, fetc
 
 // ---------- synchronous startup anchors (read-only, before Store opens a writer) ----------
 // The DB heads log must extend the pinned heads checkpoint, every tenant named by a heads leaf must still exist with an
-// identical prefix, every tlog_state root must match its ledger, and no witness may report rollback or fork.
-export function assertTransparencyAnchors({dataDir, key, config, probe = null}) {
+// identical prefix, every tlog_state root must match its ledger, and no witness may report rollback or fork. Hard
+// violations (the vault would sign a fork of an origin) refuse startup in every mode; inspectOnly only reports them.
+export function assertTransparencyAnchors({dataDir, key, config, probe = null, inspectOnly = false}) {
   if (!config || config.mode === 'off') return {mode: 'off'};
   const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
-  const violations = [], violate = (kind, message) => violations.push({kind, message});
+  const violations = [], violate = (kind, message, hard = false) => violations.push(hard ? {kind, message, hard} : {kind, message});
   const report = {mode: config.mode, checkedAt: new Date().toISOString(), pin: null, headsSize: 0, probe, violations};
-  let pin = null;
-  try { pin = readPin(config, publicKey); } catch (error) { violate('pin', error.message); }
-  if (pin) report.pin = {size: pin.size, cosignatures: pin.cosignatures};
+  let rawPin = null, pin = null;
+  try { rawPin = readPinFile(config.pinFile); } catch (error) { violate('pin', error.message); }
   if (probe?.error) violate('inconsistent', probe.error);
   for (const w of probe?.witnesses || []) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
   const file = join(dataDir, 'evidence.db'), db = existsSync(file) ? new DatabaseSync(file, {readOnly: true, timeout: 5000}) : null;
   try {
+    if (rawPin?.origin === hOrigin) {
+      try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses); } catch (error) { violate('pin', error.message); }
+    }
+    const ledger = !!db && hasTable(db, 'ledger'), retiredPin = rawPin && rawPin.origin !== hOrigin ? rawPin : null;
+    if (retiredPin && !ledger) violate('pin', 'Transparency pin file invalid or bound to another origin');
+    const epochs = ledger ? checkEpochs({db, config, publicKey, violate, retiredPin, report}) : {requirements: []};
+    if (pin) report.pin = {size: pin.size, cosignatures: pin.cosignatures};
     const size = db && hasTable(db, 'tlog_heads') ? headsSize(db, hOrigin) : 0, anchors = [];
     report.headsSize = size;
     const latest = size ? verifyHeadsRow(headsRow(db, hOrigin, size - 1), hOrigin, logV) : null;
@@ -240,34 +253,175 @@ export function assertTransparencyAnchors({dataDir, key, config, probe = null}) 
       }
       else if (pin.size < size) anchors.push(at.entries);
     }
-    if (db && hasTable(db, 'ledger')) checkTenants(db, config.base, anchors, violate);
+    if (ledger) checkTenants(db, config.base, anchors, violate, epochs.requirements);
   } catch (error) { violate(error.kind || 'inconsistent', error.message); } finally { db?.close(); }
   report.ok = !violations.length;
-  if (violations.length && config.mode === 'enforce') throw Error('Transparency startup check failed: ' + violations.map(v => v.message).join('; '));
+  const fatal = inspectOnly ? [] : config.mode === 'enforce' ? violations : violations.filter(v => v.hard);
+  if (fatal.length) throw Error('Transparency startup check failed: ' + fatal.map(v => v.message).join('; '));
   return report;
 }
-function checkTenants(db, base, anchors, violate) {
-  const prefix = base + '/t/', want = new Map(), add = (log, size, root, what) => {
-    if (!want.has(log)) want.set(log, new Map());
-    const sizes = want.get(log);
-    if (!sizes.has(size)) sizes.set(size, {root, what});
+const ledgerTenants = db => db.prepare('SELECT DISTINCT tenant FROM ledger').all().map(r => r.tenant);
+// Each requirement names a tenant tree size and root that the ledger prefix must reproduce.
+function checkTenants(db, base, anchors, violate, extra = []) {
+  const prefix = base + '/t/', want = new Map(), missing = new Set(), seen = new Set();
+  const tenants = new Map(ledgerTenants(db).map(t => [T.tenantOrigin(base, t), t]));
+  const add = (tenant, log, size, root, what) => {
+    if (seen.has(`${log}|${size}|${root}`)) return;
+    seen.add(`${log}|${size}|${root}`);
+    if (!want.has(tenant)) want.set(tenant, []);
+    want.get(tenant).push({log, size, root, what});
   };
-  for (const entries of anchors) for (const e of entries) add(e.log, e.size, e.root, 'witnessed head');
+  const addLog = (log, size, root, what) => {
+    const tenant = tenants.get(log);
+    if (tenant !== undefined) return add(tenant, log, size, root, what);
+    if (!missing.has(log)) violate('tenant_removal', `Witnessed tenant missing for log ${log} (tenant removal)`);
+    missing.add(log);
+  };
+  for (const entries of anchors) for (const e of entries) addLog(e.log, e.size, e.root, 'witnessed head');
   if (hasTable(db, 'tlog_state')) {
     for (const r of db.prepare('SELECT origin,size,root FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix)) {
-      add(r.origin, r.size, Buffer.from(r.root).toString('hex'), 'signed tlog checkpoint');
+      addLog(r.origin, r.size, Buffer.from(r.root).toString('hex'), 'signed tlog checkpoint');
     }
   }
-  const tenants = new Map(db.prepare('SELECT DISTINCT tenant FROM ledger').all().map(r => [T.tenantOrigin(base, r.tenant), r.tenant]));
-  for (const [log, sizes] of want) {
-    const tenant = tenants.get(log);
-    if (tenant === undefined) { violate('tenant_removal', `Witnessed tenant missing for log ${log} (tenant removal)`); continue; }
-    const {roots, size} = T.rootsAtSizes(ledgerLeaves(db, tenant), [...sizes.keys()]);
-    for (const [s, {root, what}] of sizes) {
-      if (size < s) violate('rollback', `Ledger for tenant log ${log} (size ${size}) is behind its ${what} (size ${s}) (rollback)`);
-      else if (roots.get(s).toString('hex') !== root) violate('fork', `Ledger for tenant log ${log} conflicts with its ${what} at size ${s} (fork)`);
+  for (const x of extra) add(x.tenant, x.log, x.size, x.root, x.what);
+  for (const [tenant, list] of want) {
+    const {roots, size} = T.rootsAtSizes(ledgerLeaves(db, tenant), [...new Set(list.map(x => x.size))]);
+    for (const x of list) {
+      if (size < x.size) violate('rollback', `Ledger for tenant log ${x.log} (size ${size}) is behind its ${x.what} (size ${x.size}) (rollback)`);
+      else if (roots.get(x.size).toString('hex') !== x.root) {
+        violate('fork', `Ledger for tenant log ${x.log} conflicts with its ${x.what} at size ${x.size} (fork)`);
+      }
     }
   }
+}
+
+// ---------- restore epochs at startup ----------
+const sha256Hex = text => createHash('sha256').update(text).digest('hex');
+export function readEpochs(db) {
+  const out = new Map(), rows = db.prepare(`SELECT tenant,seq,hash,body FROM ledger WHERE body LIKE '%"type":"${T.TLOG_EPOCH_TYPE}"%' ORDER BY tenant,seq`);
+  for (const r of rows.iterate()) {
+    const record = JSON.parse(r.body);
+    if (record.type !== T.TLOG_EPOCH_TYPE) continue;
+    if (sha256Hex(r.body) !== r.hash || record.tenant !== r.tenant || record.seq !== r.seq) {
+      throw kinded('inconsistent', 'Truncated or inconsistent ledger: tlog epoch record differs from its hash');
+    }
+    if (!out.has(r.tenant)) out.set(r.tenant, []);
+    out.get(r.tenant).push({seq: r.seq, payload: T.tlogEpochPayload(record)});
+  }
+  return out;
+}
+export function headsOrigins(db) {
+  if (!hasTable(db, 'tlog_heads')) return [];
+  const out = [], next = db.prepare('SELECT origin FROM tlog_heads WHERE origin>? ORDER BY origin LIMIT 1');
+  for (let r = next.get(''); r; r = next.get(r.origin)) out.push(r.origin);
+  return out;
+}
+const retiredBaseOf = origin => (origin.endsWith('/heads') ? origin.slice(0, -'/heads'.length) : null);
+// A restore moves every tenant to a new origin base with signed tlog_epoch records (src/transparency-epoch.mjs). State of
+// another base is accepted only when those records retire it: retired logs stay at or below the restored size and are
+// prefixes of the ledger, a retired pin lies within the acknowledged heads range, and the configured base is never a retired
+// one. A restored ledger must not extend the origin it was restored from: that would sign a fork of the lost history.
+function checkEpochs({db, config, publicKey, violate, retiredPin, report}) {
+  const base = config.base, prefix = base + '/t/', requirements = [], hasState = hasTable(db, 'tlog_state');
+  let crossed = false;
+  if (hasState) {
+    const crossing = db.prepare("SELECT 1 FROM ledger WHERE tenant=? AND seq>? AND json_extract(body,'$.type')='recovery_restore' LIMIT 1");
+    for (const r of db.prepare('SELECT tenant,origin,size FROM tlog_state WHERE substr(origin,1,?)=?').all(prefix.length, prefix)) {
+      if (!crossing.get(r.tenant, r.size)) continue;
+      crossed = true;
+      violate('fork', `Restored ledger would extend tenant log ${r.origin} across its restore (fork); `
+        + 'configure a new origin base so the restore starts a tlog epoch', true);
+    }
+  }
+  const foreignState = hasState ? db.prepare('SELECT tenant,origin,size,root,note FROM tlog_state WHERE substr(origin,1,?)<>? AND size>0')
+    .all(prefix.length, prefix) : [];
+  const foreignHeads = headsOrigins(db).filter(o => o !== config.headsOrigin);
+  if (!foreignState.length && !foreignHeads.length && !retiredPin && !crossed) return {requirements};
+  const epochs = readEpochs(db), retired = new Map(), tenants = ledgerTenants(db);
+  const epochOf = (tenant, previousBase) => (epochs.get(tenant) || []).find(e => e.payload.previousOriginBase === previousBase);
+  for (const [tenant, list] of epochs) {
+    for (let i = 1; i < list.length; i++) {
+      if (list[i].payload.previousOriginBase !== list[i - 1].payload.originBase) violate('inconsistent', `Tlog epoch chain of tenant ${tenant} is broken`);
+    }
+    if (list.some(e => e.payload.previousOriginBase === base)) {
+      violate('fork', `Transparency origin base ${base} was retired by a signed tlog epoch of tenant ${tenant}; refusing to extend it (fork)`, true);
+    } else if (list.at(-1).payload.originBase !== base) {
+      violate('inconsistent', `Tenant ${tenant} moved to origin base ${list.at(-1).payload.originBase} by a tlog epoch but the vault is configured for ${base}`
+        + ' (unacknowledged origin change)');
+    }
+    for (const {seq, payload: p} of list) {
+      requirements.push({tenant, log: p.previousOrigin, size: p.restoredSize, root: p.restoredRoot, what: `tlog epoch restored root (sequence ${seq})`});
+      if (p.previousCheckpoint !== null) {
+        let c = null;
+        try { c = T.parseCheckpoint(T.openNote(p.previousCheckpoint, [T.noteVerifier(T.logVkey(p.previousOrigin, publicKey))]).text); } catch { c = null; }
+        if (c?.origin !== p.previousOrigin || c.size > p.restoredSize) {
+          violate('inconsistent', `Tlog epoch at sequence ${seq} carries an invalid previous checkpoint`);
+        }
+        else requirements.push({tenant, log: p.previousOrigin, size: c.size, root: c.root.toString('hex'), what: 'previous origin checkpoint'});
+      }
+      const r = retired.get(p.previousOriginBase), acknowledged = Math.max(p.restoredHeadsSize, p.witnessedHeadsSize ?? 0);
+      if (r && r.restoredHeadsSize !== p.restoredHeadsSize) violate('inconsistent', `Tlog epochs disagree on the restored heads of ${p.previousOriginBase}`);
+      retired.set(p.previousOriginBase, {restoredHeadsSize: p.restoredHeadsSize, acknowledged: Math.max(r?.acknowledged ?? 0, acknowledged)});
+    }
+  }
+  report.retired = [...retired.keys()].sort();
+  for (const r of foreignState) {
+    let rowBase = null;
+    try { rowBase = T.originBaseOf(r.origin, r.tenant); } catch { rowBase = null; }
+    const e = rowBase && epochOf(r.tenant, rowBase)?.payload;
+    if (!e) {
+      violate('inconsistent', `Ledger holds tenant log ${r.origin} of another origin base without a signed tlog epoch for tenant ${r.tenant}`
+        + ' (rollback or unacknowledged origin change)');
+      continue;
+    }
+    let c = null;
+    try { c = T.parseCheckpoint(T.openNote(r.note, [T.noteVerifier(T.logVkey(r.origin, publicKey))]).text); } catch { c = null; }
+    if (c?.origin !== r.origin || c.size !== r.size || !c.root.equals(Buffer.from(r.root))) {
+      violate('inconsistent', `Truncated or inconsistent tlog state for retired tenant log ${r.origin}`);
+    } else if (r.size > e.restoredSize) {
+      violate('fork', `Retired tenant log ${r.origin} (size ${r.size}) extends beyond its tlog epoch restored size ${e.restoredSize} (fork)`);
+    } else requirements.push({tenant: r.tenant, log: r.origin, size: r.size, root: c.root.toString('hex'), what: 'retired tlog checkpoint'});
+  }
+  for (const origin of foreignHeads) {
+    const oldBase = retiredBaseOf(origin), ack = oldBase && retired.get(oldBase);
+    if (!ack) {
+      violate('inconsistent', `Ledger holds heads log ${origin} without a signed tlog epoch retiring it (rollback or unacknowledged origin change)`);
+      continue;
+    }
+    const n = headsSize(db, origin);
+    if (n > ack.restoredHeadsSize) {
+      violate('fork', `Retired heads log ${origin} (size ${n}) extends beyond its tlog epoch heads size ${ack.restoredHeadsSize} (fork)`);
+      continue;
+    }
+    if (!n) continue;
+    const latest = verifyHeadsRow(headsRow(db, origin, n - 1), origin, T.noteVerifier(T.logVkey(origin, publicKey)));
+    const logs = new Map(tenants.map(t => [T.tenantOrigin(oldBase, t), t]));
+    for (const entry of latest.entries) {
+      const tenant = logs.get(entry.log), e = tenant !== undefined && epochOf(tenant, oldBase)?.payload;
+      if (tenant === undefined) violate('tenant_removal', `Witnessed tenant missing for log ${entry.log} of retired origin base ${oldBase} (tenant removal)`);
+      else if (!e) violate('inconsistent', `Retired heads log ${origin} names ${entry.log} without a signed tlog epoch (unacknowledged origin change)`);
+      else if (entry.size > e.restoredSize) violate('fork', `Retired heads entry for ${entry.log} (size ${entry.size}) is beyond its tlog epoch (fork)`);
+      else requirements.push({tenant, log: entry.log, size: entry.size, root: entry.root, what: 'retired heads entry'});
+    }
+  }
+  if (retiredPin) {
+    const oldBase = retiredBaseOf(retiredPin.origin), ack = oldBase && retired.get(oldBase);
+    if (!ack) violate('pin', 'Transparency pin file invalid or bound to another origin');
+    else {
+      try {
+        const p = openPin(retiredPin, retiredPin.origin, publicKey, config.witnesses), n = headsSize(db, retiredPin.origin);
+        report.retiredPin = {origin: retiredPin.origin, size: p.size, cosignatures: p.cosignatures, acknowledgedHeadsSize: ack.acknowledged};
+        if (p.size > ack.acknowledged) {
+          violate('rollback', `Transparency pin of retired heads origin ${retiredPin.origin} (size ${p.size}) exceeds the heads size `
+            + `its tlog epoch acknowledged (${ack.acknowledged}) (rollback)`);
+        } else if (p.size && p.size <= n) {
+          const at = verifyHeadsRow(headsRow(db, retiredPin.origin, p.size - 1), retiredPin.origin, T.noteVerifier(T.logVkey(retiredPin.origin, publicKey)));
+          if (!at.root.equals(p.root)) violate('fork', 'Retired heads log conflicts with the pinned heads checkpoint (fork)');
+        }
+      } catch (error) { violate('pin', error.message); }
+    }
+  }
+  return {requirements};
 }
 
 // ---------- runtime controller ----------
@@ -424,11 +578,12 @@ export function createTransparency({store, config, key, startup = null, probe = 
     return {origin: hOrigin, checkpoint: c.checkpoint, leafIndex: size - 1, leafProof: v.peaksBefore.slice().reverse().map(T.b64), leaf: v.content,
       entry: v.entries[i], entryIndex: i, entryProof: T.inclusionProof(v.entries.map(T.headsEntryLeaf), i).map(T.b64)};
   }
-  store.tlogEvidence = tenant => {
+  // records: the export's records; their tlog_epoch chain is summarised additively (verifiers recompute it).
+  store.tlogEvidence = (tenant, records = []) => {
     const row = store._tlogRow(tenant);
     if (!row) return null;
-    const origin = T.tenantOrigin(config.base, tenant), heads = headsEvidence(origin);
-    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, ...(heads ? {heads} : {})};
+    const origin = T.tenantOrigin(config.base, tenant), heads = headsEvidence(origin), epochs = T.tlogEpochSummaries(records);
+    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, ...(heads ? {heads} : {}), ...(epochs.length ? {epochs} : {})};
   };
   // Case reports carry inclusion proofs for the action's records and the head, plus heads consistency to the report size.
   store.tlogReport = (tenant, checkpoint, events) => {

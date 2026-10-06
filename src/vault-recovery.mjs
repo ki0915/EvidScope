@@ -15,6 +15,8 @@ import {checkReceiptProjection} from './receipt-integrity.mjs';
 import {signRecoveryFrontier,verifyRecoveryFrontier,applyRecoveryFrontier} from './recovery-frontier.mjs';
 import {createKeyring,PURPOSES,LEGACY_KEY_ID,KEY_ID_PATTERN} from './data-keys.mjs';
 import {sealRestorationState,pinRestorationState,recoveryPinPath} from './recovery-state.mjs';
+import {frontierTransparency,planTlogEpoch,writeTlogEpochs} from './transparency-epoch.mjs';
+import {headsOrigin,validateOriginBase} from './tlog.mjs';
 
 const FORMAT='evidscope-vault-backup-v1',FORMAT_V2='evidscope-vault-backup-v2';
 const backupAad=(format,keyId)=>Buffer.from(format===FORMAT?FORMAT:canonical({format,keyId}));
@@ -126,26 +128,31 @@ async function verifyArchive(backupDir,pub,anchor){
  return manifest;
 }
 
-export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,config}){
+// transparency (optional): the source's transparency config, naming the heads origin of the freshness companion.
+export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,config,transparency}){
  const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),source=noLinks(dataDir),sourceFile=member(source,'evidence.db');
  if(!config||typeof config!=='object')throw Error('Recovery frontier requires current credential/config binding');
  const stage=mkdtempSync(join(dirname(source),'.recovery-frontier-')),snapshotFile=join(stage,'snapshot.db');let db,store;
  try{
   db=new DatabaseSync(sourceFile,{readOnly:true,timeout:5000});await backup(db,snapshotFile);db.close();db=null;
   const checked=inspectDatabase(snapshotFile,source,key,keyring);store=readonlyStore(snapshotFile,key);
-  return signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
+  const signed=signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
+  const companion=frontierTransparency({db:store.db,key,frontier:signed.frontier,headsOrigin:transparency?.origin?headsOrigin(validateOriginBase(transparency.origin)):null});
+  return companion?{...signed,transparency:companion}:signed;
  }finally{
   store?.close();db?.close();for(const name of ['snapshot.db','snapshot.db-wal','snapshot.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}rmdirSync(stage);
  }
 }
 
-export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,frontier,frontierAnchor,config}){
+// transparency (optional): {config, previous, previousPin, frontierTransparency, acceptLoss} for a restore epoch (transparency-epoch.mjs).
+export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,dataKey,previousDataKeys,anchor,frontier,frontierAnchor,config,transparency}){
  const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),root=noLinks(backupDir),target=noLinks(restoreDir);
  if(existsSync(target)||contained(root,target))throw Error('Restore requires a new directory outside the backup');
  if(existsSync(recoveryPinPath(target)))throw Error('External restoration pin already exists; refusing overwrite');
  const manifest=await verifyArchive(root,pub,anchor);
  const activationAccepted=frontier!==undefined||frontierAnchor!==undefined||config!==undefined;
- if(activationAccepted){if(!frontier||!frontierAnchor||!config)throw Error('Activation requires frontier, independent frontier anchor and current config');verifyRecoveryFrontier({frontier,anchor:frontierAnchor,archiveAnchor:anchor,publicKey:pub,config});}
+ let frontierStatement=null;
+ if(activationAccepted){if(!frontier||!frontierAnchor||!config)throw Error('Activation requires frontier, independent frontier anchor and current config');frontierStatement=verifyRecoveryFrontier({frontier,anchor:frontierAnchor,archiveAnchor:anchor,publicKey:pub,config});}
  const stage=mkdtempSync(join(dirname(target),'.'+basename(target)+'-incomplete-'));chmodSync(stage,0o700);
  const database=join(stage,'evidence.db');
  try{
@@ -158,17 +165,21 @@ export async function restoreVaultBackup({backupDir,restoreDir,privateKey,public
   for(const f of manifest.files.filter(f=>f.path!=='evidence.db.enc')){const output=member(stage,f.path);mkdirSync(dirname(output),{recursive:true,mode:0o700});copyFileSync(member(root,f.path),output);chmodSync(output,0o600);if(await hashFile(output)!==f.sha256)throw Error('Document changed during restoration');}
   const restored=inspectDatabase(database,stage,key,keyring,anchor.checkpoints);
   if(canonical(restored.tenants)!==canonical(manifest.tenants)||canonical(restored.documents)!==canonical(manifest.files.filter(f=>f.path!=='evidence.db.enc').map(f=>f.path).sort()))throw Error('Restored evidence differs from signed inventory');
-  const store=new Store(stage,key);let activation;
+  // A restore forks the transparency log: plan the new origin epoch and the witness freshness check before writing anything.
+  const epoch=await planTlogEpoch({database,key,archiveAnchor:anchor,transparency,frontier:frontierStatement,frontierSha256:frontier?digest(frontier):null,restoreDir:target});
+  const store=new Store(stage,key);let activation,applied=null;
   try{
-   if(activationAccepted)applyRecoveryFrontier({store,frontier,anchor:frontierAnchor,archiveAnchor:anchor,config});
+   if(activationAccepted)applied=applyRecoveryFrontier({store,frontier,anchor:frontierAnchor,archiveAnchor:anchor,config,freshness:epoch.freshness});
+   writeTlogEpochs(store,epoch);
    activation=sealRestorationState({store,dataDir:stage,archiveAnchor:anchor,frontier,config,activationAccepted});
   }finally{store.close();}
+  const freshnessEstablished=applied?.freshnessEstablished===true;
   const accepted=inspectDatabase(database,stage,key,keyring);
   const activationPin=pinRestorationState({dataDir:target,marker:activation,key});
   // Reserve the final path against accidental overwrite. Only this empty directory is removed.
   mkdirSync(target,{mode:0o700});
   try{rmdirSync(target);renameSync(stage,target);}catch(error){throw Error('Restore publication failed: '+error.message);}
-  return {verified:true,restoredDirectory:target,activationPin,manifestSha256:digest(manifest),tenants:accepted.tenants,documents:accepted.documents.length,governanceDocuments:accepted.documents.filter(path=>path.startsWith('governance-documents/')).length,rollbackChecked:true,activationAccepted,activationStatus:activation.status,frontierSha256:activation.frontierSha256,servicesStarted:false,scope:'Snapshot integrity verified. Activation requires independently pinned latest access/erasure frontier; its freshness remains an operator responsibility. External restoration pin must remain protected outside the data directory. Not elapsed five-year retention, HA, remote retention, source truth, or legal sufficiency certification.'};
+  return {verified:true,restoredDirectory:target,activationPin,manifestSha256:digest(manifest),tenants:accepted.tenants,documents:accepted.documents.length,governanceDocuments:accepted.documents.filter(path=>path.startsWith('governance-documents/')).length,rollbackChecked:true,activationAccepted,activationStatus:activation.status,frontierSha256:activation.frontierSha256,freshnessEstablished,...(epoch.result?{transparency:epoch.result}:{}),servicesStarted:false,scope:'Snapshot integrity verified. Activation requires independently pinned latest access/erasure frontier; '+(freshnessEstablished?'its freshness was established against the witness quorum of the previous transparency origin.':'its freshness remains an operator responsibility.')+' External restoration pin must remain protected outside the data directory. Not elapsed five-year retention, HA, remote retention, source truth, or legal sufficiency certification.'};
  }catch(error){
   // Keep encrypted documents for diagnosis; remove known plaintext DB files only.
   for(const name of ['evidence.db','evidence.db-wal','evidence.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}
