@@ -13,6 +13,14 @@ export function tenantBacklog(store, tenant) {
 export function assertAnalysisCapacity(store, tenant) {
   if (tenantBacklog(store, tenant) > analysisBacklogLimit()) fail(503, '분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
 }
+// Batch variant: counts the actions the batch would newly make pending, so one batch cannot carry a tenant far past the
+// limit. A batch is still admitted into an empty backlog even when it alone exceeds the limit, or it could never be stored.
+export function assertBatchAnalysisCapacity(store, tenant, actionIds) {
+  const backlog = tenantBacklog(store, tenant), state = store.db.prepare('SELECT analyzed<version AS pending FROM actions WHERE tenant=? AND id=?');
+  let added = 0;
+  for (const id of new Set(actionIds)) if (!state.get(tenant, id)?.pending) added++;
+  if (backlog > 0 && backlog + added > analysisBacklogLimit()) fail(503, '분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
+}
 
 // The four writes every accepted source event needs. Projection checks fail if any is missing.
 export function appendSourceEvent(store, p, e) {

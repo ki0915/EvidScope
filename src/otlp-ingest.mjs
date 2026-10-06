@@ -2,7 +2,7 @@
 // receiver (src/otlp-http.mjs), re-validates every event and commits the batch in one transaction.
 import {fail, validateEvent} from './model.mjs';
 import {OTLP_BATCH_FORMAT, OTLP_MAPPING_VERSION, otlpEventInvariant} from './otlp.mjs';
-import {appendSourceEvent, assertAnalysisCapacity} from './event-ingest.mjs';
+import {appendSourceEvent, assertBatchAnalysisCapacity} from './event-ingest.mjs';
 
 export const OTLP_BATCH_MAX_EVENTS = 2048;
 
@@ -33,16 +33,18 @@ export function createOtlpIngest({store, principals, verifiedActions}) {
     if (!valid.length) return result(0, 0);
     return store.transaction(() => {
       verifiedActions(p);
-      assertAnalysisCapacity(store, p.tenant);
       let accepted = 0, duplicates = 0;
+      const fresh = [], seen = new Map(), receipt = store.db.prepare('SELECT fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?');
       for (const e of valid) {
-        const prev = store.db.prepare('SELECT fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?').get(p.tenant, p.id, e.id);
-        if (prev) {
-          if (prev.fingerprint !== e.fingerprint) { reject('id_conflict'); continue; }
+        const prev = seen.get(e.id) ?? receipt.get(p.tenant, p.id, e.id)?.fingerprint;
+        if (prev !== undefined) {
+          if (prev !== e.fingerprint) { reject('id_conflict'); continue; }
           duplicates++; store.count('duplicates'); continue;
         }
-        appendSourceEvent(store, p, e); accepted++; store.count('accepted');
+        seen.set(e.id, e.fingerprint); fresh.push(e);
       }
+      assertBatchAnalysisCapacity(store, p.tenant, fresh.map(e => e.actionId));
+      for (const e of fresh) { appendSourceEvent(store, p, e); accepted++; store.count('accepted'); }
       return result(accepted, duplicates);
     });
   };
