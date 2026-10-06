@@ -37,6 +37,12 @@ npm start
 ```
 
 결과 JSON의 `data_key.migration.reencryptedFrom`에 다시 암호화한 문서 수가 나옵니다. 이후 새 vault 백업을 만드세요.
+업그레이드 뒤 백업·복구 명령에는 데이터 키를 함께 줘야 합니다. 키 없이 실행하면 서명 키 유도 백업으로 내려가지 않도록 거부합니다.
+
+```powershell
+$env:DATA_KEY_FILE='.local/data-encryption.key'
+node scripts/vault-backup.mjs create .local/data <새 백업 폴더> .local/signing-private.pem .local/trust-anchor.pem <새 앵커 파일>
+```
 예전 백업은 서명 키로 계속 복구할 수 있으므로 서명 키를 보관하는 동안에는 예전 백업도 유효합니다.
 
 ## 운영 환경
