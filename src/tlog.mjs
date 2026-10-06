@@ -384,13 +384,30 @@ export function parseCosignatureResponse(body) {
   if (typeof body !== 'string' || !body.endsWith('\n')) throw Error('bad cosignature response');
   return body.slice(0, -1).split('\n').map(l => { if (!l.startsWith(EMDASH + ' ')) throw Error('bad cosignature line'); return l + '\n'; });
 }
+const MAX_WITNESS_RESPONSE = 65536;
+// Reads at most limit bytes and cancels the rest, so a hostile witness cannot make the vault buffer an unbounded body.
+async function boundedText(response, limit) {
+  if (!response.body) return '';
+  const reader = response.body.getReader(), chunks = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > limit) { chunks.push(value.subarray(0, value.length - (size - limit))); await reader.cancel().catch(() => {}); break; }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock?.(); }
+  return Buffer.concat(chunks).toString('utf8');
+}
 // POST <prefix>/add-checkpoint. Network errors become status 0 so callers can treat them as unknown state.
 export async function postAddCheckpoint(prefix, body, {timeoutMs = 5000, fetchImpl = fetch} = {}) {
   const url = String(prefix).replace(/\/+$/, '') + '/add-checkpoint';
   try {
     const r = await fetchImpl(url, {method: 'POST', headers: {'content-type': 'text/plain'}, body, signal: AbortSignal.timeout(timeoutMs), redirect: 'error'});
-    const text = await r.text();
-    return {status: r.status, type: r.headers.get('content-type') || '', body: text.length > 65536 ? text.slice(0, 65536) : text};
+    const text = await boundedText(r, MAX_WITNESS_RESPONSE);
+    return {status: r.status, type: r.headers.get('content-type') || '', body: text};
   } catch (error) {
     return {status: 0, type: '', body: '', error: error?.name || 'network error'};
   }
@@ -600,7 +617,12 @@ export function verifyReportTransparency({report, publicKey, options = {}}) {
   }
   if (count > 0 && proven.get(count) !== s.checkpoint.head) throw Error('Transparency checkpoint is not bound to the report checkpoint head');
   const events = s.action?.events || [];
-  for (const e of events) if (proven.get(e.seq) !== e.hash) throw Error('Report event is not included in the signed tenant tree');
+  // An event without a sequence or hash would otherwise match an absent proof (undefined === undefined).
+  for (const e of events) {
+    if (!Number.isSafeInteger(e?.seq) || !/^[a-f0-9]{64}$/.test(e?.hash ?? '') || !proven.has(e.seq) || proven.get(e.seq) !== e.hash) {
+      throw Error('Report event is not included in the signed tenant tree');
+    }
+  }
   const verifiers = witnessVerifiers(options.witnesses);
   const result = {present: true, origin: tOrigin, originBase: base, size: count, root: b64(tenantNote.root), includedEvents: events.length, heads: null};
   if (material.heads) {
