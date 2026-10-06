@@ -55,6 +55,9 @@ const contextFields=['tenant','actionId','traceId','systemId','requestId','attem
 const sameContext=(a,b)=>contextFields.every(k=>(a[k]!==undefined||b[k]!==undefined)?a[k]===b[k]:true);
 const sameTarget=(a,b)=>sameContext(a,b)&&['actor','tool','action','resource'].every(k=>a[k]&&a[k]===b[k])&&(!a.destination||a.destination===b.destination);
 
+// Bump when evaluate()/boundedEvaluation() can return different output for the same inputs: signed evaluations record
+// this identifier and src/policy-replay.mjs never compares results produced by a different engine.
+export const EVALUATION_ENGINE='evidscope-evaluate-v1';
 export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
@@ -118,4 +121,13 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
  for(const f of unique){const exception=exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===events[0]?.actionId&&(x.ruleId===f.code||f.code.startsWith(`CUSTOM:${x.ruleId}:`)));if(exception){f.suppressedBy=exception.id;f.message+=' (승인된 한시 예외; 원본·법적 판단은 유지)';}}
  const reportedSuccess=executions.some(e=>e.kind==='result'&&e.status==='success'),reportedFailure=executions.some(e=>e.kind==='result'&&e.status==='failure');
  return {findings:unique,authority:executions.length?(unique.some(f=>f.code.startsWith('AUTHORITY'))?'unverified_or_mismatch':'matched_at_event_time'):'not_observed',effect:reportedSuccess&&reportedFailure?'mixed_results':reportedSuccess?'independently_reported_success':reportedFailure?'independently_reported_failure':'unconfirmed',limitations:['출처 인증은 내용의 진실성을 보증하지 않습니다','출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다','시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다','승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다']};
+}
+// The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
+export function boundedEvaluation(input,limits){
+ const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime);
+ const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
+ const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
+ result.coverage=coverage();
+ while(Buffer.byteLength(JSON.stringify(result))>limits.resultBytes-1024&&result.findings.length){result.findings.pop();result.coverage=coverage();}
+ return result;
 }

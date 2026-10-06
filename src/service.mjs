@@ -29,6 +29,7 @@ import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysA
 import {createOtlpIngest} from './otlp-ingest.mjs';
 import {appendSourceEvent,assertAnalysisCapacity} from './event-ingest.mjs';
 import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparencyConfig} from './transparency.mjs';
+import {ocsfFindings,evaluationLedgerRows} from './ocsf.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared}) {
  assertRecoveryActivation({dataDir,key,config});
@@ -259,6 +260,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }
   if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
   if(path==='/api/export'&&method==='GET')return store.transaction(()=>store.exportBundle(p.tenant));
+  if(path==='/api/export/ocsf'&&method==='GET')return store.transaction(()=>{verifiedActions(p);const evaluations=evaluationLedgerRows(store.db,p.tenant,verifiedEvaluations(p));
+   return ocsfFindings({tenant:p.tenant,evaluations,eventsFor:id=>store.events(p.tenant,id),checkpoint:store.checkpoint(p.tenant),publicKey,version:url.searchParams.get('version')??undefined});});
   if(path==='/api/integrity'&&method==='GET'){
    const verificationScope={checks:['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files'],notChecked:[...UNANCHORED],limitations:['document_files covers authenticated referenced local files at each read; unreferenced files and an atomic filesystem snapshot are not claimed']};
    const quarantined=transparency.quarantined(verificationScope);if(quarantined)return quarantined;

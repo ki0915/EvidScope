@@ -1,14 +1,7 @@
-import {evaluate} from './model.mjs';
+import {boundedEvaluation} from './model.mjs';
 import {analysisLimits} from './analysis.mjs';
 
-export function evaluateJob(job){
- const result=evaluate(job.events,job.assets,job.rules,job.exceptions,job.analysisTime);
- const totalFindings=result.findings.length;result.findings=result.findings.slice(0,analysisLimits.findings);
- const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
- result.coverage=coverage();
- while(Buffer.byteLength(JSON.stringify(result))>analysisLimits.resultBytes-1024&&result.findings.length){result.findings.pop();result.coverage=coverage();}
- return result;
-}
+export function evaluateJob(job){return boundedEvaluation(job,analysisLimits);}
 async function post(base,token,path,body,maxBytes){
  const response=await fetch(new URL(path,base),{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(10000),redirect:'error'});
  const chunks=[];let size=0;
