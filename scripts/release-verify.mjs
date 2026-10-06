@@ -39,6 +39,8 @@ const watchedFiles = [
   'scripts/package-release.mjs', 'package.json', 'package-lock.json', 'Dockerfile', '.dockerignore',
   ...testFiles,
 ];
+// The author's release host verifies over IPv6 loopback; callers (CI, IPv6-less hosts) may choose 127.0.0.1.
+const testHost = process.env.EVIDSCOPE_TEST_HOST || '::1';
 const roundTimeoutMs = 180_000;
 const terminationConfirmationAllowanceMs = 10_000;
 const executionTimeoutMs = roundTimeoutMs - terminationConfirmationAllowanceMs;
@@ -90,7 +92,7 @@ async function runRound(index, directory, initialSnapshot) {
     '--test', '--test-reporter=tap', '--test-concurrency=1', '--test-timeout=90000', ...testFiles,
   ], {
     cwd: repository,
-    env: { ...process.env, EVIDSCOPE_TEST_HOST: '::1', NODE_DISABLE_COLORS: '1', FORCE_COLOR: '0' },
+    env: { ...process.env, EVIDSCOPE_TEST_HOST: testHost, NODE_DISABLE_COLORS: '1', FORCE_COLOR: '0' },
     stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   child.stdout.pipe(log, { end: false });
@@ -185,7 +187,7 @@ export async function verifyRelease(outputDirectory) {
     requestedRounds: 10, completedRounds: 0, passedRounds: 0, passed: false,
     syntheticInputs: true, realHttpAndProcessExecution: true,
     legalComplianceCertified: false, productionFinancialIntegrationVerified: false,
-    runtime: { node: process.version, platform: process.platform, arch: process.arch },
+    runtime: { node: process.version, platform: process.platform, arch: process.arch }, testHost,
     roundTimeoutMs, executionTimeoutMs, terminationConfirmationAllowanceMs,
     sourceMonitoring: 'full SHA-256 before/after each round and every 500ms during execution',
     testFiles, sourceSnapshot: null, rounds: [], error: null,

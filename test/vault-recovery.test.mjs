@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,createHash,createCipheriv,createDecipheriv,randomBytes,randomUUID,sign,verify} from 'node:crypto';
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,existsSync,symlinkSync,unlinkSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {mkdirSync,readFileSync,writeFileSync,existsSync,symlinkSync,unlinkSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {Store} from '../src/store.mjs';
@@ -12,12 +11,13 @@ import {createService} from '../src/service.mjs';
 import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {canonical,digest,mac} from '../src/crypto.mjs';
 import {harness} from './harness.mjs';
+import {tempDir} from './temp-dir.mjs';
 
 const requirements=JSON.parse(readFileSync('data/requirements.json','utf8'));
 const system={id:'credit',name:'합성 대출 심사',owner:'감사팀',purpose:'대출 심사 보조',role:'deployer',krRoles:['deployer'],markets:['KR'],domain:'credit',generative:false,highImpact:'candidate',supplierId:'supplier-a',modelId:'credit-score',modelVersion:'v1',suppliedModelVersion:'v1',suppliedPurpose:'대출 심사 보조',substantialModification:false};
 function bundle(text='합성 근거 원본',id='bundle'){const data=Buffer.from(text);return {id,systemId:'credit',synthetic:true,supplierId:'supplier-a',modelId:'credit-score',modelVersion:'v1',purpose:system.purpose,testScope:'합성 시험',measures:['KR-34-RISK'],documents:[{id:'doc',name:'근거.txt',sha256:createHash('sha256').update(data).digest('hex'),contentBase64:data.toString('base64')}]};}
 async function fixture(t){
- const root=mkdtempSync(join(tmpdir(),'evidscope-recovery-')),data=join(root,'data'),{privateKey,publicKey}=generateKeyPairSync('ed25519');
+ const root=tempDir('evidscope-recovery-'),data=join(root,'data'),{privateKey,publicKey}=generateKeyPairSync('ed25519');
  const principals=['alpha','beta'].flatMap(tenant=>[{id:tenant+'-r',tenant,role:'reviewer',token:(tenant+'r').repeat(12)},{id:tenant+'-s',tenant,role:'source',kind:'agent',token:(tenant+'s').repeat(12),hmacSecret:'hmac-'+tenant}]);
  const config={principals},service=createService({dataDir:data,key:privateKey,config,requirements});t.after(()=>service.store.close());
  const call=(path,body,tenant='alpha')=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://localhost'),{authorization:'Bearer '+principals.find(p=>p.tenant===tenant&&p.role==='reviewer').token},body===undefined?'':JSON.stringify(body));
@@ -89,7 +89,7 @@ test('actions-only tenants cannot be omitted from whole-vault backup verificatio
 });
 
 test('a signed legacy archive omitting an actions-only tenant fails restore before publication',async t=>{
- const root=mkdtempSync(join(tmpdir(),'evidscope-recovery-orphan-')),dataDir=join(root,'data'),backupDir=join(root,'backup'),restoreDir=join(root,'restored'),{privateKey,publicKey}=generateKeyPairSync('ed25519');
+ const root=tempDir('evidscope-recovery-orphan-'),dataDir=join(root,'data'),backupDir=join(root,'backup'),restoreDir=join(root,'restored'),{privateKey,publicKey}=generateKeyPairSync('ed25519');
  const store=new Store(dataDir,privateKey);store.close();
  const anchor=await createVaultBackup({dataDir,backupDir,privateKey,publicKey}),manifestFile=join(backupDir,'manifest.json'),manifest=JSON.parse(readFileSync(manifestFile)),hash=bytes=>createHash('sha256').update(bytes).digest('hex');
  // Model a backup sealed by the old inventory: a valid signature and ciphertext,
