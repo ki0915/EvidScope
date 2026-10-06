@@ -17,8 +17,10 @@ export function assertAnalysisCapacity(store, tenant) {
 // The four writes every accepted source event needs. Projection checks fail if any is missing.
 export function appendSourceEvent(store, p, e) {
   const record = store.append(p.tenant, 'event', e, p.id);
-  store.append(p.tenant, 'event_receipt', {format: 'evidscope-event-receipt-v1', basis: 'source_ingest', source: e.source, id: e.id, fingerprint: e.fingerprint, eventSeq: record.seq, eventHash: record.hash}, p.id);
+  store.append(p.tenant, 'event_receipt', {format: 'evidscope-event-receipt-v1', basis: 'source_ingest', source: e.source, id: e.id,
+    fingerprint: e.fingerprint, eventSeq: record.seq, eventHash: record.hash}, p.id);
   store.project({...e, seq: record.seq, hash: record.hash});
-  store.projectionMutation(() => store.db.prepare('INSERT INTO actions(tenant,id,version) VALUES(?,?,1) ON CONFLICT(tenant,id) DO UPDATE SET version=version+1').run(p.tenant, e.actionId));
+  store.projectionMutation(() => store.db.prepare('INSERT INTO actions(tenant,id,version) VALUES(?,?,1) '
+    + 'ON CONFLICT(tenant,id) DO UPDATE SET version=version+1').run(p.tenant, e.actionId));
   return record;
 }

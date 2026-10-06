@@ -62,7 +62,8 @@ processors:
       # OpenInference (Arize Phoenix) content
       - { pattern: '^(input|output)\.value$', action: delete }
       - { pattern: '^llm\.(input_messages|output_messages|prompts|prompt_template\.(template|variables)|tools|choices|function_call)(\..*)?$', action: delete }
-      - { pattern: '^(embedding\.(text|embeddings|vector)|reranker\.(query|input_documents|output_documents)|retrieval\.documents|message\.contents?|tool_call\.function\.arguments)(\..*)?$', action: delete }
+      - { pattern: '^(embedding\.(text|embeddings|vector)|reranker\.(query|input_documents|output_documents))(\..*)?$', action: delete }
+      - { pattern: '^(retrieval\.documents|message\.contents?|tool_call\.function\.arguments)(\..*)?$', action: delete }
       # credentials that some HTTP client instrumentations capture
       - { pattern: '^http\.request\.header\.(authorization|x-api-key|api-key|cookie)$', action: delete }
   resource/drop-process-args:

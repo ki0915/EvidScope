@@ -9,7 +9,9 @@ import {encodeExportTraceServiceResponse, encodeStatus} from './otlp-protobuf.mj
 
 export const OTLP_TRACES_PATH = '/v1/traces';
 export const OTLP_FORWARD_CHUNK = 512;
-const inflaters = {gzip: promisify(zlib.gunzip), deflate: promisify(zlib.inflate), deflateRaw: promisify(zlib.inflateRaw), zstd: promisify(zlib.zstdDecompress)};
+const inflaters = {
+  gzip: promisify(zlib.gunzip), deflate: promisify(zlib.inflate), deflateRaw: promisify(zlib.inflateRaw), zstd: promisify(zlib.zstdDecompress),
+};
 const MEDIA_TYPES = new Map([['application/json', 'json'], ['application/x-protobuf', 'protobuf'], ['application/protobuf', 'protobuf']]);
 const ENCODINGS = new Map([['', ''], ['identity', ''], ['gzip', 'gzip'], ['x-gzip', 'gzip'], ['deflate', 'deflate'], ['zstd', 'zstd']]);
 // google.rpc.Code for the Status body; OTLP clients decide on the HTTP status only.
@@ -34,7 +36,8 @@ export function vaultFailure(status, retryAfter) {
   if (status === 400) return new OtlpHttpError(400, 'batch rejected by the evidence store');
   if (status === 413) return new OtlpHttpError(413, 'too many spans in one request; lower the exporter batch size');
   const seconds = Number(retryAfter);
-  return busy(status === 503 ? 'analysis backlog or storage unavailable; retry later' : 'evidence store unavailable; retry later', Number.isSafeInteger(seconds) && seconds > 0 && seconds <= 300 ? seconds : 5);
+  const message = status === 503 ? 'analysis backlog or storage unavailable; retry later' : 'evidence store unavailable; retry later';
+  return busy(message, Number.isSafeInteger(seconds) && seconds > 0 && seconds <= 300 ? seconds : 5);
 }
 
 // Forwarder for the ingress gateway: one vault call per chunk with only the bearer header.
@@ -130,8 +133,11 @@ export function createOtlpHttp({forward, limits = otlpLimits(), log = () => {}})
         const rejected = {...mapped.rejected};
         // At least one vault call even for an empty batch: the vault authenticates the token.
         for (let i = 0; i === 0 || i < mapped.events.length; i += OTLP_FORWARD_CHUNK) {
-          const result = await forward(authorization, JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: OTLP_MAPPING_VERSION, events: mapped.events.slice(i, i + OTLP_FORWARD_CHUNK)}));
-          for (const [reason, count] of Object.entries(result?.reasons || {})) if (Number.isSafeInteger(count) && count > 0) rejected[reason] = (rejected[reason] || 0) + count;
+          const events = mapped.events.slice(i, i + OTLP_FORWARD_CHUNK);
+          const result = await forward(authorization, JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: OTLP_MAPPING_VERSION, events}));
+          for (const [reason, count] of Object.entries(result?.reasons || {})) {
+            if (/^[a-z_]{1,40}$/.test(reason) && Number.isSafeInteger(count) && count > 0) rejected[reason] = (rejected[reason] || 0) + count;
+          }
         }
         const summary = rejectionSummary(rejected);
         const payload = format === 'protobuf' ? encodeExportTraceServiceResponse(summary.total, summary.message)

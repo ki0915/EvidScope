@@ -14,14 +14,19 @@ const CANARIES = ['Weather in Paris', 'weather API timed out', 'Plans trips', 'G
 
 async function send(base, body, {type = 'application/json', encoding, token, headers = {}, path = '/v1/traces', method = 'POST'} = {}) {
   const response = await fetch(base + path, {method, body: method === 'GET' ? undefined : body,
-    headers: {'content-type': type, ...(encoding ? {'content-encoding': encoding} : {}), ...(token === null ? {} : {authorization: `Bearer ${token}`}), ...headers}});
+    headers: {'content-type': type, ...(encoding ? {'content-encoding': encoding} : {}), ...(token === null ? {} : {authorization: `Bearer ${token}`}),
+      ...headers}});
   const raw = Buffer.from(await response.arrayBuffer());
   const contentType = response.headers.get('content-type');
-  return {status: response.status, type: contentType, raw, retryAfter: response.headers.get('retry-after'), json: contentType === 'application/json' && raw.length ? JSON.parse(raw) : undefined};
+  return {status: response.status, type: contentType, raw, retryAfter: response.headers.get('retry-after'),
+    json: contentType === 'application/json' && raw.length ? JSON.parse(raw) : undefined};
 }
-const otlpJson = (spans, service = 'unit-svc') => JSON.stringify({resourceSpans: [{resource: {attributes: [{key: 'service.name', value: {stringValue: service}}]}, scopeSpans: [{scope: {name: 'unit'}, spans}]}]});
-const span = (spanId, attributes, extra = {}) => ({traceId: extra.traceId || 'a1'.repeat(16), spanId, name: `span ${spanId} secret prompt`, kind: 3, startTimeUnixNano: String(BigInt(Date.now() - 60000) * 1000000n),
-  attributes: Object.entries(attributes).map(([key, value]) => ({key, value: typeof value === 'number' ? {intValue: String(value)} : {stringValue: value}})), status: {}, ...extra});
+const otlpJson = (spans, service = 'unit-svc') => JSON.stringify({resourceSpans: [{resource: {
+  attributes: [{key: 'service.name', value: {stringValue: service}}]}, scopeSpans: [{scope: {name: 'unit'}, spans}]}]});
+const span = (spanId, attributes, extra = {}) => ({traceId: extra.traceId || 'a1'.repeat(16), spanId, name: `span ${spanId} secret prompt`, kind: 3,
+  startTimeUnixNano: String(BigInt(Date.now() - 60000) * 1000000n),
+  attributes: Object.entries(attributes).map(([key, value]) => ({key, value: typeof value === 'number' ? {intValue: String(value)} : {stringValue: value}})),
+    status: {}, ...extra});
 const events = async (h, query = '') => (await h.api(`/api/events?limit=500${query}`)).body;
 
 test('OTLP/HTTP receiver: encodings, responses, idempotency, auth and gateway boundaries', async t => {
@@ -33,7 +38,8 @@ test('OTLP/HTTP receiver: encodings, responses, idempotency, auth and gateway bo
   assert.equal(json.status, 200); assert.equal(json.type, 'application/json'); assert.deepEqual(json.json, {});
   let stored = await events(h, `&traceId=${TRACE}`);
   assert.equal(stored.total, 4);
-  for (const e of stored.items) { assert.equal(e.source, 'alpha-otlp'); assert.equal(e.sourceKind, 'otlp'); assert.equal(e.assurance, 'authenticated_telemetry_report'); }
+  for (const e of stored.items) { assert.equal(e.source, 'alpha-otlp'); assert.equal(e.sourceKind, 'otlp');
+    assert.equal(e.assurance, 'authenticated_telemetry_report'); }
   assert.deepEqual(stored.items.map(e => e.kind).sort(), ['notice', 'notice', 'self_report', 'self_report']);
 
   // Same trace as gzip/zstd/deflate protobuf from the Collector: duplicates, empty protobuf success body.
@@ -55,8 +61,10 @@ test('OTLP/HTTP receiver: encodings, responses, idempotency, auth and gateway bo
   // Same span id with different content is a per-span conflict, never an overwrite.
   // JSON bytes declared as protobuf are undecodable: 400, which exporters do not retry.
   assert.equal((await send(ingress, mixed, {token, type: 'application/x-protobuf'})).status, 400);
-  const conflictJson = await send(ingress, otlpJson([span('b1'.repeat(8), {'gen_ai.operation.name': 'chat', 'gen_ai.provider.name': 'openai', 'gen_ai.request.model': 'other-model'})]), {token});
-  assert.equal(conflictJson.status, 200); assert.equal(conflictJson.json.partialSuccess.rejectedSpans, '1'); assert.match(conflictJson.json.partialSuccess.errorMessage, /id_conflict=1/);
+  const conflictJson = await send(ingress, otlpJson([span('b1'.repeat(8), {'gen_ai.operation.name': 'chat', 'gen_ai.provider.name': 'openai',
+    'gen_ai.request.model': 'other-model'})]), {token});
+  assert.equal(conflictJson.status, 200); assert.equal(conflictJson.json.partialSuccess.rejectedSpans, '1');
+  assert.match(conflictJson.json.partialSuccess.errorMessage, /id_conflict=1/);
   const stillOriginal = (await events(h, `&traceId=${'a1'.repeat(16)}`)).items;
   assert.equal(stillOriginal.length, 1); assert.equal(stillOriginal[0].model, 'claude-unit');
 
@@ -65,15 +73,18 @@ test('OTLP/HTTP receiver: encodings, responses, idempotency, auth and gateway bo
   assert.equal(badPb.status, 400); assert.equal(badPb.type, 'application/x-protobuf'); assert.equal(badPb.raw.subarray(0, 3).toString('hex'), '080312');
 
   // Authentication and authorization: Status bodies in the request encoding, never success.
-  for (const [credential, status] of [[null, 401], ['wrong-token-'.repeat(4), 401], [h.principal('agent').token, 403], [h.principal('auditor').token, 403], [h.principal('telemetry').token, 403]]) {
+  for (const [credential, status] of [[null, 401], ['wrong-token-'.repeat(4), 401], [h.principal('agent').token, 403], [h.principal('auditor').token, 403],
+    [h.principal('telemetry').token, 403]]) {
     const denied = await send(ingress, fixture('collector-genai.pb'), {token: credential, type: 'application/x-protobuf'});
     assert.equal(denied.status, status, String(status)); assert.equal(denied.type, 'application/x-protobuf');
   }
   const deniedJson = await send(ingress, fixture('sdk-genai.json'), {token: 'nope'.repeat(10)});
   assert.equal(deniedJson.status, 401); assert.equal(deniedJson.json.code, 16); assert.equal(typeof deniedJson.json.message, 'string');
   // The OTLP bearer token is useless on HMAC and human routes.
-  const ts = String(Date.now()), nonce = randomUUID(), hmacBody = JSON.stringify({id: 'x', kind: 'notice', occurredAt: new Date().toISOString(), traceId: 'x', actionId: 'x'});
-  assert.equal((await send(ingress, hmacBody, {token, path: '/api/ingest', headers: {'x-evid-timestamp': ts, 'x-evid-nonce': nonce, 'x-evid-signature': mac('guess', ts, nonce, hmacBody)}})).status, 401);
+  const ts = String(Date.now()), nonce = randomUUID(), hmacBody = JSON.stringify({id: 'x', kind: 'notice', occurredAt: new Date().toISOString(), traceId: 'x',
+    actionId: 'x'});
+  assert.equal((await send(ingress, hmacBody, {token, path: '/api/ingest', headers: {'x-evid-timestamp': ts, 'x-evid-nonce': nonce,
+    'x-evid-signature': mac('guess', ts, nonce, hmacBody)}})).status, 401);
   assert.equal((await h.api('/api/events', {role: 'otlp'})).status, 403);
 
   // Media type, encoding and method errors.
@@ -86,7 +97,8 @@ test('OTLP/HTTP receiver: encodings, responses, idempotency, auth and gateway bo
   assert.equal((await send(ingress, '{}', {token})).status, 200); // empty request is a success
 
   // Gateway boundaries: the vault batch route is never public, the audit gateway never ingests.
-  assert.equal((await send(ingress, '{"format":"evidscope-otlp-batch-v1","mapping":"otel-genai-map-1","events":[]}', {token, path: '/api/ingest/otlp'})).status, 403);
+  assert.equal((await send(ingress, '{"format":"evidscope-otlp-batch-v1","mapping":"otel-genai-map-1","events":[]}',
+    {token, path: '/api/ingest/otlp'})).status, 403);
   assert.equal((await send(h.audit.url, fixture('sdk-genai.json'), {token, path: '/api/ingest/otlp'})).status, 403);
   assert.equal((await send(h.audit.url, fixture('sdk-genai.json'), {token})).status, 403);
   assert.equal((await send(ingress, fixture('sdk-genai.json'), {token, headers: {origin: 'https://evil.example'}})).status, 403);
@@ -106,7 +118,8 @@ test('OTLP views: AI visibility, agents, overview and monitoring show OTLP-sourc
   const visible = (await h.api('/api/ai-visibility?range=24h')).body;
   const asset = visible.assets.find(a => a.id === 'otel-service:travel-agent');
   assert.ok(asset, JSON.stringify(visible.assets.map(a => a.id)));
-  assert.equal(asset.registered, false); assert.equal(asset.observationCount, 2); assert.deepEqual(asset.providers, ['openai']); assert.deepEqual(asset.models, ['gpt-4o-2024-08-06']);
+  assert.equal(asset.registered, false); assert.equal(asset.observationCount, 2); assert.deepEqual(asset.providers, ['openai']);
+  assert.deepEqual(asset.models, ['gpt-4o-2024-08-06']);
   assert.deepEqual(asset.collectors, ['evidscope-otlp-receiver']); assert.ok(asset.attention.some(a => a.code === 'AI_UNREGISTERED_ASSET'));
   const agents = (await h.api('/api/agents')).body;
   const agent = agents.items.find(a => a.source === 'alpha-otlp' && a.actor === 'travel-planner');
@@ -140,8 +153,12 @@ test('OTLP limits: compressed, decompressed and declared sizes are 413; vault-on
   assert.equal((await send(small.url, Buffer.alloc(5000, 0x20), {token})).status, 413);
   assert.equal((await send(small.url, otlpJson([1, 2, 3, 4, 5].map(i => span(`c${i}`.repeat(8), {'gen_ai.operation.name': 'chat'}))), {token})).status, 413);
   // A chunked body without Content-Length is bounded while streaming.
-  const stream = new ReadableStream({start(controller) { for (let i = 0; i < 5; i++) controller.enqueue(new Uint8Array(1024).fill(0x20)); controller.close(); }});
-  const chunked = await fetch(small.url + '/v1/traces', {method: 'POST', body: stream, duplex: 'half', headers: {'content-type': 'application/json', authorization: `Bearer ${token}`}});
+  const stream = new ReadableStream({start(controller) {
+    for (let i = 0; i < 5; i++) controller.enqueue(new Uint8Array(1024).fill(0x20));
+    controller.close();
+  }});
+  const chunked = await fetch(small.url + '/v1/traces', {method: 'POST', body: stream, duplex: 'half',
+    headers: {'content-type': 'application/json', authorization: `Bearer ${token}`}});
   assert.equal(chunked.status, 413); await chunked.arrayBuffer();
 });
 
@@ -150,7 +167,8 @@ test('per-tenant analysis backlog answers 503 + Retry-After for that tenant only
   let h;
   try { h = await harness(); } finally { delete process.env.ANALYSIS_BACKLOG_LIMIT_PER_TENANT; }
   t.after(() => h.close());
-  const tools = traceId => otlpJson([1, 2, 3].map(i => span(`d${i}`.repeat(8), {'gen_ai.operation.name': 'execute_tool', 'gen_ai.tool.name': `tool-${i}`}, {traceId})));
+  const tools = traceId => otlpJson([1, 2, 3].map(i => span(`d${i}`.repeat(8), {'gen_ai.operation.name': 'execute_tool', 'gen_ai.tool.name': `tool-${i}`},
+    {traceId})));
   const alpha = h.principal('otlp').token, beta = h.principal('otlp', 'beta').token;
   assert.equal((await send(h.ingress.url, tools('e1'.repeat(16)), {token: alpha})).status, 200); // 3 pending actions > limit 2
   const busy = await send(h.ingress.url, tools('e2'.repeat(16)), {token: alpha, type: 'application/json'});
@@ -169,15 +187,18 @@ test('per-tenant analysis backlog answers 503 + Retry-After for that tenant only
 test('replay client posts saved OTLP exports; the stdin collector no longer accepts OTLP', async t => {
   const h = await harness(); t.after(() => h.close());
   const dir = mkdtempSync(join(h.dir, 'replay-')), lines = join(dir, 'spans.jsonl'), gz = join(dir, 'trace.pb.gz');
-  writeFileSync(lines, [otlpJson([span('f1'.repeat(8), {'gen_ai.operation.name': 'chat'})]), otlpJson([span('f2'.repeat(8), {'http.request.method': 'GET'})])].join('\n'));
+  writeFileSync(lines, [otlpJson([span('f1'.repeat(8), {'gen_ai.operation.name': 'chat'})]),
+    otlpJson([span('f2'.repeat(8), {'http.request.method': 'GET'})])].join('\n'));
   writeFileSync(gz, zlib.gzipSync(fixture('collector-genai.pb')));
-  const replay = (files, env) => spawnSync(process.execPath, ['scripts/replay-otlp.mjs', `${h.ingress.url}/v1/traces`, ...files], {env: {...process.env, ...env}, encoding: 'utf8'});
+  const replay = (files, env) => spawnSync(process.execPath, ['scripts/replay-otlp.mjs', `${h.ingress.url}/v1/traces`, ...files],
+    {env: {...process.env, ...env}, encoding: 'utf8'});
   const ok = replay([new URL('./fixtures/otlp/sdk-genai.json', import.meta.url).pathname, lines, gz], {EVIDSCOPE_OTLP_TOKEN: h.principal('otlp').token});
   assert.equal(ok.status, 0, ok.stderr);
   assert.deepEqual(JSON.parse(ok.stdout), {requests: 4, delivered: 4, rejectedSpans: 1, failed: 0, statuses: {200: 4}});
   assert.equal((await events(h)).total, 5);
   const denied = replay([lines], {EVIDSCOPE_OTLP_TOKEN: h.principal('agent').token});
-  assert.equal(denied.status, 1); assert.deepEqual(JSON.parse(denied.stdout).statuses, {403: 2}); assert.ok(!denied.stdout.includes(h.principal('agent').token));
+  assert.equal(denied.status, 1); assert.deepEqual(JSON.parse(denied.stdout).statuses, {403: 2});
+  assert.ok(!denied.stdout.includes(h.principal('agent').token));
   assert.equal(replay([lines], {EVIDSCOPE_OTLP_TOKEN: ''}).status, 2);
   const retired = spawnSync(process.execPath, ['scripts/collect-ai-observations.mjs', 'otlp'], {input: fixture('sdk-genai.json'), encoding: 'utf8'});
   assert.equal(retired.status, 2); assert.equal(retired.stdout, ''); assert.match(retired.stderr, /retired/);

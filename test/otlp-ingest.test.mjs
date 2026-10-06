@@ -35,12 +35,14 @@ test('vault OTLP batch route: one transaction, duplicates, conflicts and per-eve
   const result = await ingest(batch([changed, forged, wrongKind, {}, 'x']));
   assert.equal(result.accepted, 0); assert.deepEqual(result.reasons, {id_conflict: 1, invalid_event: 4});
   // Envelope problems reject the whole request.
-  for (const body of ['nope', '[]', batch(events, {extra: 1}), JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: 'otel-genai-map-0', events: []}), batch(Array(2049).fill(events[0]))])
+  for (const body of ['nope', '[]', batch(events, {extra: 1}), JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: 'otel-genai-map-0', events: []}),
+    batch(Array(2049).fill(events[0]))])
     await assert.rejects(ingest(body), e => [400, 413].includes(e.status));
   // Only OTLP sources may use the route, and the OTLP credential cannot use other source routes.
   for (const kind of ['agent', 'telemetry', 'auditor']) await assert.rejects(ingest(batch([]), principal(kind)), e => e.status === 403, kind);
   const p = principal('otlp'), body = JSON.stringify(events[0]), ts = String(Date.now()), nonce = randomUUID();
-  await assert.rejects(s.handle('POST', new URL('http://localhost/api/ingest'), {authorization: `Bearer ${p.token}`, 'x-evid-timestamp': ts, 'x-evid-nonce': nonce, 'x-evid-signature': mac('x', ts, nonce, body)}, body), e => e.status === 401);
+  await assert.rejects(s.handle('POST', new URL('http://localhost/api/ingest'), {authorization: `Bearer ${p.token}`, 'x-evid-timestamp': ts,
+    'x-evid-nonce': nonce, 'x-evid-signature': mac('x', ts, nonce, body)}, body), e => e.status === 401);
   const integrity = await s.handle('GET', new URL('http://localhost/api/integrity'), {authorization: `Bearer ${principal('auditor').token}`});
   assert.equal(integrity.valid, true, integrity.error);
   const stored = await s.handle('GET', new URL('http://localhost/api/events?limit=10'), {authorization: `Bearer ${principal('auditor').token}`});
@@ -48,17 +50,21 @@ test('vault OTLP batch route: one transaction, duplicates, conflicts and per-eve
 });
 
 test('OTLP principals are bearer-only sources', t => {
-  assert.throws(() => fixture(t, config => { config.principals.find(p => p.kind === 'otlp').hmacSecret = 'x'.repeat(43); return config; }), /Invalid credential configuration/);
-  assert.throws(() => fixture(t, config => { config.principals.find(p => p.kind === 'otlp').role = 'auditor'; return config; }), /Invalid credential configuration/);
+  assert.throws(() => fixture(t, config => { config.principals.find(p => p.kind === 'otlp').hmacSecret = 'x'.repeat(43); return config; }),
+    /Invalid credential configuration/);
+  assert.throws(() => fixture(t, config => { config.principals.find(p => p.kind === 'otlp').role = 'auditor'; return config; }),
+    /Invalid credential configuration/);
   const config = initialize(mkdtempSync(resolve('.test-runs/otlp-init-')));
   const otlp = config.principals.filter(p => p.kind === 'otlp');
-  assert.deepEqual(otlp.map(p => p.id).sort(), ['alpha-otlp', 'beta-otlp']); assert.ok(otlp.every(p => p.role === 'source' && p.hmacSecret === undefined && p.token.length >= 32));
+  assert.deepEqual(otlp.map(p => p.id).sort(), ['alpha-otlp', 'beta-otlp']);
+  assert.ok(otlp.every(p => p.role === 'source' && p.hmacSecret === undefined && p.token.length >= 32));
 });
 
 test('analysis backlog gate is per tenant on the HMAC ingest route as well (audit S7)', async t => {
   const {ingest, batch, principal, s} = fixture(t);
   const signed = (p, raw) => { const body = JSON.stringify(raw), ts = String(Date.now()), nonce = randomUUID();
-    return s.handle('POST', new URL('http://localhost/api/ingest'), {authorization: `Bearer ${p.token}`, 'x-evid-timestamp': ts, 'x-evid-nonce': nonce, 'x-evid-signature': mac(p.hmacSecret, ts, nonce, body)}, body); };
+    return s.handle('POST', new URL('http://localhost/api/ingest'), {authorization: `Bearer ${p.token}`, 'x-evid-timestamp': ts, 'x-evid-nonce': nonce,
+      'x-evid-signature': mac(p.hmacSecret, ts, nonce, body)}, body); };
   const event = (id, kind = 'self_report') => ({id, actionId: id, traceId: 'trace-s7', kind, occurredAt: new Date().toISOString()});
   process.env.ANALYSIS_BACKLOG_LIMIT_PER_TENANT = '2';
   t.after(() => { delete process.env.ANALYSIS_BACKLOG_LIMIT_PER_TENANT; });

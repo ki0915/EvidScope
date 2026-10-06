@@ -71,7 +71,8 @@ function host(v) {
 // ---- OTLP/JSON -> internal shape -------------------------------------------------------------
 
 // Keeps int64 precision: integers beyond 2^53 come back as their decimal source text.
-const reviver = (key, value, context) => typeof value === 'number' && !Number.isSafeInteger(value) && context && /^-?\d+$/.test(context.source) ? context.source : value;
+const reviver = (key, value, context) =>
+  typeof value === 'number' && !Number.isSafeInteger(value) && context && /^-?\d+$/.test(context.source) ? context.source : value;
 
 function jsonScalar(v) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
@@ -188,7 +189,8 @@ export function mapSpan(span, resource, now = Date.now()) {
 
   const serviceName = text(resource.get('service.name'), 200);
   const errorType = a.get('error.type');
-  const status = span.statusCode === 2 || (errorType !== undefined && errorType !== '') ? 'failure' : span.statusCode === 0 || span.statusCode === 1 ? 'success' : 'unknown';
+  const failed = span.statusCode === 2 || (errorType !== undefined && errorType !== '');
+  const status = failed ? 'failure' : span.statusCode === 0 || span.statusCode === 1 ? 'success' : 'unknown';
   const agentName = text(a.get('gen_ai.agent.name')) ?? text(a.get('agent.name'));
   const actor = agentName ?? id(a.get('gen_ai.agent.id')) ?? (serviceName ? `service:${serviceName}` : 'unknown');
   const modelName = a.get('gen_ai.response.model') ?? a.get('gen_ai.request.model') ?? a.get('llm.model_name') ?? a.get('embedding.model_name');
@@ -221,7 +223,8 @@ export function mapSpan(span, resource, now = Date.now()) {
     // Aggregating operations (workflows, retrieval, memory) may roll up child usage; count tokens on model calls only.
     const usage = {};
     const input = natural(a.get('gen_ai.usage.input_tokens')) ?? natural(a.get('gen_ai.usage.prompt_tokens')) ?? natural(a.get('llm.token_count.prompt'));
-    const output = natural(a.get('gen_ai.usage.output_tokens')) ?? natural(a.get('gen_ai.usage.completion_tokens')) ?? natural(a.get('llm.token_count.completion'));
+    const output = natural(a.get('gen_ai.usage.output_tokens')) ?? natural(a.get('gen_ai.usage.completion_tokens'))
+      ?? natural(a.get('llm.token_count.completion'));
     if (input !== undefined) usage.inputTokens = input;
     if (output !== undefined) usage.outputTokens = output;
     if (Object.keys(usage).length) observation.usage = usage;

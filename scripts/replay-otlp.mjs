@@ -16,11 +16,14 @@ for (let i = 0; i < args.length; i++) {
   else if (!target) target = args[i];
   else files.push(args[i]);
 }
-const usage = () => { console.error('usage: node scripts/replay-otlp.mjs <https://ingress/v1/traces> FILE... [--token-env NAME] [--no-gzip]'); process.exit(2); };
+const usage = () => {
+  console.error('usage: node scripts/replay-otlp.mjs <https://ingress/v1/traces> FILE... [--token-env NAME] [--no-gzip]'); process.exit(2);
+};
 if (bad || !target || !files.length) usage();
 let url;
 try { url = new URL(target); } catch { usage(); }
-if (url.username || url.password || url.hash || !['https:', 'http:'].includes(url.protocol) || url.protocol === 'http:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) {
+const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+if (url.username || url.password || url.hash || !['https:', 'http:'].includes(url.protocol) || url.protocol === 'http:' && !loopback) {
   console.error('Use HTTPS, or loopback HTTP, without URL credentials or fragment.'); process.exit(2);
 }
 const token = process.env[tokenEnv];
@@ -59,7 +62,9 @@ for (const file of files) {
     summary.delivered++;
     const bytes = Buffer.from(await response.arrayBuffer());
     try {
-      if (response.headers.get('content-type') === 'application/x-protobuf') summary.rejectedSpans += Number(decodeExportTraceServiceResponse(bytes).rejectedSpans);
+      if (response.headers.get('content-type') === 'application/x-protobuf') {
+        summary.rejectedSpans += Number(decodeExportTraceServiceResponse(bytes).rejectedSpans);
+      }
       else if (bytes.length) summary.rejectedSpans += Number(JSON.parse(bytes).partialSuccess?.rejectedSpans || 0);
     } catch { /* an unparseable 2xx body is reported as delivered; the receiver committed the request */ }
   }
