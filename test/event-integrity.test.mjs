@@ -54,9 +54,10 @@ test('unsigned action_id reassignment cannot change online correlation, metrics,
 });
 
 test('event verification and indexed response share one writer-excluding snapshot',async t=>{
- const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.checkProjection.bind(h.store);let attempted=false,changed=false,blocked;
+ const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.verifiedFacets.bind(h.store);let attempted=false,changed=false,blocked;
  try{
-  h.store.checkProjection=(...args)=>{const result=original(...args);if(!attempted){attempted=true;try{other.prepare("UPDATE events SET trace_id='changed' WHERE tenant='alpha'").run();changed=true;}catch(error){blocked=error;}}return result;};
+  // /api/events verifies the event and event-key facets of the incremental verified state, then reads the indexed rows.
+  h.store.verifiedFacets=(...args)=>{const result=original(...args);if(!attempted){attempted=true;try{other.prepare("UPDATE events SET trace_id='changed' WHERE tenant='alpha'").run();changed=true;}catch(error){blocked=error;}}return result;};
   const result=await h.call('/api/events');assert.equal(result.items.length,1);assert.equal(attempted,true);assert.equal(changed,false);assert.equal(blocked?.errcode,5);assert.match(blocked?.message||'',/locked|busy/i);
  }finally{other.close();}
 });
