@@ -22,7 +22,8 @@ test('보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 �
  assert.equal((await request(`/api/retention/holds/${hold.id}/release`,{reason:'다른 검토자 확인'},'admin')).status,200);
  const c=(await request('/api/cases',{title:'미종결 사건 보존',actionId:event.actionId,owner:'audit'},'auditor')).body;
  assert.equal((await request('/api/retention/plans',{reason:'미종결 사건 파기 금지'})).status,409);
- await request(`/api/cases/${c.id}`,{status:'closed',reason:'합성 조사 종료'},'auditor');
+ // Four-eyes (S10): the auditor opened the case, so a reviewer closes it.
+ assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'합성 조사 종료'})).status,200);
  const plan=(await request('/api/retention/plans',{reason:'합성 원문 보존 만료'})).body;assert.equal(plan.items.length,1);
  assert.equal((await request(`/api/retention/plans/${plan.id}/approve`,{reason:'자기 승인 금지'})).status,403);
  assert.equal((await request(`/api/retention/plans/${plan.id}/execute`,{},'admin')).status,409);
@@ -103,7 +104,7 @@ test('서명되지 않은 파기 승인·hold·사건 사본 변경은 키 파�
  overwrite('case',{...c,status:'closed'});await rejected();
  assert.equal((await request(`/api/cases/${c.id}`,{comment:'일반 의견으로 변조 상태 재서명 시도'},'auditor')).status,409);
  overwrite('case',c);
- assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'정상 조사 종료'},'auditor')).status,200);
+ assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'정상 조사 종료'})).status,200);
  db.prepare('INSERT INTO objects VALUES(?,?,?,?)').run('alpha','retention_plan','unsigned-extra',JSON.stringify({...approved,id:'unsigned-extra'}));
  await rejected();db.prepare('DELETE FROM objects WHERE tenant=? AND type=? AND id=?').run('alpha','retention_plan','unsigned-extra');
  // Other tenants' unsigned rows must not deny or influence this tenant's disposition.

@@ -149,7 +149,8 @@ test('검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존
  assert.equal((await h.api(f.path+'/review-context')).body.reviewState,'reviewed');
  await new Promise(resolve=>setTimeout(resolve,600));context=(await h.api(f.path+'/review-context')).body;assert.equal(context.reviewState,'stale');
  assert.equal((await h.api(f.path+'/decisions',{body:decision(context.contextHash,f.ref)})).status,200);
- await h.api(f.path,{body:{status:'closed',reason:'합성 보존 연계 시험을 위한 사건 종결'}});
+ // Four-eyes (S10): the auditor opened the case, so a reviewer closes it.
+ assert.equal((await h.api(f.path,{role:'reviewer',body:{status:'closed',reason:'합성 보존 연계 시험을 위한 사건 종결'}})).status,200);
  await new Promise(resolve=>setTimeout(resolve,600));
  const plan=(await h.api('/api/retention/plans',{role:'reviewer',body:{reason:'합성 원문 만료'}})).body;assert.ok(plan.id);
  assert.equal((await h.api(`/api/retention/plans/${plan.id}/approve`,{role:'admin',body:{reason:'다른 검토자가 범위 확인'}})).status,200);

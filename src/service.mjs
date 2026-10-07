@@ -112,6 +112,12 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   return [...new Set((assessment?.evidence||[]).filter(e=>e.type==='event'&&e.eventSnapshot?.kind==='governance_check'&&e.eventSnapshot.governanceCheck?.checkType==='authority_order_response').map(e=>e.eventSnapshot.governanceCheck.measurements.orderId))].map(orderId=>({checkType:'authority_order_response',orderId}));
  }
  const safeObject=x=>{if(!x||typeof x!=='object'||Array.isArray(x))fail(400,'JSON 객체 필요');return x;};
+ // Whoever put the case into its current open period: its creator, or the principal who last reopened it after a closure.
+ function caseOpener(c){
+  let opener=c.history?.[0]?.by,previous;
+  for(const entry of c.history||[]){if(entry.action==='created')opener=entry.by;else if(previous==='closed'&&entry.status&&entry.status!=='closed')opener=entry.by;if(entry.status)previous=entry.status;}
+  return opener;
+ }
  // Startup is a signed-history migration boundary. Verify every projection used
  // as migration input before changing any tenant, and keep verification and use
  // in one writer-excluding transaction. Otherwise a downgraded SQL copy can be
@@ -278,7 +284,10 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const c={id:randomUUID(),title:cleanText(x.title,200),actionId:identifier(x.actionId),owner:cleanText(x.owner,200),status:'open',comments:[],tasks:[],history:[{by:p.id,at:new Date().toISOString(),action:'created'}]};return store.transaction(()=>{verifiedActions(p);if(!store.events(p.tenant,c.actionId).length)fail(400,'사건에 연결할 관측 행동이 없습니다');return store.put(p,'case',c.id,c);});
   }
   if(path.startsWith('/api/cases/')&&method==='POST'){
-   const id=identifier(path.split('/').pop());return store.transaction(()=>{const c=workbench.verifyContext(p,id).case;if(x.status&&!['open','in_review','closed'].includes(x.status))fail(400,'사건 상태 오류');if(x.status==='closed'&&!x.reason)fail(400,'종결 사유 필요');if(x.owner)c.owner=cleanText(x.owner,200);if(x.status)c.status=x.status;
+   const id=identifier(path.split('/').pop());return store.transaction(()=>{const c=workbench.verifyContext(p,id).case;if(x.status&&!['open','in_review','closed'].includes(x.status))fail(400,'사건 상태 오류');if(x.status==='closed'&&!x.reason)fail(400,'종결 사유 필요');
+    // Four-eyes (S10): the principal who opened the case (created it or last reopened it) cannot also close it.
+    if(x.status==='closed'&&c.status!=='closed'&&caseOpener(c)===p.id)fail(403,'사건을 열거나 다시 연 사람은 그 사건을 종결할 수 없습니다(4-eyes)');
+    if(x.owner)c.owner=cleanText(x.owner,200);if(x.status)c.status=x.status;
     if(x.comment)c.comments.push({by:p.id,at:new Date().toISOString(),text:cleanText(x.comment,2000)});
     if(x.task){const t=x.task;const task={id:t.id||randomUUID(),title:cleanText(t.title,200),owner:cleanText(t.owner,200),dueAt:date(t.dueAt),status:t.status==='closed'?'closed':'open'};const index=c.tasks.findIndex(v=>v.id===task.id);if(index<0)c.tasks.push(task);else c.tasks[index]=task;}
     c.history.push({by:p.id,at:new Date().toISOString(),status:c.status,reason:cleanText(x.reason||'',1000)});return store.put(p,'case',id,c);});
@@ -293,7 +302,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   if(path==='/api/exceptions'&&method==='POST'){
    const end=date(x.expiresAt);if(Date.parse(end)<=Date.now()||Date.parse(end)>Date.now()+90*86400000)fail(400,'예외 유효기간은 현재 이후 최대 90일');const e={id:randomUUID(),ruleId:identifier(x.ruleId),actionId:identifier(x.actionId),reason:cleanText(x.reason,1000),owner:cleanText(x.owner,200),expiresAt:end,status:'pending',author:p.id};return store.transaction(()=>store.put(p,'exception',e.id,e));
   }
-  if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
+  if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');
+   // Only a pending request can be approved: the signed action history admits pending -> approved -> expired only.
+   if(e.status!=='pending')fail(409,'승인 대기 중인 예외만 승인할 수 있습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
   // The export seals the unsealed reads first, so it carries the batch that covers its own read.
   if(path==='/api/export'&&method==='GET'){sealReads(p,'export');return store.read(()=>store.exportBundle(p.tenant));}
   if(path==='/api/audit/reads'&&method==='GET'){auditReader(p);const fromSeq=Math.max(1,Math.floor(Number(url.searchParams.get('fromSeq'))||1)),limit=Math.max(1,Math.min(500,Math.floor(Number(url.searchParams.get('limit'))||100)));
