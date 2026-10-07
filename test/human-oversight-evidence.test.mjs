@@ -17,10 +17,12 @@ function fixture(t){
   {id:'reviewer',role:'reviewer',tenant:'alpha',token:'r'.repeat(40)},
   {id:'alpha-authority',role:'source',kind:'authority',tenant:'alpha',token:'a'.repeat(40),hmacSecret:'h'.repeat(40)},
   {id:'beta-authority',role:'source',kind:'authority',tenant:'beta',token:'b'.repeat(40),hmacSecret:'j'.repeat(40)},
+  // A second reviewer confirms legal review and closes tasks: the assessment author may do neither (S11).
+  {id:'legal-reviewer',role:'reviewer',tenant:'alpha',token:'l'.repeat(40)},
  ];
  const service=createService({dataDir:dir,key:generateKeyPairSync('ed25519').privateKey,config:{principals},requirements});
  t.after(()=>{service.store.close();assert.ok(resolve(dir).startsWith(resolve(tmpdir())+sep));rmSync(dir,{recursive:true,force:true});});
- const call=(path,body)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principals[0].token},body===undefined?'':JSON.stringify(body));
+ const call=(path,body,who=0)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principals[who].token},body===undefined?'':JSON.stringify(body));
  const addEvent=(overrides={})=>{
   const raw={id:'oversight-'+Math.random().toString(36).slice(2),kind:'human_oversight_review',occurredAt:new Date().toISOString(),clockUncertaintyMs:0,traceId:'oversight-trace',actionId:'oversight-action',reviewer:'human-reviewer',systemId:system.id,modelId:system.modelId,modelVersion:system.modelVersion,policyVersion:system.policyVersion,...overrides};
   const event=validateEvent(raw,principals[1]);service.store.transaction(()=>{const record=service.store.append('alpha','event',event,principals[1].id);service.store.project({...event,seq:record.seq,hash:record.hash});});return event;
@@ -62,7 +64,10 @@ test('oversight plan and review record are each necessary and must bind the curr
 
  const saved=await h.call('/api/governance/assessments',assessment([{type:'document',ref:'governance-document:oversight-plan'},{type:'event',ref},measuredPlan]));
  assert.equal(saved.evidence[1].eventSnapshot.kind,'human_oversight_review');assert.match(saved.evidence[1].eventSnapshotHash,/^[a-f0-9]{64}$/);
- result=item(await h.call('/api/governance/report?systemId=credit'));assert.equal(result.technicalStatus,'authenticated_reported_measurement_supported');assert.equal(result.status,'human_evidence_assessed');assert.equal(result.legalStatus,'reviewed');
+ result=item(await h.call('/api/governance/report?systemId=credit'));assert.equal(result.technicalStatus,'authenticated_reported_measurement_supported');assert.equal(result.status,'human_evidence_assessed');
+ assert.equal(result.legalStatus,'pending','the author legalReview claim alone is not a legal review');assert.equal(result.legalReview.authorClaim,'reviewed');
+ await h.call(`/api/governance/assessments/${saved.id}/legal-review`,{reason:'Independent legal review'},3);
+ result=item(await h.call('/api/governance/report?systemId=credit'));assert.equal(result.legalStatus,'reviewed');assert.equal(result.legalReview.reviewedBy,'legal-reviewer');
  assert.equal(saved.evidence[2].eventSnapshot.governanceCheck.documentHash,document.sha256);assert.equal(result.technicalEvidence.automaticLegalVerdict,false);
 
  for(const overrides of [{modelVersion:'v1'},{policyVersion:'old-policy'},{systemId:'other-system'},{kind:'human_approval',validFrom:'2026-01-01T00:00:00.000Z',validUntil:'2099-01-01T00:00:00.000Z',scope:{actor:'a',tool:'t',action:'x',resource:'r'}}]){
@@ -74,8 +79,9 @@ test('oversight plan and review record are each necessary and must bind the curr
 test('document revision makes the bound oversight assessment stale and blocks task closure until reassessment',async t=>{
  const h=fixture(t),savedSystem=await h.call('/api/governance/systems',system),document=await h.addDocument(),measuredPlan=appendKrCheck(h.service,savedSystem,requirements.find(r=>r.id==='KR-34-OVERSIGHT'),document,'oversight_plan',oversightMetrics),event=h.addEvent(),ref=`${event.source}/${event.id}`;
  const missing=await h.call('/api/governance/assessments',assessment([{type:'attestation',ref:'missing'}]));
- await new Promise(resolve=>setTimeout(resolve,2));await h.call('/api/governance/assessments',assessment([{type:'document',ref:'governance-document:oversight-plan'},{type:'event',ref},measuredPlan]));
- const task=(await h.call('/api/governance')).tasks.find(value=>value.id===missing.id);assert.equal((await h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Current verified evidence'})).status,'closed');
+ await new Promise(resolve=>setTimeout(resolve,2));const current=await h.call('/api/governance/assessments',assessment([{type:'document',ref:'governance-document:oversight-plan'},{type:'event',ref},measuredPlan]));
+ await h.call(`/api/governance/assessments/${current.id}/legal-review`,{reason:'Independent legal review'},3);
+ const task=(await h.call('/api/governance')).tasks.find(value=>value.id===missing.id);assert.equal((await h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Current verified evidence'},3)).status,'closed');
  const revised=await h.addDocument('oversight-plan','revised oversight plan');
  const result=item(await h.call('/api/governance/report?systemId=credit'));assert.equal(result.status,'review_required');assert.equal(result.technicalStatus,'typed_evidence_insufficient');assert.ok(result.technicalEvidence.reasons.includes('document_evidence_stale'));
  const revisionTask=(await h.call('/api/governance')).tasks.find(value=>value.documentId==='oversight-plan'&&value.status==='open');

@@ -1,11 +1,11 @@
 import {randomUUID,createPublicKey} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {Store} from './store.mjs';
-import {assertRecoveryActivation} from './recovery-state.mjs';
+import {assertRecoveryActivation,recordConfigRebindings} from './recovery-state.mjs';
 import {canonical,digest,mac,equal,verifyBundle} from './crypto.mjs';
 import {fail,cleanText,identifier,date,validateEvent,validateRule,matches} from './model.mjs';
 import {createRetention} from './retention.mjs';
-import {createAnalysis} from './analysis.mjs';
+import {createAnalysis,workerTenantScopes} from './analysis.mjs';
 import {createAuditWorkbench} from './audit-workbench.mjs';
 import {monitoring,SOURCE_LAST_SEEN_SQL} from './monitoring.mjs';
 import {agentInventory} from './agent-inventory.mjs';
@@ -34,7 +34,8 @@ import {tenantOrigin} from './tlog.mjs';
 import {AccessLog} from './access-log.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
- assertRecoveryActivation({dataDir,key,config});
+ workerTenantScopes(config.principals||[],config.profile);
+ const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
  const legalSourceCoverage=krLegalSourceCoverage(requirements);
@@ -50,7 +51,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
  const principals=config.principals||[];
- const analysis=createAnalysis(store,principals);
+ const analysis=createAnalysis(store,principals,{profile:config.profile});
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
@@ -105,12 +106,38 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }
   if(requirement?.id?.startsWith('KR-'))return evaluateKrGovernanceEvidence(requirement,assessment,{documentStale,eventStale,system});
   const defaultStatus=assessment?.evidence?.some(e=>e.type==='event')?'event_linked_partial_support':'external_or_missing';
-  return {status:defaultStatus,supportsHumanAssessment:true};
+  // Non-KR requirements have no clause-level technical checks: a human assesses the evidence, and attestations or
+  // references the vault did not fetch stay labelled self_asserted (S11).
+  return {status:defaultStatus,supportsHumanAssessment:true,assurance:evidenceAssurance(assessment).level,
+   limitations:['조항별 기술 검증이 없는 요구사항입니다. self_asserted 증거는 작성자의 주장이며 vault가 내용을 확인하지 않았습니다.']};
+ }
+ // Assurance of one evidence item (S11): only retained documents, signed supplier bundles and authenticated source events
+ // are bound by the vault; every attestation and every reference the vault did not fetch is the author's own claim.
+ const assuranceByVerification={governance_document_verified_at_assessment:'vault_verified_document',
+  supplier_bundle_verified_at_assessment:'supplier_signed_bundle',linked_verified_minimized_record:'authenticated_source_record'};
+ const assuranceOf=e=>e.type==='attestation'?'self_asserted':assuranceByVerification[e.verification]||'self_asserted';
+ function evidenceAssurance(assessment){
+  const items=(assessment?.evidence||[]).map(e=>({type:e.type,ref:e.ref,assurance:assuranceOf(e)})),selfAsserted=items.filter(i=>i.assurance==='self_asserted').length;
+  return {level:!items.length?'no_evidence':selfAsserted===items.length?'self_asserted':selfAsserted?'mixed':'source_bound',selfAssertedItems:selfAsserted,items};
+ }
+ // Legal review is maker-checker (S11): the author's own legalReview field is a claim. The report counts a legal review
+ // only when a principal other than the author confirmed this exact assessment (bound by its hash).
+ function legalReviewState(assessment,reviews){
+  if(!assessment)return {status:'pending',authorClaim:null,independentReviewRequired:true};
+  const hash=digest(assessment),confirmed=reviews.filter(r=>r.assessmentId===assessment.id&&r.assessmentHash===hash&&r.reviewedBy!==assessment.reviewer).at(-1);
+  return {status:confirmed?'reviewed':'pending',authorClaim:assessment.legalReview,author:assessment.reviewer,independentReviewRequired:true,
+   ...(confirmed?{reviewedBy:confirmed.reviewedBy,reviewedAt:confirmed.reviewedAt,reviewId:confirmed.id}:{})};
  }
  function governanceOrderTargets(assessment){
   return [...new Set((assessment?.evidence||[]).filter(e=>e.type==='event'&&e.eventSnapshot?.kind==='governance_check'&&e.eventSnapshot.governanceCheck?.checkType==='authority_order_response').map(e=>e.eventSnapshot.governanceCheck.measurements.orderId))].map(orderId=>({checkType:'authority_order_response',orderId}));
  }
  const safeObject=x=>{if(!x||typeof x!=='object'||Array.isArray(x))fail(400,'JSON 객체 필요');return x;};
+ // Whoever put the case into its current open period: its creator, or the principal who last reopened it after a closure.
+ function caseOpener(c){
+  let opener=c.history?.[0]?.by,previous;
+  for(const entry of c.history||[]){if(entry.action==='created')opener=entry.by;else if(previous==='closed'&&entry.status&&entry.status!=='closed')opener=entry.by;if(entry.status)previous=entry.status;}
+  return opener;
+ }
  // Startup is a signed-history migration boundary. Verify every projection used
  // as migration input before changing any tenant, and keep verification and use
  // in one writer-excluding transaction. Otherwise a downgraded SQL copy can be
@@ -119,6 +146,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  try{
   store.transaction(()=>{
    tlogStartup.recheck?.(store.db);store.syncTlog();
+   // An activated restoration's signed config rebindings enter each restored tenant's ledger (S8).
+   recordConfigRebindings(store,activation);
    const states=[];
    for(const tenant of tenants){
     const p={id:'startup-governance-initializer',tenant};
@@ -143,6 +172,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  function report(p,systemId){
   return store.transaction(()=>{
   const system=policyObject(p,'system',systemId),assessments=[...verifiedPolicyObjects(p,'assessment').values()].filter(a=>a.systemId===systemId),tasks=[...verifiedPolicyObjects(p,'governance_task').values()].filter(t=>t.systemId===systemId);
+  const legalReviews=[...verifiedPolicyObjects(p,'governance_legal_review').values()].filter(r=>r.systemId===systemId);
   const events=assessments.some(a=>a.evidence.some(e=>e.type==='event'))?verifiedEventReferences(p):new Map();
   const items=requirements.map(requirement=>{
    // verifiedPolicyObjects iterates signed ledger order. Millisecond timestamps
@@ -164,17 +194,43 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const documentStale=assessment&&(finance.staleEvidence(p,assessment)||governanceDocuments.staleEvidence(p,assessment)),technical=technicalEvidenceState(requirement,assessment,{documentStale,eventStale:missingLinkedEvidence,system});
    const stale=assessment&&(assessment.requirementHash!==digest(requirement)||assessment.systemHash!==digest(system)||Date.parse(assessment.nextReviewAt)<=Date.now()||missingLinkedEvidence||documentStale||applicabilityReview.status==='review_required');
    const status=!assessment?'evidence_missing':stale?'review_required':assessment.applicability==='not_applicable'?(technical.supportsHumanAssessment?'human_marked_not_applicable':'evidence_insufficient'):assessment.assessment==='sufficient'&&assessment.evidence.length&&technical.supportsHumanAssessment?'human_evidence_assessed':'evidence_insufficient';
-   return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,legalStatus:stale?'review_required':assessment?.legalReview||'pending'};
+   const legalReview=legalReviewState(assessment,legalReviews);
+   return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,
+    evidenceAssurance:evidenceAssurance(assessment),legalStatus:stale?'review_required':legalReview.status,legalReview};
    });const catalog=applicabilityCatalogIdentity(requirements);return {system,items,tasks,legalSourceCoverage,applicabilityPolicyVersion,applicabilityPolicyIdentityHash:catalog.hash,limitations:['법적 적용성은 사실관계와 인간 검토를 요구합니다','증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다','한국 고영향과 EU 고위험 분류를 공유하지 않습니다','ISO/IEC 42001 본문 미확보: 조항 매핑 미지원']};
   });
  }
  // Synchronous dispatch: a GET's read-only scope (see Store.beginReadOnly) always ends before another request runs.
- async function handle(method,url,headers,body=''){try{return dispatch(method,url,headers,body);}finally{store.endReadOnly();}}
+ // Malformed percent-encoding in a path segment is a client error, not a storage failure (S12c).
+ async function handle(method,url,headers,body=''){
+  try{return dispatch(method,url,headers,body);}
+  catch(error){if(error instanceof URIError)fail(400,'경로의 퍼센트 인코딩 형식 오류');throw error;}
+  finally{store.endReadOnly();}
+ }
+ // Large-body routes are authenticated before the HTTP layer buffers the body (S12a): the same credential and role
+ // checks as the route, so an anonymous or wrong-role client cannot make the vault or gateway hold megabytes.
+ const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles']);
+ function preauthorize(method,url,headers){
+  const path=url.pathname;if(method!=='POST')fail(405,'허용되지 않은 메서드');
+  if(path.startsWith('/internal/assistance/'))return assistance.preauthorize(url,headers);
+  const p=auth(headers,method);
+  if(path==='/internal/complete'){if(p.role!=='worker')fail(403,'인증된 분석 서비스 전용');}
+  else if(path==='/api/ingest/otlp'){if(p.role!=='source'||p.kind!=='otlp')fail(403,'OTLP 수집 출처 자격이 필요합니다');}
+  else if(preauthorizedPaths.has(path))reviewer(p);
+  else fail(400,'사전 인증 대상 경로가 아닙니다');
+  return {authorized:true};
+ }
  function dispatch(method,url,headers,body=''){
   const path=url.pathname;
   if(path==='/healthz'&&method==='GET'){store.db.prepare('SELECT 1').get();return {status:'ready',component:'vault'};}
   if(store.quarantine&&path!=='/api/integrity')fail(503,'Transparency quarantine: '+store.quarantine.reason);
   if(path.startsWith('/internal/assistance/')){const result=assistance.internal(method,url,headers,body);if(result!==undefined)return result;}
+  // The audit gateway asks here before it buffers a large upload; the body names only the target route.
+  if(path==='/internal/preauthorize'&&method==='POST'){
+   let target;try{target=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}
+   if(typeof target?.path!=='string'||!preauthorizedPaths.has(target.path))fail(400,'사전 인증 대상 경로가 아닙니다');
+   return preauthorize('POST',new URL(target.path,'http://localhost'),headers);
+  }
   const p=auth(headers,method);
   const developmentResult=developmentRuns.handle(p,method,url,headers,body);if(developmentResult!==undefined)return developmentResult;
   if(path==='/api/ingest'&&method==='POST'){
@@ -253,7 +309,10 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const c={id:randomUUID(),title:cleanText(x.title,200),actionId:identifier(x.actionId),owner:cleanText(x.owner,200),status:'open',comments:[],tasks:[],history:[{by:p.id,at:new Date().toISOString(),action:'created'}]};return store.transaction(()=>{verifiedActions(p);if(!store.events(p.tenant,c.actionId).length)fail(400,'사건에 연결할 관측 행동이 없습니다');return store.put(p,'case',c.id,c);});
   }
   if(path.startsWith('/api/cases/')&&method==='POST'){
-   const id=identifier(path.split('/').pop());return store.transaction(()=>{const c=workbench.verifyContext(p,id).case;if(x.status&&!['open','in_review','closed'].includes(x.status))fail(400,'사건 상태 오류');if(x.status==='closed'&&!x.reason)fail(400,'종결 사유 필요');if(x.owner)c.owner=cleanText(x.owner,200);if(x.status)c.status=x.status;
+   const id=identifier(path.split('/').pop());return store.transaction(()=>{const c=workbench.verifyContext(p,id).case;if(x.status&&!['open','in_review','closed'].includes(x.status))fail(400,'사건 상태 오류');if(x.status==='closed'&&!x.reason)fail(400,'종결 사유 필요');
+    // Four-eyes (S10): the principal who opened the case (created it or last reopened it) cannot also close it.
+    if(x.status==='closed'&&c.status!=='closed'&&caseOpener(c)===p.id)fail(403,'사건을 열거나 다시 연 사람은 그 사건을 종결할 수 없습니다(4-eyes)');
+    if(x.owner)c.owner=cleanText(x.owner,200);if(x.status)c.status=x.status;
     if(x.comment)c.comments.push({by:p.id,at:new Date().toISOString(),text:cleanText(x.comment,2000)});
     if(x.task){const t=x.task;const task={id:t.id||randomUUID(),title:cleanText(t.title,200),owner:cleanText(t.owner,200),dueAt:date(t.dueAt),status:t.status==='closed'?'closed':'open'};const index=c.tasks.findIndex(v=>v.id===task.id);if(index<0)c.tasks.push(task);else c.tasks[index]=task;}
     c.history.push({by:p.id,at:new Date().toISOString(),status:c.status,reason:cleanText(x.reason||'',1000)});return store.put(p,'case',id,c);});
@@ -268,7 +327,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   if(path==='/api/exceptions'&&method==='POST'){
    const end=date(x.expiresAt);if(Date.parse(end)<=Date.now()||Date.parse(end)>Date.now()+90*86400000)fail(400,'예외 유효기간은 현재 이후 최대 90일');const e={id:randomUUID(),ruleId:identifier(x.ruleId),actionId:identifier(x.actionId),reason:cleanText(x.reason,1000),owner:cleanText(x.owner,200),expiresAt:end,status:'pending',author:p.id};return store.transaction(()=>store.put(p,'exception',e.id,e));
   }
-  if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
+  if(/^\/api\/exceptions\/[^/]+\/approve$/.test(path)&&method==='POST'){reviewer(p);return store.transaction(()=>{const e=policyObject(p,'exception',path.split('/')[3]);if(e.author===p.id||e.owner===p.id)fail(403,'자신이 작성하거나 소유한 예외를 단독 승인할 수 없습니다');
+   // Only a pending request can be approved: the signed action history admits pending -> approved -> expired only.
+   if(e.status!=='pending')fail(409,'승인 대기 중인 예외만 승인할 수 있습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
   // The export seals the unsealed reads first, so it carries the batch that covers its own read.
   if(path==='/api/export'&&method==='GET'){sealReads(p,'export');return store.read(()=>store.exportBundle(p.tenant));}
   if(path==='/api/audit/reads'&&method==='GET'){auditReader(p);const fromSeq=Math.max(1,Math.floor(Number(url.searchParams.get('fromSeq'))||1)),limit=Math.max(1,Math.min(500,Math.floor(Number(url.searchParams.get('limit'))||100)));
@@ -308,6 +369,18 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    store.put(p,'assessment',a.id,a);if(a.assessment!=='sufficient'||a.legalReview==='pending'||technicalEvidenceRequired||a.applicability==='unknown')store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
    });
   }
+  const legalReviewPath=path.match(/^\/api\/governance\/assessments\/([^/]+)\/legal-review$/);
+  if(legalReviewPath&&method==='POST'){
+   reviewer(p);const reason=cleanText(x.reason,2000);if(!reason.trim())fail(400,'법률 검토 근거가 필요합니다');
+   return store.transaction(()=>{
+    const assessments=verifiedPolicyObjects(p,'assessment'),a=assessments.get(identifier(legalReviewPath[1]))||fail(404,'대상을 찾을 수 없습니다');
+    // The report reads the last recorded assessment of a requirement; only that one can be confirmed.
+    if([...assessments.values()].filter(v=>v.systemId===a.systemId&&v.requirementId===a.requirementId).at(-1).id!==a.id)fail(409,'최신 평가에만 법률 검토를 기록할 수 있습니다');
+    if(a.reviewer===p.id)fail(403,'평가 작성자는 자기 평가의 법률 검토를 확인할 수 없습니다(4-eyes)');
+    const review={id:randomUUID(),assessmentId:a.id,assessmentHash:digest(a),systemId:a.systemId,requirementId:a.requirementId,decision:'reviewed',reason,reviewedBy:p.id,reviewedAt:new Date().toISOString()};
+    return store.put(p,'governance_legal_review',review.id,review);
+   });
+  }
   if(path==='/api/governance/report'&&method==='GET')return report(p,url.searchParams.get('systemId'));
   if(path.startsWith('/api/governance/tasks/')&&method==='POST'){reviewer(p);return store.transaction(()=>{const id=path.split('/').pop(),t=policyObject(p,'governance_task',id);if(x.status==='closed'){
    if(!cleanText(x.reason,1000).trim())fail(400,'거버넌스 과제 종결 사유가 필요합니다');
@@ -316,6 +389,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    // check would let stale human conclusions clear an unresolved review task.
    const current=report(p,t.systemId),items=t.requirementId?current.items.filter(i=>i.requirement.id===t.requirementId):current.items.filter(i=>i.requirement.id.startsWith('KR-'));
    if(!items.length||items.some(i=>!['human_evidence_assessed','human_marked_not_applicable'].includes(i.status)||i.legalStatus!=='reviewed'||i.assessment?.applicability==='unknown'))fail(409,'현재 법령·시스템·기한의 인간 재검토와 검증 가능한 조항별 증거가 없어 작업을 종결할 수 없습니다');
+   // Separation of duties (S11): the author of a covered assessment neither confirms its legal review nor closes the task.
+   if(items.some(i=>i.assessment?.reviewer===p.id))fail(403,'자신이 작성한 평가가 포함된 과제는 다른 검토자가 종결해야 합니다(4-eyes)');
    const orderTargets=t.orderTargets||governanceOrderTargets(verifiedPolicyObjects(p,'assessment').get(t.id));
    if(orderTargets.some(target=>!items.some(i=>governanceOrderTargets(i.assessment).some(current=>current.orderId===target.orderId))))fail(409,'다른 명령의 대응 근거로 이 명령 과제를 종결할 수 없습니다');
    if(t.bundleId&&!items.some(i=>i.assessment?.evidence?.some(e=>e.ref===`supplier-bundle:${t.bundleId}`)))fail(409,'변경된 공급사 증빙을 검토한 현재 평가가 필요합니다');
@@ -323,5 +398,5 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,analysis,assistance,identity,governanceDocuments,transparency,accessLog};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog};
 }

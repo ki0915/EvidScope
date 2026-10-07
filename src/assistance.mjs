@@ -127,9 +127,18 @@ export function createAssistance(store,workbench){
    const {credentialHash,...safeRun}=run;return {run:{...safeRun,profileId:run.profile.id,profileVersion:run.profile.version,updatedAt:run.createdAt,stale:false,currentContextHash:context.contextHash,currentCatalogHash,currentCaseSnapshotHash:digest(context.case),staleReason:null,reviewState:'unreviewed',reviews:[]},credential:{format:'evidscope-assistance-credential-v1',runId,token,expiresAt,internalBasePath:`/internal/assistance/runs/${runId}`}};
   });
  }
- function authenticateRun(headers,id){
+ // The token is compared (constant time) with the projected credential hash before any signed-history replay, so a
+ // wrong or guessed token costs one indexed row read instead of a verified scan (S12b). The verified run is then
+ // compared again: a tampered projection cannot authenticate a token the signed run does not bind.
+ function precheckRun(headers,id){
   identifier(id);const token=String(headers.authorization||'').replace(/^Bearer /,'');const match=/^esr_([a-f0-9-]{36})\.[A-Za-z0-9_-]{43}$/.exec(token);if(!match||match[1]!==id)fail(401,'run-scoped 자격이 필요합니다');
-  const row=store.db.prepare("SELECT tenant FROM objects WHERE type='assistance_run' AND id=?").all(id);if(row.length!==1)fail(401,'run-scoped 자격이 유효하지 않습니다');const run=verifiedRun(row[0].tenant,id);if(!equal(run.credentialHash,digest(token)))fail(401,'run-scoped 자격이 유효하지 않습니다');return {tenant:row[0].tenant,run,principal:{id:`assistance-worker:${id}`,tenant:row[0].tenant,role:'assistance_worker'}};
+  const row=store.db.prepare("SELECT tenant,body FROM objects WHERE type='assistance_run' AND id=?").all(id);if(row.length!==1)fail(401,'run-scoped 자격이 유효하지 않습니다');
+  let projected;try{projected=JSON.parse(row[0].body)?.credentialHash;}catch{}
+  if(typeof projected!=='string'||!equal(projected,digest(token)))fail(401,'run-scoped 자격이 유효하지 않습니다');
+  return {tenant:row[0].tenant,token};
+ }
+ function authenticateRun(headers,id){
+  const {tenant,token}=precheckRun(headers,id),run=verifiedRun(tenant,id);if(!equal(run.credentialHash,digest(token)))fail(401,'run-scoped 자격이 유효하지 않습니다');return {tenant,run,principal:{id:`assistance-worker:${id}`,tenant,role:'assistance_worker'}};
  }
  function expireIfNeeded(tenant,run){
   if(!['queued','running'].includes(run.state)||Date.parse(run.credentialExpiresAt)>Date.now())return {run,expired:false};
@@ -189,6 +198,13 @@ export function createAssistance(store,workbench){
   match=path.match(/^\/api\/assistance\/runs\/([^/]+)(?:\/(review))?$/);if(match){const id=identifier(decodeURIComponent(match[1]));if(match[2]&&method==='POST')return review(p,id,x);if(!match[2]&&method==='GET')return decorateRun(p,verifiedRun(p.tenant,id));fail(405,'지원하지 않는 run 메서드');}
   return undefined;
  }
- function internal(method,url,headers,body){const match=url.pathname.match(/^\/internal\/assistance\/runs\/([^/]+)\/(package|result)$/);if(!match)return undefined;let x={};if(body){try{x=object(JSON.parse(body));}catch(error){if(error.status)throw error;fail(400,'JSON 객체가 필요합니다');}}const id=decodeURIComponent(match[1]);if(match[2]==='package'&&method==='GET')return claim(headers,id);if(match[2]==='result'&&method==='POST')return submit(headers,id,x);fail(405,'지원하지 않는 run-scoped 메서드');}
- return {human,internal,validateDraft,beforeRead};
+ const internalPath=/^\/internal\/assistance\/runs\/([^/]+)\/(package|result)$/;
+ // Authenticates before the body is parsed; the HTTP layer calls preauthorize before it buffers a result body.
+ function internal(method,url,headers,body){
+  const match=url.pathname.match(internalPath);if(!match)return undefined;const id=decodeURIComponent(match[1]);precheckRun(headers,id);
+  let x={};if(body){try{x=object(JSON.parse(body));}catch(error){if(error.status)throw error;fail(400,'JSON 객체가 필요합니다');}}
+  if(match[2]==='package'&&method==='GET')return claim(headers,id);if(match[2]==='result'&&method==='POST')return submit(headers,id,x);fail(405,'지원하지 않는 run-scoped 메서드');
+ }
+ function preauthorize(url,headers){const match=url.pathname.match(internalPath);if(!match||match[2]!=='result')fail(404,'run-scoped 경로 없음');precheckRun(headers,decodeURIComponent(match[1]));return {authorized:true};}
+ return {human,internal,preauthorize,validateDraft,beforeRead};
 }

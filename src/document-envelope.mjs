@@ -56,10 +56,11 @@ export function createEncryptedDocumentStore({root,purpose,keyring,maxEnvelopeBy
   writeFileSync(temporary,JSON.stringify(body),{flag:'wx',mode:0o600});renameSync(temporary,path);
   return kid;
  }
- function put(tenant,bytes){
+ // onCreate(path) runs only when this call wrote a new file, so a caller can remove it if its transaction rolls back.
+ function put(tenant,bytes,onCreate){
   const hash=sha256(bytes),path=location(tenant,hash);if(existsSync(path)){open(tenant,hash);return hash;}
   mkdirSync(join(root,sha256(Buffer.from(tenant))),{recursive:true});
-  seal(tenant,hash,bytes,path);if(verifyAfterWrite)open(tenant,hash);return hash;
+  seal(tenant,hash,bytes,path);onCreate?.(path);if(verifyAfterWrite)open(tenant,hash);return hash;
  }
  // Re-encrypt one referenced file under the current write key. Plaintext and path are unchanged.
  function reencrypt(tenant,hash){

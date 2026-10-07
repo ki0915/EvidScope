@@ -53,6 +53,7 @@ const labels = {
   confirmed_issue: '문제 확인', no_issue_found: '검토 범위에서 문제 미발견', inconclusive: '판단 유보',
   supports: '판단을 뒷받침', contradicts: '판단과 상충', context: '배경 근거', evaluated: '평가 완료',
   mixed_results: '독립 서비스 성공·실패 혼재',
+  self_asserted: '자기 주장 증거',
 };
 const label = (value) => labels[value] || String(value ?? '미확인');
 const stringify = (value) => typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value ?? '미확인');
@@ -944,8 +945,24 @@ async function governanceReport(systemId, requirements) {
     section.append(governanceTechnicalEvidence(item));
     if (item.assessment) section.append(el('p', 'muted', `사람 평가: 적용성 ${label(item.assessment.applicability)} · 증거 충분성 ${label(item.assessment.assessment)} · 법률 검토 ${label(item.assessment.legalReview)} · 담당자 ${item.assessment.owner || '미지정'}`));
     else section.append(el('p', 'muted', '아직 인간 평가가 없습니다. 적용 대상과 필요한 근거를 확인하세요.'));
+    const assurance = item.evidenceAssurance;
+    if (assurance && ['self_asserted', 'mixed'].includes(assurance.level)) section.append(el('p', 'message warning', `${label('self_asserted')}: 증거 ${Number(assurance.selfAssertedItems) || 0}/${(assurance.items || []).length}건은 작성자의 주장이며 vault가 내용을 확인하지 않았습니다.`));
+    if (item.assessment && item.legalReview) {
+      const legal = item.legalReview;
+      section.append(el('p', 'muted', `법률 검토 상태: ${label(item.legalStatus)} · 작성자 기록 ${label(legal.authorClaim)} · ${legal.reviewedBy ? `확인 ${legal.reviewedBy}` : '작성자 외 검토자 확인 없음'}`));
+      if (item.legalStatus === 'pending') section.append(button('법률 검토 확인 (작성자 외 검토자)', () => legalReviewEditor(systemId, item, requirements), 'small'));
+    }
     section.append(jsonDetails('요구사항·현재 평가 근거', item), button('평가·통제·증거 기록', () => assessmentEditor(systemId, req, item.assessment, requirements), 'small')); list.append(section);
   } node.append(list, jsonDetails('시스템 사실관계', data.system)); showDetail('시스템별 거버넌스 검토 보고서', node);
+}
+// The legal review of an assessment is recorded by a reviewer other than its author (maker-checker).
+function legalReviewEditor(systemId, item, requirements) {
+  const node = el('div');
+  node.append(el('p', 'selection-note', `${item.requirement?.title || item.requirement?.id || ''} · 평가 작성자 ${item.legalReview?.author || '미확인'}`), el('p', 'muted', '평가 작성자는 자기 평가의 법률 검토를 확인할 수 없습니다. 확인은 현재 평가 내용(해시)에만 연결되며 평가가 바뀌면 다시 필요합니다.'));
+  node.append(form([field('법률 검토 근거', 'reason', { required: true, multiline: true, wide: true })], '법률 검토 확인 기록', async (values) => {
+    await api(`/api/governance/assessments/${encodeURIComponent(item.assessment.id)}/legal-review`, 'POST', { reason: values.reason });
+    await governanceReport(systemId, requirements); notice('법률 검토 확인을 기록했습니다.');
+  })); showDetail('법률 검토 확인', node);
 }
 function assessmentEditor(systemId, requirement, previous, requirements) {
   const old = previous || {}; const node = el('div');

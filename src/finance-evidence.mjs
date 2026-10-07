@@ -1,4 +1,5 @@
 import {createHash,randomUUID,sign,createPublicKey} from 'node:crypto';
+import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {canonical,digest} from './crypto.mjs';
 import {identifier,cleanText,fail} from './model.mjs';
@@ -92,7 +93,7 @@ export function createFinanceEvidence({store,dataDir,key,keyring=asKeyring(key),
   const createdAt=new Date().toISOString(),until=new Date(createdAt);until.setUTCFullYear(until.getUTCFullYear()+5);
   const bundle={schemaVersion:2,id,systemId:system.id,synthetic:x.synthetic,...(provenance?{provenance}:{}),revision:(previous?.revision||0)+1,supplierId:cleanText(x.supplierId,200),modelId:cleanText(x.modelId,200),modelVersion:cleanText(x.modelVersion,200),purpose:cleanText(x.purpose,1000),testScope:cleanText(x.testScope,2000),measures:[...new Set(x.measures)],reviewerNotes:cleanText(x.reviewerNotes||'',2000),receivedBy:p.id,createdAt,retentionUntil:until.toISOString(),retentionBasis:'KR decree 27(2); local measure-document retention policy, not elapsed preservation proof',documents:parsed.map(({bytes,...d})=>({...d,bytes:bytes.length}))};
   bundle.contentHash=digest(bundle);
-  for(const d of parsed)documents.put(p.tenant,d.bytes);
+  for(const d of parsed)documents.put(p.tenant,d.bytes,path=>store.onRollback(()=>rmSync(path,{force:true})));
   store.transaction(()=>{store.put(p,'supplier_bundle',id,bundle);if(previous){const taskId=randomUUID();store.put(p,'governance_task',taskId,{id:taskId,systemId:system.id,bundleId:id,title:'공급사 증빙 변경: 연결 평가 재검토',owner:system.owner,status:'open',previousHash:previous.contentHash,currentHash:bundle.contentHash});}});
   return {...bundle,verification:verify(p,bundle,system)};
  }

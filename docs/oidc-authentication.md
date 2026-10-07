@@ -65,7 +65,9 @@ node --test --test-concurrency=1 test/enterprise-oidc-overlay.test.mjs
 
 NetworkPolicy는 지정 IP·포트만 통제하며 HTTPS hostname·URL path·IdP의 진실성을 확인하지 않는다. 도메인의 DNS 주소나 endpoint·포트·CA 변경 시 운영자가 실제 설정과 정책을 다시 검토·생성하고 rollout해야 한다. IP와 도메인의 대응은 이번 생성기가 네트워크로 조회하지 않는다. Service/NAT 목적지의 `ipBlock` 처리와 DNS 구현은 CNI별로 실측해야 한다. 실제 허용 IdP 경로와 미승인 origin·무라벨 Pod·직접 vault 접근의 거부를 TLS 및 패킷 근거로 확인하기 전 운영 연결 완료로 표시하지 않는다. 기존 런타임의 issuer·endpoint origin 제한과 TLS peer 검증도 계속 적용된다.
 
-세션은 무작위 opaque cookie이며 `__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/를 사용하고 Domain은 발급하지 않는다. vault는 cookie의 SHA-256 및 세션 정보를 메모리에 보관한다. ID/access/refresh token, PKCE verifier, flow state, cookie·CSRF는 증적 DB·백업에 저장하지 않는다. 로그인 흐름은 5분간 메모리에 보관하며 동시 흐름 1,000개·세션 10,000개로 제한한다.
+세션은 무작위 opaque cookie이며 `__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/를 사용하고 Domain은 발급하지 않는다. vault는 cookie의 SHA-256 및 세션 정보를 메모리에 보관한다. ID/access/refresh token, PKCE verifier, flow state, cookie·CSRF는 증적 DB·백업에 저장하지 않는다. 세션은 10,000개로 제한한다.
+
+로그인 흐름(state·nonce·PKCE verifier·만료 시각)은 vault 메모리에 두지 않고, vault 프로세스마다 새로 만드는 키로 AES-256-GCM 봉인한 5분짜리 `__Host-evidscope-flow` cookie(HttpOnly, SameSite=Lax)에 담는다. 따라서 익명 `/auth/login` 반복 요청은 서버 상태를 만들지 않으며 다른 사용자의 로그인을 막지 못한다(감사 S9; 이전의 동시 흐름 1,000개 제한과 429 응답은 없앴다). callback은 봉인을 열어 URL의 `state`와 상수 시간으로 비교하고 만료를 확인한 뒤, token 교환 전에 그 state를 사용 완료로 기록한다. 같은 callback을 다시 보내면 token endpoint를 호출하지 않고 실패한다. 이 사용 완료 기록은 흐름 만료까지만 메모리에 두며 10,000개를 넘으면 가장 오래된 기록부터 버린다(재사용된 authorization code는 IdP가 다시 거부한다). vault를 재시작하면 진행 중인 로그인 흐름은 무효가 되어 다시 로그인해야 한다.
 
 state·nonce·PKCE와 별도 flow cookie를 결합해 검증한다. `openid-client`의 `enableNonRepudiationChecks`를 명시 적용해 ID token 서명을 검증한다. HTTPS만으로 서명 확인을 대체하지 않는다. 모든 cookie 인증 POST에는 고정 publicOrigin과 세션별 `X-Evid-CSRF`가 필요하다. Bearer 자격 혼용은 거부한다.
 

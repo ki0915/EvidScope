@@ -1,22 +1,27 @@
 import {readFileSync,writeFileSync,existsSync,lstatSync} from 'node:fs';
+import {createPrivateKey,createPublicKey} from 'node:crypto';
 import {resolve,sep,relative,isAbsolute,dirname} from 'node:path';
 import {parseArgs} from 'node:util';
 import {createVaultBackup,restoreVaultBackup,createVaultRecoveryFrontier} from '../src/vault-recovery.mjs';
 import {dataKeysFromEnv} from '../src/data-keys.mjs';
+import {rebindRecoveryConfig} from '../src/recovery-state.mjs';
 
 // Transparency options (positional usage is unchanged):
 //  frontier ... [--transparency-config CURRENT.json] [--transparency-out FRONTIER_TRANSPARENCY.json]
 //  restore  ... --transparency-config NEW_EPOCH.json [--previous-transparency-config OLD.json] [--previous-pin OLD_PIN.json]
 //               [--frontier-transparency FRONTIER_TRANSPARENCY.json] [--accept-loss REASON]
+// Config rebinding of an activated restoration (docs/vault-recovery.md):
+//  rebind DATA_DIR PRIVATE_KEY PINNED_PUBLIC_KEY CURRENT_CONFIG NEW_CONFIG --reason REASON
 const restoreFlags=['transparency-config','previous-transparency-config','previous-pin','frontier-transparency','accept-loss'];
 try{
- const {values,positionals}=parseArgs({allowPositionals:true,options:{...Object.fromEntries(restoreFlags.map(name=>[name,{type:'string'}])),'transparency-out':{type:'string'}}});
+ const options={...Object.fromEntries(restoreFlags.map(name=>[name,{type:'string'}])),'transparency-out':{type:'string'},reason:{type:'string'}};
+ const {values,positionals}=parseArgs({allowPositionals:true,options});
  const [mode,...args]=positionals;
  const dataKeys=dataKeysFromEnv(process.env);
  const json=file=>{if(lstatSync(file).size>16*1024*1024)throw Error('Recovery input exceeds 16MiB');return JSON.parse(readFileSync(file,'utf8').replace(/^﻿/,''));};
  const noLinks=file=>{for(let current=resolve(file);;){if(existsSync(current)&&lstatSync(current).isSymbolicLink())throw Error('Recovery output symlink or junction is not allowed');const parent=dirname(current);if(parent===current)return;current=parent;}};
  const outside=(file,dir)=>{noLinks(file);noLinks(dir);const rel=relative(dir,file);if(!rel||!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep))throw Error('Recovery pin/output must be stored outside data and backup directories');};
- const allowed=mode==='frontier'?['transparency-config','transparency-out']:mode==='restore'?restoreFlags:[];
+ const allowed=mode==='frontier'?['transparency-config','transparency-out']:mode==='restore'?restoreFlags:mode==='rebind'?['reason']:[];
  for(const [name,value] of Object.entries(values))if(value!==undefined&&!allowed.includes(name))throw Error(`--${name} is not an option of ${mode||'this command'}`);
  if(mode==='frontier'){
   if(args.length!==7)throw Error('Usage: frontier DATA_DIR PRIVATE_KEY PINNED_PUBLIC_KEY ARCHIVE_ANCHOR CONFIG NEW_FRONTIER NEW_FRONTIER_ANCHOR [--transparency-config CURRENT.json] [--transparency-out FILE]');
@@ -30,6 +35,13 @@ try{
   if(companionFile)writeFileSync(companionFile,JSON.stringify(result.transparency,null,2)+'\n',{flag:'wx',mode:0o600});
   const companion=companionFile?{frontierTransparency:{file:companionFile,headsOrigin:result.transparency.headsOrigin,headsSize:result.transparency.headsSize}}:{};
   console.log(JSON.stringify({created:true,frontierFile,independentFrontierAnchor:pinFile,frontierSha256:result.anchor.frontierSha256,freshnessIndependentlyVerified:false,...companion}));
+ }else if(mode==='rebind'){
+  if(args.length!==5||!values.reason?.trim())throw Error('Usage: rebind DATA_DIR PRIVATE_KEY PINNED_PUBLIC_KEY CURRENT_CONFIG NEW_CONFIG --reason REASON');
+  const [dataDir,keyFile,publicFile,currentFile,newFile]=args.map(p=>resolve(p)),key=createPrivateKey(readFileSync(keyFile));
+  const der=value=>createPublicKey(value).export({type:'spki',format:'der'});
+  if(!der(key).equals(der(readFileSync(publicFile))))throw Error('The signing key does not match the pinned public key');
+  const result=rebindRecoveryConfig({dataDir,key,currentConfig:json(currentFile),config:json(newFile),reason:values.reason});
+  console.log(JSON.stringify({...result,nextStep:'Replace the vault CONFIG_FILE with NEW_CONFIG and start the vault'}));
  }else{
  if(!['create','restore'].includes(mode)||!(args.length===5||mode==='restore'&&args.length===8))throw Error('Usage: create DATA_DIR BACKUP_DIR PRIVATE_KEY PINNED_PUBLIC_KEY EXTERNAL_ANCHOR | restore BACKUP_DIR NEW_DATA_DIR PRIVATE_KEY PINNED_PUBLIC_KEY EXTERNAL_ANCHOR [FRONTIER FRONTIER_ANCHOR CONFIG] [--transparency-config NEW_EPOCH.json ...]');
  const [first,second,keyFile,publicFile,anchorFile]=args.map(p=>resolve(p));

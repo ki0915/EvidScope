@@ -68,7 +68,10 @@ test('실제 HTTP 경계 · 증거 · 거버넌스 · 복구 통합',async t=>{
   const c=(await h.api('/api/cases',{body:{title:'합성 조사',actionId:'action-main',owner:'조사자'}})).body;
   assert.equal((await h.api(`/api/cases/${c.id}`,{body:{status:'closed'}})).status,400);
   assert.equal((await h.api(`/api/cases/${c.id}`,{tenant:'beta',body:{comment:'cross tenant'}})).status,404);
-  const updated=(await h.api(`/api/cases/${c.id}`,{body:{comment:'근거 검토',status:'closed',reason:'합성 조사 완료'}})).body;assert.equal(updated.history.length,2);assert.equal(updated.comments.length,1);
+  // Four-eyes (S10): the auditor who opened the case cannot close it; a second principal closes it.
+  assert.equal((await h.api(`/api/cases/${c.id}`,{body:{comment:'근거 검토',status:'closed',reason:'합성 조사 완료'}})).status,403);
+  const updated=(await h.api(`/api/cases/${c.id}`,{role:'reviewer',body:{comment:'근거 검토',status:'closed',reason:'합성 조사 완료'}})).body;
+  assert.equal(updated.history.length,2);assert.equal(updated.comments.length,1);assert.equal(updated.history[1].by,'alpha-reviewer');
   assert.equal((await h.api('/api/events')).body.total,8);
  });
  await t.test('빈 증거 통과 금지, 시스템 변경·기한 재검토, 보완과제 쓰기',async()=>{

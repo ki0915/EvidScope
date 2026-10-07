@@ -9,7 +9,7 @@ export function initialize(dir=resolve('.local')){
  const principals=[...['alpha','beta'].flatMap(tenant=>[
   ...['agent','tool','authority','safety','telemetry'].map(kind=>({id:`${tenant}-${kind}`,tenant,role:'source',kind,token:token(),hmacSecret:token()})),
   {id:`${tenant}-otlp`,tenant,role:'source',kind:'otlp',token:token()},
-  ...['auditor','reviewer','admin'].map(role=>({id:`${tenant}-${role}`,tenant,role,token:token()}))]),{id:'analysis-worker',tenant:'internal',role:'worker',token:token()}];
+  ...['auditor','reviewer','admin'].map(role=>({id:`${tenant}-${role}`,tenant,role,token:token()}))]),{id:'analysis-worker',tenant:'internal',role:'worker',tenants:['alpha','beta'],token:token()}];
  const config={profile:'synthetic-local',principals};
  const {privateKey,publicKey}=generateKeyPairSync('ed25519');
  writeFileSync(join(dir,'signing-private.pem'),privateKey.export({format:'pem',type:'pkcs8'}),{mode:0o600,flag:'wx'});

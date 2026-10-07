@@ -96,8 +96,11 @@ test('actual supplier HTTP intake binds reviewed scope, survives restart and pre
  assert.equal((await submitEvent(partial)).status,202);await post([docRef,{type:'event',ref:'alpha-authority/'+partial.id}]);assert.equal((await report()).status,'evidence_insufficient');
  const pending=await h.api('/api/governance/assessments',{role:'reviewer',body:{...basic,legalReview:'pending',evidence:[docRef,eventRef]}});assert.equal(pending.status,200);const pendingItem=await report();assert.equal(pendingItem.technicalEvidence.supportsHumanAssessment,true);assert.equal(pendingItem.legalStatus,'pending');
  assert.equal((await h.api('/api/governance/tasks/'+missing.id,{role:'reviewer',body:{status:'closed',reason:'사람 법률 검토 미완료'}})).status,409);
- await post([docRef,eventRef]);
- assert.equal((await h.api('/api/governance/tasks/'+missing.id,{role:'reviewer',body:{status:'closed',reason:'현재 범위의 공급사 조치 근거와 사람 판단'}})).status,200);
+ const current=await post([docRef,eventRef]);
+ // S11: an admin other than the assessment author confirms the legal review and closes the task.
+ assert.equal((await h.api(`/api/governance/assessments/${current.id}/legal-review`,{role:'admin',body:{reason:'독립 법률 검토'}})).status,200);
+ assert.equal((await h.api('/api/governance/tasks/'+missing.id,{role:'reviewer',body:{status:'closed',reason:'작성자 종결'}})).status,403);
+ assert.equal((await h.api('/api/governance/tasks/'+missing.id,{role:'admin',body:{status:'closed',reason:'현재 범위의 공급사 조치 근거와 사람 판단'}})).status,200);
  assert.equal((await h.api('/api/governance/assessments',{role:'reviewer',tenant:'beta',body:{...basic,evidence:[docRef,eventRef]}})).status,404);
  await observed('worker analyze',()=>h.analyze(),{role:'worker'});const frozen=(await h.api('/api/governance/finance/report',{role:'reviewer',body:{systemId:system.id}})).body;
  assert.ok(verify(null,Buffer.from(canonical(frozen.snapshot)),h.publicKey,Buffer.from(frozen.signature,'base64')));
