@@ -56,7 +56,14 @@ GitHub와 IETF 문서를 조사한 결과, 해시 체인 서명 원장·오프�
 ([auditant](https://pypi.org/project/auditant/), [MS AGT](https://github.com/microsoft/agent-governance-toolkit), IETF 에이전트 영수증 초안들,
 Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니다.
 
-### D1. 위트니스가 공동서명하는, 되돌리기를 거부하는 증거 로그 (이번 라운드 구현)
+2026-10-07 2라운드 재조사에서 차별점을 한 번 더 좁혔습니다. 위트니스가 공동서명하는 C2SP 로그로 AI·MCP 트래픽을 남기는 제품이
+이미 나왔고(Traefik Hub 투명성 로그, 오픈소스 remit·agent-custody), MS AGT에 한국 AI 기본법 구현 안내 문서가 생겼으며, DeepInspect가
+한국 AI 기본법 감사 기록을 상용으로 팝니다. 그래서 "위트니스 공동서명 로그" 자체나 "한국 규제 매핑" 자체는 더 이상 차별점으로 내세우지 않고,
+아래 각 항목의 "경쟁 제품과의 차이"에 적은 범위만 주장합니다. 에이전트가 자기 흔적을 지울 수 있다는 연구
+([arXiv 2609.30266](https://arxiv.org/abs/2609.30266): 조사한 코딩 에이전트 대부분이 요청받으면 흔적을 지웠고, 기록은 에이전트 밖의
+독립 경로로 남기라고 권고)는 증거를 에이전트 밖에서 남긴다는 이 제품의 전제를 뒷받침합니다.
+
+### D1. tenant 단위로 되돌리기·삭제를 거부하는 증거 로그 (1라운드 구현)
 
 - **무엇:** tenant별 RFC 6962 트리와 C2SP 체크포인트, 모든 tenant 머리를 묶은 heads 로그를 독립 위트니스가 일관성 확인 후 공동서명합니다.
   enforce 모드에서 rollback·fork·tenant 삭제가 보이면 시작을 거부하거나 격리합니다. 내보낸 묶음과 사례 보고서는 포함 증명을 담아
@@ -64,6 +71,12 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 - **경쟁 제품과의 차이:** MS AGT는 명세에서 "현재 구현은 외부 앵커링을 하지 않는다"고 밝히고 Merkle에 도메인 분리·서명된 머리가 없습니다.
   auditant는 RFC 3161 타임스탬프와 S3 Object Lock을 쓰는데, 타임스탬프 기관은 받은 해시에 서명할 뿐 두 갈래 이력(equivocation)을 막지 못합니다.
   IETF noa 초안은 equivocation 탐지를 범위 밖으로 둡니다.
+  [Traefik Hub 투명성 로그](https://doc.traefik.io/traefik-hub/api-gateway/observability/transparency-logs)는 Tessera·C2SP 체크포인트·2-of-3 위트니스로
+  게이트웨이·AI·MCP 접근 로그(ID와 해시)를 남기고, [remit](https://github.com/abacross/remit)·[agent-custody](https://github.com/svayatta/agent-custody)도
+  위트니스나 별도 로그 키로 서명된 Merkle 로그를 씁니다. 이들은 로그 하나의 append-only를 보장합니다. EvidScope가 더하는 것은 셋입니다.
+  tenant마다 크기 감소·fork·삭제를 확인해 시작을 거부하거나 격리하는 것(heads 로그와 `witnessTenantLogs`), 접근 로그 해시가 아니라
+  승인·권한·정책 버전·사람 검토를 담은 내용 증거(D2), 그리고 로그 키를 데이터와 떨어진 서명 프로세스·HSM·KMS에 두는 것입니다
+  (Traefik 문서는 키 파일만 다룹니다. 서명 프로세스는 2라운드 구현 대상).
 - **확인 방법:** `test/transparency-server.test.mjs`(예전 DB 사본으로 enforce 시작 거부), `test/litewitness-interop.test.mjs`(실제 litewitness에서 rollback
   거부, fork 422 → 격리, tenant origin 두 개 공동서명과 tenant rollback 거부), `test/transparency-tenant-witness.test.mjs`(재검토 F1 PoC).
   운영은 [투명성 로그 가이드](transparency-log.md).
@@ -96,7 +109,13 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 
 - 인공지능기본법(법률 제21311호) 제30~36조·제40조, 금융위원회 금융분야 AI 가이드라인, 금융감독원 AI RMF를 조문 단위로 매핑합니다.
   요구사항 31개(한국 18개), 기술검사 23종, 적용 판단은 "후보"와 사람의 최종 판단을 분리합니다. 각 통제가 문서 업로드가 아니라
-  D1·D2의 검증 가능한 증거를 가리키도록 묶는 것이 다른 GRC 제품과의 차이입니다(AGT·ServiceNow·auditant는 EU·NIST 중심).
+  D1·D2의 검증 가능한 증거를 가리키도록 묶는 것이 다른 GRC 제품과의 차이입니다.
+- **경쟁 제품과의 차이(2026-10-07 재조사):** 한국 매핑 자체는 이제 흔해지고 있습니다. MS AGT의
+  [한국 AI 기본법 문서](https://github.com/microsoft/agent-governance-toolkit/blob/main/agent-governance-python/agent-compliance/docs/compliance/south-korea-ai-framework-act.md)는
+  "법률 의견이 아닌 구현 안내"이며 조문·시행령·고시를 인용하지 않습니다.
+  [DeepInspect](https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence)는 응답 전에 서명된 기록을 남기지만 공개 검증 방법을 밝히지 않습니다.
+  EvidScope가 주장하는 범위는 조문 번호까지 고정한 요구사항이 외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다.
+  시행령·고시 단위 정렬은 아직 없습니다(다음 라운드 후보).
 - **모방 위험:** 중상. 매핑표 자체는 복제되므로 법률 검토를 거친 매핑과 국내 확인제·ISMS-P 정렬이 필요합니다(다음 라운드 후보).
 
 ### D4. 검증 가능한 최소화와 파기
@@ -132,7 +151,17 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 | 에이전트가 승인을 주장할 수 없음 | 예 | 서버 대조 | 승인자 ID가 해시 밖 | 아니오 | 아니오 |
 | 오프라인 정책 재생 | 예(이번 라운드) | 아니오 | 온라인 Decision BOM | 아니오 | 범위 밖 |
 | 검증 가능한 파기 순서 | 예 | 불명 | 아니오 | 삭제만 | 아니오 |
-| 한국 인공지능기본법·금융 가이드라인 | 예 | 아니오 | 아니오 | 아니오 | 아니오 |
+| 한국 인공지능기본법·금융 가이드라인 | 예(조문 단위) | 아니오 | 구현 안내(조문 인용 없음) | 아니오 | 아니오 |
+
+2026-10-07 재조사에서 새로 확인한 겹치는 제품입니다. 각 제품의 공개 문서에서 확인한 범위만 적었습니다.
+
+| 제품 | 하는 것 | 겹치는 차별점 | EvidScope와 다른 점 |
+|---|---|---|---|
+| Traefik Hub 투명성 로그(상용, 2026-10-01 문서) | 게이트웨이·AI·MCP 접근 로그와 인가 결정을 ID·해시로 Tessera 로그에 기록, C2SP 체크포인트, 호스팅 위트니스 2-of-3 | D1 | 로그 단위 append-only. tenant별 되돌리기·삭제 확인, 승인·정책 내용 증거, 오프라인 정책 재생 없음. 로그 키는 파일 |
+| remit(오픈소스, Rust) | 권한 위임서·AWS 자격 중개, CloudTrail 대조, RFC 9162 로그와 C2SP 위트니스 | D1·D2 | AWS 자격 중개 중심. 한국 규제·사람 검토 흐름 없음 |
+| agent-custody(오픈소스) | Cedar 정책 MCP 게이트웨이, 도구 호출별 서명 영수증, 별도 로그 키의 Merkle 로그, 브라우저 검증기 | D1·D5 | tenant별 되돌리기 확인과 외부 위트니스 정족수 미확인 |
+| DeepInspect(상용) | 인라인 LLM 게이트웨이가 응답 전에 서명 기록, 한국 AI 기본법 감사 증거 | D3 | 투명성 로그·공개 검증 방법을 밝히지 않음 |
+| MS AGT 한국 문서 | 한국 AI 기본법 구현 안내 | D3 | 법률 의견이 아님, 조문·시행령·고시 인용 없음, 외부 앵커 없음 |
 
 ## 6. 정직한 한계
 
@@ -148,4 +177,7 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 - OTel GenAI semconv: https://github.com/open-telemetry/semantic-conventions-genai · OTel Collector: https://github.com/open-telemetry/opentelemetry-collector
 - OCSF: https://github.com/ocsf/ocsf-schema · Security Lake 사용자 정의 소스: https://docs.aws.amazon.com/security-lake/latest/userguide/custom-sources.html
 - MS Agent Governance Toolkit: https://github.com/microsoft/agent-governance-toolkit · auditant: https://pypi.org/project/auditant/
-- IETF: draft-noa-scitt-ai-agent-receipt, draft-sahu-agent-action-receipts, draft-kuehlewind-audit-architecture, RFC 9943(SCITT)
+- IETF: draft-noa-scitt-ai-agent-receipt, draft-sahu-agent-action-receipts, draft-kuehlewind-audit-architecture, RFC 9943(SCITT), RFC 9942(COSE Receipts)
+- 2026-10-07 재조사: Traefik Hub 투명성 로그 https://doc.traefik.io/traefik-hub/api-gateway/observability/transparency-logs · remit: https://github.com/abacross/remit
+  · agent-custody: https://github.com/svayatta/agent-custody · DeepInspect: https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence
+  · 에이전트 흔적 변조 연구: https://arxiv.org/abs/2609.30266
