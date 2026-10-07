@@ -193,7 +193,7 @@ Go 독립 검증기로 보정했습니다. RFC 9942 COSE 영수증은 CBOR·COSE
 
 ### 측정
 
-- 전체 시험(Linux 컨테이너, litewitness·OTel Collector·OTel JS·Go 시험 포함): 시작 1,189건 → 2라운드 끝 TOTAL_PLACEHOLDER. 실패 0, 건너뜀 6은 시작과 같은 항목입니다.
+- 전체 시험(Linux 컨테이너, litewitness·OTel Collector·OTel JS·Go 시험 포함): 시작 1,189건 → 2라운드 끝 1,275건(통과 1,269건). 실패 0, 건너뜀 6은 시작과 같은 항목입니다.
 - 이벤트 키 감싸기 비용(1,000건, `scripts/benchmark.mjs`와 프로세스 안 측정, 범위는 반복 실행의 최소~최대):
 
 | 측정 | 시작(9177cee) | DB 모드 | 키스토어 모드 |
