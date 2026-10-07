@@ -9,10 +9,11 @@ import {rebindRecoveryConfig} from '../src/recovery-state.mjs';
 // Transparency options (positional usage is unchanged):
 //  frontier ... [--transparency-config CURRENT.json] [--transparency-out FRONTIER_TRANSPARENCY.json]
 //  restore  ... --transparency-config NEW_EPOCH.json [--previous-transparency-config OLD.json] [--previous-pin OLD_PIN.json]
-//               [--frontier-transparency FRONTIER_TRANSPARENCY.json] [--accept-loss REASON]
+//               [--frontier-transparency FRONTIER_TRANSPARENCY.json] [--accept-loss REASON] [--signer-head SIGNER_HEAD.json]
+//  --signer-head: the heads signer's head of the previous origin (scripts/signer.mjs head --out), which establishes freshness by itself
 // Config rebinding of an activated restoration (docs/vault-recovery.md):
 //  rebind DATA_DIR PRIVATE_KEY PINNED_PUBLIC_KEY CURRENT_CONFIG NEW_CONFIG --reason REASON
-const restoreFlags=['transparency-config','previous-transparency-config','previous-pin','frontier-transparency','accept-loss'];
+const restoreFlags=['transparency-config','previous-transparency-config','previous-pin','frontier-transparency','accept-loss','signer-head'];
 try{
  const options={...Object.fromEntries(restoreFlags.map(name=>[name,{type:'string'}])),'transparency-out':{type:'string'},reason:{type:'string'}};
  const {values,positionals}=parseArgs({allowPositionals:true,options});
@@ -61,7 +62,7 @@ try{
   if(!values['transparency-config']&&restoreFlags.some(name=>values[name]!==undefined))throw Error('--transparency-config (the new epoch) is required with the other transparency restore options');
   const optional=(name,key)=>values[name]===undefined?{}:{[key]:json(resolve(values[name]))};
   const transparency=values['transparency-config']?{config:json(resolve(values['transparency-config'])),...optional('previous-transparency-config','previous'),
-   ...optional('previous-pin','previousPin'),...optional('frontier-transparency','frontierTransparency'),...(values['accept-loss']===undefined?{}:{acceptLoss:values['accept-loss']})}:undefined;
+   ...optional('previous-pin','previousPin'),...optional('frontier-transparency','frontierTransparency'),...optional('signer-head','signerHead'),...(values['accept-loss']===undefined?{}:{acceptLoss:values['accept-loss']})}:undefined;
   console.log(JSON.stringify(await restoreVaultBackup({backupDir:first,restoreDir:second,...shared,anchor,...activation,...(transparency?{transparency}:{})})));
  }
  }

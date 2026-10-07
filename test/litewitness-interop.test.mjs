@@ -12,22 +12,27 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {verifyBundle} from '../src/crypto.mjs';
 import * as T from '../src/tlog.mjs';
+import {createSignerClient} from '../src/signer-client.mjs';
 import {normalizeTransparencyConfig, transparencyPinPath} from '../src/transparency.mjs';
-import {newEpochConfig, witnessCommands} from '../scripts/transparency.mjs';
+import {handoverAuthorization} from '../scripts/signer.mjs';
+import {headsCheckpoint, newEpochConfig, witnessCommands} from '../scripts/transparency.mjs';
 import {createVaultBackup, createVaultRecoveryFrontier, restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {rollbackLeaf, submitForged, withForgedAnchor} from './support/heads-attack.mjs';
+import {headsSigner, signerKeys} from './support/heads-signer.mjs';
 import {startSshAgent} from './support/ssh-agent.mjs';
 import {BASE, principals, replaceDatabase, snapshot, transparencyFixture} from './support/transparency-fixture.mjs';
 
 const LW = process.env.EVIDSCOPE_LITEWITNESS_BIN;
 const skip = !LW ? 'EVIDSCOPE_LITEWITNESS_BIN is not set' : !existsSync(LW) ? `litewitness binary not found at ${LW}` : false;
+const CTL = LW && (process.env.EVIDSCOPE_WITNESSCTL_BIN || join(dirname(LW), 'witnessctl'));
+const skipCtl = skip || (!existsSync(CTL) && `witnessctl not found at ${CTL}`);
 const V = JSON.parse(readFileSync(new URL('./fixtures/c2sp-vectors.json', import.meta.url), 'utf8'));
 const freePort = () => new Promise(r => { const s = createServer().listen(0, '127.0.0.1', () => { const {port} = s.address(); s.close(() => r(port)); }); });
 
 // Registers the heads origin and, with witnessTenantLogs, the origins of `tenants`.
 function register(db, config, key, tenants = []) {
-  const ctl = process.env.EVIDSCOPE_WITNESSCTL_BIN || join(dirname(LW), 'witnessctl');
-  if (existsSync(ctl)) {
-    for (const line of witnessCommands({config, key, db, tenants})) execFileSync(ctl, line.split(' ').slice(1), {stdio: ['ignore', 'pipe', 'pipe']});
+  if (existsSync(CTL)) {
+    for (const line of witnessCommands({config, key, db, tenants})) execFileSync(CTL, line.split(' ').slice(1), {stdio: ['ignore', 'pipe', 'pipe']});
     return 'witnessctl';
   }
   const d = new DatabaseSync(db);
@@ -37,7 +42,7 @@ function register(db, config, key, tenants = []) {
   const origins = [config.headsOrigin, ...(config.witnessTenantLogs ? tenants.map(tenant => T.tenantOrigin(config.base, tenant)) : [])];
   for (const origin of origins) {
     d.prepare('INSERT INTO log VALUES(?,0,?)').run(origin, T.b64(T.EMPTY_ROOT));
-    d.prepare('INSERT INTO key VALUES(?,?)').run(origin, T.logVkey(origin, key));
+    d.prepare('INSERT INTO key VALUES(?,?)').run(origin, config.signer && origin === config.headsOrigin ? config.signer.vkey : T.logVkey(origin, key));
   }
   d.close();
   return 'sqlite';
@@ -202,4 +207,83 @@ test('tenant logs interoperate with litewitness: two tenant origins cosigned, an
   assert.match(refused || '', new RegExp(`witness holds tenant log ${log} size ${witnessed} but the local tenant log ${log} has ${older} \\(rollback\\)`));
   t.diagnostic(JSON.stringify({litewitness: LW, registration, tenantOrigins: Object.keys(exports).map(x => T.tenantOrigin(BASE, x)),
     resubmittedOlderTenantCheckpoint: again.status, olderCopy: refused}));
+});
+
+// The vault host attacker of test/support/heads-attack.mjs against a real witness. Without a heads signer the vault key signs the
+// heads log: the attacker signs the next heads leaf with beta back at the size of an older export, litewitness cosigns it (the
+// heads log only grew) and the older export verifies with that fresh anchor while beta's newest records are gone. This is the
+// round 1 behaviour (cf45e19), unchanged for a vault without a heads signer.
+test('without a heads signer, litewitness cosigns a vault-key heads leaf that rolls a tenant back (vault host attack)', {skip}, async t => {
+  const f = await transparencyFixture(t, {witness: false});
+  let raw = null;
+  const {url} = await startLitewitness(t, (db, witnessUrl) => {
+    raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url: witnessUrl}], intervalMs: 100, timeoutMs: 5000};
+    return register(db, normalizeTransparencyConfig(raw, {dataDir: f.dataDir}), f.privateKey);
+  });
+  const s = await f.open('enforce', {cfg: normalizeTransparencyConfig(raw, {dataDir: f.dataDir})});
+  f.write(s, 'alpha', 2);
+  f.write(s, 'beta', 3);
+  await s.transparency.pump();
+  const older = await f.call(s, '/api/export', 'beta');
+  f.write(s, 'beta', 2);
+  await s.transparency.pump();
+  assert.equal(s.transparency.status().witnesses[0].status, 'consistent');
+  await f.close(s);
+  const forged = rollbackLeaf({dataDir: f.dataDir, base: BASE, key: f.privateKey, tenant: 'beta', older});
+  const answer = await submitForged(url, forged);
+  assert.deepEqual([answer.status, answer.cosignatures.length], [200, 1]);
+  const policy = {witnesses: [V.witness_key.vkey], quorum: 1, originBase: BASE, require: true};
+  const verified = verifyBundle(withForgedAnchor(older, forged, answer.cosignatures), f.publicKey, undefined, {transparency: policy});
+  // The verifier sees beta at the older size with a fresh cosigned anchor; the witness had cosigned beta at the newer size.
+  assert.deepEqual([verified.count, verified.rollbackChecked, verified.transparency.heads.quorumMet], [forged.olderSize, true, true]);
+  assert.ok(forged.newerSize > forged.olderSize);
+  assert.equal(verified.transparency.rollbackCheckedAgainst, 'database_tamper');
+  t.diagnostic(JSON.stringify({attack: 'vault-key heads leaf', witnessAnswer: answer.status, exportCount: verified.count,
+    witnessedTenantSize: forged.newerSize, rollbackChecked: verified.rollbackChecked}));
+});
+
+// The same attack after the heads log moved to a heads signer at the same litewitness (docs/signer.md): witnessctl add-key for the
+// signer's key, the signer's first checkpoint cosigned, witnessctl del-key for the vault key. litewitness now refuses the vault
+// key's leaf (403), and the signer refuses to sign it (rollback), so no cosigned anchor for the older export exists.
+test('with a heads signer, litewitness refuses the vault host attack and the signer refuses the rollback leaf', {skip: skipCtl}, async t => {
+  const f = await transparencyFixture(t, {witness: false}), keys = signerKeys(BASE), heads = T.headsOrigin(BASE);
+  let raw = null;
+  const {db, url} = await startLitewitness(t, (file, witnessUrl) => {
+    raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url: witnessUrl}], intervalMs: 100, timeoutMs: 5000};
+    return register(file, normalizeTransparencyConfig(raw, {dataDir: f.dataDir}), f.privateKey);
+  });
+  const witnessctl = (...args) => execFileSync(CTL, args, {stdio: ['ignore', 'pipe', 'pipe']});
+  const legacy = normalizeTransparencyConfig(raw, {dataDir: f.dataDir});
+  let s = await f.open('enforce', {cfg: legacy});
+  f.write(s, 'alpha', 2);
+  f.write(s, 'beta', 1);
+  await s.transparency.pump();
+  await f.close(s);
+  const checkpoint = await headsCheckpoint({config: legacy, key: f.privateKey, dataDir: f.dataDir});
+  const signer = await headsSigner(t, {base: BASE, keys, genesis: false});
+  handoverAuthorization({stateDir: signer.stateDir, checkpoint: checkpoint.checkpoint, vaultKey: f.publicKey, witnesses: [V.witness_key.vkey]});
+  witnessctl('add-key', '-db', db, '-origin', heads, '-key', signer.vkey);
+  s = await f.open('enforce', {cfg: normalizeTransparencyConfig({...raw, signer: signer.config}, {dataDir: f.dataDir})});
+  await s.transparency.pump();
+  assert.deepEqual([s.transparency.status().heads.signedBy, s.transparency.status().witnesses[0].status], [signer.vkey, 'consistent']);
+  witnessctl('del-key', '-db', db, '-origin', heads, '-key', T.logVkey(heads, f.publicKey));
+  f.write(s, 'beta', 2);
+  await s.transparency.pump();
+  const older = await f.call(s, '/api/export', 'beta');
+  f.write(s, 'beta', 2);
+  await s.transparency.pump();
+  assert.equal(s.transparency.status().witnesses[0].status, 'consistent');
+  const fresh = await f.call(s, '/api/export', 'beta');
+  await f.close(s);
+  const forged = rollbackLeaf({dataDir: f.dataDir, base: BASE, key: f.privateKey, tenant: 'beta', older});
+  const answer = await submitForged(url, forged);
+  assert.deepEqual([answer.status, answer.cosignatures], [403, []]);
+  const refused = await createSignerClient({socket: signer.socket}).signHeads({origin: heads, previous: {size: forged.size,
+    root: forged.root.toString('hex')}, leaf: {entries: forged.entries}});
+  assert.deepEqual([refused.httpStatus, refused.body.reason], [422, 'rollback']);
+  const policy = {witnesses: [V.witness_key.vkey], quorum: 1, originBase: BASE, require: true, headsKeys: [signer.vkey]};
+  const verified = verifyBundle(fresh, f.publicKey, undefined, {transparency: policy});
+  assert.equal(verified.transparency.rollbackCheckedAgainst, 'vault_host');
+  t.diagnostic(JSON.stringify({attack: 'vault-key heads leaf after the handover', witnessAnswer: answer.status, witnessBody: answer.body,
+    signerAnswer: [refused.httpStatus, refused.body.reason, refused.body.message], freshExport: verified.transparency.rollbackCheckedAgainst}));
 });

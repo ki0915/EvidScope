@@ -8,8 +8,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {canonical, digest} from './crypto.mjs';
 import * as T from './tlog.mjs';
 import {
-  exchange, hasTable, headsConsistencyProof, headsOrigins, headsRow, headsSize, ledgerLeaves, normalizeTransparencyConfig, openPin, readEpochs,
-  verifyHeadsRow,
+  exchange, hasTable, headsConsistencyProof, headsOrigins, headsRow, headsSize, headsVerifiers, ledgerLeaves, normalizeTransparencyConfig, openPin,
+  readEpochs, verifyHeadsRow, verifySignerHead,
 } from './transparency.mjs';
 
 const SIDECAR_FORMAT = 'evidscope-recovery-frontier-transparency-v1';
@@ -18,11 +18,15 @@ const publicOf = key => (key?.type === 'public' ? key : createPublicKey(key));
 const fingerprint = key => createHash('sha256').update(publicOf(key).export({format: 'der', type: 'spki'})).digest('hex');
 const refuse = message => Error('Transparency restore refused: ' + message);
 const logVerifier = (origin, publicKey) => T.noteVerifier(T.logVkey(origin, publicKey));
+// The vault key and the heads signer keys (public KeyObjects) under `origin`: who may have signed its heads checkpoints.
+const headsLogVerifiers = (origin, publicKey, headsKeys = []) => [...new Set([publicKey, ...headsKeys].map(k => T.logVkey(origin, k)))]
+  .map(v => T.noteVerifier(v));
 
 // ---------- frontier freshness evidence ----------
 // Additive companion of a recovery frontier: the source vault's newest heads checkpoint in the same snapshot, bound to
 // the frontier hash and signed by the vault key. A witness that has seen no larger heads size proves the frontier fresh.
-export function frontierTransparency({db, key, frontier, headsOrigin = null}) {
+// headsKeys: the heads signer's public keys when one signs the heads log (the checkpoint itself is then signed by it).
+export function frontierTransparency({db, key, frontier, headsOrigin = null, headsKeys = []}) {
   if (!hasTable(db, 'tlog_heads')) return null;
   const origins = headsOrigins(db);
   let origin = headsOrigin;
@@ -30,12 +34,12 @@ export function frontierTransparency({db, key, frontier, headsOrigin = null}) {
   else if (!origin && origins.length > 1) origin = db.prepare('SELECT origin FROM tlog_heads ORDER BY created_at DESC,idx DESC LIMIT 1').get().origin;
   const size = origin ? headsSize(db, origin) : 0;
   if (!size) return null;
-  const row = verifyHeadsRow(headsRow(db, origin, size - 1), origin, logVerifier(origin, publicOf(key)));
+  const row = verifyHeadsRow(headsRow(db, origin, size - 1), origin, headsLogVerifiers(origin, publicOf(key), headsKeys));
   const statement = {format: SIDECAR_FORMAT, frontierSha256: digest(frontier), keyFingerprint: fingerprint(key), headsOrigin: origin, headsSize: size,
     checkpoint: row.note};
   return {...statement, signature: sign(null, Buffer.from(canonical(statement)), key).toString('base64')};
 }
-export function verifyFrontierTransparency(value, {frontierSha256, publicKey, headsOrigin}) {
+export function verifyFrontierTransparency(value, {frontierSha256, publicKey, headsOrigin, headsKeys = []}) {
   const keys = value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : [];
   if (keys.length !== SIDECAR_KEYS.length || !SIDECAR_KEYS.every(k => keys.includes(k))) throw refuse('invalid frontier transparency evidence');
   const {signature, ...statement} = value;
@@ -44,7 +48,7 @@ export function verifyFrontierTransparency(value, {frontierSha256, publicKey, he
     throw refuse('frontier transparency evidence is not bound to this frontier and vault key');
   }
   if (statement.headsOrigin !== headsOrigin) throw refuse(`frontier transparency evidence names ${statement.headsOrigin}, not ${headsOrigin}`);
-  const c = T.parseCheckpoint(T.openNote(statement.checkpoint, [logVerifier(headsOrigin, publicKey)]).text);
+  const c = T.parseCheckpoint(T.openNote(statement.checkpoint, headsLogVerifiers(headsOrigin, publicKey, headsKeys)).text);
   if (c.origin !== headsOrigin || c.size !== statement.headsSize) throw refuse('frontier transparency checkpoint differs from its statement');
   return {size: c.size, root: c.root, note: statement.checkpoint};
 }
@@ -72,8 +76,8 @@ function archiveState(db) {
 // Submits the archive's newest heads checkpoint of the previous origin (old 0, then the 409 resynchronisation with a
 // consistency proof from the archive). consistent: the witness had seen nothing beyond the archive; rollback: it holds a
 // larger size, which a frontier companion of exactly that size can still cover (re-submitted to compare roots).
-async function probePrevious({db, key, origin, archived, witnesses, timeoutMs, frontierHeads, fetchImpl, now}) {
-  const publicKey = publicOf(key), logV = logVerifier(origin, publicKey), size = archived?.size ?? 0;
+async function probePrevious({db, key, origin, archived, witnesses, timeoutMs, frontierHeads, fetchImpl, now, logV}) {
+  const size = archived?.size ?? 0;
   const note = archived?.note ?? T.signNote(T.formatCheckpoint({origin, size: 0, root: T.EMPTY_ROOT}), T.noteSigner(origin, key));
   const proofFor = m => headsConsistencyProof(db, origin, logV, m, size, archived.root), config = {timeoutMs};
   return Promise.all(witnesses.map(async w => {
@@ -86,8 +90,8 @@ async function probePrevious({db, key, origin, archived, witnesses, timeoutMs, f
   }));
 }
 // Newest previous-origin heads checkpoint with at least one cosignature: witness answers, the old pin, or the archive.
-function previousCosigned({db, origin, publicKey, witnesses, answers, pin}) {
-  const candidates = [], verifiers = [logVerifier(origin, publicKey), ...witnesses.map(w => w.verifier)];
+function previousCosigned({db, origin, logV, witnesses, answers, pin}) {
+  const candidates = [], verifiers = [...logV, ...witnesses.map(w => w.verifier)];
   const bySize = new Map();
   for (const a of answers) if (a.status === 'consistent' && a.size > 0) bySize.set(a.size, [...(bySize.get(a.size) || [a.note]), a.line]);
   for (const [size, [note, ...lines]] of bySize) candidates.push({size, note: note + lines.join(''), lines: lines.length});
@@ -109,6 +113,19 @@ function previousCosigned({db, origin, publicKey, witnesses, answers, pin}) {
   return null;
 }
 
+// The heads signer's head of the previous heads origin (scripts/signer.mjs head --out): a checkpoint it signed, or `known: false`.
+function previousSignerHead(raw, origin, source) {
+  if (!source.signer) throw refuse('a heads signer head needs the signer keys: give the previous transparency config with its signer');
+  let head;
+  try { head = verifySignerHead(raw, origin, source); } catch (error) { throw refuse('heads signer head: ' + error.message); }
+  if (head.known && head.status !== 'active') throw refuse(`the heads signer already retired ${origin} at another restore epoch`);
+  return head;
+}
+// The restored vault's first heads leaf continues the previous origin only after the operator authorizes the epoch on the signer.
+const signerEpochHint = (from, to, loss) => 'Authorize the epoch on the heads signer before starting the restored vault: node scripts/transparency.mjs '
+  + `epoch-claims --config NEW_TRANSPARENCY.json --key VAULT_KEY.pem --data-dir RESTORED_DATA_DIR --out CLAIMS.json, then node scripts/signer.mjs `
+  + `authorize-epoch --state-dir SIGNER_STATE --from-base ${from} --to-base ${to} --restored CLAIMS.json${loss ? ' --accept-loss REASON' : ''}`;
+
 // ---------- restore planning ----------
 // Read-only on the restored (not yet published) database; throws before anything is written when the restore would
 // reuse an origin base or cannot establish freshness without an explicit acceptLoss.
@@ -121,7 +138,7 @@ export async function planTlogEpoch({database, key, archiveAnchor, transparency,
       throw refuse(`the archive carries transparency state (origin base ${[...archive.bases].sort().join(', ')}); restore with a transparency config `
         + 'that names a new origin base (new epoch), or one with mode off');
     }
-    const {config: raw, previous, previousPin, frontierTransparency: sidecar, acceptLoss, fetchImpl = fetch} = transparency;
+    const {config: raw, previous, previousPin, frontierTransparency: sidecar, acceptLoss, signerHead: rawSignerHead, fetchImpl = fetch} = transparency;
     const config = normalizeTransparencyConfig(raw, {dataDir: restoreDir, env: {}});
     if (config.mode === 'off') return {epoch: null, freshness: null, result: {mode: 'off', retiredOriginBases: [...archive.bases].sort()}};
     const prev = previous ? normalizeTransparencyConfig(previous, {dataDir: restoreDir, env: {}}) : null;
@@ -142,32 +159,48 @@ export async function planTlogEpoch({database, key, archiveAnchor, transparency,
     }
     if (sidecar && !frontier) throw refuse('frontier transparency evidence needs the activation frontier');
     const publicKey = publicOf(key), origin = T.headsOrigin(previousBase), source = prev ?? config;
+    // With a heads signer (source.signer) the previous heads checkpoints carry its key, and its head of the previous origin
+    // (scripts/signer.mjs head) states the newest heads checkpoint that exists at all.
+    const headsKeys = source.signer ? [source.signer.publicKey, ...source.signer.previousKeys] : [], logV = headsVerifiers(origin, publicKey, source);
     const restoredHeadsSize = hasTable(db, 'tlog_heads') ? headsSize(db, origin) : 0;
-    const archived = restoredHeadsSize ? verifyHeadsRow(headsRow(db, origin, restoredHeadsSize - 1), origin, logVerifier(origin, publicKey)) : null;
-    const frontierHeads = sidecar ? verifyFrontierTransparency(sidecar, {frontierSha256, publicKey, headsOrigin: origin}) : null;
+    const archived = restoredHeadsSize ? verifyHeadsRow(headsRow(db, origin, restoredHeadsSize - 1), origin, logV) : null;
+    const frontierHeads = sidecar ? verifyFrontierTransparency(sidecar, {frontierSha256, publicKey, headsOrigin: origin, headsKeys}) : null;
     let pin = null;
     if (previousPin) {
-      try { pin = openPin(previousPin, origin, publicKey, source.witnesses); } catch (error) { throw refuse('previous pin: ' + error.message); }
+      try { pin = openPin(previousPin, origin, publicKey, source.witnesses, source); } catch (error) { throw refuse('previous pin: ' + error.message); }
     }
+    const signerHead = rawSignerHead === undefined ? null : previousSignerHead(rawSignerHead, origin, source);
     const answers = await probePrevious({db, key, origin, archived: archived && {size: restoredHeadsSize, root: archived.root, note: archived.note},
-      witnesses: source.witnesses, timeoutMs: source.timeoutMs, frontierHeads, fetchImpl, now});
+      witnesses: source.witnesses, timeoutMs: source.timeoutMs, frontierHeads, fetchImpl, now, logV});
     const fork = answers.find(a => a.status === 'fork');
     if (fork) throw refuse(`witness ${fork.name} holds a heads log for ${origin} that conflicts with the archive (fork)`);
     const answered = answers.filter(a => a.status === 'consistent' || a.status === 'rollback');
     const quorum = source.witnesses.length ? Math.max(1, source.quorum) : 0;
-    const witnessedHeadsSize = answered.length || pin ? Math.max(0, pin?.size ?? 0, ...answered.map(a => a.size)) : null;
+    const signed = signerHead?.known ? signerHead.size : 0;
+    const witnessedHeadsSize = answered.length || pin || signed ? Math.max(0, pin?.size ?? 0, ...answered.map(a => a.size), signed) : null;
     const known = Math.max(restoredHeadsSize, frontierHeads?.size ?? 0);
-    const quorumMet = quorum ? answered.length >= quorum : !!pin, established = quorumMet && witnessedHeadsSize <= known;
+    // The signer signed every heads checkpoint of its origin: its head at the archive's (or the frontier's) size, with the same
+    // root, establishes freshness without the witness quorum.
+    let signerFresh = false;
+    if (signed) {
+      if (signed < restoredHeadsSize) {
+        throw refuse(`the archive holds heads size ${restoredHeadsSize} of ${origin} beyond the ${signed} the heads signer signed`);
+      }
+      const at = signed === restoredHeadsSize ? archived : signed === frontierHeads?.size ? frontierHeads : null;
+      if (at && !at.root.equals(signerHead.root)) throw refuse(`the heads signer's checkpoint ${signed} of ${origin} conflicts with the archive (fork)`);
+      signerFresh = !!at;
+    }
+    const quorumMet = quorum ? answered.length >= quorum : !!pin, established = (quorumMet || signerFresh) && witnessedHeadsSize <= known;
     if (!established && acceptLoss === undefined) {
-      const why = !quorumMet ? `${answered.length} of ${quorum || 'a pin or'} required witnesses answered`
-        : `the previous origin was witnessed up to heads size ${witnessedHeadsSize}, beyond the archive (${restoredHeadsSize})`
-          + ` and the frontier (${frontierHeads?.size ?? 'none'})`;
+      const why = !quorumMet && !signed ? `${answered.length} of ${quorum || 'a pin or'} required witnesses answered`
+        : `the previous origin was ${signed > known ? 'signed' : 'witnessed'} up to heads size ${witnessedHeadsSize}, beyond the archive `
+          + `(${restoredHeadsSize}) and the frontier (${frontierHeads?.size ?? 'none'})`;
       throw refuse(`cannot establish freshness for ${origin}: ${why}; the restore would lose witnessed history (rollback) `
         + 'unless acceptLoss records the loss');
     }
     const freshness = {established, quorum, frontierHeadsSize: frontierHeads?.size ?? null, pinnedHeadsSize: pin?.size ?? null,
-      witnesses: answers.map(a => ({name: a.name, keyId: a.keyId, status: a.status, size: a.size ?? null}))};
-    const cosigned = previousCosigned({db, origin, publicKey, witnesses: source.witnesses, answers, pin});
+      ...(signerHead ? {signerHeadsSize: signed} : {}), witnesses: answers.map(a => ({name: a.name, keyId: a.keyId, status: a.status, size: a.size ?? null}))};
+    const cosigned = previousCosigned({db, origin, logV, witnesses: source.witnesses, answers, pin});
     // Without established freshness nothing bounds what the previous origin held beyond the archive.
     const lostHeadsRange = T.lostHeadsRangeOf(restoredHeadsSize, witnessedHeadsSize), unknownLoss = !established;
     const payloads = Object.keys(archiveAnchor.checkpoints).sort().map(tenant => {
@@ -193,7 +226,9 @@ export async function planTlogEpoch({database, key, archiveAnchor, transparency,
     return {
       epoch: {payloads}, freshness,
       result: {mode: config.mode, originBase: config.base, previousOriginBase: previousBase, headsOrigin: config.headsOrigin,
-        logVkey: T.logVkey(config.headsOrigin, publicKey), previousHeadsOrigin: origin, restoredHeadsSize, witnessedHeadsSize, lostHeadsRange,
+        logVkey: config.signer ? config.signer.vkey : T.logVkey(config.headsOrigin, publicKey), previousHeadsOrigin: origin, restoredHeadsSize,
+        witnessedHeadsSize, lostHeadsRange, ...(signerHead ? {signerHeadsSize: signed} : {}),
+        ...(config.signer ? {signerAuthorization: signerEpochHint(previousBase, config.base, acceptLoss !== undefined)} : {}),
         freshnessEstablished: established, lossAccepted: acceptLoss !== undefined, witnesses: freshness.witnesses, epochRecords: payloads.length,
         registration: config.witnessTenantLogs
           ? 'Register the new heads origin and every tenant origin at every witness before starting the restored vault: '

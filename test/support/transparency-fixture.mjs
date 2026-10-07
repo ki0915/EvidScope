@@ -14,7 +14,8 @@ const requirements = JSON.parse(readFileSync(new URL('../../data/requirements.js
 export const principals = ['alpha', 'beta'].map(tenant => ({id: `${tenant}-admin`, role: 'admin', tenant, token: tenant.repeat(40)}));
 
 // tenantLogs: witnessTenantLogs on, with the alpha and beta tenant origins registered at the witness. witnessNow: the witness clock.
-export async function transparencyFixture(t, {witness = true, tenantLogs = false, witnessNow} = {}) {
+// headsKeys: the vkeys the witness accepts for the heads origin (default: the vault key; a heads signer's vkey with test/support/heads-signer.mjs).
+export async function transparencyFixture(t, {witness = true, tenantLogs = false, witnessNow, headsKeys} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'evidscope-transparency-')), dataDir = join(root, 'data');
   const {privateKey, publicKey} = generateKeyPairSync('ed25519');
   const services = [];
@@ -23,7 +24,7 @@ export async function transparencyFixture(t, {witness = true, tenantLogs = false
   if (witness) {
     w = createWitness({dir: join(root, 'witness'), name: 'witness.test/w1', ...(witnessNow ? {now: witnessNow} : {})});
     ws = await w.listen();
-    w.addLog(T.headsOrigin(BASE), T.logVkey(T.headsOrigin(BASE), publicKey));
+    for (const vkey of headsKeys ?? [T.logVkey(T.headsOrigin(BASE), publicKey)]) w.addLog(T.headsOrigin(BASE), vkey);
     if (tenantLogs) for (const p of principals) registerTenant(p.tenant);
   }
   t.after(async () => {
@@ -34,11 +35,12 @@ export async function transparencyFixture(t, {witness = true, tenantLogs = false
   const config = (mode, {dir = dataDir, ...extra} = {}) => normalizeTransparencyConfig(mode === 'off' ? null
     : {origin: BASE, mode, witnesses: w ? [{vkey: w.vkey, url: ws.url}] : [], intervalMs: 100, timeoutMs: 2000,
       ...(tenantLogs ? {witnessTenantLogs: true} : {}), ...extra}, {dataDir: dir});
-  // probe: the startup probe to hand to the vault instead of probing `dir` now.
-  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir}), fetchImpl, probe: given} = {}) {
-    const probe = given !== undefined ? given
-      : cfg.mode !== 'off' && cfg.witnesses.length ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg, fetchImpl}) : null;
-    const service = createService({dataDir: dir, key: privateKey, config: {principals}, requirements, transparency: {config: cfg, probe, fetchImpl}});
+  // probe: the startup probe to hand to the vault instead of probing `dir` now. signerClient: the heads signer connection to use.
+  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir}), fetchImpl, probe: given, signerClient} = {}) {
+    const probe = given !== undefined ? given : cfg.mode !== 'off' && (cfg.witnesses.length || cfg.signer)
+      ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg, fetchImpl, signerClient}) : null;
+    const service = createService({dataDir: dir, key: privateKey, config: {principals}, requirements,
+      transparency: {config: cfg, probe, fetchImpl, ...(signerClient ? {signerClient} : {})}});
     services.push(service);
     return service;
   }

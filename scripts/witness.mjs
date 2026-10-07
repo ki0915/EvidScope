@@ -2,7 +2,8 @@
 // should use litewitness or another independently operated witness; this one shares the operator's trust boundary.
 //   node scripts/witness.mjs init --dir DIR --name NAME      create key + state, print the witness vkey
 //   node scripts/witness.mjs vkey --dir DIR
-//   node scripts/witness.mjs add-log --dir DIR --origin ORIGIN --key LOG_VKEY
+//   node scripts/witness.mjs add-log --dir DIR --origin ORIGIN --key LOG_VKEY      (again with another key: the origin accepts both)
+//   node scripts/witness.mjs del-key --dir DIR --origin ORIGIN --key LOG_VKEY      (key rotation, as litewitness witnessctl del-key)
 //   node scripts/witness.mjs list-logs --dir DIR
 //   node scripts/witness.mjs serve --dir DIR [--listen 127.0.0.1:0]
 import http from 'node:http';
@@ -42,6 +43,8 @@ export function createWitness({dir, name, now = () => Date.now()}) {
     db.prepare('INSERT OR IGNORE INTO logs VALUES(?,0,?)').run(origin, T.b64(T.EMPTY_ROOT));
     if (logVkey !== undefined) db.prepare('INSERT OR IGNORE INTO log_keys VALUES(?,?)').run(origin, logVkey);
   }
+  // The origin keeps its size and root; checkpoints signed by the removed key are no longer accepted.
+  const removeLogKey = (origin, logVkey) => db.prepare('DELETE FROM log_keys WHERE origin=? AND vkey=?').run(origin, logVkey).changes > 0;
   // Order follows c2sp.org/tlog-witness: parse, origin, signatures, checkpoint, old/size, conflict, proof, persist, cosign.
   function addCheckpoint(input) {
     const body = Buffer.isBuffer(input) ? input.toString('utf8') : String(input);
@@ -96,7 +99,7 @@ export function createWitness({dir, name, now = () => Date.now()}) {
     });
   }
   return {
-    name: meta.name, vkey, addLog, addCheckpoint, listen,
+    name: meta.name, vkey, addLog, removeLogKey, addCheckpoint, listen,
     logs: () => db.prepare('SELECT origin,size,root,(SELECT COUNT(*) FROM log_keys k WHERE k.origin=logs.origin) keys FROM logs ORDER BY origin').all(),
     setAvailable(value) { available = !!value; },
     close() { db.close(); },
@@ -107,8 +110,8 @@ async function main(argv) {
   const [command, ...rest] = argv;
   const {values} = parseArgs({args: rest, options: {dir: {type: 'string'}, name: {type: 'string'}, origin: {type: 'string'}, key: {type: 'string'},
     listen: {type: 'string', default: '127.0.0.1:0'}}});
-  if (!values.dir || !['init', 'vkey', 'add-log', 'list-logs', 'serve'].includes(command)) {
-    throw Error('Usage: node scripts/witness.mjs init|vkey|add-log|list-logs|serve --dir DIR [--name NAME] [--origin ORIGIN --key LOG_VKEY]'
+  if (!values.dir || !['init', 'vkey', 'add-log', 'del-key', 'list-logs', 'serve'].includes(command)) {
+    throw Error('Usage: node scripts/witness.mjs init|vkey|add-log|del-key|list-logs|serve --dir DIR [--name NAME] [--origin ORIGIN --key LOG_VKEY]'
       + ' [--listen HOST:PORT]');
   }
   const w = createWitness({dir: resolve(values.dir), name: values.name});
@@ -117,6 +120,13 @@ async function main(argv) {
     if (!values.origin || !values.key) throw Error('add-log needs --origin and --key');
     w.addLog(values.origin, values.key);
     console.log(JSON.stringify({origin: values.origin, key: values.key}));
+    w.close();
+    return;
+  }
+  if (command === 'del-key') {
+    if (!values.origin || !values.key) throw Error('del-key needs --origin and --key');
+    const removed = w.removeLogKey(values.origin, values.key);
+    console.log(JSON.stringify({origin: values.origin, key: values.key, removed}));
     w.close();
     return;
   }

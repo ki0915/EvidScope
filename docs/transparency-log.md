@@ -15,6 +15,8 @@
 3. 위트니스는 **C2SP tlog-witness** 규약으로 일관성 증명을 확인한 뒤에만 공동서명합니다. 이전보다 작은 크기(rollback)나
    갈라진 이력(fork)에는 서명하지 않으므로, 서명 키를 훔친 공격자도 위트니스 몰래 **heads 로그**를 되돌리거나 갈라놓을 수 없습니다.
    다만 heads 잎은 vault 키로만 서명되므로, heads 로그만 맡기면 그 안의 tenant별 크기가 줄지 않는지는 vault가 스스로 확인합니다.
+   설정에 `signer`를 넣으면 heads 체크포인트는 vault 밖의 [heads 서명기](signer.md)가 서명합니다. 서명기는 tenant 로그가 빠지거나 줄거나
+   갈라지는 잎에는 서명하지 않으므로, vault 호스트 전체를 장악해도 그런 잎에 공동서명을 받을 수 없습니다.
 4. `witnessTenantLogs`를 켜면 tenant 로그도 각자의 origin(`<origin>/t/<hash>`)으로 위트니스에 제출합니다. 위트니스가 tenant 로그마다
    앞으로만 자라는지 직접 확인하므로, 서명 키를 가진 공격자의 tenant 단위 되돌리기도 위트니스가 거부합니다. 남는 범위는 아래 한계의 첫 항목을 읽어 주세요.
 
@@ -56,6 +58,8 @@
   응답한 위트니스에만 보내므로 위트니스 하나가 멈춰도 pump가 막히지 않습니다. 켜기 전에 모든 tenant origin을 모든 위트니스에 등록합니다(아래).
   등록되지 않은 origin은 위반이 아니라 `status().tenantLogs`의 `attention`으로 보고하고 `refreshSeconds` 뒤에 다시 시도합니다. 시작할 때 모든
   tenant 로그를 위트니스에 조회하므로 tenant 수에 비례해 시작이 느려지고, 위트니스는 해시로 가린 tenant 수와 tenant별 기록 수 변화를 보게 됩니다.
+- `signer`(선택): heads 서명기 연결(`socket`·`pipe`·`url`, `tokenFile`, `publicKeyFile` 등). 있으면 heads 체크포인트를 서명기가 서명하고
+  위트니스 등록·pin·내보내기의 heads 키가 서명기 키가 됩니다. tenant 로그와 원장 체크포인트는 그대로 vault 키로 서명합니다. [heads 서명기](signer.md)를 보세요.
 - `pinFile`: 마지막으로 공동서명된 heads 체크포인트를 기록하는 파일입니다. 기본값은 데이터 디렉터리 옆
   `.<data>-transparency-pin.json`이며 `TRANSPARENCY_PIN_FILE`로 다른 볼륨에 둘 수 있습니다. 데이터 볼륨과 다른 곳에 두어야
   DB와 pin을 함께 되돌리는 공격을 막을 수 있습니다.
@@ -104,7 +108,8 @@ node scripts/transparency.mjs status --config transparency.json --key .local/sig
 - `/api/integrity`의 `transparency.rollbackChecked`가 `true`가 되려면 정족수 이상의 신선한 공동서명이 있고 실행 중 위반이 없어야 합니다.
 - `transparency.rollbackCheckedAgainst`는 그 확인이 누구를 상대로 성립하는지 밝힙니다. heads 공동서명만으로 확인했으면 `database_tamper`
   (DB만 조작하는 공격자, S1), 고정한 origin base의 tenant 로그를 정족수의 위트니스가 `maxStalenessSeconds` 안에 공동서명했으면
-  `signing_key_holder`(서명 키를 가진 공격자, S2까지)입니다. 신선한 공동서명이 없으면 `null`입니다. `--min-checkpoint`만으로 확인한 경우
+  `signing_key_holder`(서명 키를 가진 공격자, S2까지), 검증자가 `--heads-key`로 고정한 heads 서명기 키가 서명한 heads 체크포인트에 신선한
+  정족수가 있으면 `vault_host`(vault 호스트 전체를 장악한 공격자, [heads 서명기](signer.md))입니다. 신선한 공동서명이 없으면 `null`입니다. `--min-checkpoint`만으로 확인한 경우
   `rollbackChecked`는 `true`지만 검증자가 준 체크포인트 기준이므로 이 값은 `null`입니다.
 
 내보낸 묶음은 운영자를 믿지 않고 오프라인으로 검증합니다.
@@ -155,7 +160,8 @@ DB 안의 이력만 보므로, 그 이력이 위트니스가 공동서명한 hea
   확인한 결과는 `rollbackChecked:true`여도 `rollbackCheckedAgainst:"database_tamper"`, 즉 **DB만 조작하는 공격자(S1)** 기준으로 보고합니다.
   `witnessTenantLogs`를 켜면 위트니스가 tenant 로그마다 되돌리기를 거부하고(재검토 PoC는 `test/transparency-tenant-witness.test.mjs`로 옮겨
   litewitness 상호운용과 함께 확인), 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 보고되며 `--require-tenant-witness`로 요구할 수
-  있습니다. 그래도 남는 범위는 다음과 같습니다.
+  있습니다. heads 서명기를 쓰면 이 공격은 서명 단계에서 막히고(litewitness 시험: 서명기 422, 위트니스 403), 서명기 키를 고정한 검증자는
+  `vault_host`를 받습니다([heads 서명기](signer.md)). 서명기 없이 `witnessTenantLogs`만 쓰면 다음 범위가 남습니다.
   - 마지막 tenant 공동서명 이후 `maxStalenessSeconds` 안의 되돌리기는 막지 못합니다. 그 사이에 받은 예전 내보내기는 아직 신선한 공동서명을 갖고 있습니다.
   - 복구 epoch는 vault 키만으로 서명되므로, 검증자가 새 origin base를 확인한 뒤 `--origin-base`로 다시 고정해야 `signing_key_holder`가 됩니다.
   - 아직 위트니스에 등록되지 않은 tenant origin은 등록될 때까지 heads 잎으로만 묶입니다.

@@ -18,6 +18,9 @@ Node.js 24의 SQLite를 사용한다. `vault` 1개만 원본 DB, 인증 설정, 
 | ingress | 2~6 HPA | 수집자 → ingress → vault, 자체 TLS 키·vault 신뢰 CA |
 | audit | 2~6 HPA | 감사자 → audit → vault, 자체 TLS 키·vault 신뢰 CA |
 | worker | 2~6 HPA | worker → vault, 작업자 토큰·자체 TLS 키·vault 신뢰 CA |
+| heads-signer(선택) | 1, Recreate | 투명성 heads 로그 키·자기 상태 PVC. vault 데이터 PVC·서명키·설정은 마운트하지 않음 |
+
+투명성 로그를 켜면 heads 체크포인트는 기본으로 vault 키가 서명한다. `signer` 설정을 넣으면 vault 밖의 [heads 서명기](signer.md)가 tenant 로그를 빼거나 줄이거나 가르는 잎을 거부하고 서명하며, 원장·tenant 로그 체크포인트는 계속 vault 키로 서명한다. Kubernetes 구성은 `node deploy/heads-signer-overlay.mjs --variant sidecar|deployment --output <새 파일>`로 렌더링한다(sidecar는 vault 컨테이너 장악만, 별도 Deployment는 vault 노드 장악까지 막는다).
 
 TLS는 애플리케이션에서 종료한다. Node의 CA/호스트명 검증을 유지하며 `NODE_TLS_REJECT_UNAUTHORIZED=0`을 사용하지 않는다. Kubernetes의 HTTPS health probe는 애플리케이션의 실제 클라이언트 인증서 검증 시험을 대신하지 않는다. 모든 컨테이너는 UID/GID 1000, 읽기 전용 root filesystem, 모든 capability 제거, privilege escalation 금지, RuntimeDefault seccomp로 실행하고 service account token을 자동 마운트하지 않는다.
 
@@ -41,6 +44,8 @@ npm test
 npm run bench
 node scripts/k8s-static.mjs
 ```
+
+`npm run upgrade:local -- --heads-signer`로 만든 heads 서명기(`.local/signer/serve.json`)는 `npm start`가 vault보다 먼저 시작하고 함께 종료한다. Windows는 named pipe와 token, `--heads-signer-port`는 loopback TCP와 token을 쓴다. 같은 PC·계정에서 실행하므로 기능 확인용이다.
 
 이 PC에서 IPv4 loopback 오류가 발생하면 시작 전 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정한다. 감사 URL은 `http://[::1]:8082`다. `EVIDSCOPE_LOCAL_DIR`로 별도 파일럿의 자격·키·데이터 경로를, `EVIDSCOPE_LOCAL_PORT_BASE`로 기본 8080부터 시작하는 네 포트를 선택한다. 기본 데이터 경로는 `.local`이며 기존 경로의 데이터를 덮어쓰거나 초기화하지 않는다. 포트 기준 `0`은 시험용 자동 할당으로 일반 사용 안내에 고정 URL을 재사용하지 않는다. 종료는 실행 터미널의 `Ctrl+C`를 사용하고 네 자식 프로세스가 종료된 뒤 재시작한다.
 

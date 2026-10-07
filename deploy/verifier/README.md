@@ -71,7 +71,8 @@ node evidscope-verify.mjs report report.json vault-public.pem [CHECKPOINT.json] 
 ```
 
 투명성 플래그(선택): `--witness VKEY`(반복) `--quorum N` `--origin-base BASE` `--max-staleness 초` `--require-transparency`
-`--require-tenant-witness`. `node evidscope-verify.mjs help`가 전체 사용법을 보여 줍니다.
+`--require-tenant-witness` `--heads-key VKEY`(반복, [heads 서명기](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md) 키) `--require-heads-signer`.
+`node evidscope-verify.mjs help`가 전체 사용법을 보여 줍니다.
 
 결과는 표준 출력에 JSON으로 나옵니다. 종료 코드는 `0` 확인됨, `1` 확인되지 않음(이유는 표준 오류), `2` 사용법 오류입니다.
 

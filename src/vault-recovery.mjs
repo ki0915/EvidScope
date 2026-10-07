@@ -17,6 +17,7 @@ import {signRecoveryFrontier,verifyRecoveryFrontier,applyRecoveryFrontier} from 
 import {createKeyring,PURPOSES,LEGACY_KEY_ID,KEY_ID_PATTERN} from './data-keys.mjs';
 import {sealRestorationState,pinRestorationState,recoveryPinPath} from './recovery-state.mjs';
 import {frontierTransparency,planTlogEpoch,writeTlogEpochs} from './transparency-epoch.mjs';
+import {signerKeysOf} from './transparency.mjs';
 import {headsOrigin,validateOriginBase} from './tlog.mjs';
 import {ACCESS_BATCH_TYPE,ACCESS_LOG_FILE,verifyAccessLogDatabase} from './access-log.mjs';
 
@@ -219,14 +220,15 @@ export async function createVaultRecoveryFrontier({dataDir,privateKey,publicKey,
   assertSeparationKept(snapshotFile,keyring,config,'recovery frontier');
   const checked=inspectDatabase(snapshotFile,source,key,keyring,undefined,eventKeys);store=readonlyStore(snapshotFile,key,eventKeys);
   const signed=signRecoveryFrontier({bundles:checked.tenants.map(t=>store.rawBundle(t.tenant)),archiveAnchor:anchor,privateKey:key,publicKey:pub,config});
-  const companion=frontierTransparency({db:store.db,key,frontier:signed.frontier,headsOrigin:transparency?.origin?headsOrigin(validateOriginBase(transparency.origin)):null});
+  const companion=frontierTransparency({db:store.db,key,frontier:signed.frontier,headsOrigin:transparency?.origin?headsOrigin(validateOriginBase(transparency.origin)):null,
+   headsKeys:signerKeysOf(transparency)});
   return companion?{...signed,transparency:companion}:signed;
  }finally{
   store?.close();db?.close();for(const name of ['snapshot.db','snapshot.db-wal','snapshot.db-shm']){const file=join(stage,name);if(existsSync(file))unlinkSync(file);}rmdirSync(stage);
  }
 }
 
-// transparency (optional): {config, previous, previousPin, frontierTransparency, acceptLoss} for a restore epoch (transparency-epoch.mjs).
+// transparency (optional): {config, previous, previousPin, frontierTransparency, acceptLoss, signerHead} for a restore epoch (transparency-epoch.mjs).
 export async function restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey,dataKey,previousDataKeys,eventKeystoreDir,anchor,frontier,frontierAnchor,config,transparency}){
  const {key,pub,keyring}=keys(privateKey,publicKey,{dataKey,previousDataKeys}),root=noLinks(backupDir),target=noLinks(restoreDir);
  const eventKeys=openConfiguredKeystore({dir:eventKeystoreDir,keyring,dataDir:target});
