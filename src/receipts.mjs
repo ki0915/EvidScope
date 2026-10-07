@@ -142,16 +142,17 @@ export function deploymentTlogPolicy(config, publicKey, tenant) {
   return tenantTlogPolicy({origin: T.tenantOrigin(config.base, tenant), publicKey, witnesses: witnessed ? config.witnesses.map(w => w.vkey) : [],
     quorum: witnessed ? config.quorum : 0, note: witnessed ? null : 'The witnesses do not cosign this tenant log directly (witnessTenantLogs is off).'});
 }
-// A policy without logs takes the vault key from context; with a pinned key, the policy's log for the origin must be that key.
+// A policy without logs takes the vault key from context; with a pinned key, every policy log for the origin must be that key
+// (any of them may sign, so a second log line for the origin would let its key stand in for the vault).
 function policyFor(policy, origin, publicKey) {
   const parsed = typeof policy === 'string' || Buffer.isBuffer(policy) ? parseTlogPolicy(policy) : policy;
   if (!publicKey) {
     if (!parsed.logs.length) throw Error('The tlog-policy lists no log: pass the vault public key');
     return parsed;
   }
-  const vkey = T.logVkey(origin, publicKey), own = parsed.logs.find(l => l.name === origin);
+  const vkey = T.logVkey(origin, publicKey), pinned = T.ed25519RawPublic(publicKey);
   if (!parsed.logs.length) return {...parsed, logs: [T.parseVkey(vkey)]};
-  if (own && own.vkey !== vkey) throw Error('The tlog-policy log key for ' + origin + ' is not the pinned vault key');
+  if (parsed.logs.some(l => l.name === origin && !l.pub.equals(pinned))) throw Error('The tlog-policy log key for ' + origin + ' is not the pinned vault key');
   return parsed;
 }
 const flagPolicy = (origin, publicKey, transparency = {}) => {
