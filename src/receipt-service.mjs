@@ -90,7 +90,11 @@ export function createReceipts({store, config, signer, now = () => Date.now()}) 
       if (values.length && (values.length !== 1 || values[0] !== 'intoto')) fail(400, 'attest 값은 intoto만 지원합니다');
       return values.length === 1;
     },
-    attestExport: bundle => attestFile(exportAttestation(bundle, now()), signer),
+    attestExport(bundle) {
+      let statement;
+      try { statement = exportAttestation(bundle, now()); } catch (error) { inconsistent(error); }
+      return attestFile(statement, signer);
+    },
     attestCaseReport(report) {
       let statement;
       try { statement = caseReportAttestation(store.db, report); } catch (error) { inconsistent(error); }

@@ -79,9 +79,9 @@ test('evidscope-verify checks unpacked attestations, record receipts and the exi
 test('scripts/receipts.mjs writes the same record receipt from the data directory and prints the tenant policy', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'evidscope-receipts-cli-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
-  const x = await receiptFixture(t, join(dir, 'in')), config = join(dir, 'transparency.json'), key = join(dir, 'vault.pem');
+  // The operator needs only the vault public key.
+  const x = await receiptFixture(t, join(dir, 'in')), config = join(dir, 'transparency.json'), key = x.files.key;
   writeFileSync(config, JSON.stringify({origin: BASE, mode: 'monitor', witnesses: [{vkey: x.f.w.vkey, url: x.f.ws.url}], witnessTenantLogs: true}));
-  writeFileSync(key, x.f.privateKey.export({format: 'pem', type: 'pkcs8'}));
   const r = run('scripts/receipts.mjs', ['record', '--config', config, '--key', key, '--data-dir', x.f.dataDir, '--tenant', 'alpha', '--seq', '1',
     '--out', join(dir, 'out')]);
   assert.equal(r.status, 0, r.err);

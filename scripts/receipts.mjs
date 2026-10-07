@@ -1,7 +1,7 @@
 // Operator side of the standard receipts (docs/receipts.md), read-only on a vault data directory:
 //   node scripts/receipts.mjs record --config TRANSPARENCY.json --key VAULT_KEY.pem --data-dir DIR --tenant NAME --seq N [--out DIR]
 //   node scripts/receipts.mjs policy --config TRANSPARENCY.json --key VAULT_KEY.pem --tenant NAME
-// record writes the files GET /api/receipts/record unpacks to: <name>.json (the ledger record body as hashed),
+// VAULT_KEY.pem may be the public key. record writes the files GET /api/receipts/record unpacks to: <name>.json (the ledger record body as hashed),
 // <name>.tlog-proof and <name>.tlog-policy; check them with evidscope-verify tlog-proof. policy prints the tenant log's
 // c2sp.org/tlog-policy for publication next to the vault public key.
 import {createPublicKey} from 'node:crypto';
