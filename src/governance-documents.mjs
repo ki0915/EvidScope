@@ -1,4 +1,5 @@
 import {createHash,randomUUID} from 'node:crypto';
+import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {canonical,digest} from './crypto.mjs';
 import {cleanText,fail,identifier} from './model.mjs';
@@ -84,7 +85,8 @@ export function createGovernanceDocuments({store,dataDir,key,keyring=asKeyring(k
   const bytes=decodeBase64(x.contentBase64);if(sha256(bytes)!==x.sha256)fail(400,'수신 문서 해시 불일치');
   const previous=verifiedState(p).get(id);if(previous&&previous.systemId!==systemId)fail(409,'기존 문서 ID의 시스템을 변경할 수 없습니다');
   if(previous&&previous.sha256===x.sha256&&previous.displayName===displayName&&previous.mediaType===mediaType){retrieve(p,previous);return previous;}
-  storage.put(p.tenant,bytes);
+  // A file written here is removed again if the surrounding transaction rolls back (S12d).
+  storage.put(p.tenant,bytes,path=>store.onRollback(()=>rmSync(path,{force:true})));
   const receivedAt=new Date().toISOString(),snapshot={schemaVersion:1,id,systemId,version:(previous?.version||0)+1,sha256:x.sha256,bytes:bytes.length,displayName,mediaType,receivedAt,receivedBy:p.id,retentionUntil:fiveYearsAfter(receivedAt),retentionBasis:RETENTION_BASIS};
   const metadata={...snapshot,snapshotHash:digest(snapshot)};retrieve(p,metadata);
   store.append(p.tenant,'governance_document',metadata,p.id);

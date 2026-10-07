@@ -96,7 +96,7 @@ export class Store {
     CREATE TRIGGER IF NOT EXISTS evaluations_mutation_delete AFTER DELETE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
    ${tlogSchema}
    ${facetSchema}`);
-  this.actionProjectionCache=new Map();this.projectionMutationDepth=0;this.projectionMutationSerial=0;this.verifiedStateMaxAgeMs=options.verifiedStateMaxAgeMs??600000;
+  this.actionProjectionCache=new Map();this.rollbackActions=[];this.projectionMutationDepth=0;this.projectionMutationSerial=0;this.verifiedStateMaxAgeMs=options.verifiedStateMaxAgeMs??600000;
   this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;
    const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables,...facetTables]);
    const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete',...[...tlogTables,...facetTables].flatMap(table=>['insert','update','delete'].map(op=>`${table}_mutation_${op}`))]);
@@ -123,22 +123,28 @@ export class Store {
   if(typeof fn!=='function'||types.isAsyncFunction(fn))throw TypeError('Store.transaction requires a synchronous callback');
   const nested=this.db.isTransaction,name=`evidscope_transaction_${++transactionSequence}`,ownsLedgerContext=!this.ledgerTransaction;
   const snapshot=!ownsLedgerContext?{heads:new Map([...this.ledgerTransaction.heads].map(([tenant,head])=>[tenant,{...head}])),dirty:new Set(this.ledgerTransaction.dirty),actionCandidates:new Map(this.ledgerTransaction.actionCandidates)}:null;
-  this.db.exec(nested?`SAVEPOINT ${name}`:'BEGIN IMMEDIATE');
+  this.db.exec(nested?`SAVEPOINT ${name}`:'BEGIN IMMEDIATE');const rollbackMark=this.rollbackActions.length;
   if(ownsLedgerContext)this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),external:nested};
   try{
    const out=fn();
    if(out&&typeof out.then==='function'){if(types.isPromise(out))out.catch(()=>{});throw TypeError('Store.transaction requires a synchronous callback');}
    if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.db.prepare('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
    this.db.exec(nested?`RELEASE ${name}`:'COMMIT');
+   // Committed: undo actions registered at this level are dropped; a nested RELEASE keeps them for the outer level.
+   if(ownsLedgerContext)this.rollbackActions.length=rollbackMark;
    if(ownsLedgerContext&&!this.ledgerTransaction.external)for(const [tenant,candidate] of this.ledgerTransaction.actionCandidates)this.actionProjectionCache.set(tenant,candidate);
    return out;
   }catch(error){
    try{if(nested){this.db.exec(`ROLLBACK TO ${name}`);this.db.exec(`RELEASE ${name}`);}else if(this.db.isTransaction)this.db.exec('ROLLBACK');}
    catch(rollbackError){throw new AggregateError([error,rollbackError],'Store transaction rollback failed');}
+   // After a completed rollback, undo side effects outside SQLite (new document files) in reverse order (S12d).
+   for(const action of this.rollbackActions.splice(rollbackMark).reverse())try{action();}catch{}
    if(snapshot){this.ledgerTransaction.heads=snapshot.heads;this.ledgerTransaction.dirty=snapshot.dirty;this.ledgerTransaction.actionCandidates=snapshot.actionCandidates;}
    throw error;
   }finally{if(ownsLedgerContext)this.ledgerTransaction=null;}
  }
+ // Registers an undo action for a side effect outside SQLite; it runs only if the enclosing transaction rolls back.
+ onRollback(action){if(!this.db.isTransaction||typeof action!=='function')throw Error('Store.onRollback requires an active transaction');this.rollbackActions.push(action);}
  checkpoint(tenant){
   const pending=this.ledgerTransaction?.dirty.has(tenant)&&this.ledgerTransaction.heads.get(tenant);
   if(pending)return makeCheckpoint(tenant,pending.seq,pending.hash,this.key);

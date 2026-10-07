@@ -169,12 +169,36 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   });
  }
  // Synchronous dispatch: a GET's read-only scope (see Store.beginReadOnly) always ends before another request runs.
- async function handle(method,url,headers,body=''){try{return dispatch(method,url,headers,body);}finally{store.endReadOnly();}}
+ // Malformed percent-encoding in a path segment is a client error, not a storage failure (S12c).
+ async function handle(method,url,headers,body=''){
+  try{return dispatch(method,url,headers,body);}
+  catch(error){if(error instanceof URIError)fail(400,'경로의 퍼센트 인코딩 형식 오류');throw error;}
+  finally{store.endReadOnly();}
+ }
+ // Large-body routes are authenticated before the HTTP layer buffers the body (S12a): the same credential and role
+ // checks as the route, so an anonymous or wrong-role client cannot make the vault or gateway hold megabytes.
+ const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles']);
+ function preauthorize(method,url,headers){
+  const path=url.pathname;if(method!=='POST')fail(405,'허용되지 않은 메서드');
+  if(path.startsWith('/internal/assistance/'))return assistance.preauthorize(url,headers);
+  const p=auth(headers,method);
+  if(path==='/internal/complete'){if(p.role!=='worker')fail(403,'인증된 분석 서비스 전용');}
+  else if(path==='/api/ingest/otlp'){if(p.role!=='source'||p.kind!=='otlp')fail(403,'OTLP 수집 출처 자격이 필요합니다');}
+  else if(preauthorizedPaths.has(path))reviewer(p);
+  else fail(400,'사전 인증 대상 경로가 아닙니다');
+  return {authorized:true};
+ }
  function dispatch(method,url,headers,body=''){
   const path=url.pathname;
   if(path==='/healthz'&&method==='GET'){store.db.prepare('SELECT 1').get();return {status:'ready',component:'vault'};}
   if(store.quarantine&&path!=='/api/integrity')fail(503,'Transparency quarantine: '+store.quarantine.reason);
   if(path.startsWith('/internal/assistance/')){const result=assistance.internal(method,url,headers,body);if(result!==undefined)return result;}
+  // The audit gateway asks here before it buffers a large upload; the body names only the target route.
+  if(path==='/internal/preauthorize'&&method==='POST'){
+   let target;try{target=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}
+   if(typeof target?.path!=='string'||!preauthorizedPaths.has(target.path))fail(400,'사전 인증 대상 경로가 아닙니다');
+   return preauthorize('POST',new URL(target.path,'http://localhost'),headers);
+  }
   const p=auth(headers,method);
   const developmentResult=developmentRuns.handle(p,method,url,headers,body);if(developmentResult!==undefined)return developmentResult;
   if(path==='/api/ingest'&&method==='POST'){
@@ -323,5 +347,5 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,analysis,assistance,identity,governanceDocuments,transparency,accessLog};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog};
 }

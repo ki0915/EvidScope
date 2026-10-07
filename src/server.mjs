@@ -60,6 +60,11 @@ async function upstream(path,method,headers,body){
  if(headers.origin&&(isAuth||/(?:^|;\s*)(?:__Host-)?evidscope-session=/.test(headers.cookie||'')))forwarded.origin=headers.origin;
  try{const response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:controller.signal,redirect:'manual'});return {status:response.status,body:await response.text(),headers:isAuth?{...(response.headers.has('location')?{location:response.headers.get('location')}:{}),...(response.headers.getSetCookie().length?{'set-cookie':response.headers.getSetCookie()}:{})}:{}};}finally{clearTimeout(timer);}
 }
+// Large uploads through the audit gateway are authorized by the vault before the gateway buffers them (S12a).
+async function preauthorizeUpstream(path,headers){
+ const output=await upstream('/internal/preauthorize','POST',headers,JSON.stringify({path}));if(output.status===200)return;
+ let message='인증이 필요합니다';try{message=JSON.parse(output.body).error||message;}catch{}throw new HttpError(output.status,message);
+}
 async function route(req,res){
  for(const[k,v]of Object.entries(security))res.setHeader(k,v);res.setHeader('Content-Type','application/json; charset=utf-8');
  if(instance)res.setHeader('x-evidscope-instance',instance);
@@ -84,13 +89,19 @@ async function route(req,res){
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
-  const largeBody=url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp';
-  const body=await requestBody(req,mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'))?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384);
+  const largeBody=url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp',post=req.method==='POST';
+  const vaultResult=mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'));
+  const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384;
+  // Credentials and role are checked before anything above the 16 KiB default is buffered (S12a).
+  if(limit>16384){if(mode==='vault')service.preauthorize(req.method,url,req.headers);else await preauthorizeUpstream(url.pathname,req.headers);}
+  const body=await requestBody(req,limit);
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
    const output=await service.handle(req.method,url,req.headers,body);res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
   }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition','attachment; filename="evidscope-evidence.json"');res.end(output.body);}
- }catch(error){res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다'}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}
+ }catch(caught){
+  const error=caught instanceof URIError?new HttpError(400,'경로의 퍼센트 인코딩 형식 오류'):caught;
+  res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다'}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}
  finally{active--;}
 }
 const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
