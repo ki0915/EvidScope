@@ -1,5 +1,5 @@
 import * as oidc from 'openid-client';
-import {randomBytes,randomUUID,createHash,createHmac} from 'node:crypto';
+import {randomBytes,randomUUID,createHash,createHmac,createCipheriv,createDecipheriv} from 'node:crypto';
 import {digest,equal} from './crypto.mjs';
 import {fail,identifier,cleanText} from './model.mjs';
 import {createIdentityState} from './identity-state.mjs';
@@ -36,7 +36,7 @@ export function createIdentity({config,store,now=()=>Date.now()}){
  if(new Set(bindings.map(b=>b.id)).size!==bindings.length||new Set(bindings.map(b=>b.subject)).size!==bindings.length||bindings.some(b=>(config.principals||[]).some(p=>p.id===b.id)))throw Error('OIDC principal or issuer/subject collision');
  const byId=new Map(bindings.map(b=>[b.id,b])),bySubject=new Map(bindings.map(b=>[b.subject,b]));
  const prefix=local?'evidscope-':'__Host-evidscope-',sessionName=prefix+'session',flowName=prefix+'flow';
- const flows=new Map(),sessions=new Map(),csrfKey=randomBytes(32);
+ const sessions=new Map(),consumed=new Map(),csrfKey=randomBytes(32),flowKey=randomBytes(32),flowAad=Buffer.from(`evidscope-oidc-flow-v1|${origin}|${flowName}`);
  const cookie=(name,value,seconds)=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${seconds}${local?'':'; Secure'}`;
  const response=(status,body={},headers={})=>({status,body,headers});
  const csrf=raw=>createHmac('sha256',csrfKey).update(raw).digest('base64url');
@@ -60,7 +60,28 @@ export function createIdentity({config,store,now=()=>Date.now()}){
  }
  let identityState;
  function state(binding){identityState??=createIdentityState(store);return identityState(binding);}
- function cleanup(){const at=now();for(const [key,f] of flows)if(f.expires<=at)flows.delete(key);for(const [key,s] of sessions)if(s.expires<=at||s.lastSeen+idle<=at)sessions.delete(key);}
+ function cleanup(){const at=now();for(const [key,s] of sessions)if(s.expires<=at||s.lastSeen+idle<=at)sessions.delete(key);}
+ // The login flow (state, nonce, PKCE verifier, expiry) travels in a short-lived AES-256-GCM sealed cookie instead of
+ // vault memory, so an anonymous /auth/login flood creates no server state and cannot lock out other users (S9).
+ function sealFlow(flow){
+  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',flowKey,iv);cipher.setAAD(flowAad);
+  const data=Buffer.concat([cipher.update(JSON.stringify(flow),'utf8'),cipher.final()]);
+  return Buffer.concat([iv,cipher.getAuthTag(),data]).toString('base64url');
+ }
+ function openFlow(value){
+  if(typeof value!=='string'||value.length>1024||!/^[A-Za-z0-9_-]+$/.test(value))throw Error('flow');
+  const raw=Buffer.from(value,'base64url');if(raw.length<29)throw Error('flow');
+  const decipher=createDecipheriv('aes-256-gcm',flowKey,raw.subarray(0,12));decipher.setAAD(flowAad);decipher.setAuthTag(raw.subarray(12,28));
+  const flow=JSON.parse(Buffer.concat([decipher.update(raw.subarray(28)),decipher.final()]).toString('utf8'));
+  if(flow?.v!==1||[flow.state,flow.nonce,flow.verifier].some(x=>typeof x!=='string'||!x)||!Number.isSafeInteger(flow.expires))throw Error('flow');
+  return flow;
+ }
+ // A state is consumed before the token exchange, so a replayed callback never reaches the token endpoint. Entries live
+ // until their flow expires; the map is bounded and drops its oldest entry when full (the IdP still refuses a reused code).
+ function consume(flow){
+  const at=now(),key=hash(flow.state);for(const [old,expires] of consumed){if(expires>at)break;consumed.delete(old);}
+  if(consumed.has(key))throw Error('flow');consumed.set(key,flow.expires);if(consumed.size>10000)consumed.delete(consumed.keys().next().value);
+ }
  function audit(binding,operation,sessionId){store.transaction(()=>store.append(binding.tenant,'identity_session',{id:randomUUID(),principalId:binding.id,operation,...(sessionId?{sessionId}:{})},binding.id));}
  function authenticate(headers,method='GET'){
   const raw=cookies(headers.cookie).get(sessionName);if(!raw)return null;
@@ -76,17 +97,16 @@ export function createIdentity({config,store,now=()=>Date.now()}){
   const path=url.pathname;
   if(path==='/auth/config'&&method==='GET')return response(200,{mode:'oidc',loginPath:'/auth/login'});
   if(path==='/auth/login'&&method==='GET'){
-   cleanup();if(flows.size>=1000)fail(429,'로그인 요청 한도 초과');
-   const c=await client(),browser=random(),stateValue=oidc.randomState(),nonce=oidc.randomNonce(),verifier=oidc.randomPKCECodeVerifier();
+   const c=await client(),stateValue=oidc.randomState(),nonce=oidc.randomNonce(),verifier=oidc.randomPKCECodeVerifier();
    const location=oidc.buildAuthorizationUrl(c,{redirect_uri:callback,response_type:'code',scope:'openid',state:stateValue,nonce,code_challenge:await oidc.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256',max_age:String(maxAge),...(acr.length?{acr_values:acr.join(' ')}:{})});
-   flows.set(hash(stateValue),{state:stateValue,nonce,verifier,browserHash:hash(browser),expires:now()+300000});
-   return response(302,{}, {'location':location.href,'set-cookie':[cookie(flowName,browser,300)]});
+   const flow=sealFlow({v:1,state:stateValue,nonce,verifier,expires:now()+300000});
+   return response(302,{}, {'location':location.href,'set-cookie':[cookie(flowName,flow,300)]});
   }
   if(path==='/auth/callback'&&method==='GET'){
    try{
-    const values=url.searchParams.getAll('state'),browser=cookies(headers.cookie).get(flowName);if(values.length!==1||values[0].length>256||!browser)throw Error('flow');
-    const flow=flows.get(hash(values[0]));if(!flow||flow.expires<=now()||!equal(flow.browserHash,hash(browser)))throw Error('flow');
-    flows.delete(hash(values[0]));
+    const values=url.searchParams.getAll('state'),sealed=cookies(headers.cookie).get(flowName);if(values.length!==1||values[0].length>256||!sealed)throw Error('flow');
+    const flow=openFlow(sealed);if(!equal(flow.state,values[0])||flow.expires<=now())throw Error('flow');
+    consume(flow);
     const current=new URL(callback);current.search=url.search;
     const tokens=await oidc.authorizationCodeGrant(await client(),current,{pkceCodeVerifier:flow.verifier,expectedState:flow.state,expectedNonce:flow.nonce,idTokenExpected:true,maxAge});
     const claims=tokens.claims(),binding=claims&&bySubject.get(claims.sub);
