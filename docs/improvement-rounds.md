@@ -24,9 +24,22 @@
 | S4 파기 후 SQLite 잔여 페이지 | `secure_delete` + WAL truncate | `test/erasure-remnants.test.mjs` |
 | S5 조회마다 원장 증가·전체 재검증·쓰기 락 | 검증 상태 증분 캐시, 열람 기록을 원장 밖 봉인 로그로 이동, GET은 읽기 전용 스냅샷, 커버링 인덱스 | `test/verified-state-reads.test.mjs`, `test/access-log.test.mjs`, `test/read-transactions.test.mjs` |
 | S7 전역 분석 적체로 tenant 간 수집 차단 | tenant별 적체 계산, OTLP 배치는 남길 적체로 판단 | `test/otlp-ingest.test.mjs`, `test/otlp-http.test.mjs` |
-| S6, S8~S12 | 진행 중(worker tenant 바인딩, 로그인 폭주, 4-eyes, 자기주장 증거 표시, 인증 전 본문 버퍼링, 복구 후 설정 재바인딩) | |
+| S6 worker 자격 하나로 모든 tenant 복호화 사본 수신·임의 결과 서명 | worker를 config `tenants` 목록(없으면 자기 `tenant`)에 묶어 claim·적체·commit 제한. vault가 같은 snapshot으로 `evaluate()`를 다시 계산해 다른 결과는 422로 거부. `suppressedBy`는 승인된 예외만 | `test/worker-tenant-binding.test.mjs` |
+| S8 활성 복구 후 토큰 회전·principal 추가 시 기동 거부 | `vault-backup.mjs rebind`로 vault 키 서명 재바인딩 연쇄와 외부 pin 기록. 기동 시 검증하고 원장에 `recovery_config_rebinding` 기록 | `test/recovery-config-rebinding.test.mjs` |
+| S9 익명 `/auth/login` 폭주로 OIDC 로그인 5분 잠김 | 로그인 흐름(state·nonce·PKCE verifier·만료)을 vault 메모리 대신 AES-256-GCM으로 봉인한 5분 쿠키에 보관. callback은 state 대조·1회 사용 | `test/oidc-login-flood.test.mjs` |
+| S10 auditor의 사건 종결·예외 확정 | 사건을 열거나 다시 연 사람은 종결 불가(4-eyes). 예외는 다른 reviewer·admin이 대기 중 요청을 한 번 승인해야 효력. README 역할 표 정정 | `test/four-eyes.test.mjs` |
+| S11 자기주장 증거만으로 평가 완료, 1인 작성·법률 검토·종결 | 보고서에 `evidenceAssurance`(`self_asserted` 등) 표시. 법률 검토는 작성자가 아닌 reviewer·admin이 평가 해시에 남긴 확인으로만 `reviewed`. 작성자는 과제 종결 불가 | `test/governance-separation.test.mjs` |
+| S12 인증 전 본문 버퍼링, 토큰 비교 전 재생, URIError 503, 롤백 시 문서 고아 | 큰 본문 경로는 본문 수신 전 인증(gateway는 vault `/internal/preauthorize`). run 토큰을 상수 시간 비교 후 재생. 잘못된 퍼센트 인코딩은 400. 롤백된 문서 파일 삭제 | `test/request-hardening.test.mjs` |
 | S3 이벤트 키를 같은 DB에 평문 보관 | 목적이 파기임을 문서에 명시. KEK 감싸기는 2라운드 후보 | [데이터 키 분리](data-key-separation.md) |
 | 품질: CI·린터 없음, 비공개 산출물 의존 테스트 | GitHub Actions 워크플로, 의존성 없는 소스 검사(`npm run check`, 새 파일 160자·긴 줄 증가 금지), 시험 fixture 정리, 비공개 산출물 시험은 이유와 함께 skip | `.github/workflows/`, `scripts/check-source.mjs` |
+
+#### S6·S8~S12에서 운영자가 알아야 할 변경
+
+- **worker 바인딩:** `scripts/init.mjs`가 만드는 `analysis-worker`는 `tenants:["alpha","beta"]`를 가진다. 기존 로컬 설정의 `tenant:"internal"` worker는 목록이 없어도 `synthetic-local`에서 모든 tenant를 계속 처리한다. `enterprise` 프로필은 목록 없는 `internal` worker로 기동하지 않는다. vault가 결과를 다시 계산하므로 분석 CPU가 행동당 약 두 배이고, vault와 worker는 같은 분석 엔진 버전이어야 한다. 불일치 결과는 lease를 `rejected`로 닫고(서명 원장 밖) 같은 행동을 다시 배정한다.
+- **4-eyes:** auditor는 사건을 계속 만들 수 있지만 자신이 열거나 다시 연 사건은 종결하지 못한다. 거버넌스 평가의 `legalReview:"reviewed"` 입력은 작성자의 주장으로만 표시되며, `POST /api/governance/assessments/:id/legal-review`로 다른 reviewer·admin이 확인해야 한다. 기존 평가도 확인 전까지 `legalStatus:"pending"`이다. 법률 검토자는 과제를 종결할 수 있고 평가 작성자는 종결할 수 없다(2인 규칙. 세 사람을 모두 분리하려면 종결 검사에 법률 검토자 조건 한 줄을 추가한다).
+- **로그인 흐름:** 흐름 쿠키는 vault 프로세스마다 새로 만드는 키로 봉인한다. 로그인 도중 vault가 재시작되면 그 흐름은 실패하고 다시 로그인해야 한다(이전의 메모리 표와 같다). 429 한도는 없어졌다.
+- **요청 처리:** 문서·공급사 묶음·OTLP JSON·worker 결과·보조 결과 본문은 인증·역할 확인 뒤에만 읽는다. 잘못된 퍼센트 인코딩은 400이다.
+- **복구 후 설정 변경:** [복구 안내](vault-recovery.md)의 config rebinding 절차를 따른다. `scripts/upgrade-local.mjs`는 복구된 vault의 설정을 직접 고치지 않고 이 절차를 안내한다.
 
 ### 바퀴의 재발명 점검
 
