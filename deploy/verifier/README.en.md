@@ -76,7 +76,8 @@ node evidscope-verify.mjs report report.json vault-public.pem [CHECKPOINT.json] 
 
 Transparency flags (optional): `--witness VKEY` (repeatable) `--quorum N` `--origin-base BASE` `--max-staleness SECONDS`
 `--require-transparency` `--require-tenant-witness` `--heads-key VKEY` (repeatable, the [heads signer](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md)'s key)
-`--require-heads-signer`. `node evidscope-verify.mjs help` prints the full usage.
+`--require-heads-signer` (needs `--origin-base`; `vault_host` is reported only under a pinned origin base).
+`node evidscope-verify.mjs help` prints the full usage.
 
 The result is JSON on standard output. Exit status: `0` verified, `1` not verified (reason on standard error), `2` usage error.
 

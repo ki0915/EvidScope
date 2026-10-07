@@ -104,8 +104,10 @@ node scripts/event-keys.mjs migrate /data /keys/signing-private.pem   # vault를
   `event-keys.mjs`는 키스토어 없이 또는 다른 키스토어로 실행하면 거부합니다. 감싼 키 옆에 감싸지 않은 키가 다시 쌓이는 일을 막기 위해서입니다.
 - 이전(migrate)은 데이터베이스 모드에서 만든 epoch 비밀과 파기 기록을 그대로 키스토어로 옮깁니다. 기존 영수증 지문은 계속 비교됩니다.
   감싸지 않은 키는 자기 서명 이벤트를 실제로 열어 본 뒤 감싸고, 덮어쓴 페이지는 `secure_delete`와 WAL checkpoint로 정리합니다.
-  첫 이전이 끝나면 `event_keystore_usage.moved_at`에 기록하고, 그 뒤 `evidence.db`에 생긴 epoch 행은 가져오지 않습니다. DB에 쓸 수 있는
-  공격자가 알려진 비밀이나 살아 있는 epoch의 파기 기록을 심어 키스토어로 들여보내는 것을 막기 위해서입니다.
+  첫 이전이 끝나면 `event_keystore_usage.moved_at`과 키스토어의 `moved.json`에 기록하고, 그 뒤 `evidence.db`에 생긴 epoch 행은 가져오지
+  않습니다. DB에 쓸 수 있는 공격자가 알려진 비밀이나 살아 있는 epoch의 파기 기록을 심어 키스토어로 들여보내는 것을 막기 위해서입니다.
+  2라운드는 `moved_at`만 보았기 때문에 DB 쓰기 권한자가 그 값을 지우면 다음 기동 때 심은 행이 들어갔습니다(3라운드 재감사,
+  `test/event-keystore-planted-epochs.test.mjs`). 이미 이전한 키스토어는 다음 기동 때 `moved_at`을 보고 `moved.json`을 만듭니다.
 - **이전 뒤에는 새 vault 백업을 만들고 이전 백업과 DB 사본을 폐기 절차에 넣으세요.** 이전 것에는 감싸지 않은 키가 그대로 있습니다.
 - Kubernetes 매니페스트는 아직 키스토어 볼륨을 마운트하지 않습니다. 그 배포는 데이터베이스 모드로 동작합니다.
 

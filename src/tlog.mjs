@@ -653,12 +653,15 @@ function requireHeadsSigner(result, options) {
   if (!(options.headsKeys || []).length) {
     throw Error('Heads signer check needs a pinned heads key (--heads-key): the heads key the evidence carries is not proof of who signed');
   }
+  if (!pinnedBase(options)) {
+    throw Error('Heads signer check needs a pinned origin base (--origin-base): witnesses still cosign a heads origin the signer retired at a restore epoch');
+  }
   if (!h) throw Error('Transparency heads evidence missing: rollback is not checked against a vault host compromise');
   if (!h.headsKeyPinned) {
     throw Error(`Transparency heads checkpoint is signed by the ${h.signedBy === 'vault_key' ? 'vault key' : 'unpinned heads key'}, not by the pinned `
       + 'heads key: anyone on the vault host could have signed it');
   }
-  if (pinnedBase(options) && result.originBase !== options.originBase) {
+  if (result.originBase !== options.originBase) {
     throw Error(`Heads signer check: the evidence continues origin base ${result.originBase} after a tlog epoch from the pinned ${options.originBase}`);
   }
   if (!h.quorumMet) throw Error(`Transparency witness quorum not met: ${h.witnesses.length}/${h.quorum}`);
@@ -669,14 +672,16 @@ function requireHeadsSigner(result, options) {
 // rollbackCheckedAgainst names who the witness-anchored check holds against: 'signing_key_holder' needs a fresh quorum on the
 // tenant log of the pinned origin base; a heads quorum (or a tenant quorum on an unpinned origin) only binds an attacker who
 // cannot sign. 'vault_host' needs a fresh heads quorum on a checkpoint signed by a pinned heads key (a heads signer outside the
-// vault host, src/signer.mjs, that refuses heads leaves which shrink, fork or drop a tenant log): whoever controls the vault
-// host, its key and its database cannot present this tenant behind the newest heads entry the witnesses saw then.
+// vault host, src/signer.mjs, that refuses heads leaves which shrink, fork or drop a tenant log) under the pinned origin base:
+// whoever controls the vault host, its key and its database cannot present this tenant behind the newest heads entry the
+// witnesses saw then. A witness cosigns a re-submitted checkpoint afresh, including the last one of a heads origin the signer
+// retired at a restore epoch, so without a pinned base an export from before the epoch would read the same.
 // A satisfied minimumCheckpoint is relative to the checkpoint the verifier supplied and does not set it.
 function finishResult(result, options) {
   result.witnessPolicy = policyOf(options);
   const tenantFresh = !!result.tenantCosigned?.fresh, headsFresh = !!result.heads?.fresh;
   const pinned = pinnedBase(options) && result.originBase === options.originBase;
-  const signerFresh = headsFresh && result.heads.headsKeyPinned === true && (pinned || !pinnedBase(options));
+  const signerFresh = headsFresh && result.heads.headsKeyPinned === true && pinned;
   result.rollbackChecked = !!(result.minimumCheckpoint?.satisfied || headsFresh || tenantFresh);
   result.rollbackCheckedAgainst = signerFresh ? 'vault_host'
     : tenantFresh && pinned ? 'signing_key_holder' : tenantFresh || headsFresh ? 'database_tamper' : null;

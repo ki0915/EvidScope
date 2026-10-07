@@ -143,8 +143,10 @@ node evidscope-verify.mjs bundle export.json vault-public.pem --attestation expo
 - `dsse`는 서명, subject digest, 대상 파일 검증(`bundle`/`report`와 같은 검사), predicate 재계산, 포함된 tlog-proof를 차례로
   확인합니다. `--policy 파일`을 주면 그 정책으로, 아니면 `--witness`·`--quorum`으로 만든 정책으로 증명을 확인하고,
   `--require-witnessed`는 정족수를 채운 증명이 하나도 없으면 실패합니다.
-- `tlog-proof`는 `--policy` 또는 `--key`(+ `--witness`, `--quorum`) 중 하나가 필요합니다. 둘 다 주면 정책의 로그 키가 고정한 키와
-  같아야 합니다. 레코드 파일은 영수증의 `record` 텍스트 그대로여야 하며, 공백 하나만 바뀌어도 거부합니다.
+- `tlog-proof`는 `--policy` 또는 `--key`(+ `--witness`, `--quorum`) 중 하나가 필요합니다. 둘 다 주면 정책이 그 origin에 적은 로그 키가
+  모두 고정한 키여야 합니다. 2라운드 검증기는 첫 로그 줄만 비교해서, 같은 origin에 다른 키를 한 줄 더 적은 정책과 그 키로 서명한 가짜
+  레코드를 받아들였습니다(3라운드 재감사, `test/tlog-policy-pinned-key.test.mjs`). 레코드 파일은 영수증의 `record` 텍스트 그대로여야
+  하며, 공백 하나만 바뀌어도 거부합니다.
 - 저장소의 `scripts/evidscope-verify.mjs`도 같은 명령입니다. 기존 `scripts/verify.mjs`와 `scripts/verify-case-report.mjs`도
   `--attestation <파일>.intoto.json`을 받고, 주지 않으면 출력이 예전과 같습니다.
 

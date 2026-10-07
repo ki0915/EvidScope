@@ -108,8 +108,9 @@ node scripts/transparency.mjs status --config transparency.json --key .local/sig
 - `/api/integrity`의 `transparency.rollbackChecked`가 `true`가 되려면 정족수 이상의 신선한 공동서명이 있고 실행 중 위반이 없어야 합니다.
 - `transparency.rollbackCheckedAgainst`는 그 확인이 누구를 상대로 성립하는지 밝힙니다. heads 공동서명만으로 확인했으면 `database_tamper`
   (DB만 조작하는 공격자, S1), 고정한 origin base의 tenant 로그를 정족수의 위트니스가 `maxStalenessSeconds` 안에 공동서명했으면
-  `signing_key_holder`(서명 키를 가진 공격자, S2까지), 검증자가 `--heads-key`로 고정한 heads 서명기 키가 서명한 heads 체크포인트에 신선한
-  정족수가 있으면 `vault_host`(vault 호스트 전체를 장악한 공격자, [heads 서명기](signer.md))입니다. 신선한 공동서명이 없으면 `null`입니다. `--min-checkpoint`만으로 확인한 경우
+  `signing_key_holder`(서명 키를 가진 공격자, S2까지), 검증자가 `--heads-key`로 고정한 heads 서명기 키가 `--origin-base`로 고정한
+  origin base의 heads 체크포인트에 서명했고 신선한 정족수가 있으면 `vault_host`(vault 호스트 전체를 장악한 공격자, [heads 서명기](signer.md))입니다.
+  `--require-heads-signer`는 `--origin-base`가 필요합니다. 신선한 공동서명이 없으면 `null`입니다. `--min-checkpoint`만으로 확인한 경우
   `rollbackChecked`는 `true`지만 검증자가 준 체크포인트 기준이므로 이 값은 `null`입니다.
 
 내보낸 묶음은 운영자를 믿지 않고 오프라인으로 검증합니다.
@@ -160,7 +161,7 @@ DB 안의 이력만 보므로, 그 이력이 위트니스가 공동서명한 hea
   확인한 결과는 `rollbackChecked:true`여도 `rollbackCheckedAgainst:"database_tamper"`, 즉 **DB만 조작하는 공격자(S1)** 기준으로 보고합니다.
   `witnessTenantLogs`를 켜면 위트니스가 tenant 로그마다 되돌리기를 거부하고(재검토 PoC는 `test/transparency-tenant-witness.test.mjs`로 옮겨
   litewitness 상호운용과 함께 확인), 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 보고되며 `--require-tenant-witness`로 요구할 수
-  있습니다. heads 서명기를 쓰면 이 공격은 서명 단계에서 막히고(litewitness 시험: 서명기 422, 위트니스 403), 서명기 키를 고정한 검증자는
+  있습니다. heads 서명기를 쓰면 이 공격은 서명 단계에서 막히고(litewitness 시험: 서명기 422, 위트니스 403), 서명기 키와 origin base를 고정한 검증자는
   `vault_host`를 받습니다([heads 서명기](signer.md)). 서명기 없이 `witnessTenantLogs`만 쓰면 다음 범위가 남습니다.
   - 마지막 tenant 공동서명 이후 `maxStalenessSeconds` 안의 되돌리기는 막지 못합니다. 그 사이에 받은 예전 내보내기는 아직 신선한 공동서명을 갖고 있습니다.
   - 복구 epoch는 vault 키만으로 서명되므로, 검증자가 새 origin base를 확인한 뒤 `--origin-base`로 다시 고정해야 `signing_key_holder`가 됩니다.

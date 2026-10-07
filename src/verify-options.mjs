@@ -26,8 +26,13 @@ function minimumCheckpoint(file) {
   } catch { /* a signed note is not JSON */ }
   return raw;
 }
+// A flag combination that cannot hold: a usage error in evidscope-verify (exit 2), checked before any file is read.
+export const transparencyUsage = values => (values['require-heads-signer'] && values['origin-base'] === undefined
+  ? '--require-heads-signer needs --origin-base BASE: witnesses still cosign a heads origin the signer retired at a restore epoch' : null);
 // Returns undefined (legacy behaviour) unless the input carries transparency material or a flag asks for it.
 export function transparencyOptions(values, present) {
+  const usage = transparencyUsage(values);
+  if (usage) throw Error(usage);
   const asked = ['witness', 'quorum', 'origin-base', 'max-staleness', 'require-transparency', 'require-tenant-witness', 'min-checkpoint', 'heads-key',
     'require-heads-signer'].some(k => values[k] !== undefined);
   if (!present && !asked) return undefined;
@@ -37,7 +42,7 @@ export function transparencyOptions(values, present) {
     // (rollbackCheckedAgainst 'signing_key_holder'); heads evidence alone only binds an attacker without the vault key.
     ...(values['require-tenant-witness'] ? {requireTenantWitness: true} : {}),
     // --heads-key: the heads signer's vkey for <origin base>/heads (repeat it for rotated keys). A heads checkpoint it signed, with a
-    // fresh quorum, is reported as 'vault_host'; --require-heads-signer fails unless that holds (docs/signer.md).
+    // fresh quorum under the pinned --origin-base, is reported as 'vault_host'; --require-heads-signer fails unless that holds (docs/signer.md).
     ...(values['heads-key'] !== undefined ? {headsKeys: values['heads-key']} : {}),
     ...(values['require-heads-signer'] ? {requireHeadsSigner: true} : {}),
     witnesses: values.witness || [],

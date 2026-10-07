@@ -62,7 +62,7 @@ ssh-agent의 하드웨어 키·클라우드 KMS를 씁니다.
 
 | 값 | 조건 | 상대할 수 있는 공격자 |
 |---|---|---|
-| `vault_host` | 검증자가 `--heads-key`로 고정한 서명기 키가 서명한 heads 체크포인트에 `maxStalenessSeconds` 안의 정족수 공동서명이 있고, `--origin-base`를 고정했다면 그 origin base인 경우 | vault 호스트 전체(vault 키·DB)를 가진 공격자도 이 tenant를 그 시각까지 위트니스가 본 heads 항목보다 뒤로 되돌린 내보내기를 보일 수 없습니다. |
+| `vault_host` | 검증자가 `--heads-key`로 고정한 서명기 키가 서명한 heads 체크포인트에 `maxStalenessSeconds` 안의 정족수 공동서명이 있고, 그 체크포인트가 `--origin-base`로 고정한 origin base의 heads origin인 경우 | vault 호스트 전체(vault 키·DB)를 가진 공격자도 이 tenant를 그 시각까지 위트니스가 본 heads 항목보다 뒤로 되돌린 내보내기를 보일 수 없습니다. |
 | `signing_key_holder` | 고정한 origin base의 tenant 로그 공동서명이 신선한 경우 | vault 서명 키를 가진 공격자의 tenant 되돌리기 |
 | `database_tamper` | heads 공동서명만 신선한 경우 | DB만 조작하는 공격자 |
 
@@ -70,7 +70,13 @@ ssh-agent의 하드웨어 키·클라우드 KMS를 씁니다.
   보고하고 `heads.signedBy: "heads_key"`, `heads.headsKeyPinned: false`로 밝힙니다.
 - 고정한 키와 다른 키로 서명한 heads 체크포인트는 거부합니다. vault 키로 서명한 예전 체크포인트는 예전과 같이 검증하며 `signedBy: "vault_key"`로
   보고합니다. 키를 고정하지 않은 검증은 vault 키 체크포인트에 대해 이전과 같은 결과를 냅니다.
-- `--require-heads-signer`는 결과가 `vault_host`가 아니면 이유와 함께 실패합니다.
+- `--require-heads-signer`는 결과가 `vault_host`가 아니면 이유와 함께 실패합니다. `--origin-base` 없이 주면 사용법 오류입니다
+  (`evidscope-verify`는 종료 코드 2, `scripts/verify*.mjs`는 오류 메시지와 종료 코드 1).
+- `vault_host`에는 `--origin-base` 고정이 필요합니다. 위트니스는 이미 본 체크포인트를 다시 받으면 새 시각으로 공동서명하므로, 복구 epoch로
+  은퇴한 heads origin의 마지막 체크포인트도 계속 신선해질 수 있습니다. 2라운드 검증기는 base를 고정하지 않아도 `vault_host`를 주었기 때문에
+  epoch 이전 내보내기가 그대로 `vault_host`로 통과했습니다(3라운드 재감사, `test/heads-signer-retired-origin.test.mjs`). 이제 base를 고정하지
+  않으면 그 아래에서 성립하는 수준(heads 공동서명만 신선하면 `database_tamper`)을 보고합니다. 예전 base를 계속 고정한 검증자는 오프라인으로
+  구별할 수 없으므로 [복구 epoch](#복구-epoch) 6·7단계를 따릅니다.
 
 ```powershell
 node scripts/signer.mjs vkey --state-dir /signer/state --origin-base evidscope.example.com/prod   # 검증자에게 전달할 heads 키
@@ -95,6 +101,11 @@ node scripts/verify.mjs export.json trust-anchor.pem --witness "<위트니스 vk
 - 연결: Unix 소켓(기본 권한 600), Windows named pipe, loopback TCP, TLS TCP. TCP와 named pipe는 32자 이상의 bearer token 파일이 필수이고
   loopback이 아닌 주소는 TLS가 필수입니다. 요청은 기본 8 MiB, 서명 분당 60회(버스트 10), 요청 분당 600회로 제한하며, 모든 서명은
   origin에 상관없이 한 줄로 직렬화합니다.
+- TCP 연결은 token을 보내기 전까지 인증되지 않으므로, 주소 하나가 전체 64개 연결 중 최대 8개만 열 수 있고(`maxConnectionsPerAddress`, 넘으면
+  바로 끊고 `counters.refusedConnections`에 셉니다) TLS 핸드셰이크는 5초 안에 끝나야 합니다(`handshakeTimeoutMs`). 2라운드에는 한 주소가
+  핸드셰이크 없이 소켓 64개를 열어 두면 기본 120초 동안 vault가 서명기에 닿지 못했습니다(3라운드 재감사, `test/signer-tls-slots.test.mjs`).
+  주소를 여럿 가진 공격자나 같은 주소로 보이는 NAT 뒤의 접속은 이 한도로 구별하지 못하므로, 서명기 포트는 NetworkPolicy·방화벽으로
+  vault만 닿게 합니다.
 - 키 백엔드는 시작할 때 고정 벡터에 서명하고 설정된 공개 키로 검증합니다. 다른 키이거나 prehash 변형이면 시작하지 않습니다.
 - 서명기에 연결할 수 있는 사람은 vault 대신 잎을 보낼 수 있습니다. 규칙을 지키는 성장 잎이라도 vault 원장과 맞지 않으면 vault가 그 잎을
   `fork`로 보고 멈추므로, 소켓 권한과 token은 vault만 갖게 합니다. token 파일과 키 파일은 소유자가 읽는 사용자이면 600이어야 합니다.
@@ -244,12 +255,26 @@ node scripts/signer.mjs init --state-dir /signer/state --backend command --publi
    `node scripts/transparency.mjs epoch-claims --config NEW.json --key signing-private.pem --data-dir RESTORED --out claims.json`
 4. 서명기에서 승인합니다. 출력의 `losses`(서명했던 크기보다 작게 복구된 tenant 로그)를 확인합니다.
    `node scripts/signer.mjs authorize-epoch --state-dir /signer/state --from-base OLD --to-base NEW --restored claims.json [--accept-loss "사유"] [--drop-log LOG_ID]`
+   `claims.json`은 vault가 만든 값입니다. 그래서 `authorize-epoch`는 서명한 크기와 같은 크기에서 루트가 다른 주장을 `fork`로 거부하고,
+   서명한 크기보다 큰 주장은 승인에 넣지 않습니다(그 로그는 서명한 항목에서 일관성 증명으로 이어져야 합니다). 서명기도 서명한 크기보다
+   작은 복구 범위만 손실로 받아들입니다. `--restored` 없이 `--accept-loss`만 주면 모든 tenant 로그가 어떤 이력으로든 다시 시작할 수 있으므로
+   `losses`에 모든 로그가 `restoredSize: null`로 나옵니다. 2라운드에는 두 경우 모두 `losses: []`로 보였습니다(3라운드 재감사,
+   `test/signer-epoch-claims.test.mjs`).
 5. 새 heads origin을 위트니스에 등록하고(서명기 vkey) 복구된 vault를 시작합니다. 승인 전에는 `status().signer.status`가 `unauthorized`이고
    `epochFrom`에 예전 origin base가 나오며, 승인 뒤 다음 시도(`refreshSeconds`)에 이어집니다.
 6. 검증자는 `--origin-base NEW`로 다시 고정합니다. 서명기 키는 origin 이름과 상관없이 인정하므로 `--heads-key`는 그대로 씁니다.
+7. 새 origin의 첫 서명기 체크포인트가 공동서명되면 위트니스마다 예전 heads origin에서 서명기 키를 지웁니다
+   (`witnessctl del-key -origin OLD/heads -key <예전 origin 이름의 서명기 vkey>`, 개발용 위트니스는 `scripts/witness.mjs del-key`).
+   위트니스는 이미 본 크기의 체크포인트를 다시 받으면 새 시각으로 공동서명하므로, 지우지 않으면 vault 호스트 장악자가 은퇴한 origin의
+   마지막 체크포인트를 언제든 신선하게 만들어 epoch 이전의 내보내기를 아직 예전 base를 고정한 검증자에게 `vault_host`로 보일 수
+   있습니다(3라운드 재감사에서 재현, base를 고정하지 않은 검증은 이제 `vault_host`를 주지 않습니다). 지운 뒤 `maxStalenessSeconds`(기본 24시간)가 지나면 예전
+   origin의 앵커는 더 이상 신선하지 않습니다.
 
 서명기가 예전 origin을 서명한 적이 없으면(핸드오버 이전 백업 등) `authorize-epoch` 대신 `authorize-genesis --origin-base NEW`로 새 origin을
 시작할 수 있습니다(코드 경로만 있고 별도 시험은 없습니다). 이때 예전 origin과의 연결은 vault 키로 서명한 epoch 기록만 보증합니다.
+서명기가 다른 heads origin을 아직 `active`로 서명하고 있으면 `authorize-genesis`는 승인을 만들되 표준 오류와 출력의 `warning`에 그 origin을
+적습니다. genesis는 이전에 서명한 이력과 아무것도 비교하지 않기 때문입니다. 그 vault를 복구한 것이라면 `authorize-epoch`를 쓰고 genesis 승인은
+`revoke --id`로 취소하며, 같은 서명기를 쓰는 별개의 vault일 때만 그대로 둡니다(3라운드 재감사, `test/signer-genesis-warning.test.mjs`).
 
 ## 배포
 
