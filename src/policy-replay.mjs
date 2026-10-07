@@ -6,14 +6,13 @@
 // erased before the evaluation, every asset registration in log order, the latest record of each rule (active versions)
 // and of each exception. Recorded snapshotHash = digest(snapshot) proves that the reconstruction is the exact input.
 import {EVALUATION_ENGINE, boundedEvaluation} from './model.mjs';
-import {canonical, digest, verifyBundle} from './crypto.mjs';
+import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 
 export const POLICY_REPLAY_FORMAT = 'evidscope-policy-replay-v1';
 // Limits in force before evaluations recorded them (src/analysis.mjs analysisLimits for engine evidscope-evaluate-v1).
 export const LEGACY_ANALYSIS_LIMITS = Object.freeze({
   events: 1000, assets: 5000, rules: 100, exceptions: 5000, snapshotBytes: 10 * 1024 * 1024, findings: 100, resultBytes: 1024 * 1024,
 });
-const ENCRYPTED = 'evidscope-encrypted-event-v1';
 const AUTHORITY_KINDS = ['grant', 'human_approval', 'automated_review', 'revoke'];
 const bytes = value => Buffer.byteLength(JSON.stringify(value));
 const ref = event => `${event.source}/${event.id}`;
@@ -41,7 +40,7 @@ function removeEvent(state, seq) {
 function apply(state, row, disclosures) {
   const payload = row.payload || {};
   if (row.type === 'event') {
-    if (payload.format === ENCRYPTED) {
+    if (isEncryptedEvent(payload)) {
       state.keyEvents.set(payload.keyId, row.seq);
       const event = disclosures.get(row.seq);
       if (event) addEvent(state, {...event, seq: row.seq, hash: row.hash});

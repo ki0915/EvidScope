@@ -35,7 +35,7 @@ async function legacyInstall(t) {
   const config = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
   config.principals = config.principals.filter(p => p.kind !== 'otlp');
   writeFileSync(join(dir, 'config.json'), JSON.stringify(config, null, 2), {mode: 0o600});
-  unlinkSync(join(dir, 'data-encryption.key'));
+  unlinkSync(join(dir, 'data-encryption.key')); rmSync(join(dir, 'event-keystore'), {recursive: true, force: true});
   const key = readFileSync(join(dir, 'signing-private.pem'), 'utf8'), reviewer = config.principals.find(p => p.id === 'alpha-reviewer');
   const s = createService({dataDir: join(dir, 'data'), key, config, requirements});
   const call = (path, body) => s.handle('POST', new URL(path, 'http://local'), {authorization: 'Bearer ' + reviewer.token}, JSON.stringify(body));
@@ -55,17 +55,20 @@ test('upgrade-local adds OTLP principals, separates the data key, enables monito
 
   const dry = await upgrade(dir, '--transparency', '--dry-run');
   assert.equal(dry.code, 0, dry.stderr);
-  assert.deepEqual(dry.json.steps.map(s => s.status), ['would_add', 'would_create_and_migrate', 'would_create']);
+  assert.deepEqual(dry.json.steps.map(s => s.status), ['would_add', 'would_create_and_migrate', 'would_create', 'would_create_and_migrate']);
   assert.deepEqual(readFileSync(join(dir, 'config.json')), configBytes);
-  for (const file of ['data-encryption.key', 'transparency.json']) assert.equal(existsSync(join(dir, file)), false, file);
+  for (const file of ['data-encryption.key', 'transparency.json', 'event-keystore']) assert.equal(existsSync(join(dir, file)), false, file);
 
   const run = await upgrade(dir, '--transparency');
   assert.equal(run.code, 0, run.stderr);
-  const [principals, dataKey, tlog] = run.json.steps;
+  const [principals, dataKey, tlog, keystore] = run.json.steps;
   assert.deepEqual(principals.principals, ['alpha-otlp', 'beta-otlp']);
   assert.equal(dataKey.status, 'created'); assert.match(dataKey.kid, /^dk1-[a-f0-9]{32}$/);
   assert.deepEqual(dataKey.migration.reencryptedFrom, {'legacy-signing-v1': 1});
   assert.equal(tlog.status, 'created'); assert.match(tlog.origin, /^evidscope\.local\/[a-f0-9]{16}$/);
+  // The legacy install has no events; the keystore is created and recorded for the events to come.
+  assert.equal(keystore.status, 'created'); assert.deepEqual(keystore.migration, {wrappedKeys: 0, importedEpochs: 0, importedTombstones: 0});
+  assert.ok(existsSync(join(dir, 'event-keystore', 'keystore.json')));
   const config = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8')), keyBytes = readFileSync(join(dir, 'data-encryption.key'));
   for (const p of config.principals.filter(p => p.kind === 'otlp')) assert.ok(!run.stdout.includes(p.token), 'token printed');
   for (const encoding of ['hex', 'base64', 'base64url']) assert.ok(!run.stdout.includes(keyBytes.toString(encoding)), 'key printed');
@@ -74,7 +77,7 @@ test('upgrade-local adds OTLP principals, separates the data key, enables monito
 
   const again = await upgrade(dir, '--transparency');
   assert.equal(again.code, 0, again.stderr); assert.equal(again.json.upgraded, false);
-  assert.deepEqual(again.json.steps.map(s => s.status), ['already_present', 'already_present', 'already_present']);
+  assert.deepEqual(again.json.steps.map(s => s.status), ['already_present', 'already_present', 'already_present', 'already_present']);
 
   const runtime = createLocalRuntime({host, portBase: 0, directory: dir});
   t.after(() => runtime.stop());
@@ -87,6 +90,7 @@ test('upgrade-local adds OTLP principals, separates the data key, enables monito
   const integrity = await get('/api/integrity');
   assert.equal(integrity.valid, true, integrity.error);
   assert.equal(integrity.keySeparation.status, 'separated');
+  assert.equal(integrity.keySeparation.eventKeys.storage, 'keystore_wrapped');
   assert.equal(integrity.transparency.mode, 'monitor');
   assert.ok(integrity.verificationScope.checks.includes('merkle_tree'));
   assert.ok((await get('/api/events?limit=50')).items.some(e => e.sourceKind === 'otlp'));

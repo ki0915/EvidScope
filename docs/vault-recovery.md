@@ -32,6 +32,10 @@ Frontier 생성도 SQLite backup API로 현재 상태를 고정한 뒤 원장·�
 
 복구는 새 디렉터리에서만 수행한다. 기존 운영 경로를 덮어쓰지 않으며 서비스·모델·학습 Job을 시작하지 않는다. 대상 시스템의 자격 설정을 재사용하거나 새로 발급하는 작업과 트래픽 전환은 별도의 운영 절차다. 정상 종료의 `verified:true`는 아래 snapshot 복구 검사 범위의 결과다.
 
+## 이벤트 키스토어를 쓰는 vault
+
+`EVENT_KEYSTORE_DIR`로 이벤트 키를 감싸는 vault는 `create`·`frontier`·`restore`에 `DATA_KEY_FILE`과 `EVENT_KEYSTORE_DIR`를 함께 줘야 한다. 없거나 다른 키스토어를 주면 거부한다. 백업에는 키스토어를 넣지 않으며(`eventKeystoreIncluded:false`), 보관 중인 이벤트의 평문 검색 사본도 비운 뒤 암호화한다. manifest는 `eventProjection:"excluded_rebuilt_on_restore"`와 키스토어 ID를 서명한다. 복구는 원장과 키스토어로 검색 사본을 다시 만들고 기존 검사를 그대로 수행한다. 백업 이후 파기된 키 epoch에 속한 미파기 이벤트가 백업에 있으면 복구를 거부한다. 키스토어 백업과 epoch 파기는 [이벤트 키 감싸기와 키 epoch 운영 가이드](event-key-wrapping.md)를 따른다.
+
 ## 기동 승인된 복구 이후의 설정 변경 (config rebinding)
 
 기동 승인된 복구본은 복구 때 사용한 설정 파일 전체의 해시(`configHash`)에 묶인다. 이미 회수한 토큰이 들어 있는 이전 설정으로 되돌려 기동하는 일을 막기 위해서다. 따라서 토큰 1개 회전이나 principal 추가처럼 정상적인 변경도 `config.json`만 바꾸면 vault가 `credential/config binding changed`로 기동을 거부한다. 이 경우 vault 서명키로 서명한 rebinding 기록을 남겨야 새 설정으로 기동할 수 있다.
@@ -96,4 +100,4 @@ node scripts/transparency.mjs status --config NEW.json --key KEY.pem --data-dir 
 
 `EVIDSCOPE_TEST_HOST=::1`에서 `node --test test/vault-recovery.test.mjs`로 실제 SQLite WAL 상태 백업, CLI 실행, 두 테넌트 복구, HTTP vault 기동 후 문서 조회와 타 테넌트 접근 거부를 시험했다. GPU·실제 금융 고객 데이터는 사용하지 않았다. `test/recovery-config-rebinding.test.mjs`는 복구 후 토큰 회전·principal 추가 rebinding, 변조·다른 복구본·rollback·중단 후 재실행, CLI, enforce 모드 투명성 vault의 원장 기록을 시험한다.
 
-로컬 검증은 원격 불변 백업, KMS/키 회전, 백업 보존·파기 승인, 장기간 5년 보존, 대용량 RPO/RTO, 저장소 HA를 입증하지 않는다. 원래 보관된 백업 파일은 이후의 이벤트 키 파기나 복구본의 frontier 적용으로 소거되지 않는다. 별도 보존·파기 절차가 필요하다. 원격 재해복구·조직별 운영 SLA는 별도 검증이 남아 있다.
+로컬 검증은 원격 불변 백업, KMS/키 회전, 백업 보존·파기 승인, 장기간 5년 보존, 대용량 RPO/RTO, 저장소 HA를 입증하지 않는다. 원래 보관된 백업 파일은 이후의 이벤트 키 파기나 복구본의 frontier 적용으로 소거되지 않는다. 별도 보존·파기 절차가 필요하다. 이벤트 키스토어를 쓰는 vault에서는 키 epoch 파기가 이전 백업의 해당 epoch 이벤트도 읽을 수 없게 만들지만, 백업 파일 자체의 보존·파기 절차는 그대로 필요하다. 원격 재해복구·조직별 운영 SLA는 별도 검증이 남아 있다.

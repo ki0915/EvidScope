@@ -4,18 +4,30 @@
 //   1. add a Bearer-only `<tenant>-otlp` source principal per tenant (OpenTelemetry /v1/traces intake);
 //   2. create data-encryption.key and re-encrypt stored documents under it (signing key no longer encrypts data); when the key
 //      already exists but referenced documents are still under another key id (an interrupted run), finish the migration;
-//   3. with --transparency, write transparency.json (monitor mode, local pin only) that `npm start` picks up.
+//   3. with --transparency, write transparency.json (monitor mode, local pin only) that `npm start` picks up;
+//   4. create the event keystore (event-keystore/, outside data/) and wrap every raw event key under it
+//      (docs/event-key-wrapping.md); `npm start` passes it to the vault as EVENT_KEYSTORE_DIR.
 // Every file it changes is first copied to <dir>/upgrade-backup-<timestamp>/. Tokens and key bytes are never printed.
 import {copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
 import {randomBytes} from 'node:crypto';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {dataKeyId, generateDataKeyFile, readDataKeyFile} from '../src/data-keys.mjs';
 import {documentKeyUsage, migrateDocuments} from './data-key.mjs';
+import {migrateEventKeystore} from './event-keys.mjs';
+import {createEventKeystore, keystoreMoved} from '../src/event-keystore.mjs';
+import {pendingEventKeyMigration} from '../src/event-keys.mjs';
 import {duplicatePrincipalIds} from '../src/credentials.mjs';
 
 const RESTORATION_MARKER = 'vault-restoration.json';
+
+// Raw (unwrapped) event keys and epoch secrets still inside evidence.db, read without opening a Store.
+function pendingEventKeys(file) {
+  const db = new DatabaseSync(file, {readOnly: true});
+  try { const pending = pendingEventKeyMigration(db); return pending.rawKeys + (keystoreMoved(db) ? 0 : pending.epochs); } finally { db.close(); }
+}
 
 function writeAtomic(file, text) {
   const tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
@@ -66,9 +78,12 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
 
   // 2. Data-encryption key separate from the signing key, then re-encrypt referenced documents under it.
   const keyFile = join(dir, 'data-encryption.key'), hasDatabase = existsSync(join(dataDir, 'evidence.db'));
+  // Once the vault wraps its event keys, every tool that reads events needs the keystore (step 4 of an earlier run).
+  const keystoreDir = join(dir, 'event-keystore'), keystoreExists = existsSync(join(keystoreDir, 'keystore.json'));
+  const eventKeystoreDir = keystoreExists ? keystoreDir : undefined;
   const migrate = kid => {
     try {
-      const m = migrateDocuments({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey: readDataKeyFile(keyFile)});
+      const m = migrateDocuments({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey: readDataKeyFile(keyFile), eventKeystoreDir});
       return {tenants: m.tenants, reencryptedFrom: m.reencryptedFrom, retiredKeyIds: m.retiredKeyIds};
     } catch (error) {
       // The key file stays: data_key_usage may already reference it, and a vault without it would refuse to start.
@@ -78,7 +93,8 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
   if (existsSync(keyFile)) {
     // An earlier run may have created the key and failed mid-migration; migrateDocuments is idempotent, so finish it.
     const dataKey = readDataKeyFile(keyFile), kid = dataKeyId(dataKey);
-    const pending = Object.fromEntries(Object.entries(hasDatabase ? documentKeyUsage({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey}) : {})
+    const usage = hasDatabase ? documentKeyUsage({dataDir, signingKey: readFileSync(signingFile, 'utf8'), dataKey, eventKeystoreDir}) : {};
+    const pending = Object.fromEntries(Object.entries(usage)
       .filter(([id]) => id !== kid));
     if (!Object.keys(pending).length) steps.push({step: 'data_key', status: 'already_present'});
     else if (dryRun) steps.push({step: 'data_key', status: 'would_migrate', kid, pendingFilesByKeyId: pending});
@@ -98,6 +114,24 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
     if (!dryRun) writeAtomic(tlogFile, JSON.stringify(body, null, 2) + '\n');
     steps.push({step: 'transparency', status: dryRun ? 'would_create' : 'created', file: tlogFile, origin: body.origin,
       note: 'Monitor mode with a local pin only detects rollback against that pin; add an independent witness for real assurance.'});
+  }
+
+  // 4. Event keystore: key-epoch secrets sealed by the data key, outside data/, so that destroying an epoch reaches every copy of
+  //    evidence.db and every vault backup. Raw event keys (and epoch secrets kept in evidence.db) move under it.
+  const rawEventKeys = hasDatabase ? pendingEventKeys(join(dataDir, 'evidence.db')) : 0;
+  if (keystoreExists && !rawEventKeys) steps.push({step: 'event_keystore', status: 'already_present'});
+  else if (dryRun) steps.push({step: 'event_keystore', status: keystoreExists ? 'would_migrate' : 'would_create_and_migrate', rawEventKeys});
+  else {
+    const keystoreId = createEventKeystore(keystoreDir), env = {DATA_KEY_FILE: keyFile, EVENT_KEYSTORE_DIR: keystoreDir};
+    let migration = null;
+    try {
+      if (hasDatabase) migration = migrateEventKeystore({dataDir, signingKey: readFileSync(signingFile, 'utf8'), env});
+    } catch (error) {
+      throw Error(`Event keystore ${keystoreId} is in place but event-key migration failed: ${error.message}. Stop the vault and re-run.`);
+    }
+    steps.push({step: 'event_keystore', status: keystoreExists ? 'migrated' : 'created', keystoreId, dir: keystoreDir,
+      migration: migration && {wrappedKeys: migration.wrappedKeys, importedEpochs: migration.importedEpochs, importedTombstones: migration.importedTombstones},
+      note: 'Back up event-keystore/ separately from vault backups (docs/event-key-wrapping.md); without it no event can be read.'});
   }
 
   const changed = !dryRun && steps.some(s => ['added', 'created', 'migrated'].includes(s.status));

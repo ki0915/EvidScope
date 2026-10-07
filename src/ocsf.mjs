@@ -5,7 +5,7 @@
 // evidence and a record_integrity attestation.
 import {createHash, createPublicKey, KeyObject} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {verifyBundle} from './crypto.mjs';
+import {isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {fail} from './model.mjs';
 import {tenantLogId} from './tlog.mjs';
 
@@ -14,7 +14,6 @@ export const OCSF_DEFAULT_VERSION = '1.3.0';
 export const SPLUNK_SOURCETYPE = 'ocsf:evidscope:detection_finding';
 const CATEGORY = {uid: 2, name: 'Findings'}, CLASS = {uid: 2004, name: 'Detection Finding'}, CREATE = {id: 1, name: 'Create'};
 const SEVERITY = {low: [2, 'Low'], medium: [3, 'Medium'], high: [4, 'High']};
-const ENCRYPTED = 'evidscope-encrypted-event-v1';
 const LEDGER_SERIALIZATION = 'EvidScope ledger record without hash, canonical JSON with sorted keys (src/crypto.mjs canonical)';
 const PRODUCT_VERSION = (() => {
   try { return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version; } catch { return 'unknown'; }
@@ -145,7 +144,7 @@ export function ocsfFromBundle(bundle, publicKey, {version, expectedCheckpoint} 
   const disclosures = new Map((bundle.disclosures || []).map(d => [d.seq, d.event])), byAction = new Map();
   for (const row of bundle.records) {
     if (row.type !== 'event') continue;
-    const event = row.payload.format === ENCRYPTED ? disclosures.get(row.seq) : row.payload;
+    const event = isEncryptedEvent(row.payload) ? disclosures.get(row.seq) : row.payload;
     if (!event) continue;
     if (!byAction.has(event.actionId)) byAction.set(event.actionId, []);
     byAction.get(event.actionId).push({...event, seq: row.seq, hash: row.hash});

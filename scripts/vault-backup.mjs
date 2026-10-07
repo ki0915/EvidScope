@@ -17,7 +17,7 @@ try{
  const options={...Object.fromEntries(restoreFlags.map(name=>[name,{type:'string'}])),'transparency-out':{type:'string'},reason:{type:'string'}};
  const {values,positionals}=parseArgs({allowPositionals:true,options});
  const [mode,...args]=positionals;
- const dataKeys=dataKeysFromEnv(process.env);
+ const dataKeys=dataKeysFromEnv(process.env),eventKeystoreDir=process.env.EVENT_KEYSTORE_DIR?resolve(process.env.EVENT_KEYSTORE_DIR):undefined;
  const json=file=>{if(lstatSync(file).size>16*1024*1024)throw Error('Recovery input exceeds 16MiB');return JSON.parse(readFileSync(file,'utf8').replace(/^﻿/,''));};
  const noLinks=file=>{for(let current=resolve(file);;){if(existsSync(current)&&lstatSync(current).isSymbolicLink())throw Error('Recovery output symlink or junction is not allowed');const parent=dirname(current);if(parent===current)return;current=parent;}};
  const outside=(file,dir)=>{noLinks(file);noLinks(dir);const rel=relative(dir,file);if(!rel||!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep))throw Error('Recovery pin/output must be stored outside data and backup directories');};
@@ -28,7 +28,8 @@ try{
   const [dataDir,keyFile,publicFile,archiveAnchorFile,configFile,frontierFile,pinFile]=args.map(p=>resolve(p)),companionFile=values['transparency-out']?resolve(values['transparency-out']):null;
   if(new Set([frontierFile,pinFile,companionFile].filter(Boolean)).size!==(companionFile?3:2)||[frontierFile,pinFile,companionFile].some(file=>file&&existsSync(file)))throw Error('Frontier outputs must be distinct new files; refusing overwrite');
   for(const file of [frontierFile,pinFile,companionFile].filter(Boolean))outside(file,dataDir);
-  const result=await createVaultRecoveryFrontier({dataDir,privateKey:readFileSync(keyFile),publicKey:readFileSync(publicFile),...dataKeys,anchor:json(archiveAnchorFile),config:json(configFile),transparency:values['transparency-config']?json(resolve(values['transparency-config'])):undefined});
+  const result=await createVaultRecoveryFrontier({dataDir,privateKey:readFileSync(keyFile),publicKey:readFileSync(publicFile),...dataKeys,eventKeystoreDir,
+   anchor:json(archiveAnchorFile),config:json(configFile),transparency:values['transparency-config']?json(resolve(values['transparency-config'])):undefined});
   if(companionFile&&!result.transparency)throw Error('The source vault has no transparency heads log; nothing to write to --transparency-out');
   writeFileSync(frontierFile,JSON.stringify(result.frontier,null,2)+'\n',{flag:'wx',mode:0o600});
   writeFileSync(pinFile,JSON.stringify(result.anchor,null,2)+'\n',{flag:'wx',mode:0o600});
@@ -47,13 +48,13 @@ try{
  const [first,second,keyFile,publicFile,anchorFile]=args.map(p=>resolve(p));
  const archive=mode==='create'?second:first;
  outside(anchorFile,archive);
- const shared={privateKey:readFileSync(keyFile),publicKey:readFileSync(publicFile),...dataKeys};
+ const shared={privateKey:readFileSync(keyFile),publicKey:readFileSync(publicFile),...dataKeys,eventKeystoreDir};
  if(mode==='create'){
   if(existsSync(anchorFile))throw Error('External recovery anchor already exists; refusing overwrite');
   // CONFIG_FILE (optional, as for the server) lets an enterprise-profile vault refuse a signing-key-sealed backup before its first start.
   const anchor=await createVaultBackup({dataDir:first,backupDir:second,...shared,config:process.env.CONFIG_FILE?json(resolve(process.env.CONFIG_FILE)):undefined});
   writeFileSync(anchorFile,JSON.stringify(anchor,null,2)+'\n',{flag:'wx',mode:0o600});
-  console.log(JSON.stringify({created:true,backupDirectory:second,externalAnchor:anchorFile,manifestSha256:anchor.manifestSha256,privateKeyIncluded:false,dataKeyIncluded:false,backupEncryption:dataKeys.dataKey?'data_key_hkdf':'legacy_signing_key_derived'}));
+  console.log(JSON.stringify({created:true,backupDirectory:second,externalAnchor:anchorFile,manifestSha256:anchor.manifestSha256,privateKeyIncluded:false,dataKeyIncluded:false,eventKeystoreIncluded:false,backupEncryption:dataKeys.dataKey?'data_key_hkdf':'legacy_signing_key_derived'}));
  }else{
   const anchor=json(anchorFile),activation=args.length===8?{frontier:json(resolve(args[5])),frontierAnchor:json(resolve(args[6])),config:json(resolve(args[7]))}:{};
   if(args.length===8)outside(resolve(args[6]),archive);
