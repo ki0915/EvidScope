@@ -34,7 +34,8 @@ const isMountPoint = dir => {
 export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   if (raw === undefined || raw === null) return OFF;
   if (typeof raw !== 'object' || Array.isArray(raw)) throw Error('Transparency config must be a JSON object');
-  const allowed = ['origin', 'witnesses', 'quorum', 'intervalMs', 'maxStalenessSeconds', 'refreshSeconds', 'timeoutMs', 'mode', 'pinFile', 'startupProbe'];
+  const allowed = ['origin', 'witnesses', 'quorum', 'intervalMs', 'maxStalenessSeconds', 'refreshSeconds', 'timeoutMs', 'mode', 'pinFile', 'startupProbe',
+    'witnessTenantLogs'];
   for (const k of Object.keys(raw)) if (!allowed.includes(k)) throw Error('Unknown transparency config field: ' + k);
   const mode = raw.mode ?? 'monitor';
   if (!TRANSPARENCY_MODES.includes(mode)) throw Error('Transparency mode must be off, monitor or enforce');
@@ -60,6 +61,8 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   if (raw.pinFile !== undefined && typeof raw.pinFile !== 'string') throw Error('Transparency pinFile must be a path');
   const startupProbe = raw.startupProbe ?? (mode === 'enforce' ? 'required' : 'best_effort');
   if (!STARTUP_PROBES.includes(startupProbe)) throw Error('Transparency startupProbe must be required or best_effort');
+  // Opt-in: also submit every tenant log to the witnesses (each tenant origin must be registered at each witness).
+  if (raw.witnessTenantLogs !== undefined && typeof raw.witnessTenantLogs !== 'boolean') throw Error('Transparency witnessTenantLogs must be true or false');
   if (!env.TRANSPARENCY_PIN_FILE && raw.pinFile === undefined && dataDir && isMountPoint(resolve(dataDir))) {
     throw Error(`Transparency pinFile (or TRANSPARENCY_PIN_FILE) is required: the data directory ${resolve(dataDir)} is a mount point, `
       + 'so the default pin path beside it would live on another (often read-only or ephemeral) filesystem');
@@ -73,6 +76,7 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
     timeoutMs: int(raw.timeoutMs, 5000, 100, 60000, 'timeoutMs'),
     pinFile: resolve(env.TRANSPARENCY_PIN_FILE || raw.pinFile || transparencyPinPath(dataDir)),
     startupProbe,
+    witnessTenantLogs: raw.witnessTenantLogs === true,
   });
 }
 // Lives outside config.json so witness changes never alter the restore-bound config hash.
@@ -227,10 +231,16 @@ export function* ledgerLeaves(db, tenant) {
 }
 
 // ---------- witness exchange (shared by the startup probe and the pump) ----------
+// The log a submission is about, as named in its outcome messages.
+const HEADS_SUBJECT = Object.freeze({name: 'heads', log: 'heads log', checkpoint: 'heads checkpoint', origin: 'heads origin'});
+const tenantSubject = origin => ({name: `tenant log ${origin}`, log: `tenant log ${origin}`, checkpoint: `tenant log ${origin} checkpoint`,
+  origin: `tenant log ${origin}`});
 // One add-checkpoint submission with a single 409 resynchronisation. Protocol outcomes never throw.
-export async function exchange({w, size, note, old, proofFor, logV, config, fetchImpl, now}) {
+export async function exchange({w, size, note, old, proofFor, logV, config, fetchImpl, now, subject = HEADS_SUBJECT}) {
   for (let attempt = 0; ; attempt++) {
-    if (old > size) return {status: 'rollback', size: old, message: `witness holds heads size ${old} but the local heads log has ${size} (rollback)`};
+    if (old > size) {
+      return {status: 'rollback', size: old, message: `witness holds ${subject.name} size ${old} but the local ${subject.log} has ${size} (rollback)`};
+    }
     let proof;
     try { proof = old === 0 || old === size ? [] : proofFor(old); } catch (error) { return {status: 'inconsistent', message: error.message}; }
     const r = await T.postAddCheckpoint(w.url, T.addCheckpointBody(old, proof, note), {timeoutMs: config.timeoutMs, fetchImpl});
@@ -249,18 +259,99 @@ export async function exchange({w, size, note, old, proofFor, logV, config, fetc
       continue;
     }
     if (r.status === 409) return {status: 'unknown', message: 'witness size changed during resynchronisation'};
-    if (r.status === 422) return {status: 'fork', size: old, message: `witness rejected heads checkpoint ${size} as inconsistent with its size ${old} (fork)`};
-    if (r.status === 404) return {status: 'unregistered', message: 'heads origin is not registered at the witness'};
+    if (r.status === 422) {
+      return {status: 'fork', size: old, message: `witness rejected ${subject.checkpoint} ${size} as inconsistent with its size ${old} (fork)`};
+    }
+    if (r.status === 404) return {status: 'unregistered', message: `${subject.origin} is not registered at the witness`};
     if (r.status === 403) return {status: 'untrusted', message: 'witness does not trust the vault log key'};
     if (r.status === 400) return {status: 'rejected', message: 'witness rejected the request as malformed'};
     return {status: 'unreachable', message: r.status ? `HTTP ${r.status}` : r.error || 'network error'};
   }
 }
 const witnessId = w => w.name + '+' + w.keyId;
+// A newer cosignature of the same checkpoint only refreshes the timestamp (freshness); the tlog_cosignatures trigger enforces it.
+const COSIGNATURE_SQL = `INSERT INTO tlog_cosignatures VALUES(?,?,?,?,?,?,?) ON CONFLICT(origin,size,key_id)
+  DO UPDATE SET name=excluded.name,timestamp=excluded.timestamp,line=excluded.line,received_at=excluded.received_at
+  WHERE excluded.timestamp>tlog_cosignatures.timestamp`;
+
+// ---------- tenant logs at the witnesses (witnessTenantLogs) ----------
+// A heads leaf is signed by the vault key alone, so a key holder can append one that rolls a single tenant back and still get
+// it cosigned. Submitting each tenant log as its own origin lets the witnesses refuse that rollback themselves.
+const TENANT_BATCH = 64, TENANT_CONCURRENCY = 4;
+const tenantPrefix = config => config.base + '/t/';
+const logVerifierOf = (origin, publicKey) => T.noteVerifier(T.logVkey(origin, publicKey));
+async function eachLimited(items, limit, fn) {
+  let next = 0;
+  await Promise.all(Array.from({length: Math.min(limit, items.length)}, async () => { while (next < items.length) await fn(items[next++]); }));
+}
+// A tlog_state (or tlog_checkpoints) row whose frontier folds to its root and whose signed note names the same origin, size and root.
+function verifiedTenantRow(row, logV) {
+  let peaks = null, c = null;
+  try { peaks = T.blobToPeaks(row.peaks, row.size); c = T.parseCheckpoint(T.openNote(row.note, [logV]).text); } catch { c = null; }
+  const root = Buffer.from(row.root);
+  if (!c || !T.frontierRoot(peaks).equals(root) || c.origin !== row.origin || c.size !== row.size || !c.root.equals(root) || c.extensions.length) {
+    throw kinded('inconsistent', 'Truncated or inconsistent tlog state for tenant log ' + row.origin);
+  }
+  return {tenant: row.tenant, origin: row.origin, size: row.size, root, peaks, note: row.note};
+}
+function* ledgerLeavesBetween(db, tenant, from, to) {
+  let expected = from;
+  for (const r of db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? AND seq>? AND seq<=? ORDER BY seq').iterate(tenant, from, to)) {
+    if (r.seq !== ++expected) break;
+    yield T.recordLeaf(r.hash);
+  }
+  if (expected !== to) throw kinded('inconsistent', 'Truncated or inconsistent ledger sequence for tenant');
+}
+// Proof m -> n of a verified tenant row, checked against its signed root before it leaves the vault. The frontier at m comes
+// from the checkpoint a witness cosigned there (tlog_checkpoints), else from replaying the ledger; the leaves after m from the
+// ledger. A tampered frontier cannot pass: the proof would not reproduce the signed root.
+export function tenantConsistencyProof(db, row, m) {
+  const saved = hasTable(db, 'tlog_checkpoints') ? db.prepare('SELECT root,peaks FROM tlog_checkpoints WHERE origin=? AND size=?').get(row.origin, m) : null;
+  let peaks = null;
+  if (saved) {
+    try { peaks = T.blobToPeaks(saved.peaks, m); } catch { peaks = null; }
+    if (peaks && !T.frontierRoot(peaks).equals(Buffer.from(saved.root))) peaks = null;
+  }
+  if (!peaks) {
+    peaks = [];
+    let i = 0;
+    for (const leaf of ledgerLeavesBetween(db, row.tenant, 0, m)) peaks = T.frontierAppend(peaks, i++, leaf);
+  }
+  const proof = T.consistencyProofFromFrontier(m, peaks, [...ledgerLeavesBetween(db, row.tenant, m, row.size)]);
+  if (!T.verifyConsistency(m, row.size, T.frontierRoot(peaks), row.root, proof)) {
+    throw kinded('inconsistent', `Truncated or inconsistent tenant log ${row.origin}: the ledger is not consistent with its signed checkpoint`);
+  }
+  return proof;
+}
+const tenantRowsSql = 'SELECT tenant,origin,size,root,peaks,note FROM tlog_state WHERE substr(origin,1,?)=? AND size>0 ORDER BY origin';
+// Startup: every tenant log with a signed note, at every witness that answered the heads probe. The old size is a hint from
+// the cosignatures this database recorded; the witness's 409 answer is authoritative, so a larger size there is a rollback.
+async function probeTenantLogs({db, publicKey, config, witnesses, fetchImpl, now}) {
+  if (!db || !hasTable(db, 'tlog_state')) return [];
+  const prefix = tenantPrefix(config), out = [], jobs = [];
+  const hint = hasTable(db, 'tlog_cosignatures') ? db.prepare('SELECT MAX(size) s FROM tlog_cosignatures WHERE origin=? AND key_id=? AND name=?') : null;
+  for (const row of db.prepare(tenantRowsSql).iterate(prefix.length, prefix)) {
+    const entry = {tenant: row.tenant, origin: row.origin, size: row.size, root: Buffer.from(row.root).toString('hex'), witnesses: []};
+    const logV = logVerifierOf(row.origin, publicKey);
+    out.push(entry);
+    let r;
+    try { r = verifiedTenantRow(row, logV); } catch (error) { entry.error = error.message; continue; }
+    for (const w of witnesses) jobs.push({entry, r, w, logV, guess: hint?.get(row.origin, w.keyId, w.name).s ?? 0});
+  }
+  await eachLimited(jobs, TENANT_CONCURRENCY, async ({entry, r, w, logV, guess}) => {
+    const answer = await exchange({w, size: r.size, note: r.note, old: guess <= r.size ? guess : 0, logV, config, fetchImpl, now,
+      subject: tenantSubject(r.origin), proofFor: m => tenantConsistencyProof(db, r, m)});
+    entry.witnesses.push({name: w.name, keyId: w.keyId, ...answer});
+  });
+  const order = new Map(witnesses.map((w, i) => [witnessId(w), i]));
+  for (const entry of out) entry.witnesses.sort((a, b) => order.get(witnessId(a)) - order.get(witnessId(b)));
+  return out;
+}
 
 // Async, read-only, before createService. An empty local heads log is probed with a signed size-0 checkpoint
-// (empty-tree root), the only checkpoint that cannot conflict with anything, so a witness answers 409 S.
-export async function probeTransparency({dataDir, key, config, fetchImpl = fetch, now = () => Date.now()}) {
+// (empty-tree root), the only checkpoint that cannot conflict with anything, so a witness answers 409 S. With
+// witnessTenantLogs (and tenants), every tenant log is probed too, at the witnesses that answered for the heads log.
+export async function probeTransparency({dataDir, key, config, fetchImpl = fetch, now = () => Date.now(), tenants = true}) {
   if (!config || config.mode === 'off' || !config.witnesses.length) return null;
   const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
   const file = join(dataDir, 'evidence.db'), db = existsSync(file) ? new DatabaseSync(file, {readOnly: true, timeout: 5000}) : null;
@@ -279,7 +370,9 @@ export async function probeTransparency({dataDir, key, config, fetchImpl = fetch
       name: w.name, keyId: w.keyId,
       ...await exchange({w, size: local.size, note: local.note, old: 0, proofFor, logV, config, fetchImpl, now}),
     })));
-    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, headsRoot: local.root.toString('hex'), witnesses};
+    const answering = config.witnesses.filter((w, i) => PROBE_ANSWERS.has(witnesses[i].status)), probeTenants = tenants && config.witnessTenantLogs;
+    const tenantLogs = probeTenants ? {tenants: await probeTenantLogs({db, publicKey, config, witnesses: answering, fetchImpl, now})} : {};
+    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, headsRoot: local.root.toString('hex'), witnesses, ...tenantLogs};
   } finally { db?.close(); }
 }
 // Explicit operator decision for a non-empty heads log without a pin (lost pin volume, upgrade from a build that never
@@ -310,9 +403,12 @@ export async function prepareTransparency({dataDir, key, env = process.env, fetc
   const config = loadTransparencyConfig({dataDir, env});
   if (config.mode === 'off' || !config.witnesses.length) return {config, probe: null};
   for (let attempt = 1; ; attempt++) {
-    const probe = await probeTransparency({dataDir, key, config, fetchImpl});
+    const probe = await probeTransparency({dataDir, key, config, fetchImpl, tenants: false});
     const answered = probe.witnesses.filter(w => PROBE_ANSWERS.has(w.status)).length;
-    if (config.startupProbe !== 'required' || probe.error || answered >= config.quorum || attempt >= attempts) return {config, probe};
+    if (config.startupProbe !== 'required' || probe.error || answered >= config.quorum || attempt >= attempts) {
+      // Tenant logs are probed once, after the heads answers settled (one submission per tenant and witness).
+      return {config, probe: config.witnessTenantLogs && !probe.error ? await probeTransparency({dataDir, key, config, fetchImpl}) : probe};
+    }
     await new Promise(r => setTimeout(r, retryMs));
   }
 }
@@ -362,6 +458,11 @@ function checkAnchors({db, key, config, probe}) {
   try { rawPin = readPinFile(config.pinFile); } catch (error) { rawPinError = true; violate('pin', error.message); }
   if (probe?.error) violate('inconsistent', probe.error);
   for (const w of probe?.witnesses || []) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
+  // A witness holding a tenant log beyond the local one is a rollback even when the heads log was forged to match it.
+  for (const t of probe?.tenants || []) {
+    if (t.error) violate('inconsistent', t.error);
+    for (const w of t.witnesses) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
+  }
   if (config.startupProbe === 'required' && config.witnesses.length && !probe?.error) {
     const answered = (probe?.witnesses || []).filter(w => PROBE_ANSWERS.has(w.status));
     if (answered.length < config.quorum) {
@@ -387,6 +488,7 @@ function checkAnchors({db, key, config, probe}) {
       violate('inconsistent', `Truncated or inconsistent heads log: the database (heads size ${size}) differs from the one the witnesses were `
         + `probed with (heads size ${probe.headsSize}); it changed after the probe`);
     }
+    if (probe?.tenants) checkProbedTenants(db, config.base, probe.tenants, violate);
     if (!pin && size && !rawPinError) {
       violations.push({kind: 'pin', missingPin: true, message: `Transparency pin for ${hOrigin} is missing although the heads log has size ${size}; `
         + 'restore the pin file or create one explicitly with scripts/transparency.mjs pin-bootstrap'});
@@ -405,10 +507,30 @@ function checkAnchors({db, key, config, probe}) {
   } catch (error) { violate(error.kind || 'inconsistent', error.message); }
   return {report, pin};
 }
+// The tenant answers describe the tlog_state the probe read, like the heads answers above: every probed log is unchanged and
+// every signed tenant log of the database was probed.
+function checkProbedTenants(db, base, tenants, violate) {
+  const has = !!db && hasTable(db, 'tlog_state'), at = has ? db.prepare('SELECT size,root FROM tlog_state WHERE tenant=? AND origin=?') : null;
+  for (const t of tenants) {
+    const r = at?.get(t.tenant, t.origin);
+    if (!r || r.size !== t.size || Buffer.from(r.root).toString('hex') !== t.root) {
+      violate('inconsistent', `Truncated or inconsistent tlog state: tenant log ${t.origin} (size ${r?.size ?? 0}) differs from the one the witnesses `
+        + `were probed with (size ${t.size}); it changed after the probe`);
+    }
+  }
+  if (!has) return;
+  const probed = new Set(tenants.map(t => t.origin)), prefix = base + '/t/';
+  for (const r of db.prepare('SELECT origin,size FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').iterate(prefix.length, prefix)) {
+    if (probed.has(r.origin)) continue;
+    violate('inconsistent', `Truncated or inconsistent tlog state: tenant log ${r.origin} (size ${r.size}) was not in the database the witnesses `
+      + 'were probed with; it changed after the probe');
+  }
+}
 // Every heads row after the anchor (the pin, or what a witness had cosigned before) keeps each tenant log monotone:
 // sizes never decrease, logs never disappear and an unchanged size keeps its root. The leaves themselves were already
-// folded to the signed latest root, so each row's entries only have to hash to its leaf.
-function checkHeadsMonotone(db, origin, from, to, violate) {
+// folded to the signed latest root, so each row's entries only have to hash to its leaf. onRow(entries, previous) sees
+// every row's full entry list and the map of the row before it (null at the first row).
+function checkHeadsMonotone(db, origin, from, to, violate, onRow = null) {
   const rows = db.prepare('SELECT idx,leaf,entries FROM tlog_heads WHERE origin=? AND idx>=? AND idx<? ORDER BY idx');
   let previous = null, expected = Math.max(0, from - 1);
   for (const row of rows.iterate(origin, expected, to)) {
@@ -426,6 +548,7 @@ function checkHeadsMonotone(db, origin, from, to, violate) {
       || !T.headsLeafHash(T.headsLeafContent(entries)).equals(Buffer.from(row.leaf))) {
       throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} entries differ from its leaf`);
     }
+    onRow?.(entries, previous);
     const current = new Map(entries.map(e => [e.log, e]));
     for (const [log, e] of previous || []) {
       const next = current.get(log);
@@ -437,7 +560,7 @@ function checkHeadsMonotone(db, origin, from, to, violate) {
   }
 }
 const ledgerTenants = db => db.prepare('SELECT DISTINCT tenant FROM ledger').all().map(r => r.tenant);
-// Each requirement names a tenant tree size and root that the ledger prefix must reproduce.
+// Each requirement names a tenant tree size and root that the ledger prefix must reproduce. An anchor entry may name what it is.
 function checkTenants(db, base, anchors, violate, extra = []) {
   const prefix = base + '/t/', want = new Map(), missing = new Set(), seen = new Set();
   const tenants = new Map(ledgerTenants(db).map(t => [T.tenantOrigin(base, t), t]));
@@ -453,7 +576,7 @@ function checkTenants(db, base, anchors, violate, extra = []) {
     if (!missing.has(log)) violate('tenant_removal', `Witnessed tenant missing for log ${log} (tenant removal)`);
     missing.add(log);
   };
-  for (const entries of anchors) for (const e of entries) addLog(e.log, e.size, e.root, 'witnessed head');
+  for (const entries of anchors) for (const e of entries) addLog(e.log, e.size, e.root, e.what || 'witnessed head');
   if (hasTable(db, 'tlog_state')) {
     for (const r of db.prepare('SELECT origin,size,root FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix)) {
       addLog(r.origin, r.size, Buffer.from(r.root).toString('hex'), 'signed tlog checkpoint');
@@ -469,6 +592,77 @@ function checkTenants(db, base, anchors, violate, extra = []) {
       }
     }
   }
+}
+
+// ---------- heads monitor (read-only; needs only the vault public key) ----------
+// Replays the whole heads log of a database, as an auditor with a copy would: every row extends the rows before it and
+// matches its own signed note, consecutive rows keep each tenant log monotone (sizes never shrink, logs never disappear,
+// an unchanged size keeps its root), and every tenant head a row ever named, every signed tenant checkpoint and every
+// tenant checkpoint a witness cosigned is still a prefix of that tenant's ledger. A heads leaf is signed by the vault key
+// alone, so this replay is what exposes a key holder's leaf that rolls one tenant back while the heads log stays
+// append-only at the witnesses. It cannot see rows a database copy no longer holds.
+export function monitorHeads({dataDir, publicKey, config, now = () => Date.now()}) {
+  const hOrigin = config.headsOrigin, logV = logVerifierOf(hOrigin, publicKey), file = join(dataDir, 'evidence.db');
+  if (!existsSync(file)) throw Error('No evidence database at ' + file);
+  const violations = [], violate = (kind, message) => violations.push({kind, message});
+  const result = {checkedAt: new Date(now()).toISOString(), headsOrigin: hOrigin, headsSize: 0, logs: 0, entries: 0, cosigned: null};
+  const db = new DatabaseSync(file, {readOnly: true, timeout: 5000});
+  try {
+    const size = hasTable(db, 'tlog_heads') ? headsSize(db, hOrigin) : 0;
+    result.headsSize = size;
+    let peaks = [], n = 0;
+    for (const row of size ? db.prepare('SELECT idx,leaf,peaks,note FROM tlog_heads WHERE origin=? ORDER BY idx').iterate(hOrigin) : []) {
+      if (!Buffer.from(row.peaks).equals(T.peaksToBlob(peaks))) {
+        throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} does not extend the rows before it`);
+      }
+      peaks = T.frontierAppend(peaks, n++, Buffer.from(row.leaf));
+      let c = null;
+      try { c = T.parseCheckpoint(T.openNote(row.note, [logV]).text); } catch { c = null; }
+      if (c?.origin !== hOrigin || c.size !== n || !c.root.equals(T.frontierRoot(peaks)) || c.extensions.length) {
+        throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} differs from its signed note`);
+      }
+    }
+    const named = new Map(), name = (e, what) => named.set(`${e.log}|${e.size}|${e.root}`, {log: e.log, size: e.size, root: e.root, what});
+    if (size) {
+      checkHeadsMonotone(db, hOrigin, 0, size, violate, (entries, previous) => {
+        for (const e of entries) {
+          const p = previous?.get(e.log);
+          if (!p || p.size !== e.size || p.root !== e.root) name(e, 'heads entry');
+        }
+      });
+    }
+    result.logs = new Set([...named.values()].map(e => e.log)).size;
+    result.entries = named.size;
+    const prefix = tenantPrefix(config), ids = config.witnesses.map(w => w.keyId), marks = ids.map(() => '?').join(',');
+    if (ids.length && hasTable(db, 'tlog_checkpoints')) {
+      for (const r of db.prepare(`SELECT DISTINCT k.origin,k.size,k.root FROM tlog_checkpoints k JOIN tlog_cosignatures c ON c.origin=k.origin
+        AND c.size=k.size WHERE substr(k.origin,1,?)=? AND c.key_id IN (${marks})`).iterate(prefix.length, prefix, ...ids)) {
+        name({log: r.origin, size: r.size, root: Buffer.from(r.root).toString('hex')}, 'witnessed tenant checkpoint');
+      }
+    }
+    if (hasTable(db, 'ledger')) checkTenants(db, config.base, [[...named.values()]], violate);
+    if (size && ids.length) result.cosigned = newestCosignedHeads(db, config, logV, now);
+  } catch (error) { violate(error.kind || 'inconsistent', error.message); } finally { db.close(); }
+  return {ok: !violations.length, ...result, violations};
+}
+// The newest heads checkpoint with cosignatures of configured witnesses (quorum first), with each verified cosignature's age.
+function newestCosignedHeads(db, config, logV, now) {
+  const ids = config.witnesses.map(w => w.keyId), marks = ids.map(() => '?').join(','), quorum = Math.max(1, config.quorum);
+  const best = db.prepare(`SELECT size FROM tlog_cosignatures WHERE origin=? AND key_id IN (${marks}) GROUP BY size
+    ORDER BY (COUNT(DISTINCT key_id)>=?) DESC,size DESC LIMIT 1`).get(config.headsOrigin, ...ids, quorum);
+  const row = best && headsRow(db, config.headsOrigin, best.size - 1);
+  if (!row) return null;
+  const lines = db.prepare('SELECT line FROM tlog_cosignatures WHERE origin=? AND size=? ORDER BY name,key_id').all(config.headsOrigin, best.size);
+  const opened = T.openNote(row.note + lines.map(l => l.line).join(''), [logV, ...config.witnesses.map(w => w.verifier)]);
+  const t = Math.floor(now() / 1000), witnesses = [];
+  for (const sig of opened.sigs) {
+    const w = config.witnesses.find(x => x.name === sig.name && x.keyId === sig.id);
+    if (!w) continue;
+    const timestamp = T.cosignatureTimestamp(sig.raw);
+    witnesses.push({name: w.name, keyId: w.keyId, timestamp, ageSeconds: Math.max(0, t - timestamp)});
+  }
+  const fresh = witnesses.filter(w => w.ageSeconds <= config.maxStalenessSeconds).length;
+  return {size: best.size, witnesses, quorumMet: witnesses.length >= quorum, fresh: fresh >= quorum};
 }
 
 // ---------- restore epochs at startup ----------
@@ -644,16 +838,60 @@ export function createTransparency({store, config, key, startup = null, probe = 
     if (config.mode === 'enforce' && quarantine && !store.quarantine) store.quarantine = {reason: message, kind, at: iso()};
   }
   function recordCosignature(size, w, r) {
-    const sql = `INSERT INTO tlog_cosignatures VALUES(?,?,?,?,?,?,?) ON CONFLICT(origin,size,key_id)
-      DO UPDATE SET name=excluded.name,timestamp=excluded.timestamp,line=excluded.line,received_at=excluded.received_at
-      WHERE excluded.timestamp>tlog_cosignatures.timestamp`;
-    store.transaction(() => store.projectionMutation(() => db.prepare(sql).run(hOrigin, size, w.keyId, w.name, r.timestamp, r.line, iso())));
+    store.transaction(() => store.projectionMutation(() => db.prepare(COSIGNATURE_SQL).run(hOrigin, size, w.keyId, w.name, r.timestamp, r.line, iso())));
   }
   for (const w of config.witnesses) {
     const p = probe?.witnesses?.find(x => x.name === w.name && x.keyId === w.keyId);
     if (p?.status === 'consistent' && p.size === heads.size && heads.size > 0) {
       recordCosignature(p.size, w, p);
       witnessState.get(witnessId(w)).timestamp = p.timestamp;
+    }
+  }
+  // Tenant logs at the witnesses (witnessTenantLogs): per witness and tenant origin, the size it last cosigned and when.
+  const tenantLogs = config.witnessTenantLogs && config.witnesses.length > 0;
+  const tenantWitness = new Map(config.witnesses.map(w => [witnessId(w), new Map()]));
+  const tenantState = (w, origin) => {
+    const states = tenantWitness.get(witnessId(w));
+    if (!states.has(origin)) {
+      states.set(origin, {old: null, status: 'pending', message: null, size: null, timestamp: null, retryAt: 0, lastAttemptAt: null, lastSuccessAt: null});
+    }
+    return states.get(origin);
+  };
+  // The cosigned checkpoint is kept with its frontier; another root stored at that size would mean two signed logs of one size.
+  function recordTenantCosignature(r, w, answer) {
+    store.transaction(() => store.projectionMutation(() => {
+      const saved = db.prepare('SELECT root FROM tlog_checkpoints WHERE origin=? AND size=?').get(r.origin, r.size);
+      if (saved && !Buffer.from(saved.root).equals(r.root)) {
+        throw kinded('inconsistent', `Truncated or inconsistent tlog checkpoints: tenant log ${r.origin} holds another root at size ${r.size}`);
+      }
+      if (!saved) db.prepare('INSERT INTO tlog_checkpoints VALUES(?,?,?,?,?,?)').run(r.origin, r.size, r.root, T.peaksToBlob(r.peaks), r.note, iso());
+      db.prepare(COSIGNATURE_SQL).run(r.origin, r.size, w.keyId, w.name, answer.timestamp, answer.line, iso());
+    }));
+  }
+  if (tenantLogs) {
+    const prefix = tenantPrefix(config), newest = db.prepare(`SELECT origin,size,timestamp FROM tlog_cosignatures c WHERE substr(origin,1,?)=?
+      AND key_id=? AND name=? AND size=(SELECT MAX(size) FROM tlog_cosignatures d WHERE d.origin=c.origin AND d.key_id=c.key_id)`);
+    for (const w of config.witnesses) {
+      for (const r of newest.iterate(prefix.length, prefix, w.keyId, w.name)) {
+        Object.assign(tenantState(w, r.origin), {old: r.size, size: r.size, timestamp: r.timestamp});
+      }
+    }
+    // Startup answers: violations were reported by the startup check; cosignatures of the current tenant heads are kept.
+    const current = db.prepare('SELECT tenant,origin,size,root,peaks,note FROM tlog_state WHERE tenant=? AND origin=?');
+    for (const t of probe?.tenants || []) {
+      for (const p of t.witnesses) {
+        const w = config.witnesses.find(x => x.name === p.name && x.keyId === p.keyId);
+        if (!w) continue;
+        const st = Object.assign(tenantState(w, t.origin), {status: p.status, message: p.message || null, size: p.size ?? null,
+          lastAttemptAt: probe.checkedAt});
+        if (p.status !== 'consistent') { st.old = ['rollback', 'fork'].includes(p.status) ? p.size ?? null : null; continue; }
+        Object.assign(st, {old: p.size, timestamp: p.timestamp, lastSuccessAt: probe.checkedAt});
+        const row = current.get(t.tenant, t.origin);
+        if (row?.size !== p.size || Buffer.from(row.root).toString('hex') !== t.root) continue;
+        try { recordTenantCosignature(verifiedTenantRow(row, tenantVerifier(t.origin)), w, p); } catch (error) {
+          violation(error.kind || 'inconsistent', error.message);
+        }
+      }
     }
   }
   // Tenant sets in heads leaves only grow and tenant sizes never shrink; changed tenant notes are re-verified before use.
@@ -740,6 +978,48 @@ export function createTransparency({store, config, key, startup = null, probe = 
       if (previous !== r.status || config.mode === 'enforce') violation(r.status, `Witness ${w.name}: ${r.message}`);
     } else st.old = null;
   }
+  // Changed tenant logs first, then the stalest refreshes; at most TENANT_BATCH submissions with TENANT_CONCURRENCY in flight per
+  // round, and only to witnesses that just answered for the heads log (an unreachable witness would otherwise stall the pump).
+  async function submitTenants() {
+    const live = config.witnesses.filter(w => witnessState.get(witnessId(w)).status === 'consistent');
+    if (!live.length) return;
+    const prefix = tenantPrefix(config), t = Math.floor(now() / 1000), jobs = [];
+    const logs = db.prepare('SELECT tenant,origin,size FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix);
+    for (const w of live) {
+      for (const log of logs) {
+        const st = tenantState(w, log.origin), changed = st.old !== log.size;
+        if (st.retryAt <= t && (changed || !st.timestamp || t - st.timestamp >= config.refreshSeconds)) jobs.push({w, log, st, changed});
+      }
+    }
+    jobs.sort((a, b) => b.changed - a.changed || (a.st.timestamp ?? 0) - (b.st.timestamp ?? 0));
+    await eachLimited(jobs.slice(0, TENANT_BATCH), TENANT_CONCURRENCY, submitTenant);
+  }
+  async function submitTenant({w, log, st}) {
+    if (stopped || store.quarantine) return;
+    const row = db.prepare('SELECT tenant,origin,size,root,peaks,note FROM tlog_state WHERE tenant=? AND origin=?').get(log.tenant, log.origin);
+    if (!row) return;
+    let r;
+    try { r = verifiedTenantRow(row, tenantVerifier(row.origin)); } catch (error) { return violation(error.kind || 'inconsistent', error.message); }
+    st.lastAttemptAt = iso();
+    // The remembered size is only a hint: a witness that holds more answers 409 with its size, which exchange reports as rollback.
+    const answer = await exchange({w, size: r.size, note: r.note, old: st.old !== null && st.old <= r.size ? st.old : 0, logV: tenantVerifier(r.origin),
+      config, fetchImpl, now, subject: tenantSubject(r.origin), proofFor: m => tenantConsistencyProof(db, r, m)});
+    const previous = st.status;
+    Object.assign(st, {status: answer.status, message: answer.message || null, size: answer.size ?? null});
+    if (answer.status === 'consistent') {
+      Object.assign(st, {old: r.size, timestamp: answer.timestamp, retryAt: 0, lastSuccessAt: iso()});
+      if (!stopped) {
+        try { recordTenantCosignature(r, w, answer); } catch (error) { violation(error.kind || 'inconsistent', error.message); }
+      }
+    } else if (['rollback', 'fork', 'inconsistent'].includes(answer.status)) {
+      st.old = answer.size ?? null;
+      if (previous !== answer.status || config.mode === 'enforce') violation(answer.status, `Witness ${w.name}: ${answer.message}`);
+    } else {
+      st.old = null;
+      // An origin the witness does not know (or trust) yet is retried after refreshSeconds, not every round.
+      if (['unregistered', 'untrusted', 'rejected'].includes(answer.status)) st.retryAt = Math.floor(now() / 1000) + config.refreshSeconds;
+    }
+  }
   // A tenant head moved since the last heads leaf, so this round will publish a new checkpoint.
   function headsPending() {
     const prefix = config.base + '/t/';
@@ -766,6 +1046,7 @@ export function createTransparency({store, config, key, startup = null, probe = 
     if (stopped) return;
     const cosigned = cosignedCheckpoint(target.size);
     if (cosigned && cosigned.count >= config.quorum) maybeWritePin(target, cosigned.checkpoint);
+    if (tenantLogs && !store.quarantine) await submitTenants();
   }
   // Single flight: overlapping timer ticks share the running round.
   function pump() {
@@ -788,6 +1069,21 @@ export function createTransparency({store, config, key, startup = null, probe = 
     return {origin: hOrigin, checkpoint: c.checkpoint, leafIndex: size - 1, leafProof: v.peaksBefore.slice().reverse().map(T.b64), leaf: v.content,
       entry: v.entries[i], entryIndex: i, entryProof: T.inclusionProof(v.entries.map(T.headsEntryLeaf), i).map(T.b64)};
   }
+  // Newest cosigned checkpoint of a tenant log at or below maxSize: with the configured quorum if any, else with any configured
+  // cosignature. The note and frontier come from tlog_checkpoints and are re-verified before they leave the vault.
+  function tenantCosignedEvidence(origin, maxSize) {
+    if (!tenantLogs) return null;
+    const marks = config.witnesses.map(() => '?').join(','), ids = config.witnesses.map(w => w.keyId);
+    const best = db.prepare(`SELECT c.size FROM tlog_cosignatures c JOIN tlog_checkpoints k ON k.origin=c.origin AND k.size=c.size
+      WHERE c.origin=? AND c.size<=? AND c.key_id IN (${marks}) GROUP BY c.size ORDER BY (COUNT(DISTINCT c.key_id)>=?) DESC,c.size DESC LIMIT 1`)
+      .get(origin, maxSize, ...ids, Math.max(1, config.quorum));
+    if (!best) return null;
+    const r = verifiedTenantRow(db.prepare('SELECT origin,size,root,peaks,note FROM tlog_checkpoints WHERE origin=? AND size=?').get(origin, best.size),
+      tenantVerifier(origin));
+    const lines = db.prepare('SELECT key_id,name,line FROM tlog_cosignatures WHERE origin=? AND size=? ORDER BY name,key_id').all(origin, r.size)
+      .filter(l => config.witnesses.some(w => w.keyId === l.key_id && w.name === l.name));
+    return {size: r.size, checkpoint: r.note + lines.map(l => l.line).join('')};
+  }
   // Appends refuse to extend a tenant log below the size the in-memory heads log already committed to.
   store.tlogHeadsFloor = origin => heads.entries.get(origin)?.size ?? 0;
   // records: the export's records; their tlog_epoch chain is summarised additively (verifiers recompute it).
@@ -795,7 +1091,9 @@ export function createTransparency({store, config, key, startup = null, probe = 
     const row = store._tlogRow(tenant);
     if (!row) return null;
     const origin = T.tenantOrigin(config.base, tenant), heads = headsEvidence(origin), epochs = T.tlogEpochSummaries(records);
-    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, ...(heads ? {heads} : {}), ...(epochs.length ? {epochs} : {})};
+    const cosigned = tenantCosignedEvidence(origin, row.size);
+    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, ...(heads ? {heads} : {}),
+      ...(cosigned ? {tenantCosigned: {checkpoint: cosigned.checkpoint}} : {}), ...(epochs.length ? {epochs} : {})};
   };
   // Case reports carry inclusion proofs for the action's records and the head, plus heads consistency to the report size.
   store.tlogReport = (tenant, checkpoint, events) => {
@@ -806,16 +1104,30 @@ export function createTransparency({store, config, key, startup = null, probe = 
     const wanted = new Map(events.map(e => [e.seq, e.hash]));
     wanted.set(checkpoint.count, checkpoint.head);
     const inclusion = [...wanted].sort((a, b) => a[0] - b[0]).map(([seq, hash]) => ({seq, hash, proof: T.levelsInclusionProof(tree, seq - 1).map(T.b64)}));
-    const origin = T.tenantOrigin(config.base, tenant), h = headsEvidence(origin);
+    const origin = T.tenantOrigin(config.base, tenant), h = headsEvidence(origin), cosigned = tenantCosignedEvidence(origin, row.size);
     const consistency = h && h.entry.size < row.size ? T.levelsConsistencyProof(tree, h.entry.size).map(T.b64) : [];
     const headsPart = h && h.entry.size <= row.size ? {...h, consistency} : null;
-    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, inclusion, ...(headsPart ? {heads: headsPart} : {})};
+    const tenantPart = cosigned ? {tenantCosigned: {checkpoint: cosigned.checkpoint,
+      consistency: cosigned.size < row.size ? T.levelsConsistencyProof(tree, cosigned.size).map(T.b64) : []}} : {};
+    return {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: row.note, inclusion, ...(headsPart ? {heads: headsPart} : {}), ...tenantPart};
   };
+  // Per witness: how many tenant logs are in each state, and the first few that need an operator (unregistered and the like).
+  function tenantLogStatus() {
+    return config.witnesses.map(w => {
+      const logs = {}, attention = [];
+      for (const [origin, st] of tenantWitness.get(witnessId(w))) {
+        logs[st.status] = (logs[st.status] || 0) + 1;
+        if (!['consistent', 'pending'].includes(st.status) && attention.length < 10) attention.push({origin, status: st.status, message: st.message});
+      }
+      return {name: w.name, keyId: w.keyId, logs, attention};
+    });
+  }
   function status() {
     const nowSeconds = Math.floor(now() / 1000);
     return {mode: config.mode, origin: hOrigin, heads: {size: heads.size, root: T.b64(heads.root)}, quorum: config.quorum,
       pinSize: pinned?.size ?? 0, ...(pinFrozen ? {pinFrozen: true} : {}),
       witnesses: [...witnessState.values()].map(s => ({...s, ageSeconds: s.timestamp ? Math.max(0, nowSeconds - s.timestamp) : null})),
+      ...(tenantLogs ? {tenantLogs: tenantLogStatus()} : {}),
       quarantine: store.quarantine, violations: violations.slice(),
       startup: startup ? {checkedAt: startup.checkedAt, ok: startup.ok, headsSize: startup.headsSize} : null};
   }
@@ -833,11 +1145,14 @@ export function createTransparency({store, config, key, startup = null, probe = 
     integrity(result) {
       const t = result.transparency, scope = result.verificationScope;
       if (t?.present && t.unsignedTail) throw Error('Truncated or inconsistent tlog checkpoint: the signed tenant note lags the ledger');
-      scope.checks = [...scope.checks, 'merkle_tree', 'heads_log', ...(config.witnesses.length ? ['witness_cosignatures', 'witness_freshness'] : [])];
+      scope.checks = [...scope.checks, 'merkle_tree', 'heads_log', ...(config.witnesses.length ? ['witness_cosignatures', 'witness_freshness'] : []),
+        ...(tenantLogs ? ['tenant_witness_cosignatures'] : [])];
       // A fresh cosignature only bounds rollback to its own time; a detected rollback or fork keeps this vault unanchored.
       const anchored = !!t?.rollbackChecked && !violations.some(v => QUARANTINE_KINDS.has(v.kind) || v.kind === 'pin');
       scope.notChecked = anchored ? [] : [...UNANCHORED];
-      return {...result, rollbackChecked: anchored, transparency: {...t, rollbackChecked: anchored, mode: config.mode, runtime: status()}};
+      const against = anchored ? t.rollbackCheckedAgainst ?? null : null;
+      return {...result, rollbackChecked: anchored,
+        transparency: {...t, rollbackChecked: anchored, rollbackCheckedAgainst: against, mode: config.mode, runtime: status()}};
     },
     quarantined(scope) {
       if (!store.quarantine) return null;

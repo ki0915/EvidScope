@@ -195,8 +195,11 @@ export async function planTlogEpoch({database, key, archiveAnchor, transparency,
       result: {mode: config.mode, originBase: config.base, previousOriginBase: previousBase, headsOrigin: config.headsOrigin,
         logVkey: T.logVkey(config.headsOrigin, publicKey), previousHeadsOrigin: origin, restoredHeadsSize, witnessedHeadsSize, lostHeadsRange,
         freshnessEstablished: established, lossAccepted: acceptLoss !== undefined, witnesses: freshness.witnesses, epochRecords: payloads.length,
-        registration: 'Register the new heads origin at every witness before starting the restored vault: '
-          + 'node scripts/transparency.mjs witnessctl --config NEW_TRANSPARENCY.json --key VAULT_KEY.pem'},
+        registration: config.witnessTenantLogs
+          ? 'Register the new heads origin and every tenant origin at every witness before starting the restored vault: '
+            + 'node scripts/transparency.mjs witnessctl --config NEW_TRANSPARENCY.json --key VAULT_KEY.pem --data-dir RESTORED_DATA_DIR'
+          : 'Register the new heads origin at every witness before starting the restored vault: '
+            + 'node scripts/transparency.mjs witnessctl --config NEW_TRANSPARENCY.json --key VAULT_KEY.pem'},
     };
   } finally { db.close(); }
 }

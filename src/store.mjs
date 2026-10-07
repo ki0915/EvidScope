@@ -20,7 +20,9 @@ export const VERIFIED_READ_ROW_BYTES=2*1024*1024;
 // Per-tenant RFC 6962 trees (tlog_state), the deployment heads log (tlog_heads) and witness cosignatures. All three are
 // derivable caches plus proof material checked against signed notes; append-only triggers stay droppable like immutable_*.
 // tlog_heads_entries holds, for heads rows whose entries column is '', only the entries that changed at that row.
-const tlogTables=['tlog_state','tlog_heads','tlog_heads_entries','tlog_cosignatures'];
+// tlog_checkpoints keeps each tenant checkpoint a witness cosigned (witnessTenantLogs) with its frontier, so the next
+// consistency proof needs only the leaves after it and exports can ship the cosigned note.
+const tlogTables=['tlog_state','tlog_heads','tlog_heads_entries','tlog_cosignatures','tlog_checkpoints'];
 const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHECK(tenant<>''),origin TEXT NOT NULL,size INTEGER NOT NULL CHECK(size>=0),peaks BLOB NOT NULL,root BLOB NOT NULL,note TEXT NOT NULL,PRIMARY KEY(tenant,origin));
    CREATE TRIGGER IF NOT EXISTS tlog_state_monotonic BEFORE UPDATE ON tlog_state WHEN NEW.size<OLD.size OR NEW.tenant<>OLD.tenant OR NEW.origin<>OLD.origin BEGIN SELECT RAISE(ABORT,'tlog size regression'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_state_immutable_delete BEFORE DELETE ON tlog_state BEGIN SELECT RAISE(ABORT,'append only'); END;
@@ -34,6 +36,9 @@ const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHE
    CREATE TABLE IF NOT EXISTS tlog_cosignatures(origin TEXT NOT NULL,size INTEGER NOT NULL,key_id TEXT NOT NULL,name TEXT NOT NULL,timestamp INTEGER NOT NULL,line TEXT NOT NULL,received_at TEXT NOT NULL,PRIMARY KEY(origin,size,key_id));
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_refresh_only BEFORE UPDATE ON tlog_cosignatures WHEN NEW.timestamp<=OLD.timestamp OR NEW.origin<>OLD.origin OR NEW.size<>OLD.size OR NEW.key_id<>OLD.key_id BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_cosignatures_immutable_delete BEFORE DELETE ON tlog_cosignatures BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TABLE IF NOT EXISTS tlog_checkpoints(origin TEXT NOT NULL,size INTEGER NOT NULL CHECK(size>0),root BLOB NOT NULL,peaks BLOB NOT NULL,note TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(origin,size));
+   CREATE TRIGGER IF NOT EXISTS tlog_checkpoints_immutable_update BEFORE UPDATE ON tlog_checkpoints BEGIN SELECT RAISE(ABORT,'append only'); END;
+   CREATE TRIGGER IF NOT EXISTS tlog_checkpoints_immutable_delete BEFORE DELETE ON tlog_checkpoints BEGIN SELECT RAISE(ABORT,'append only'); END;
 `+tlogTables.flatMap(table=>['insert','update','delete'].map(op=>`   CREATE TRIGGER IF NOT EXISTS ${table}_mutation_${op} AFTER ${op.toUpperCase()} ON ${table} BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;`)).join('\n');
 // Projections of governance_document and development_run_event records, verified as facets of the incremental state.
 const facetTables=['governance_documents','development_run_events'];

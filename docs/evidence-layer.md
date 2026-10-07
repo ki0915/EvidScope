@@ -24,7 +24,7 @@ flowchart LR
   C -->|OTLP/HTTP + Bearer| I[ingress /v1/traces<br/>허용목록 최소화]
   P[권한 출처<br/>AGT 승인·OPA 결정·사람 검토] -->|HMAC| I
   I --> V[vault<br/>서명 원장 + tenant별 RFC 6962 트리<br/>커밋 시 C2SP 체크포인트]
-  V -->|heads 체크포인트| W[독립 위트니스<br/>litewitness·OmniWitness]
+  V -->|heads 체크포인트<br/>선택: tenant 체크포인트| W[독립 위트니스<br/>litewitness·OmniWitness]
   W -->|공동서명| V
   V --> E[내보내기·사례 보고서<br/>포함·일관성 증명]
   E --> X[오프라인 검증기<br/>위트니스 정족수·정책 재생]
@@ -65,9 +65,15 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   auditant는 RFC 3161 타임스탬프와 S3 Object Lock을 쓰는데, 타임스탬프 기관은 받은 해시에 서명할 뿐 두 갈래 이력(equivocation)을 막지 못합니다.
   IETF noa 초안은 equivocation 탐지를 범위 밖으로 둡니다.
 - **확인 방법:** `test/transparency-server.test.mjs`(예전 DB 사본으로 enforce 시작 거부), `test/litewitness-interop.test.mjs`(실제 litewitness에서 rollback
-  거부, fork 422 → 격리). 운영은 [투명성 로그 가이드](transparency-log.md).
-- **아직 막지 못한 것:** 서명 키까지 가진 공격자는 heads 로그를 정상적으로 늘리면서 그 안의 tenant 하나만 예전 상태로 되돌릴 수 있습니다
-  (재검토에서 확인). tenant 로그를 위트니스에 직접 등록하는 작업이 끝나기 전까지 heads 기반 롤백 확인은 DB만 조작하는 공격자(S1) 기준입니다.
+  거부, fork 422 → 격리, tenant origin 두 개 공동서명과 tenant rollback 거부), `test/transparency-tenant-witness.test.mjs`(재검토 F1 PoC).
+  운영은 [투명성 로그 가이드](transparency-log.md).
+- **서명 키 보유자(S2) 범위:** heads 잎은 vault 키로만 서명되므로, heads 로그만 위트니스에 맡기는 기본 구성에서는 키를 가진 공격자가 heads 로그를
+  정상적으로 늘리면서 tenant 하나만 예전 상태로 되돌릴 수 있습니다(재검토 F1). 검증 결과는 이 경우를 `rollbackCheckedAgainst:"database_tamper"`
+  (DB만 조작하는 공격자 S1 기준)로 표시합니다. 선택 기능 `witnessTenantLogs`를 켜면 tenant 로그마다 위트니스가 되돌리기를 거부하고, 고정한 origin
+  base에서 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 표시합니다(`--require-tenant-witness`로 요구).
+- **아직 막지 못한 것:** 마지막 tenant 공동서명 이후 `maxStalenessSeconds` 안의 되돌리기, vault 키만으로 서명되는 복구 epoch(검증자가 새 origin base를
+  다시 고정해야 함), 아직 등록되지 않은 새 tenant, 서명 키 보유자의 tenant 삭제(heads 잎으로만 묶이며 `scripts/transparency.mjs monitor`로 DB의 heads
+  이력을 다시 읽어야 드러남, 정기 실행은 아직 운영 경로에 없음).
 - **모방 위험:** 중상. 암호 기법 자체가 아니라 fail-closed 운영 의미(tenant 삭제 탐지, 복구 epoch)와 고객 자체 위트니스 운영 패키지가 해자입니다.
 
 ### D2. 권한에 묶인 증거 사슬과 결정적 오프라인 정책 재생

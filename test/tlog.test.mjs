@@ -241,3 +241,46 @@ test('EvidScope origins, heads leaves and the bundle verifier bind tenant, prefi
   const olderLeaf = {...bundle, transparency: {...bundle.transparency, heads: {...heads, leafIndex: 0}}};
   assert.throws(() => check({}, olderLeaf), /newest/);
 });
+
+test('a cosigned tenant checkpoint binds a signing key holder only when fresh, under the pinned origin base and extended by the export', () => {
+  const {privateKey, publicKey} = generateKeyPairSync('ed25519'), base = 'evidscope.test/unit', tenant = 'alpha', origin = T.tenantOrigin(base, tenant);
+  const records = [...Array(9)].map((_, i) => ({seq: i + 1, hash: createHash('sha256').update('r' + i).digest('hex')}));
+  const leaves = records.map(r => T.recordLeaf(r.hash)), rootOf = size => T.mth(leaves.slice(0, size));
+  const sign = (o, size, root) => T.signNote(T.formatCheckpoint({origin: o, size, root}), T.noteSigner(o, privateKey));
+  const wkey = generateKeyPairSync('ed25519').privateKey, wname = 'witness.test/w1', wvkey = T.vkeyString(wname, 4, T.ed25519RawPublic(wkey));
+  const now = Math.floor(Date.now() / 1000), witness = {name: wname, privateKey: wkey, pub: T.ed25519RawPublic(wkey)};
+  const cosigned = (size, ts, root = rootOf(size), o = origin) => sign(o, size, root) + T.cosign(T.formatCheckpoint({origin: o, size, root}), witness, ts);
+  const bundle = tenantCosigned => ({checkpoint: {tenant}, records,
+    transparency: {format: T.TRANSPARENCY_FORMAT, origin, checkpoint: sign(origin, 9, rootOf(9)), ...(tenantCosigned ? {tenantCosigned} : {})}});
+  const policy = {witnesses: [wvkey], originBase: base, maxStalenessSeconds: 600};
+  const check = (b, options = policy) => T.verifyBundleTransparency({bundle: b, leaves, publicKey, options});
+  const strict = {...policy, requireTenantWitness: true};
+
+  let r = check(bundle({checkpoint: cosigned(7, now - 10)}), strict);
+  assert.deepEqual([r.rollbackChecked, r.rollbackCheckedAgainst, r.heads], [true, 'signing_key_holder', null]);
+  assert.deepEqual([r.tenantCosigned.origin, r.tenantCosigned.size, r.tenantCosigned.quorumMet, r.tenantCosigned.fresh], [origin, 7, true, true]);
+  assert.equal(r.tenantCosigned.witnesses[0].name, wname);
+  // A stale cosignature bounds nothing: a rollback after it is possible.
+  r = check(bundle({checkpoint: cosigned(7, now - 3600)}));
+  assert.deepEqual([r.rollbackChecked, r.rollbackCheckedAgainst, r.tenantCosigned.quorumMet, r.tenantCosigned.fresh], [false, null, true, false]);
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now - 3600)}), strict), /cosignatures are older than 600 seconds/);
+  // Without a pinned origin base a key holder could have signed a fresh origin: the quorum only binds database tamper.
+  const {originBase: _, ...unpinned} = policy;
+  assert.equal(check(bundle({checkpoint: cosigned(7, now - 10)}), unpinned).rollbackCheckedAgainst, 'database_tamper');
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now - 10)}), {...unpinned, requireTenantWitness: true}), /needs a pinned origin base/);
+  // No witnesses configured, no evidence, or a foreign witness: never the stronger level.
+  assert.equal(check(bundle({checkpoint: cosigned(7, now - 10)}), {originBase: base}).rollbackCheckedAgainst, null);
+  assert.throws(() => check(bundle(null), strict), /tenant witness evidence missing/);
+  const foreign = T.vkeyString('witness.test/other', 4, T.ed25519RawPublic(generateKeyPairSync('ed25519').privateKey));
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now - 10)}), {...strict, witnesses: [foreign]}), /tenant witness quorum not met: 0\/1/);
+  // The export must extend the cosigned checkpoint, which must name this tenant log and carry valid signatures.
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now - 10, Buffer.alloc(32, 1))})), /tenant checkpoint differs from exported records \(fork\)/);
+  assert.throws(() => check(bundle({checkpoint: cosigned(12, now - 10, Buffer.alloc(32, 2))})), /behind the witnessed tenant checkpoint/);
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now - 10, rootOf(7), T.tenantOrigin(base, 'beta'))})), /origin mismatch/);
+  const lines = cosigned(7, now - 10).split('\n'), raw = Buffer.from(lines.at(-2).split(' ')[2], 'base64');
+  raw[raw.length - 1] ^= 1;
+  lines[lines.length - 2] = lines.at(-2).split(' ').slice(0, 2).join(' ') + ' ' + raw.toString('base64');
+  assert.throws(() => check(bundle({checkpoint: lines.join('\n')})), /invalid signature for key witness\.test\/w1/);
+  assert.throws(() => check(bundle({checkpoint: 42})), /tenant cosigned checkpoint invalid/);
+  assert.throws(() => check(bundle({checkpoint: cosigned(7, now + 3600)})), /in the future/);
+});

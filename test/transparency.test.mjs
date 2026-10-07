@@ -53,7 +53,11 @@ test('legacy ledgers are rebuilt from signed history and witnessed exports verif
   assert.equal(verified.transparency.heads.quorumMet, true);
   assert.equal(verified.transparency.minimumCheckpoint.satisfied, true);
   assert.equal(verified.transparency.size, exported.checkpoint.count);
-  assert.equal(verifyBundle(exported, f.publicKey, undefined, {transparency: {minimumCheckpoint: exported.checkpoint}}).rollbackChecked, true);
+  // Heads evidence is signed by the vault key: its quorum binds database tamper, not a key holder (tenant logs are not witnessed here).
+  assert.deepEqual([exported.transparency.tenantCosigned, verified.transparency.tenantCosigned], [undefined, null]);
+  assert.equal(verified.transparency.rollbackCheckedAgainst, 'database_tamper');
+  const pinnedOnly = verifyBundle(exported, f.publicKey, undefined, {transparency: {minimumCheckpoint: exported.checkpoint}});
+  assert.deepEqual([pinnedOnly.rollbackChecked, pinnedOnly.transparency.rollbackCheckedAgainst], [true, null]);
   // A later checkpoint pinned by the verifier exposes an older export as rollback; a foreign witness cannot meet the quorum.
   f.write(s, 'alpha', 2);
   const later = s.store._tlogRow('alpha').note;

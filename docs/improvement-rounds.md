@@ -20,7 +20,7 @@
 |---|---|---|
 | S1 키 없이 tenant 삭제·과거 사본 롤백 미탐지 | RFC 6962 tenant 로그 + C2SP 체크포인트 + heads 로그를 독립 위트니스가 공동서명. enforce 모드는 rollback·fork·tenant 삭제 시 시작 거부·격리. `notChecked`를 정직하게 표시 | `test/transparency-server.test.mjs`, `test/litewitness-interop.test.mjs` |
 | S2 서명 키에서 데이터 키 유도 | HKDF 용도별 데이터 키를 별도 비밀로 분리, 키 ID를 AAD에 묶음, 분리된 vault의 예전 방식 백업 거부 | `test/data-key-separation.test.mjs`, `test/data-key-cli.test.mjs` |
-| S2 서명 키 보유자의 tenant 단위 되돌리기(재검토 F1) | 일부만 처리: heads 행마다 tenant 크기가 줄지 않는지 vault가 확인하고 줄어드는 행은 위트니스에 내지 않음. 외부 확인(tenant 로그 위트니스 제출)은 진행 중 | `test/transparency-anchors.test.mjs` |
+| S2 서명 키 보유자의 tenant 단위 되돌리기(재검토 F1) | heads 행마다 tenant 크기가 줄지 않는지 vault가 확인하고 줄어드는 행은 위트니스에 내지 않음. 선택 기능 `witnessTenantLogs`로 tenant 로그를 각자의 origin으로 위트니스에 제출해 위트니스가 직접 되돌리기를 거부, 검증 결과에 `rollbackCheckedAgainst`(`database_tamper`·`signing_key_holder`)와 `--require-tenant-witness` 추가. heads 이력 재생 모니터(`transparency.mjs monitor`). 남은 범위: 신선도 창, 복구 epoch, 미등록 tenant, 키 보유자의 tenant 삭제(모니터로만 탐지) | `test/transparency-anchors.test.mjs`, `test/transparency-tenant-witness.test.mjs`, `test/litewitness-interop.test.mjs` |
 | S4 파기 후 SQLite 잔여 페이지 | `secure_delete` + WAL truncate | `test/erasure-remnants.test.mjs` |
 | S5 조회마다 원장 증가·전체 재검증·쓰기 락 | 검증 상태 증분 캐시, 열람 기록을 원장 밖 봉인 로그로 이동, GET은 읽기 전용 스냅샷, 커버링 인덱스 | `test/verified-state-reads.test.mjs`, `test/access-log.test.mjs`, `test/read-transactions.test.mjs` |
 | S7 전역 분석 적체로 tenant 간 수집 차단 | tenant별 적체 계산, OTLP 배치는 남길 적체로 판단 | `test/otlp-ingest.test.mjs`, `test/otlp-http.test.mjs` |
@@ -58,7 +58,7 @@
 
 | # | 문제 | 처리 |
 |---|---|---|
-| F1 | 서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명 | 진행 중. tenant 로그 위트니스 제출(선택)과 검증 결과의 보증 수준 표시 |
+| F1 | 서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명 | `witnessTenantLogs`(선택)로 tenant 로그도 위트니스에 제출: 위트니스가 tenant 되돌리기를 거부하고, enforce 시작 검사는 위트니스가 더 큰 tenant 로그를 가지면 거부. 검증 결과는 보증 수준을 `rollbackCheckedAgainst`로 표시(heads만이면 `database_tamper`). PoC는 신선한 tenant 공동서명이 없어 `--require-tenant-witness`에서 실패. 키 보유자의 tenant 삭제는 heads 모니터로만 탐지 |
 | F2 | monitor 모드가 rollback 뒤에도 pin을 덮어써 흔적을 지움 | pin은 일관성이 확인된 방향으로만 이동, 위반 뒤에는 고정 |
 | F3 | pin 파일이 없으면 첫 기동처럼 통과 | 새 vault는 크기 0 pin을 먼저 기록, 기존 로그는 `pin-bootstrap`으로 명시적으로 고정 |
 | F4 | 사례 보고서 이벤트에 순번·해시가 없으면 포함 증명 없이 통과 | 순번·해시 필수, 서명된 tenant 트리에 포함된 것만 허용 |
@@ -117,7 +117,7 @@ GET 95회가 만들던 원장 레코드는 95건에서 6건(봉인 배치)으로
 1. 서명 키 격리: 데이터 볼륨을 마운트하지 않는 서명 전용 프로세스, 이후 KMS·PKCS#11 연동(S2 잔여).
 2. 이벤트 키 감싸기(KEK)와 `payloadHash` HMAC 커밋먼트(S3).
 3. SCITT·in-toto DSSE 호환 영수증 내보내기와 무의존성 검증기 CLI 분리 공개(감사 권고, 결정 4).
-4. heads 모니터를 운영 경로로: 모든 heads 잎을 재생해 tenant별 단조 증가를 외부에서 확인하는 정기 작업.
+4. heads 모니터를 운영 경로로: `scripts/transparency.mjs monitor`(모든 heads 잎을 재생해 tenant별 단조 증가·삭제를 확인, 1라운드 F1에서 추가)를 정기 작업으로 돌리고 `status --probe`와 묶어 위트니스가 공동서명한 heads 로그와 대조. 키 보유자의 tenant 삭제를 시작 검사에서 잡는 방법도 검토.
 5. 시작·전체 재검증 비용 줄이기(검증 상태 스냅샷), 파기·보조 경로 인덱스화.
 6. 데모가 OTLP 경로로 AI 가시성 화면을 채우도록(감사 3.2: 데모 후에도 관측 0).
 7. Kubernetes 매니페스트에 pin 볼륨·위트니스 설정, enforce 업그레이드 절차 자동 점검.

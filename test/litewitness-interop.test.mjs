@@ -23,18 +23,22 @@ const skip = !LW ? 'EVIDSCOPE_LITEWITNESS_BIN is not set' : !existsSync(LW) ? `l
 const V = JSON.parse(readFileSync(new URL('./fixtures/c2sp-vectors.json', import.meta.url), 'utf8'));
 const freePort = () => new Promise(r => { const s = createServer().listen(0, '127.0.0.1', () => { const {port} = s.address(); s.close(() => r(port)); }); });
 
-function register(db, config, key) {
+// Registers the heads origin and, with witnessTenantLogs, the origins of `tenants`.
+function register(db, config, key, tenants = []) {
   const ctl = process.env.EVIDSCOPE_WITNESSCTL_BIN || join(dirname(LW), 'witnessctl');
   if (existsSync(ctl)) {
-    for (const line of witnessCommands({config, key, db})) execFileSync(ctl, line.split(' ').slice(1), {stdio: ['ignore', 'pipe', 'pipe']});
+    for (const line of witnessCommands({config, key, db, tenants})) execFileSync(ctl, line.split(' ').slice(1), {stdio: ['ignore', 'pipe', 'pipe']});
     return 'witnessctl';
   }
   const d = new DatabaseSync(db);
   d.exec(`CREATE TABLE IF NOT EXISTS log (origin TEXT PRIMARY KEY, tree_size INTEGER NOT NULL, tree_hash TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS key (origin TEXT NOT NULL, key TEXT NOT NULL, FOREIGN KEY(origin) REFERENCES log(origin));
     CREATE TABLE IF NOT EXISTS bastion (origin TEXT NOT NULL, bastion TEXT NOT NULL, FOREIGN KEY(origin) REFERENCES log(origin));`);
-  d.prepare('INSERT INTO log VALUES(?,0,?)').run(config.headsOrigin, T.b64(T.EMPTY_ROOT));
-  d.prepare('INSERT INTO key VALUES(?,?)').run(config.headsOrigin, T.logVkey(config.headsOrigin, key));
+  const origins = [config.headsOrigin, ...(config.witnessTenantLogs ? tenants.map(tenant => T.tenantOrigin(config.base, tenant)) : [])];
+  for (const origin of origins) {
+    d.prepare('INSERT INTO log VALUES(?,0,?)').run(origin, T.b64(T.EMPTY_ROOT));
+    d.prepare('INSERT INTO key VALUES(?,?)').run(origin, T.logVkey(origin, key));
+  }
   d.close();
   return 'sqlite';
 }
@@ -159,4 +163,43 @@ test('restore epochs interoperate with litewitness: freshness of the old heads o
   assert.equal(verified.transparency.pinnedOriginBase, BASE);
   assert.deepEqual(verified.transparency.epochs[0].lostRange, [archived.alpha + 1, archived.alpha + 2]);
   assert.equal(verified.transparency.heads.quorumMet, true);
+});
+
+test('tenant logs interoperate with litewitness: two tenant origins cosigned, and a tenant rollback refused', {skip}, async t => {
+  const f = await transparencyFixture(t, {witness: false});
+  let raw = null;
+  const config = mode => normalizeTransparencyConfig({...raw, mode}, {dataDir: f.dataDir});
+  const {run, url, registration} = await startLitewitness(t, (db, witnessUrl) => {
+    raw = {origin: BASE, mode: 'enforce', witnesses: [{vkey: V.witness_key.vkey, url: witnessUrl}], intervalMs: 100, timeoutMs: 5000,
+      witnessTenantLogs: true};
+    return register(db, config('enforce'), f.privateKey, ['alpha', 'beta']);
+  });
+  const s = await f.open('enforce', {cfg: config('enforce')});
+  f.write(s, 'alpha', 3);
+  f.write(s, 'beta', 2);
+  await s.transparency.pump();
+  assert.deepEqual(s.transparency.status().tenantLogs[0].logs, {consistent: 2});
+  const policy = {witnesses: [V.witness_key.vkey], quorum: 1, originBase: BASE, require: true, requireTenantWitness: true};
+  const exports = {alpha: await f.call(s, '/api/export'), beta: await f.call(s, '/api/export', 'beta')};
+  for (const [tenant, bundle] of Object.entries(exports)) {
+    const verified = verifyBundle(bundle, f.publicKey, undefined, {transparency: policy});
+    assert.deepEqual([verified.tenant, verified.transparency.rollbackCheckedAgainst, verified.transparency.tenantCosigned.origin],
+      [tenant, 'signing_key_holder', T.tenantOrigin(BASE, tenant)]);
+  }
+  snapshot(f.dataDir, join(run, 'older.db'));
+  f.write(s, 'alpha', 4);
+  await s.transparency.pump();
+  const alpha = T.tenantOrigin(BASE, 'alpha'), witnessed = s.store._tlogRow('alpha').size, older = exports.alpha.checkpoint.count;
+  assert.equal(s.transparency.status().tenantLogs[0].logs.consistent, 2);
+  await f.close(s);
+  // litewitness will not cosign the older tenant checkpoint again: it answers 409 with the size it holds.
+  const again = await T.postAddCheckpoint(url, T.addCheckpointBody(older, [], exports.alpha.transparency.checkpoint));
+  assert.deepEqual([again.status, T.parseConflictBody(again.type, again.body)], [409, witnessed]);
+  rmSync(transparencyPinPath(f.dataDir));
+  replaceDatabase(f.dataDir, join(run, 'older.db'));
+  const refused = await f.open('enforce', {cfg: config('enforce')}).then(() => null, error => error.message);
+  const log = alpha.replace(/[./]/g, '\\$&');
+  assert.match(refused || '', new RegExp(`witness holds tenant log ${log} size ${witnessed} but the local tenant log ${log} has ${older} \\(rollback\\)`));
+  t.diagnostic(JSON.stringify({litewitness: LW, registration, tenantOrigins: Object.keys(exports).map(x => T.tenantOrigin(BASE, x)),
+    resubmittedOlderTenantCheckpoint: again.status, olderCopy: refused}));
 });

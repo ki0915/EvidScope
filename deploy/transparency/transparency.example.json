@@ -7,5 +7,6 @@
   ],
   "quorum": 1,
   "startupProbe": "best_effort",
-  "pinFile": "/var/lib/evidscope-transparency/pin.json"
+  "pinFile": "/var/lib/evidscope-transparency/pin.json",
+  "witnessTenantLogs": false
 }

@@ -285,7 +285,11 @@ test('the shipped transparency example is strict about its placeholders and vali
   const vkeys = ['witness-1.example.org', 'witness-2.example.org'].map(name => T.vkeyString(name, T.SIG_COSIG_ED25519, Buffer.alloc(32, name.length)));
   const filled = {...example, witnesses: example.witnesses.map((w, i) => ({...w, vkey: vkeys[i]}))};
   const config = normalizeTransparencyConfig(filled, {dataDir: '/tmp/evs'});
-  assert.deepEqual([config.mode, config.quorum, config.witnesses.length, config.startupProbe, config.pinFile],
-    ['monitor', 1, 2, 'best_effort', '/var/lib/evidscope-transparency/pin.json']);
+  assert.deepEqual([config.mode, config.quorum, config.witnesses.length, config.startupProbe, config.pinFile, config.witnessTenantLogs],
+    ['monitor', 1, 2, 'best_effort', '/var/lib/evidscope-transparency/pin.json', false]);
   assert.throws(() => normalizeTransparencyConfig({...filled, witnessQuorum: 1}, {dataDir: '/tmp/evs'}), /Unknown transparency config field: witnessQuorum/);
+  // witnessTenantLogs is opt-in: every tenant origin must be registered at every witness before it is turned on.
+  assert.equal(normalizeTransparencyConfig({...filled, witnessTenantLogs: true}, {dataDir: '/tmp/evs'}).witnessTenantLogs, true);
+  assert.equal(normalizeTransparencyConfig({...filled, witnessTenantLogs: undefined}, {dataDir: '/tmp/evs'}).witnessTenantLogs, false);
+  assert.throws(() => normalizeTransparencyConfig({...filled, witnessTenantLogs: 'yes'}, {dataDir: '/tmp/evs'}), /witnessTenantLogs must be true or false/);
 });

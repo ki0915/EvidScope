@@ -7,6 +7,7 @@ export const transparencyFlags = {
   'origin-base': {type: 'string'},
   'max-staleness': {type: 'string'},
   'require-transparency': {type: 'boolean'},
+  'require-tenant-witness': {type: 'boolean'},
 };
 const count = (value, name) => {
   if (!/^(0|[1-9][0-9]*)$/.test(value) || !Number.isSafeInteger(Number(value))) throw Error(`--${name} must be a non-negative integer`);
@@ -23,10 +24,14 @@ function minimumCheckpoint(file) {
 }
 // Returns undefined (legacy behaviour) unless the input carries transparency material or a flag asks for it.
 export function transparencyOptions(values, present) {
-  const asked = ['witness', 'quorum', 'origin-base', 'max-staleness', 'require-transparency', 'min-checkpoint'].some(k => values[k] !== undefined);
+  const asked = ['witness', 'quorum', 'origin-base', 'max-staleness', 'require-transparency', 'require-tenant-witness', 'min-checkpoint']
+    .some(k => values[k] !== undefined);
   if (!present && !asked) return undefined;
   return {
     require: !!values['require-transparency'],
+    // --require-tenant-witness: fail unless a fresh witness quorum cosigned the tenant log itself under the pinned origin base
+    // (rollbackCheckedAgainst 'signing_key_holder'); heads evidence alone only binds an attacker without the vault key.
+    ...(values['require-tenant-witness'] ? {requireTenantWitness: true} : {}),
     witnesses: values.witness || [],
     ...(values.quorum !== undefined ? {quorum: count(values.quorum, 'quorum')} : {}),
     ...(values['origin-base'] !== undefined ? {originBase: values['origin-base']} : {}),
