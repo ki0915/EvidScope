@@ -36,7 +36,7 @@ API는 다른 조회와 같이 auditor·reviewer·admin만 부르며 접근 기�
   `evidscope-case-<사건 ID>-<레코드 수>.json`), `digest.sha256`은 응답 `file.content`의 UTF-8 바이트 SHA-256입니다. 이 바이트는 같은
   요청을 `attest` 없이 보냈을 때의 응답 본문과 같은 직렬화입니다.
 - predicate의 값은 `issuedAt`(내보내기)과 `tlogProofs`를 빼면 모두 대상 파일에서 다시 계산되는 사실입니다. 검증기는 다시 계산해
-  하나라도 다르면 거부합니다.
+  하나라도 다르면 거부하고, 아래 표에 없는 필드가 있어도 거부합니다.
 
 <a id="export-v1"></a>
 
@@ -176,7 +176,8 @@ jq -j .proof record-response.json > record.tlog-proof
 node scripts/package-verifier.mjs --out releases
 ```
 
-`releases/evidscope-verify-<버전>/` 폴더와 `.tar.gz`, `.tar.gz.sha256`을 만들고 이미 있으면 덮어쓰지 않습니다. 폴더에는 진입점
+`releases/evidscope-verify-<버전>/` 폴더와 `.tar.gz`, `.tar.gz.sha256`을 만들고 이미 있으면 덮어쓰지 않습니다. `src/`,
+`deploy/verifier/`, `package.json`에 커밋하지 않은 변경이 있으면 거부합니다(`--allow-dirty`로만 허용). 폴더에는 진입점
 `evidscope-verify.mjs`, `src/verify-cli.mjs`가 가져오는 모듈만, 의존성 없는 `package.json`, `deploy/verifier/`의 README 두 개,
 `sha256sum -c` 형식의 `SHA256SUMS`가 들어갑니다. 포함 모듈은 import를 따라가며 정하고, 네트워크·프로세스 모듈(`net`, `http`,
 `child_process` 등)과 동적 import는 거부합니다. tar 항목의 소유자·권한·시각(`SOURCE_DATE_EPOCH`, 기본 0)을 고정하므로 같은 소스를
