@@ -31,6 +31,8 @@ export function createIdentity({config,store,now=()=>Date.now()}){
  if(typeof settings.clientId!=='string'||!settings.clientId||typeof settings.clientSecret!=='string'||settings.clientSecret.length<16)throw Error('OIDC confidential client settings required');
  const ttl=bounded(settings.sessionTtlSeconds,900,60,3600)*1000,idle=bounded(settings.idleTtlSeconds,300,30,1800)*1000,maxAge=bounded(settings.maxAuthenticationAgeSeconds,300,30,3600);
  const acr=settings.requiredAcrValues??[];if(!Array.isArray(acr)||acr.some(x=>typeof x!=='string'||!x||x.length>200))throw Error('Invalid required ACR values');
+ const exchangeRate=settings.tokenExchangesPerMinute??60;
+ if(!Number.isInteger(exchangeRate)||exchangeRate<1||exchangeRate>600)throw Error('Invalid OIDC token exchange limit');
  if(!Array.isArray(settings.bindings)||!settings.bindings.length)throw Error('OIDC subject bindings required');
  const bindings=settings.bindings.map(b=>{if(typeof b.subject!=='string'||!b.subject||b.subject.length>256||!humanRoles.has(b.role))throw Error('Invalid OIDC subject binding');return {id:identifier(b.id),tenant:identifier(b.tenant),role:b.role,subject:b.subject,issuer};});
  if(new Set(bindings.map(b=>b.id)).size!==bindings.length||new Set(bindings.map(b=>b.subject)).size!==bindings.length||bindings.some(b=>(config.principals||[]).some(p=>p.id===b.id)))throw Error('OIDC principal or issuer/subject collision');
@@ -76,11 +78,24 @@ export function createIdentity({config,store,now=()=>Date.now()}){
   if(flow?.v!==1||[flow.state,flow.nonce,flow.verifier].some(x=>typeof x!=='string'||!x)||!Number.isSafeInteger(flow.expires))throw Error('flow');
   return flow;
  }
- // A state is consumed before the token exchange, so a replayed callback never reaches the token endpoint. Entries live
- // until their flow expires; the map is bounded and drops its oldest entry when full (the IdP still refuses a reused code).
- function consume(flow){
+ // The token exchange is the only callback step that spends the confidential client at the IdP. Every anonymous
+ // login/callback pair used to cost one such request (round-2 re-audit, S9), so a process-wide token bucket
+ // (exchangeRate per minute, burst of up to 20) and at most 4 exchanges in flight admit them. A callback over the limit
+ // fails with /?auth=failed before any IdP request; so does a state that was already used.
+ const exchangeBurst=Math.min(20,exchangeRate),exchangeConcurrency=4,flowLifetimeMs=300000;
+ // A state is recorded as used when its exchange is admitted and kept until its flow expires (at most 5 minutes after
+ // use), so the record never holds more than the bucket admits in 5 minutes. Only expired entries are ever dropped;
+ // were the record still full, callbacks fail closed instead of forgetting a used state.
+ const consumedCapacity=exchangeBurst+exchangeRate*flowLifetimeMs/60000;
+ let exchangeTokens=exchangeBurst,refilledAt=now(),exchanging=0;
+ function admitExchange(flow){
   const at=now(),key=hash(flow.state);for(const [old,expires] of consumed){if(expires>at)break;consumed.delete(old);}
-  if(consumed.has(key))throw Error('flow');consumed.set(key,flow.expires);if(consumed.size>10000)consumed.delete(consumed.keys().next().value);
+  if(consumed.has(key))throw Error('flow');
+  if(exchanging>=exchangeConcurrency)throw Error('busy');
+  if(consumed.size>=consumedCapacity){for(const [old,expires] of consumed)if(expires<=at)consumed.delete(old);if(consumed.size>=consumedCapacity)throw Error('full');}
+  if(at>refilledAt){exchangeTokens=Math.min(exchangeBurst,exchangeTokens+(at-refilledAt)*exchangeRate/60000);refilledAt=at;}
+  if(exchangeTokens<1)throw Error('rate');
+  exchangeTokens--;consumed.set(key,flow.expires);
  }
  function audit(binding,operation,sessionId){store.transaction(()=>store.append(binding.tenant,'identity_session',{id:randomUUID(),principalId:binding.id,operation,...(sessionId?{sessionId}:{})},binding.id));}
  function authenticate(headers,method='GET'){
@@ -99,16 +114,17 @@ export function createIdentity({config,store,now=()=>Date.now()}){
   if(path==='/auth/login'&&method==='GET'){
    const c=await client(),stateValue=oidc.randomState(),nonce=oidc.randomNonce(),verifier=oidc.randomPKCECodeVerifier();
    const location=oidc.buildAuthorizationUrl(c,{redirect_uri:callback,response_type:'code',scope:'openid',state:stateValue,nonce,code_challenge:await oidc.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256',max_age:String(maxAge),...(acr.length?{acr_values:acr.join(' ')}:{})});
-   const flow=sealFlow({v:1,state:stateValue,nonce,verifier,expires:now()+300000});
+   const flow=sealFlow({v:1,state:stateValue,nonce,verifier,expires:now()+flowLifetimeMs});
    return response(302,{}, {'location':location.href,'set-cookie':[cookie(flowName,flow,300)]});
   }
   if(path==='/auth/callback'&&method==='GET'){
    try{
     const values=url.searchParams.getAll('state'),sealed=cookies(headers.cookie).get(flowName);if(values.length!==1||values[0].length>256||!sealed)throw Error('flow');
     const flow=openFlow(sealed);if(!equal(flow.state,values[0])||flow.expires<=now())throw Error('flow');
-    consume(flow);
-    const current=new URL(callback);current.search=url.search;
-    const tokens=await oidc.authorizationCodeGrant(await client(),current,{pkceCodeVerifier:flow.verifier,expectedState:flow.state,expectedNonce:flow.nonce,idTokenExpected:true,maxAge});
+    admitExchange(flow);
+    const current=new URL(callback);current.search=url.search;let tokens;exchanging++;
+    try{tokens=await oidc.authorizationCodeGrant(await client(),current,{pkceCodeVerifier:flow.verifier,expectedState:flow.state,expectedNonce:flow.nonce,idTokenExpected:true,maxAge});}
+    finally{exchanging--;}
     const claims=tokens.claims(),binding=claims&&bySubject.get(claims.sub);
     if(!binding||claims.iss!==issuer||acr.length&&!acr.includes(claims.acr))throw Error('binding');
     const access=state(binding);if(access.disabled)throw Error('disabled');
