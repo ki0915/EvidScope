@@ -23,7 +23,11 @@ const freePort = () => new Promise((resolve, reject) => { const s = createServer
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function until(check, timeoutMs = 20000, label = 'condition') {
   const end = Date.now() + timeoutMs;
-  for (;;) { const value = await check(); if (value) return value; if (Date.now() > end) throw Error(`timed out waiting for ${label}`); await sleep(200); }
+  for (;;) {
+    const value = await check(); if (value) return value;
+    if (Date.now() > end) throw Error(`timed out waiting for ${typeof label === 'function' ? label() : label}`);
+    await sleep(200);
+  }
 }
 async function startCollector(t, h, token) {
   const [http, grpc, health] = [await freePort(), await freePort(), await freePort()];
@@ -34,8 +38,9 @@ async function startCollector(t, h, token) {
   let log = ''; child.stdout.on('data', b => { log += b; }); child.stderr.on('data', b => { log += b; });
   t.after(() => new Promise(r => { if (child.exitCode !== null) return r(); child.once('exit', r); child.kill('SIGTERM');
     setTimeout(() => { child.kill('SIGKILL'); r(); }, 5000).unref(); }));
-  await until(async () => { try { return (await fetch(`http://127.0.0.1:${health}/`)).status === 200; } catch { return false; } }, 20000,
-    `collector health: ${log}`);
+  // The collector once missed a 20 s health deadline in a full run; allow 60 s and report its exit code and log at the timeout.
+  await until(async () => { try { return (await fetch(`http://127.0.0.1:${health}/`)).status === 200; } catch { return false; } }, 60000,
+    () => `collector health (exit code ${child.exitCode}): ${log}`);
   const post = async (body, type) => (await fetch(`http://127.0.0.1:${http}/v1/traces`, {method: 'POST', headers: {'content-type': type}, body})).status;
   return {post, log: () => log};
 }
