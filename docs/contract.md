@@ -67,6 +67,8 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET/POST /api/exceptions | ruleId,actionId,reason,owner,expiresAt(90일 이내) |
 | POST /api/exceptions/:id/approve | 작성자/소유자와 다른 검토자 |
 | GET /api/export, /api/integrity | 독립 export·해시체인 검사 |
+| GET /api/export?attest=intoto | 같은 export 바이트와 그 DSSE in-toto 증명(`evidscope-attested-file-v1`). [표준 영수증](receipts.md) |
+| GET /api/receipts/record?seq= | 레코드 하나의 `c2sp.org/tlog-proof@v1`과 tenant 로그 `c2sp.org/tlog-policy`(`evidscope-record-receipt-v1`). 투명성 off는 409, 아직 서명된 tenant 로그에 없는 seq는 404 |
 | POST /api/rebuild | admin 전용 원장 기반 검색 사본 재생성 |
 | GET /api/metrics | tenant 접수·분석·backlog와 vault RSS |
 | GET /api/governance | 요구사항·시스템·평가·보완과제 |
@@ -111,10 +113,13 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET /api/cases/:id/review-context | 서명 원장과 사본을 대조한 case/events/references/evaluations/analysis/contextHash/decisions/latestDecision/reviewState |
 | POST /api/cases/:id/decisions | contextHash, conclusion=confirmed_issue\|no_issue_found\|inconclusive, reason, scope, limitations, nextReviewAt, evidence[{ref,supports: supports\|contradicts\|context,note}]. 필수 문구 공백 거부, 미래 재검토 시각, 근거 최대30개·중복 금지·같은 행동/tenant 실존 검증. 유보 외에는 최소1개 근거. 알 수 없는 필드·작성자/시각 위조는400, 변경된 문맥은409. |
 | GET /api/cases/:id/report | evidscope-case-report-v1. snapshot+signature+publicKeyFingerprint. 이벤트·사건·평가·인간 판단 사본을 서명 원본과 대조한 뒤 발급. |
+| GET /api/cases/:id/report?attest=intoto | 같은 보고서 바이트와 그 DSSE in-toto 증명(`evidscope-attested-file-v1`). 보고서 서명은 바뀌지 않는다. [표준 영수증](receipts.md) |
 
 decision은 서버 작성자/시각, 당시 전체 evidenceManifest(ref/hash/seq), evaluationManifest(id/version), analysisVersion 및 checkpoint를 자동 추가한다. 판단 수정 API는 없다. 검토 상태는 unreviewed/reviewed/inconclusive/stale이며 근거·분석 변경, 정당한 원문 파기, 재검토 기한 도래를 반영한다. 근거 변경 보호는 동시 검토자 예약 잠금이나 정족수 승인과 다르다.
 
 보고서는 canonical({format,snapshot})의 Ed25519 base64 서명이다. fingerprint는 공개키 DER SPKI의 SHA-256 hex다. 별도 배포된 신뢰키를 사용하는 `scripts/verify-case-report.mjs`로 검증하며 전체 체인 포함 증명·출처 진실성·외부 시각 봉인·법적 준수로 확대 해석하지 않는다. Markdown은 같은 snapshot의 비서명 읽기용 표현이다.
+
+`?attest=intoto` 증명과 레코드 영수증은 같은 증거를 DSSE·in-toto·C2SP 표준 형식으로 다시 묶은 추가 출력이다. 별도 배포 검증기 `evidscope-verify`나 torchwood 같은 제3자 도구로 확인하며, 증명 범위와 한계는 [표준 영수증](receipts.md)에 따른다.
 
 사건 문맥의 한도: 이벤트1,000개, 평가100개, 판단200개, 합계8MiB, 원장 단일행2MiB. 보고서10MiB. 한도 초과413은 부분 결과를 성공으로 반환하지 않는다. 조사함은 한도 초과 행동을 상세 제한으로 표시한다. `/api/actions/:id`에도 analysis.version/analyzed/pending을 제공한다. 분석 effect는 mixed_results를 지원하며 서비스 성공과 실패가 함께 있으면 성공으로 축약하지 않는다.
 

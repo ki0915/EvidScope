@@ -122,6 +122,11 @@ node scripts/verify.mjs export.json trust-anchor.pem --witness "<위트니스 vk
 기존 사용법(`verify.mjs EXPORT KEY [CHECKPOINT]`)은 그대로 동작합니다. 투명성 자료가 없는 예전 묶음도 검증되며, `tenantCosigned`가 없는 묶음은
 heads 공동서명이 신선해도 `database_tamper`로 보고합니다.
 
+표준 도구로 확인하려는 감사인에게는 [표준 영수증](receipts.md)을 줍니다. `GET /api/receipts/record?seq=N`(또는 `scripts/receipts.mjs record`)은
+레코드 하나가 tenant 로그 체크포인트에 들어 있다는 `c2sp.org/tlog-proof@v1`을 위트니스 공동서명과 함께 내고, `scripts/receipts.mjs policy`는
+tenant 로그의 `c2sp.org/tlog-policy`를 냅니다. 내보내기와 사건 보고서의 `?attest=intoto` 증명에도 같은 증명이 들어 있어 torchwood
+`VerifyProof`나 별도 배포 검증기 `evidscope-verify`로 확인할 수 있습니다. `witnessTenantLogs`가 꺼져 있으면 정책은 `quorum none`입니다.
+
 heads 모니터는 DB 사본에서 heads 로그 전체를 다시 접어 봅니다. 공개 키만 있으면 되므로 감사인도 돌릴 수 있습니다.
 
 ```powershell
