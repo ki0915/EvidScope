@@ -6,7 +6,8 @@
 
 - **이전:** 문서·백업 암호화 키를 Ed25519 서명 키에서 유도했습니다. 서명 키 하나가 새면 서명 위조와 복호화가 함께 가능했습니다(S2).
 - **이후:** 32바이트 무작위 루트 키(`DATA_KEY_FILE`)에서 용도별 키를 HKDF-SHA256으로 나눠 씁니다
-  (거버넌스 문서, 금융 문서, vault 백업). 문서 봉투 v2와 백업 manifest v2는 키 ID(`dk1-…`)를 AAD에 묶습니다.
+  (거버넌스 문서, 금융 문서, vault 백업, 2라운드에 추가한 이벤트 키 epoch 봉인). 문서 봉투 v2와 백업 manifest v2는 키 ID(`dk1-…`)를
+  AAD에 묶습니다.
 - 예전 방식으로 암호화된 자료는 그대로 읽히며(`legacy-signing-v1`), 이전 작업으로 새 키로 다시 암호화합니다.
 - 삭제(erasure) 뒤 SQLite가 지운 페이지를 남기지 않도록 `PRAGMA secure_delete=ON`과 `wal_checkpoint(TRUNCATE)`를 적용했습니다(S4).
 
@@ -41,6 +42,7 @@ npm start
 
 ```powershell
 $env:DATA_KEY_FILE='.local/data-encryption.key'
+$env:EVENT_KEYSTORE_DIR='.local/event-keystore'   # 이벤트 키스토어를 쓰는 설치(새 설치와 upgrade:local 이후)
 node scripts/vault-backup.mjs create .local/data <새 백업 폴더> .local/signing-private.pem .local/trust-anchor.pem <새 앵커 파일>
 ```
 예전 백업은 서명 키로 계속 복구할 수 있으므로 서명 키를 보관하는 동안에는 예전 백업도 유효합니다.
@@ -59,9 +61,12 @@ node scripts/data-key.mjs migrate /data /keys/signing-private.pem  # vault를 �
 - Kubernetes 매니페스트는 `vault-data-key` Secret을 `/data-key/data-encryption.key`로 마운트합니다.
 - **키 교체:** 새 키를 `DATA_KEY_FILE`, 예전 키를 `DATA_KEY_PREVIOUS_FILES`(경로 구분자로 여러 개)에 두고 `migrate`를 실행합니다.
   더 이상 참조되지 않는 키 ID는 `retiredKeyIds`로 표시됩니다. 그 키로 봉인한 백업을 보관하는 동안에는 키도 오프라인에 보관하세요.
+  이벤트 키스토어를 쓰는 vault는 `EVENT_KEYSTORE_DIR`도 함께 줘야 하며, `migrate`가 epoch 파일을 새 키로 다시 봉인합니다(`resealedEpochs`).
 
 ## 남은 한계
 
 - 서명 키와 데이터 키는 다른 비밀이지만 같은 vault 프로세스가 둘 다 읽습니다. vault 호스트를 장악한 공격자는 둘 다 얻습니다.
   HSM·KMS 연동은 다음 단계입니다.
-- 이벤트별 crypto-shredding 키(`event_keys`)는 같은 DB에 감싸지 않은 채 저장됩니다. 목적은 원장 암호문의 파기이지 DB 열람자에 대한 기밀성이 아닙니다.
+- 이벤트별 crypto-shredding 키(`event_keys`)는 `EVENT_KEYSTORE_DIR`를 설정하지 않으면 같은 DB에 감싸지 않은 채 저장됩니다. 키스토어를
+  쓰면 데이터 키로 봉인한 키 epoch 비밀로 감싸며, epoch 파기가 이전 DB 사본과 vault 백업에도 닿습니다([이벤트 키 감싸기와 키 epoch 운영 가이드](event-key-wrapping.md)).
+  두 모드 모두 현재 DB에는 보관 중인 이벤트의 평문 검색 사본이 있으므로 DB 열람자에 대한 기밀성은 보장하지 않습니다.
