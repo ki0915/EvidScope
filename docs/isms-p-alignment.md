@@ -135,6 +135,31 @@ EvidScope는 ISMS-P 인증을 받는 관리체계가 아니라, 인증 범위에
 | 3.3.4 개인정보 국외이전 | 모델 호출 목적지 관측은 국외이전 검토의 입력일 수 있으나 이전 근거·고지·계약은 조직의 일이다. |
 | 3.4.2 처리목적 달성 후 보유 시 조치 | 보존 hold는 파기를 멈추는 기록일 뿐 분리 보관과 그 접근 제한을 다루지 않는다. |
 
+## 내보내기로 항목별 증거 목록 만들기
+
+[`scripts/isms-p-report.mjs`](../scripts/isms-p-report.mjs)는 서명된 내보내기(`GET /api/export`)를 기존 오프라인 검증기와 같은
+코드(`verifyBundle`, 선택 시 `replayEvaluations`)로 먼저 검증하고, 정렬한 항목마다 표에 적은 증거 종류가 그 내보내기에 실제로
+몇 건, 어느 기간에 있는지 나열합니다. 새 암호 처리는 없습니다.
+
+```bash
+node scripts/isms-p-report.mjs export.json trust-anchor.pem [external-checkpoint.json] [--replay] [--markdown]
+```
+
+- 검증에 실패하면(서명·해시 체인·체크포인트 불일치, 공개 본문 변조, `--replay`의 재계산 불일치) 보고서를 만들지 않고 종료 코드 1로 끝납니다.
+  위트니스 관련 선택지는 `scripts/verify.mjs`와 같습니다(`--witness`, `--quorum`, `--require-transparency` 등).
+- 기록(`record`)은 원장 기록 종류별로, 이벤트 종류(`eventKind`)는 공개된 이벤트 본문에서 출처 자격까지 맞는 것만, 발견사항(`finding`)은
+  행동별 마지막 서명 평가에서, 측정 종류(`checkType`)는 `governance_check` 이벤트에서 셉니다. 기간은 vault가 서명한 `recordedAt`이고,
+  이벤트의 `occurredAt`은 출처가 주장한 시각으로 따로 적습니다.
+- API 응답, 저장소 파일, `/api/integrity`의 검사 결과는 내보내기에 들어 있지 않으므로 `not_in_export`로 적습니다. 서명 원장 검사
+  (`signed_ledger`)만 이 보고서의 오프라인 검증으로 대신합니다. 0건은 `none_recorded`이며, 통제가 없다는 뜻이 아닙니다.
+- 파기한 이벤트는 본문이 없어 종류를 알 수 없으므로 건수만 따로 적습니다.
+- JSON(`evidscope-isms-p-evidence-report-v1`)과 한국어 Markdown 모두 첫머리에 **증거가 있다는 것은 기준 충족 판정이 아니다**는
+  문구와 `criterionAssessment:"not_performed"`를 담습니다. 외부 체크포인트나 위트니스 없이 검증하면 되돌리기(rollback)를 배제하지
+  못했다고 함께 적습니다.
+- [`test/isms-p-report.test.mjs`](../test/isms-p-report.test.mjs)는 데모 내보내기로 건수가 원장과 같은지 보고, 기록·공개 본문 변조,
+  다른 공개키, 고정 체크포인트보다 짧은 재서명 내보내기를 거부하는지, vault 키로 재서명한 발견사항 변경을 `--replay`가 거부하는지
+  확인합니다.
+
 ## 표가 출처·코드와 어긋나지 않게 하는 방법
 
 `test/isms-p-alignment.test.mjs`는 전체 시험에 포함되어 다음을 확인합니다.
