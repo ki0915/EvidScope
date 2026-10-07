@@ -4,11 +4,12 @@ import {readFileSync} from 'node:fs';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createService} from './service.mjs';
-import {HttpError} from './model.mjs';
+import {HttpError,isRawResponse} from './model.mjs';
 import {tick} from './worker.mjs';
 import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 import {prepareTransparency} from './transparency.mjs';
+import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -19,13 +20,17 @@ const runtimeReceiptFile=process.env.MODEL_RUNTIME_RECEIPT_FILE;
 const runtimeReceipt=()=>{if(!runtimeReceiptFile)return undefined;try{const raw=readFileSync(runtimeReceiptFile);if(raw.length>65536)throw Error();return JSON.parse(raw.toString('utf8'));}catch{return undefined;}};
 const ingestPaths=new Set(['/api/ingest','/api/development-runs/events']);
 const authPaths=new Set(['/auth/config','/auth/login','/auth/callback','/auth/session','/auth/logout']);
+// Enforcement points pull bundles and deny-lists and post OPA status through the ingress gateway or the vault (docs/kill-switch.md).
+const enforcementRoute=(method,pathname)=>pathname.startsWith(ENFORCEMENT_PREFIX)&&(method==='GET'&&pathname!==ENFORCEMENT_PREFIX||method==='POST'&&STATUS_PATH.test(pathname));
+// Optional OPA bundle signing key (RSA or P-256 PEM) and the key id OPA's verification config names.
+const bundleSigning=process.env.OPA_BUNDLE_SIGNING_KEY_FILE?{key:readFileSync(process.env.OPA_BUNDLE_SIGNING_KEY_FILE,'utf8'),keyId:process.env.OPA_BUNDLE_SIGNING_KEY_ID||'evidscope'}:undefined;
 if(mode!=='vault'&&!/^https:/.test(base)&&!['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname))throw Error('Remote vault requires verified TLS');
 // Async witness probe before createService, which stays synchronous and re-checks the pin before opening Store.
 const transparency=mode==='vault'?await prepareTransparency({dataDir:process.env.DATA_DIR||join(root,'.local','data'),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8')}):undefined;
 // Optional access-log sealing knobs (milliseconds / entry count); defaults live in src/access-log.mjs.
 const accessLogEnv=Object.fromEntries([['sealIntervalMs','ACCESS_LOG_SEAL_INTERVAL_MS'],['sealThreshold','ACCESS_LOG_SEAL_THRESHOLD'],['maxUnsealedAgeMs','ACCESS_LOG_MAX_UNSEALED_AGE_MS']]
  .filter(([,name])=>process.env[name]).map(([option,name])=>{const value=Number(process.env[name]);if(!Number.isSafeInteger(value)||value<1)throw Error('Invalid '+name);return [option,value];}));
-let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
 const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
@@ -60,6 +65,18 @@ async function upstream(path,method,headers,body){
  if(headers.origin&&(isAuth||/(?:^|;\s*)(?:__Host-)?evidscope-session=/.test(headers.cookie||'')))forwarded.origin=headers.origin;
  try{const response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:controller.signal,redirect:'manual'});return {status:response.status,body:await response.text(),headers:isAuth?{...(response.headers.has('location')?{location:response.headers.get('location')}:{}),...(response.headers.getSetCookie().length?{'set-cookie':response.headers.getSetCookie()}:{})}:{}};}finally{clearTimeout(timer);}
 }
+// Binary-safe pass-through for enforcement points at the ingress gateway: bearer token, If-None-Match and the JSON body go up;
+// status, ETag, Content-Type and the (bounded) bytes come back, so a bundle's gzip bytes and a 304 arrive unchanged.
+async function enforcementUpstream(path,method,headers,body){
+ const forwarded={authorization:headers.authorization||'',...(headers['if-none-match']?{'if-none-match':headers['if-none-match']}:{}),...(method==='POST'?{'content-type':'application/json'}:{})};
+ let response;
+ try{response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:AbortSignal.timeout(6000),redirect:'manual'});}
+ catch{throw new HttpError(503,'vault 연결 실패');}
+ const chunks=[];let size=0;
+ for await(const chunk of response.body||[]){if((size+=chunk.length)>16*1024*1024)throw new HttpError(503,'vault 응답 한도 초과');chunks.push(chunk);}
+ const out={};for(const name of ['etag','content-type'])if(response.headers.has(name))out[name]=response.headers.get(name);
+ return {status:response.status,headers:out,body:Buffer.concat(chunks)};
+}
 // Large uploads through the audit gateway are authorized by the vault before the gateway buffers them (S12a).
 async function preauthorizeUpstream(path,headers){
  const output=await upstream('/internal/preauthorize','POST',headers,JSON.stringify({path}));if(output.status===200)return;
@@ -84,20 +101,28 @@ async function route(req,res){
   if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
-  if(mode==='ingress'&&(!ingestPaths.has(url.pathname)||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
+  const enforcementPath=enforcementRoute(req.method,url.pathname);
+  if(mode==='ingress'&&!enforcementPath&&(!ingestPaths.has(url.pathname)||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
+  if(mode==='audit'&&url.pathname.startsWith(ENFORCEMENT_PREFIX))throw new HttpError(403,'집행 지점 경로는 수집 게이트웨이에서 제공합니다');
   if(mode==='audit'&&(!url.pathname.startsWith('/api/')&&!authPaths.has(url.pathname)||ingestPaths.has(url.pathname)||url.pathname==='/api/ingest/otlp'))throw new HttpError(403,'감사 게이트웨이에서 허용하지 않는 경로입니다');
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
   const largeBody=url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp',post=req.method==='POST';
   const vaultResult=mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'));
-  const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024:16384;
+  const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024
+   :STATUS_PATH.test(url.pathname)?STATUS_MAX_BYTES:16384;
   // Credentials and role are checked before anything above the 16 KiB default is buffered (S12a).
   if(limit>16384){if(mode==='vault')service.preauthorize(req.method,url,req.headers);else await preauthorizeUpstream(url.pathname,req.headers);}
   const body=await requestBody(req,limit);
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
-   const output=await service.handle(req.method,url,req.headers,body);res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
+   const output=await service.handle(req.method,url,req.headers,body);
+   if(isRawResponse(output)){res.statusCode=output.status;for(const [name,value] of Object.entries(output.headers))res.setHeader(name,value);res.end(output.body);return;}
+   res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
+  }else if(mode==='ingress'&&enforcementPath){
+   const output=await enforcementUpstream(url.pathname,req.method,req.headers,body);res.statusCode=output.status;
+   for(const [name,value] of Object.entries(output.headers))res.setHeader(name,value);res.end(output.body);
   }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition',`attachment; filename="evidscope-evidence${url.searchParams.has('attest')?'-attested':''}.json"`);res.end(output.body);}
  }catch(caught){
   const error=caught instanceof URIError?new HttpError(400,'경로의 퍼센트 인코딩 형식 오류'):caught;
