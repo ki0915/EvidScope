@@ -25,7 +25,7 @@ test('retention erasure leaves no event key bytes or plaintext in evidence.db or
  const accepted=await service.handle('POST',new URL('/api/ingest','http://local'),{authorization:'Bearer '+tool.token,'x-evid-timestamp':stamp,
   'x-evid-nonce':nonce,'x-evid-signature':mac(tool.hmacSecret,stamp,nonce,body)},body);
  assert.equal(accepted.accepted,true);
- const db=service.store.db,eventKey=Buffer.from(db.prepare('SELECT key FROM event_keys WHERE tenant=?').get('alpha').key);assert.equal(eventKey.length,32);
+ const db=service.store.db,eventKey=Buffer.from(db.prepare('SELECT key FROM event_keys WHERE tenant=?').get('alpha').key);assert.equal(eventKey.length,64);
  // Move the key page into the main file while older frames stay in the WAL (as a running vault would).
  db.prepare('PRAGMA wal_checkpoint(PASSIVE)').get();
  const files=[join(dir,'evidence.db'),join(dir,'evidence.db-wal')];

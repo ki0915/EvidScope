@@ -12,7 +12,7 @@ test('보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 �
  assert.equal((await request('/api/retention/policy',{retentionSeconds:1,purpose:'합성 보존기간 시험',reason:'개인정보 없는 단기 시험; 실제 법적 기간 아님'})).status,200);
  assert.equal((await submit(h.ingress.url,h.principal('agent'),event)).status,202);
  assert.equal((await request('/api/retention/plans',{reason:'아직 기간 전'})).status,409);
- const before=(await h.api('/api/export')).body;assert.equal(before.records.find(r=>r.type==='event').payload.format,'evidscope-encrypted-event-v1');assert.ok(!JSON.stringify(before.records).includes(event.note));assert.equal(before.disclosures[0].event.note,event.note);assert.equal(verifyBundle(before,h.publicKey).disclosedEvents,1);
+ const before=(await h.api('/api/export')).body;assert.equal(before.records.find(r=>r.type==='event').payload.format,'evidscope-encrypted-event-v2');assert.ok(!JSON.stringify(before.records).includes(event.note));assert.equal(before.disclosures[0].event.note,event.note);assert.equal(verifyBundle(before,h.publicKey).disclosedEvents,1);
  const noDisclosure=structuredClone(before);noDisclosure.disclosures=[];assert.throws(()=>verifyBundle(noDisclosure,h.publicKey),/Missing/);
  const altered=structuredClone(before);altered.disclosures[0].event.note='altered';assert.throws(()=>verifyBundle(altered,h.publicKey),/altered/);
  const hold=(await request('/api/retention/holds',{scope:'retention-action',reason:'인간 검토 보존 hold'})).body;

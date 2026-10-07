@@ -22,13 +22,19 @@ export function assertBatchAnalysisCapacity(store, tenant, actionIds) {
   if (backlog > 0 && backlog + added > analysisBacklogLimit()) fail(503, '분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
 }
 
-// The four writes every accepted source event needs. Projection checks fail if any is missing.
-export function appendSourceEvent(store, p, e) {
-  const record = store.append(p.tenant, 'event', e, p.id);
+// The four writes every accepted source event needs. Projection checks fail if any is missing. e.fingerprint is the raw-body
+// digest from validateEvent; what is stored and signed is the keyed tag under the event's key epoch (round 2, audit S3).
+export function appendSourceEvent(store, p, raw) {
+  const e = store.sealEventFingerprint(p.tenant, raw), record = store.append(p.tenant, 'event', e, p.id);
   store.append(p.tenant, 'event_receipt', {format: 'evidscope-event-receipt-v1', basis: 'source_ingest', source: e.source, id: e.id,
     fingerprint: e.fingerprint, eventSeq: record.seq, eventHash: record.hash}, p.id);
   store.project({...e, seq: record.seq, hash: record.hash});
   store.projectionMutation(() => store.db.prepare('INSERT INTO actions(tenant,id,version) VALUES(?,?,1) '
     + 'ON CONFLICT(tenant,id) DO UPDATE SET version=version+1').run(p.tenant, e.actionId));
   return record;
+}
+// Duplicate check of a source retry against its stored receipt: 'same' | 'different' | 'unverifiable' (key epoch destroyed).
+export function receiptMatch(store, tenant, source, id, rawDigest) {
+  const prev = store.db.prepare('SELECT fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?').get(tenant, source, id);
+  return prev ? store.compareEventFingerprint(tenant, prev.fingerprint, rawDigest) : null;
 }

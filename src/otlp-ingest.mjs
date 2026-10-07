@@ -2,7 +2,7 @@
 // receiver (src/otlp-http.mjs), re-validates every event and commits the batch in one transaction.
 import {fail, validateEvent} from './model.mjs';
 import {OTLP_BATCH_FORMAT, OTLP_MAPPING_VERSION, otlpEventInvariant} from './otlp.mjs';
-import {appendSourceEvent, assertBatchAnalysisCapacity} from './event-ingest.mjs';
+import {appendSourceEvent, assertBatchAnalysisCapacity, receiptMatch} from './event-ingest.mjs';
 
 export const OTLP_BATCH_MAX_EVENTS = 2048;
 
@@ -34,11 +34,12 @@ export function createOtlpIngest({store, principals, verifiedActions}) {
     return store.transaction(() => {
       verifiedActions(p);
       let accepted = 0, duplicates = 0;
-      const fresh = [], seen = new Map(), receipt = store.db.prepare('SELECT fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?');
+      const fresh = [], seen = new Map();
       for (const e of valid) {
-        const prev = seen.get(e.id) ?? receipt.get(p.tenant, p.id, e.id)?.fingerprint;
-        if (prev !== undefined) {
-          if (prev !== e.fingerprint) { reject('id_conflict'); continue; }
+        // Earlier in this batch: raw digests; stored: keyed receipt tags. A destroyed key epoch cannot confirm a retry.
+        const prev = seen.has(e.id) ? (seen.get(e.id) === e.fingerprint ? 'same' : 'different') : receiptMatch(store, p.tenant, p.id, e.id, e.fingerprint);
+        if (prev) {
+          if (prev !== 'same') { reject('id_conflict'); continue; }
           duplicates++; store.count('duplicates'); continue;
         }
         seen.set(e.id, e.fingerprint); fresh.push(e);

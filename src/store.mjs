@@ -2,8 +2,9 @@ import {DatabaseSync,constants as sqlite} from 'node:sqlite';
 import {mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {createPublicKey,createHash} from 'node:crypto';
-import {canonical,digest,makeCheckpoint,verifyBundle,verifyCheckpoint} from './crypto.mjs';
-import {encryptEvent,decryptEvent} from './encryption.mjs';
+import {canonical,digest,makeCheckpoint,verifyBundle,verifyCheckpoint,isEncryptedEvent,RECEIPT_FINGERPRINT} from './crypto.mjs';
+import {encryptEvent,openEvent} from './encryption.mjs';
+import {compareFingerprint,databaseEpochStore,epochOfRetainUntil,sealFingerprint} from './event-keys.mjs';
 import {checkActionRows,createActionProjectionReducer} from './action-integrity.mjs';
 import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
@@ -40,6 +41,12 @@ const tlogSchema=`CREATE TABLE IF NOT EXISTS tlog_state(tenant TEXT NOT NULL CHE
    CREATE TRIGGER IF NOT EXISTS tlog_checkpoints_immutable_update BEFORE UPDATE ON tlog_checkpoints BEGIN SELECT RAISE(ABORT,'append only'); END;
    CREATE TRIGGER IF NOT EXISTS tlog_checkpoints_immutable_delete BEFORE DELETE ON tlog_checkpoints BEGIN SELECT RAISE(ABORT,'append only'); END;
 `+tlogTables.flatMap(table=>['insert','update','delete'].map(op=>`   CREATE TRIGGER IF NOT EXISTS ${table}_mutation_${op} AFTER ${op.toUpperCase()} ON ${table} BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;`)).join('\n');
+// Event-key epoch secrets kept in evidence.db when no keystore is configured, and the record of destroyed epochs (event-keys.mjs).
+const epochTables=['event_key_epochs','event_key_epoch_tombstones'];
+const epochSchema=`CREATE TABLE IF NOT EXISTS event_key_epochs(tenant TEXT NOT NULL,epoch TEXT NOT NULL,secret BLOB NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(tenant,epoch));
+   CREATE TABLE IF NOT EXISTS event_key_epoch_tombstones(tenant TEXT NOT NULL,epoch TEXT NOT NULL,destroyed_at TEXT NOT NULL,storage TEXT NOT NULL,PRIMARY KEY(tenant,epoch));
+`+epochTables.flatMap(table=>['insert','update','delete'].map(op=>
+ `   CREATE TRIGGER IF NOT EXISTS ${table}_mutation_${op} AFTER ${op.toUpperCase()} ON ${table} BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;`)).join('\n');
 // Projections of governance_document and development_run_event records, verified as facets of the incremental state.
 const facetTables=['governance_documents','development_run_events'];
 const facetSchema=`CREATE TABLE IF NOT EXISTS governance_documents(tenant TEXT NOT NULL,id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(tenant,id));
@@ -100,11 +107,12 @@ export class Store {
     CREATE TRIGGER IF NOT EXISTS evaluations_mutation_update AFTER UPDATE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
     CREATE TRIGGER IF NOT EXISTS evaluations_mutation_delete AFTER DELETE ON evaluations BEGIN UPDATE projection_mutation_clock SET serial=serial+1 WHERE id=1; END;
    ${tlogSchema}
-   ${facetSchema}`);
+   ${facetSchema}
+   ${epochSchema}`);
   this.actionProjectionCache=new Map();this.rollbackActions=[];this.projectionMutationDepth=0;this.projectionMutationSerial=0;this.verifiedStateMaxAgeMs=options.verifiedStateMaxAgeMs??600000;
   this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;
-   const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables,...facetTables]);
-   const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete',...[...tlogTables,...facetTables].flatMap(table=>['insert','update','delete'].map(op=>`${table}_mutation_${op}`))]);
+   const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables,...facetTables,...epochTables]);
+   const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete',...[...tlogTables,...facetTables,...epochTables].flatMap(table=>['insert','update','delete'].map(op=>`${table}_mutation_${op}`))]);
   this.db.setAuthorizer((action,table,_column,_database,source)=>{
    if(action===sqlite.SQLITE_DROP_TRIGGER&&protectedTriggers.has(table)||[sqlite.SQLITE_DROP_TABLE,sqlite.SQLITE_ALTER_TABLE].includes(action)&&([...protectedTables,'projection_mutation_clock'].includes(table)))return sqlite.SQLITE_DENY;
    if([sqlite.SQLITE_INSERT,sqlite.SQLITE_UPDATE,sqlite.SQLITE_DELETE].includes(action)&&table==='projection_mutation_clock'&&!protectedTriggers.has(source))return sqlite.SQLITE_DENY;
@@ -172,14 +180,27 @@ export class Store {
   }
   const seq=(head?.seq||0)+1;
   if(type==='event'){
-   const policy=this.get(tenant,'retention_policy','current')||{version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'};
-   const encrypted=encryptEvent(payload,tenant,seq,policy);this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,encrypted.key));payload=encrypted.payload;
+   const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
+   this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,encrypted.material));payload=encrypted.payload;
   }
   const record={tenant,seq,previous:head?.hash||'0'.repeat(64),type,recordedAt:new Date().toISOString(),principal,payload};
   const hash=digest(record);this.projectionMutation(()=>this.db.prepare('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,canonical(record),hash));
   this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash,...(head.peaks?{peaks:frontierAppend(head.peaks,head.seq,recordLeaf(hash))}:{})});this.ledgerTransaction.dirty.add(tenant);
   return {...record,hash};
  }
+ // Retention of a new event under the tenant's current policy; its key epoch is the UTC month of retainUntil.
+ eventRetention(tenant,receivedAt){
+  const policy=this.get(tenant,'retention_policy','current')||{version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'};
+  const retainUntil=new Date(Date.parse(receivedAt)+policy.retentionSeconds*1000).toISOString();
+  return {policy,retainUntil,keyEpoch:epochOfRetainUntil(retainUntil)};
+ }
+ // Epoch secrets: the configured keystore, else the tables in this database (event-keys.mjs).
+ eventKeyEpochs(){return this.eventKeyProvider??=databaseEpochStore(this.db,{mutate:fn=>this.projectionMutation(fn)});}
+ // Source ingest replaces the raw-body digest by a tag keyed by the event's epoch (call inside the ingest transaction).
+ sealEventFingerprint(tenant,event){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,this.eventRetention(tenant,event.receivedAt).keyEpoch,event.fingerprint)};}
+ compareEventFingerprint(tenant,stored,rawDigest){return compareFingerprint(this.eventKeyEpochs(),tenant,stored,rawDigest);}
+ // {event, salt} of one encrypted ledger event from its stored key material.
+ _openEvent(payload,stored){return openEvent(payload,stored);}
  // Read-only scope (GET requests): one deferred WAL read snapshot for the whole request under PRAGMA query_only, so every
  // write on this connection fails and Store.transaction inside it is a savepoint of that snapshot. What is verified is what
  // is served; other connections may commit meanwhile (the next read then fails closed). The scope owns the ledger context,
@@ -211,17 +232,21 @@ export class Store {
   if(checkpoint.tenant!==tenant)throw Error('Checkpoint tenant mismatch');
   return {format:'evidscope-export-v2',records,checkpoint,limitations:['Minimized receipt evidence; no original prompt or response','Signature authenticates local vault, not truth of source claims','Pin public key and checkpoint out of band to detect replacement and rollback','Erasure covers live event keys and query copies; prior exports/backups need separate disposition']};
  }
- decodeRecords(bundle){
+ decodeRecords(bundle){return this._decodeOpenings(bundle).map(item=>item.event);}
+ // Retained events with their v2 commitment salts (null for v1 and plaintext legacy rows).
+ _decodeOpenings(bundle){
   const erased=new Set(bundle.records.filter(r=>r.type==='retention_disposition').flatMap(r=>r.payload.keyIds||[]));
   return bundle.records.filter(r=>r.type==='event').flatMap(r=>{
-   if(r.payload.format!=='evidscope-encrypted-event-v1')return [{...r.payload,seq:r.seq,hash:r.hash}];
+   if(!isEncryptedEvent(r.payload))return [{event:{...r.payload,seq:r.seq,hash:r.hash},salt:null,encrypted:false}];
    const k=this.db.prepare('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(r.tenant,r.payload.keyId);
    if(erased.has(r.payload.keyId)){if(k)throw Error('Erased event key unexpectedly retained');return [];}
    if(!k)throw Error('Event key missing without authorized disposition');
-   return [{...decryptEvent(r.payload,k.key),seq:r.seq,hash:r.hash}];
+   const opened=this._openEvent(r.payload,k.key);return [{event:{...opened.event,seq:r.seq,hash:r.hash},salt:opened.salt,encrypted:true}];
   });
  }
- bundle(tenant){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});const events=this.decodeRecords(b);const encrypted=new Set(b.records.filter(r=>r.type==='event'&&r.payload.format==='evidscope-encrypted-event-v1').map(r=>r.seq));b.disclosures=events.filter(e=>encrypted.has(e.seq)).map(e=>{const {seq,hash,...event}=e;return {seq,event};});return b;}
+ // Export disclosures: every retained encrypted event, with its salt when the envelope is v2.
+ bundle(tenant){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});
+  b.disclosures=this._decodeOpenings(b).filter(item=>item.encrypted).map(({event:{seq,hash,...event},salt})=>salt?{seq,event,salt:salt.toString('hex')}:{seq,event});return b;}
  // Export only: internal readers (rawBundle/bundle) never pay for transparency proofs.
  exportBundle(tenant){const b=this.bundle(tenant),transparency=this.tlog&&this.tlogEvidence?this.tlogEvidence(tenant,b.records):null;return transparency?{...b,transparency}:b;}
  ledgerEvents(tenant,actionId){const b=this.rawBundle(tenant);verifyBundle(b,this.publicKey,undefined,{chainOnly:true});return this.decodeRecords(b).filter(e=>!actionId||e.actionId===actionId).sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id));}
@@ -267,13 +292,13 @@ export class Store {
    }
    if(row.type==='event'){
     let event;
-    if(row.payload.format==='evidscope-encrypted-event-v1'){
+    if(isEncryptedEvent(row.payload)){
      if(row.payload.tenant!==tenant||row.payload.seq!==row.seq)throw Error('Encrypted event envelope mismatch');
      const k=keyQuery.get(tenant,row.payload.keyId);
      if(!k){if(!disposition.get(tenant,row.payload.keyId))throw Error('Event key missing without authorized disposition');continue;}
      if(actionId===null)continue;
      if(Object.hasOwn(row.payload,'actionId')&&row.payload.actionId!==actionId)continue;
-     event=decryptEvent(row.payload,k.key);
+     event=this._openEvent(row.payload,k.key).event;
     }else event=row.payload;
     if(actionId===null||event.actionId!==actionId)continue;observedEvents++;
     if(observedEvents>limits.events)over('events');
@@ -391,7 +416,7 @@ export class Store {
  }
  _canonicalBody(body){try{return canonical(JSON.parse(body));}catch{return null;}}
  _applyReceiptEvidence(state,row,disclosed){
-  const receiptIdentity=(source,id)=>canonical([source,id]),validDigest=/^[a-f0-9]{64}$/;
+  const receiptIdentity=(source,id)=>canonical([source,id]),validDigest=/^[a-f0-9]{64}$/,validFingerprint=RECEIPT_FINGERPRINT;
   if(row.type==='event'){
    const keyId=row.payload?.keyId;state.receiptEvents.set(row.seq,{hash:row.hash,keyId});
    if(disclosed){const identity=receiptIdentity(disclosed.source,disclosed.id);if(state.receiptEntries.has(identity)||state.receiptCovered.has(row.seq)||typeof disclosed.fingerprint!=='string'||!disclosed.fingerprint)throw Error('Receipt retained event identity is invalid');state.receiptEntries.set(identity,{source:disclosed.source,id:disclosed.id,fingerprint:disclosed.fingerprint,eventSeq:row.seq,eventHash:row.hash,signed:false});state.receiptCovered.add(row.seq);}
@@ -399,7 +424,7 @@ export class Store {
   }
   if(row.type==='event_receipt'){
    const value=row.payload||{},event=state.receiptEvents.get(value.eventSeq),identity=receiptIdentity(value.source,value.id),existing=state.receiptEntries.get(identity),upgrading=existing&&!existing.signed&&existing.eventSeq===value.eventSeq;
-   if(value.format!=='evidscope-event-receipt-v1'||typeof value.source!=='string'||!value.source||typeof value.id!=='string'||!value.id||!validDigest.test(value.fingerprint||'')||!Number.isSafeInteger(value.eventSeq)||value.eventSeq<1||!validDigest.test(value.eventHash||'')||!event||event.hash!==value.eventHash||row.seq<=value.eventSeq)throw Error('Receipt signed history is invalid');
+   if(value.format!=='evidscope-event-receipt-v1'||typeof value.source!=='string'||!value.source||typeof value.id!=='string'||!value.id||!validFingerprint.test(value.fingerprint||'')||!Number.isSafeInteger(value.eventSeq)||value.eventSeq<1||!validDigest.test(value.eventHash||'')||!event||event.hash!==value.eventHash||row.seq<=value.eventSeq)throw Error('Receipt signed history is invalid');
    const disposition=state.receiptDispositions.get(event.keyId);if(disposition!==undefined&&row.seq>=disposition)throw Error('Receipt was not preserved before event disposition');
    if(value.basis!==undefined&&!['source_ingest','verified_before_retention'].includes(value.basis))throw Error('Receipt signed history has an invalid basis');
    if(value.basis==='source_ingest'&&row.principal!==value.source)throw Error('Receipt source attestation principal differs');
@@ -434,11 +459,11 @@ export class Store {
   this._facet(state,'events',()=>{
    if(row.type==='event'){
     touched?.receiptEvents.add(row.seq);
-    if(row.payload.format==='evidscope-encrypted-event-v1'){
+    if(isEncryptedEvent(row.payload)){
      state.receiptRecords.push({tenant:row.tenant,seq:row.seq,type:row.type,payload:{keyId:row.payload.keyId},hash:row.hash,principal:row.principal});
      state.eventKeys.set(row.payload.keyId,row.seq);touched?.keys.add(row.payload.keyId);
      const stored=this.db.prepare('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,row.payload.keyId);
-     if(stored){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});try{disclosed=decryptEvent(row.payload,stored.key);}catch(error){this._fault(state,'keys',error);throw error;}}
+     if(stored){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});try{disclosed=this._openEvent(row.payload,stored.key).event;}catch(error){this._fault(state,'keys',error);throw error;}}
     }else {
      disclosed=row.payload;
      state.receiptRecords.push({tenant:row.tenant,seq:row.seq,type:row.type,payload:{},hash:row.hash,principal:row.principal});

@@ -1,5 +1,5 @@
 import {createPublicKey,createPrivateKey,createHash,sign,verify,randomUUID} from 'node:crypto';
-import {canonical,digest,verifyBundle,verifyCheckpoint,makeCheckpoint} from './crypto.mjs';
+import {canonical,digest,verifyBundle,verifyCheckpoint,makeCheckpoint,isEncryptedEvent,RECEIPT_FINGERPRINT} from './crypto.mjs';
 import {checkObjectProjection} from './object-integrity.mjs';
 import {checkEventProjection} from './event-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
@@ -41,7 +41,7 @@ function plan(value){
  requireValue(object(value)&&Object.keys(value).every(key=>names.includes(key))&&text(value.id)&&value.status==='executed'&&text(value.author)&&text(value.approvedBy)&&value.author!==value.approvedBy&&Array.isArray(value.items)&&value.items.length>0&&value.items.length<=1000&&value.selectionHash===digest(value.items),'invalid executed retention plan');
  const ids=new Set(),sequences=new Set(),itemNames=['seq','keyId','source','eventId','fingerprint','eventHash','receiptSigned','actionId','retainUntil','policyVersion','expired','blockingHolds','openCases','eligible'];
  for(const item of value.items){
-  requireValue(object(item)&&Object.keys(item).every(key=>itemNames.includes(key))&&seq(item.seq)&&uuid.test(item.keyId)&&text(item.source)&&text(item.eventId)&&text(item.actionId)&&hex.test(item.fingerprint)&&hex.test(item.eventHash)&&!ids.has(item.keyId)&&!sequences.has(item.seq),'invalid plan item');ids.add(item.keyId);sequences.add(item.seq);
+  requireValue(object(item)&&Object.keys(item).every(key=>itemNames.includes(key))&&seq(item.seq)&&uuid.test(item.keyId)&&text(item.source)&&text(item.eventId)&&text(item.actionId)&&RECEIPT_FINGERPRINT.test(item.fingerprint)&&hex.test(item.eventHash)&&!ids.has(item.keyId)&&!sequences.has(item.seq),'invalid plan item');ids.add(item.keyId);sequences.add(item.seq);
  }
  const d=value.disposition,dNames=['id','planId','selectionHash','keyIds','sequences','reason','approvedBy','executedBy','executedAt','scope','externalCopies','physicalMediaErasure'];
  requireValue(object(d)&&Object.keys(d).every(key=>dNames.includes(key))&&text(d.id)&&d.planId===value.id&&d.selectionHash===value.selectionHash&&d.approvedBy===value.approvedBy&&text(d.executedBy)&&same(d.keyIds,value.items.map(item=>item.keyId))&&same(d.sequences,value.items.map(item=>item.seq)),'invalid plan disposition');
@@ -62,7 +62,7 @@ export function signRecoveryFrontier({bundles,archiveAnchor,privateKey,publicKey
   for(const row of bundle.records){
    if(row.type==='identity_access'){access(row.payload);identity.set(row.payload.id,{seq:row.seq,recordHash:row.hash,payload:structuredClone(row.payload)});}
    if(row.type==='retention_plan'){requireValue(object(row.payload)&&text(row.payload.id),'invalid retention record');plans.set(row.payload.id,row);}
-   if(row.type==='event'){requireValue(row.payload?.format==='evidscope-encrypted-event-v1'&&row.payload.tenant===tenant&&row.payload.seq===row.seq&&uuid.test(row.payload.keyId)&&text(row.payload.actionId),'plaintext or invalid source event');requireValue(!events.has(row.payload.keyId),'duplicate event key');events.set(row.payload.keyId,row);}
+   if(row.type==='event'){requireValue(isEncryptedEvent(row.payload)&&row.payload.tenant===tenant&&row.payload.seq===row.seq&&uuid.test(row.payload.keyId)&&text(row.payload.actionId),'plaintext or invalid source event');requireValue(!events.has(row.payload.keyId),'duplicate event key');events.set(row.payload.keyId,row);}
   }
   const executed=[...plans.values()].filter(row=>row.payload.status==='executed');for(const row of executed)plan(row.payload);
   const byPlan=new Map(executed.map(row=>[row.payload.id,row]));
@@ -131,7 +131,7 @@ export function applyRecoveryFrontier({store,frontier,anchor,archiveAnchor,confi
    for(const item of entry.executedRetentionPlans){store.put(actor,'retention_plan',item.payload.id,item.payload);plansApplied++;}
    for(const reference of entry.erasedEvents){
     const row=records.get(reference.seq),event=bySeq.get(reference.seq),key=store.db.prepare('SELECT seq,key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,reference.keyId);
-    requireValue(row?.type==='event'&&row.hash===reference.eventRecordHash&&row.payload.format==='evidscope-encrypted-event-v1'&&row.payload.keyId===reference.keyId&&row.payload.actionId===reference.actionId&&event&&event.actionId===reference.actionId&&key&&key.seq===reference.seq&&key.key?.length===32,'restored event or key mismatch');
+    requireValue(row?.type==='event'&&row.hash===reference.eventRecordHash&&isEncryptedEvent(row.payload)&&row.payload.keyId===reference.keyId&&row.payload.actionId===reference.actionId&&event&&event.actionId===reference.actionId&&key&&key.seq===reference.seq,'restored event or key mismatch');
     if(!existingReceipts.has(reference.seq))store.append(tenant,'event_receipt',{format:'evidscope-event-receipt-v1',basis:'verified_before_retention',attestedBy:actor.id,source:event.source,id:event.id,fingerprint:event.fingerprint,eventSeq:reference.seq,eventHash:row.hash},actor.id);
     store.projectionMutation(()=>{requireValue(store.db.prepare('DELETE FROM event_keys WHERE tenant=? AND key_id=?').run(tenant,reference.keyId).changes===1,'missing restored key');requireValue(store.db.prepare('DELETE FROM events WHERE tenant=? AND source=? AND id=?').run(tenant,event.source,event.id).changes===1,'missing restored event');requireValue(store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=? AND id=?').run(tenant,reference.actionId).changes===1,'missing restored action');});erased++;
    }

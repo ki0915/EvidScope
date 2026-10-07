@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {cleanText,date,identifier,fail} from './model.mjs';
-import {canonical,digest,verifyBundle} from './crypto.mjs';
+import {canonical,digest,isEncryptedEvent,verifyBundle} from './crypto.mjs';
 
 // Destruction is an explicit two-person operation. Changing policy is never retroactive.
 export function createRetention(store){
@@ -24,11 +24,11 @@ export function createRetention(store){
   const signedReceiptSequences=new Set(bundle.records.filter(r=>r.type==='event_receipt').map(r=>r.payload?.eventSeq));
   const holds=store.list(p.tenant,'retention_hold').filter(h=>h.status==='active');const cases=store.list(p.tenant,'case').filter(c=>c.status!=='closed');
   const disposed=new Set(bundle.records.filter(r=>r.type==='retention_disposition').flatMap(r=>r.payload.keyIds));
-  const items=bundle.records.filter(r=>r.type==='event'&&r.payload.format==='evidscope-encrypted-event-v1'&&!disposed.has(r.payload.keyId)).map(r=>{
+  const items=bundle.records.filter(r=>r.type==='event'&&isEncryptedEvent(r.payload)&&!disposed.has(r.payload.keyId)).map(r=>{
    const e=bySeq.get(r.seq),blockingHolds=holds.filter(h=>h.scope==='tenant'||h.scope===e.actionId).map(h=>h.id);const openCases=cases.filter(c=>c.actionId===e.actionId).map(c=>c.id);
    return {seq:r.seq,keyId:r.payload.keyId,source:e.source,eventId:e.id,fingerprint:e.fingerprint,eventHash:e.hash,receiptSigned:signedReceiptSequences.has(r.seq),actionId:e.actionId,retainUntil:r.payload.retainUntil,policyVersion:r.payload.policyVersion,expired:Date.parse(r.payload.retainUntil)<=Date.now(),blockingHolds,openCases,eligible:Date.parse(r.payload.retainUntil)<=Date.now()&&!blockingHolds.length&&!openCases.length};
   });
-  return {policy:store.get(p.tenant,'retention_policy','current')||{id:'current',version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'},items,holds:store.list(p.tenant,'retention_hold'),plans:store.list(p.tenant,'retention_plan'),legacyPlaintextEvents:bundle.records.filter(r=>r.type==='event'&&r.payload.format!=='evidscope-encrypted-event-v1').length,limitations:['기간 종료만으로 자동 파기하지 않습니다. 다른 검토자 승인과 관리자 실행이 필요합니다.','파기는 live DEK 및 검색 사본만 대상으로 합니다. 기존 export·backup·WAL/디스크 잔존물에는 별도 파기 통제가 필요합니다.','사건·평가·거버넌스의 인간 작성 내용과 최소 접수 영수증은 이 이벤트 파기 범위 밖입니다.','키를 파기한 이벤트는 내용을 재조사할 수 없고 서명된 commitment 및 파기 이력만 검증할 수 있습니다.','기존 v1 평문 원장은 이 방식으로 파기하지 못합니다. 별도 승인된 migration 및 보존 절차가 필요합니다.']};
+  return {policy:store.get(p.tenant,'retention_policy','current')||{id:'current',version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'},items,holds:store.list(p.tenant,'retention_hold'),plans:store.list(p.tenant,'retention_plan'),legacyPlaintextEvents:bundle.records.filter(r=>r.type==='event'&&!isEncryptedEvent(r.payload)).length,limitations:['기간 종료만으로 자동 파기하지 않습니다. 다른 검토자 승인과 관리자 실행이 필요합니다.','파기는 live DEK 및 검색 사본만 대상으로 합니다. 기존 export·backup·WAL/디스크 잔존물에는 별도 파기 통제가 필요합니다.','사건·평가·거버넌스의 인간 작성 내용과 최소 접수 영수증은 이 이벤트 파기 범위 밖입니다.','키를 파기한 이벤트는 내용을 재조사할 수 없고 서명된 commitment 및 파기 이력만 검증할 수 있습니다.','기존 v1 평문 원장은 이 방식으로 파기하지 못합니다. 별도 승인된 migration 및 보존 절차가 필요합니다.']};
  }
  function handle(p,method,path,x){
   // One snapshot for the verification passes and the inventory (a read snapshot under the GET read-only scope).

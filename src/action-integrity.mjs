@@ -1,6 +1,5 @@
-import {canonical} from './crypto.mjs';
+import {canonical,isEncryptedEvent} from './crypto.mjs';
 
-const encryptedFormat='evidscope-encrypted-event-v1';
 const mismatch=detail=>{throw Error(`Action projection differs from signed evidence${detail?`: ${detail}`:''}`);};
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const actionId=value=>typeof value==='string'&&value.length>0?value:mismatch('event actionId is not replayable');
@@ -47,7 +46,7 @@ function reducer(tenant,seed){
     id=id??disclosedId;
    }
    id=actionId(id);
-   if(payload.format===encryptedFormat){
+   if(isEncryptedEvent(payload)){
     if(payload.tenant!==tenant||payload.seq!==row.seq)mismatch('encrypted event binding mismatch');
     if(typeof payload.keyId!=='string'||!payload.keyId||eventKeys.has(payload.keyId))mismatch('invalid encrypted event key');
     eventKeys.set(payload.keyId,row.seq);
