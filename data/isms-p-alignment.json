@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "id": "evidscope-isms-p-alignment",
+  "title": "ISMS-P 인증기준과 EvidScope 증거의 참고 정렬",
+  "mappingStatus": "draft_requires_human_review",
+  "nature": "reference_alignment_not_certification",
+  "certificationClaim": false,
+  "checkedAt": "2026-10-07",
+  "granularity": "domain",
+  "source": {
+    "name": "정보보호 및 개인정보보호 관리체계(ISMS-P) 인증기준",
+    "operator": "한국인터넷진흥원(KISA) ISMS-P 누리집",
+    "currentGuide": "ISMS-P 인증기준 안내서(2023.11), 2023-11-23 수정게시; 세부점검항목 공지 2023-10-31",
+    "legalBasis": [
+      "정보보호 및 개인정보보호 관리체계 인증 등에 관한 고시",
+      "정보통신망 이용촉진 및 정보보호 등에 관한 법률 제47조, 시행령 제47조~제54조, 시행규칙 제3조",
+      "개인정보 보호법 제32조의2, 시행령 제34조의2~제34조의8"
+    ],
+    "urls": [
+      "https://isms-p.or.kr/sysm/intro/selectSysmCertDetail.do",
+      "https://isms-p.or.kr/ntcn/rcsrm/selectGnrlRcsrmList.do"
+    ],
+    "readAt": "2026-10-07",
+    "verifiedLevel": "area_and_domain_titles_and_counts",
+    "itemLevelStatus": "not_verified",
+    "sourceSha256": "not_captured",
+    "limitations": [
+      "누리집 화면의 영역·분야 번호와 명칭, 영역별 기준 수만 확인했다. 항목(예: 분야 아래 세 번째 자리 번호)의 번호·명칭·세부점검항목은 안내서 원문을 열지 못해 대조하지 않았다.",
+      "작업 환경의 텍스트 변환 도구로 읽었으며 원본 파일 바이트를 받지 못해 SHA-256을 기록하지 않았다.",
+      "2023.11 안내서가 현행이라는 판단은 자료실 목록(2026-05-12 게시물까지)에 더 새로운 인증기준 안내서가 없다는 사실에 근거한다."
+    ]
+  },
+  "officialStructure": [
+    {
+      "area": "1", "title": "관리체계 수립 및 운영", "criteria": 16,
+      "domains": [
+        {"id": "1.1", "title": "관리체계 기반 마련"},
+        {"id": "1.2", "title": "위험 관리"},
+        {"id": "1.3", "title": "관리체계 운영"},
+        {"id": "1.4", "title": "관리체계 점검 및 개선"}
+      ]
+    },
+    {
+      "area": "2", "title": "보호대책 요구사항", "criteria": 64,
+      "domains": [
+        {"id": "2.1", "title": "정책, 조직, 자산관리"},
+        {"id": "2.2", "title": "인적 보안"},
+        {"id": "2.3", "title": "외부자 보안"},
+        {"id": "2.4", "title": "물리 보안"},
+        {"id": "2.5", "title": "인증 및 권한관리"},
+        {"id": "2.6", "title": "접근통제"},
+        {"id": "2.7", "title": "암호화 적용"},
+        {"id": "2.8", "title": "정보시스템 도입 및 개발보안"},
+        {"id": "2.9", "title": "시스템 및 서비스 운영관리"},
+        {"id": "2.10", "title": "시스템 및 서비스 보안관리"},
+        {"id": "2.11", "title": "사고 예방 및 대응"},
+        {"id": "2.12", "title": "재해복구"}
+      ]
+    },
+    {
+      "area": "3", "title": "개인정보 처리단계 요구사항", "criteria": 21,
+      "domains": [
+        {"id": "3.1", "title": "개인정보 수집 시 보호 조치"},
+        {"id": "3.2", "title": "개인정보 보유 및 이용 시 보호조치"},
+        {"id": "3.3", "title": "개인정보 제공 시 보호조치"},
+        {"id": "3.4", "title": "개인정보 파기 시 보호조치"},
+        {"id": "3.5", "title": "정보주체 권리보호"}
+      ]
+    }
+  ],
+  "alignments": [
+    {
+      "domain": "1.2",
+      "aspects": ["AI 에이전트·도구·외부 목적지의 식별", "관측된 행동 흐름(도구 실행·목적지·모델 호출)", "미등록 자산과 정책 밖 목적지 신호"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/agents", "what": "관측된 에이전트 목록·집계 기간·귀속 불명 행동 수"},
+        {"type": "api", "method": "POST", "path": "/api/assets", "what": "에이전트·도구 자산 등록(소유자·목적·허용 목적지·정책 버전·유효기간), 서명 원장 기록"},
+        {"type": "api", "method": "GET", "path": "/api/ai-visibility", "what": "OTLP로 받은 모델 호출과 목적지"},
+        {"type": "api", "method": "POST", "path": "/api/governance/systems", "what": "AI 시스템 사실관계(목적·데이터 범주·영향 대상)"},
+        {"type": "finding", "code": "UNREGISTERED_ASSET", "what": "등록되지 않은 자산의 행동"},
+        {"type": "finding", "code": "DESTINATION_OUTSIDE_POLICY", "what": "등록 정책 밖 목적지"}
+      ],
+      "manual": ["위험 평가 방법·위험 수용 결정·자산 중요도 평가", "관측되지 않은 에이전트와 데이터 흐름의 식별(목록에 없다는 것이 존재하지 않음을 뜻하지 않음)"]
+    },
+    {
+      "domain": "1.4",
+      "aspects": ["법적 요구사항 검토 근거", "점검 결과와 보완 과제 추적", "출처·시스템 변경 시 재검토"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/governance", "field": "legalSourceCoverage", "what": "요구사항 목록과 법률 출처 확인 범위(wholeLawComplete:false)"},
+        {"type": "api", "method": "POST", "path": "/api/governance/assessments", "what": "요구사항별 평가와 증거 연결"},
+        {"type": "api", "method": "POST", "path": "/api/governance/assessments/{id}/legal-review", "what": "평가 작성자가 아닌 검토자의 법률 검토 확인"},
+        {"type": "record", "name": "governance_legal_review", "what": "법률 검토 확인의 서명 기록"},
+        {"type": "api", "method": "GET", "path": "/api/governance/report", "what": "시스템별 현재 판정·재검토 과제"},
+        {"type": "api", "method": "POST", "path": "/api/governance/tasks/{id}", "what": "과제 종결(포함된 평가의 작성자는 종결 불가)"},
+        {"type": "file", "path": "docs/legal-sources.md", "what": "법령 확인 범위와 미확인 고시"}
+      ],
+      "manual": ["법률 적용성·충분성 판단", "내부 감사·경영진 검토·관리체계 점검 계획"]
+    },
+    {
+      "domain": "2.2",
+      "aspects": ["승인 행위의 직무 분리(작성자·소유자의 자기 승인 차단)"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/exceptions/{id}/approve", "what": "예외 작성자·소유자의 자기 승인 거부"},
+        {"type": "api", "method": "POST", "path": "/api/rules/{id}/approve", "what": "룰 작성자 단독 승인 거부, 시험한 초안만 승인"},
+        {"type": "api", "method": "POST", "path": "/api/retention/plans/{id}/approve", "what": "파기 계획 작성자의 자기 승인 거부"},
+        {"type": "api", "method": "POST", "path": "/api/cases/{id}", "what": "사건을 열거나 다시 연 사람의 종결 거부"},
+        {"type": "file", "path": "test/four-eyes.test.mjs", "what": "직무 분리 회귀 시험"}
+      ],
+      "manual": ["보안 서약·교육·퇴직 관리 등 인적 보안 전반", "역할 배정과 겸직의 적절성 검토"]
+    },
+    {
+      "domain": "2.3",
+      "aspects": ["모델·서비스 공급사 자료의 버전·해시 고정", "공급사 자료 검토와 조치 활용 근거"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/governance/bundles", "what": "공급사 묶음 등록(문서 해시 목록과 대상·범위의 contentHash)"},
+        {"type": "api", "method": "POST", "path": "/api/governance/bundles/{id}/provenance-reviews", "what": "공급사 출처 검토 기록"},
+        {"type": "api", "method": "GET", "path": "/api/governance/bundles/{id}/export", "what": "묶음 내보내기"},
+        {"type": "record", "name": "supplier_bundle", "what": "공급사 묶음 서명 기록"},
+        {"type": "record", "name": "supplier_provenance_review", "what": "출처 검토 서명 기록"},
+        {"type": "checkType", "name": "supplier_risk_reliance", "authorityOnly": true, "what": "authority 출처만 보고할 수 있는 공급사 조치 검토 측정"},
+        {"type": "file", "path": "docs/kr-supplier-reliance.md", "what": "공급사 조치 활용 범위"}
+      ],
+      "manual": ["계약서의 보안 요구사항과 위탁 관계 확인", "외부자 점검·감사와 계약 종료 시 회수", "공급사 자료 내용의 진실성 검증"]
+    },
+    {
+      "domain": "2.5",
+      "aspects": ["사람 계정 역할(감사자·검토자·관리자) 분리", "조직 IdP 로그인과 접근 중지·세션 회수 기록", "수집 출처 인증과 출처별 허용 이벤트"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/ingest", "what": "HMAC 서명·시각·nonce를 검사하는 출처 인증 수집"},
+        {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "otlp"], "what": "사람 승인은 authority 출처만 기록"},
+        {"type": "api", "method": "GET", "path": "/api/access", "mode": "oidc", "what": "조직 OIDC 계정의 역할·중지 상태·세션 수(관리자)"},
+        {"type": "api", "method": "POST", "path": "/api/access/subjects/{id}", "mode": "oidc", "what": "접근 중지·재개·세션 회수와 사유"},
+        {"type": "record", "name": "identity_access", "what": "접근 변경 서명 기록"},
+        {"type": "record", "name": "identity_session", "what": "로그인·로그아웃 기록"},
+        {"type": "file", "path": "docs/oidc-authentication.md", "what": "OIDC 로그인·세션 회수 안내"}
+      ],
+      "manual": ["IdP의 계정 생명주기·다중 인증·비밀번호 정책", "정기 접근권한 검토와 특수 권한 부여 승인", "bearer 토큰 계정의 발급·회수 절차"]
+    },
+    {
+      "domain": "2.6",
+      "aspects": ["응용프로그램 수준 접근통제(역할별 API 권한, tenant 경계)", "조회 행위 자체의 기록"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/audit/reads", "what": "감사자·관리자만 조회하는 조회 기록"},
+        {"type": "file", "path": "test/governance-authorization.test.mjs", "what": "감사자의 거버넌스 변경 거부 시험"},
+        {"type": "file", "path": "test/store-tenant-binding.test.mjs", "what": "서명 행의 tenant 바꿔치기 탐지 시험"}
+      ],
+      "manual": ["네트워크·DB·서버 접근통제와 원격 접근 통제(배포 환경)", "인터넷 접속 통제"]
+    },
+    {
+      "domain": "2.7",
+      "aspects": ["원장 서명키와 데이터 암호화 키 분리", "이벤트 본문·문서 AES-GCM 저장과 키 교체"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/integrity", "field": "keySeparation", "what": "무결성 검사 결과의 키 분리 항목"},
+        {"type": "file", "path": "scripts/data-key.mjs", "what": "데이터 키 생성·식별·재암호화"},
+        {"type": "file", "path": "docs/data-key-separation.md", "what": "키 분리 운영 안내"},
+        {"type": "file", "path": "test/data-key-separation.test.mjs", "what": "키 분리 시험"}
+      ],
+      "manual": ["암호 정책 승인과 키 관리 책임자 지정", "HSM·KMS 연동(미지원)", "키 백업 보관 위치와 접근 통제"]
+    },
+    {
+      "domain": "2.8",
+      "aspects": ["탐지 룰 변경의 버전 관리와 시험 후 승인", "개발 에이전트 실행 관측", "출시 전 반복 검증"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/rules", "what": "룰 버전 추가(초안)"},
+        {"type": "api", "method": "POST", "path": "/api/rules/{id}/test", "what": "승인 전 시험"},
+        {"type": "api", "method": "POST", "path": "/api/development-runs/events", "what": "개발 에이전트 실행·도구 사용 기록"},
+        {"type": "record", "name": "development_run_event", "what": "개발 실행 서명 기록"},
+        {"type": "file", "path": "scripts/release-verify.mjs", "what": "출시 전 반복 시험과 소스 스냅샷 해시"},
+        {"type": "file", "path": "scripts/check-source.mjs", "what": "소스 검사"}
+      ],
+      "manual": ["조직 시스템의 보안 요구사항 정의·코드 검토·시험과 운영 환경 분리", "운영 이관 승인 절차"]
+    },
+    {
+      "domain": "2.9",
+      "aspects": ["로그·접속기록의 위변조 방지 보관과 독립 검증", "조회 기록의 봉인과 포함 증명", "로그 점검", "시각 불확실성 표시", "백업·복구와 문서 복구"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/ingest/otlp", "what": "OTLP 수집"},
+        {"type": "api", "method": "GET", "path": "/api/export", "what": "서명 원장 내보내기"},
+        {"type": "file", "path": "scripts/verify.mjs", "what": "신뢰 공개키로 하는 오프라인 검증(--replay 포함)"},
+        {"type": "api", "method": "GET", "path": "/api/audit/reads/proof", "what": "조회 기록의 봉인 포함 증명"},
+        {"type": "record", "name": "audit_access_batch", "what": "조회 기록 봉인 묶음"},
+        {"type": "integrityCheck", "name": "signed_ledger", "what": "/api/integrity의 서명 원장 검사"},
+        {"type": "integrityCheck", "name": "access_log", "what": "/api/integrity의 조회 기록 검사"},
+        {"type": "file", "path": "docs/transparency-log.md", "what": "위트니스 체크포인트로 되돌리기·분기 탐지"},
+        {"type": "api", "method": "GET", "path": "/api/monitoring", "what": "출처별 최근 수신과 기간별 집계"},
+        {"type": "api", "method": "GET", "path": "/api/export/ocsf", "what": "SIEM 연동용 OCSF 내보내기"},
+        {"type": "finding", "code": "CLOCK_ORDER_UNCERTAIN", "what": "시각 오차로 순서를 확정할 수 없음"},
+        {"type": "finding", "code": "COLLECTION_GAP", "what": "수집 공백 보고"},
+        {"type": "file", "path": "scripts/vault-backup.mjs", "what": "vault 백업·복구"},
+        {"type": "api", "method": "GET", "path": "/api/governance/documents/{id}/export", "what": "보관 문서 원본 복구"}
+      ],
+      "manual": ["법정 접속기록 보관기간과 점검 주기 결정·결과 보고", "호스트 시간 동기화 설정", "EvidScope로 보내지 않은 대상 시스템 자체의 접속기록"]
+    },
+    {
+      "domain": "2.11",
+      "aspects": ["이상행위 신호와 사건 조사", "중지·차단 요청의 확인 여부", "무결성 위반 기록"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/alerts", "what": "발견사항 경보"},
+        {"type": "api", "method": "GET", "path": "/api/investigations", "what": "행동 조사"},
+        {"type": "api", "method": "POST", "path": "/api/cases", "what": "사건 생성"},
+        {"type": "api", "method": "POST", "path": "/api/cases/{id}/decisions", "what": "사람 판단 추가"},
+        {"type": "api", "method": "GET", "path": "/api/cases/{id}/report", "what": "서명 사건 보고서"},
+        {"type": "file", "path": "scripts/verify-case-report.mjs", "what": "사건 보고서 오프라인 검증"},
+        {"type": "eventKind", "name": "stop_confirmed", "source": "safety", "deniedSources": ["agent"], "what": "중지 확인은 safety 출처만"},
+        {"type": "finding", "code": "STOP_UNCONFIRMED", "what": "중지 요청 뒤 확인 없음"},
+        {"type": "finding", "code": "EXECUTION_AFTER_STOP_REQUEST", "what": "중지 요청 뒤 실행"},
+        {"type": "finding", "code": "LOG_INJECTION_SIGNAL", "what": "로그 주입 신호"},
+        {"type": "record", "name": "integrity_failure", "what": "무결성 검사 실패 기록"},
+        {"type": "file", "path": "scripts/replay-findings.mjs", "what": "발견사항 오프라인 재계산"}
+      ],
+      "manual": ["침해사고 신고와 법정 기한", "대응 조직·훈련·외부 공조", "실제 차단 효력 확인"]
+    },
+    {
+      "domain": "2.12",
+      "aspects": ["vault 백업·복구 시험과 복구 후 무결성 확인"],
+      "evidence": [
+        {"type": "file", "path": "scripts/vault-backup.mjs", "what": "백업 생성·복구"},
+        {"type": "record", "name": "recovery_restore", "what": "복구 기록"},
+        {"type": "file", "path": "docs/vault-recovery.md", "what": "복구 절차"},
+        {"type": "file", "path": "test/vault-recovery.test.mjs", "what": "복구 시험"}
+      ],
+      "manual": ["재해복구 계획·목표 복구 시간·원격지 보관", "정기 복구 훈련과 개선"]
+    },
+    {
+      "domain": "3.1",
+      "aspects": ["증거 계층 자체가 보관하는 개인정보의 최소화(허용 필드만 수집, 참고 데이터는 ID·버전·해시 같은 참조 메타데이터만)"],
+      "evidence": [
+        {"type": "api", "method": "POST", "path": "/api/ingest", "what": "허용 필드 밖 값과 예약 필드 거부"},
+        {"type": "file", "path": "test/integration.test.mjs", "what": "원문 필드(prompt)·tenant 사칭·출처 밖 이벤트·변조 서명 거부 시험"}
+      ],
+      "manual": ["원 서비스의 수집 근거·동의·고지", "수집기 설정이 실제로 본문을 지우는지 확인"]
+    },
+    {
+      "domain": "3.4",
+      "aspects": ["보존기간이 지난 기록의 파기 계획·두 사람 승인·실행 기록", "키 파기와 파기 후 잔여 데이터 제거", "보존 hold"],
+      "evidence": [
+        {"type": "api", "method": "GET", "path": "/api/retention", "what": "보존 대상·hold·계획 목록"},
+        {"type": "api", "method": "POST", "path": "/api/retention/policy", "what": "새 이벤트에 적용할 보존기간"},
+        {"type": "api", "method": "POST", "path": "/api/retention/holds", "what": "보존 hold"},
+        {"type": "api", "method": "POST", "path": "/api/retention/plans", "what": "파기 계획"},
+        {"type": "api", "method": "POST", "path": "/api/retention/plans/{id}/execute", "what": "다른 사람이 승인한 계획만 관리자가 실행"},
+        {"type": "record", "name": "retention_disposition", "what": "파기 실행 서명 기록"},
+        {"type": "file", "path": "test/erasure-remnants.test.mjs", "what": "파기 후 evidence.db와 WAL에 이벤트 키·평문이 남지 않는지 시험"}
+      ],
+      "manual": ["법정 보존기간 결정(기본 30일은 공학적 기본값)", "수집기·백업·SIEM 등 EvidScope 밖 사본의 파기", "파기 결과 확인 책임"]
+    }
+  ],
+  "notAligned": [
+    {"domain": "1.1", "reason": "경영진 참여·책임자 지정·조직·범위·정책 수립은 조직의 관리 행위다."},
+    {"domain": "1.3", "reason": "보호대책 구현·공유·운영현황 관리는 조직 절차다. EvidScope 기록은 입력 자료일 뿐이다."},
+    {"domain": "2.1", "reason": "정책·조직 문서와 전체 정보자산 관리는 조직 산출물이다. AI 자산 목록은 1.2 증거를 본다."},
+    {"domain": "2.4", "reason": "물리 보안은 범위 밖이다."},
+    {"domain": "2.10", "reason": "보안시스템·패치·악성코드·단말 관리는 배포 환경의 책임이다. OCSF 내보내기는 SIEM 연동일 뿐이다."},
+    {"domain": "3.2", "reason": "원 서비스의 개인정보 보유·이용 단계 요구사항이다."},
+    {"domain": "3.3", "reason": "원 서비스의 개인정보 제공 단계 요구사항이다."},
+    {"domain": "3.5", "reason": "원 서비스의 정보주체 권리보호 요구사항이다."}
+  ]
+}
