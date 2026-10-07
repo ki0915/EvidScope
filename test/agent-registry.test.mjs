@@ -40,7 +40,8 @@ const latest = async actionId => (await call(`/api/actions/${encodeURIComponent(
 const findingCodes = async actionId => (await latest(actionId)).findings.map(f => f.code);
 const pause = ms => new Promise(done => setTimeout(done, ms));
 const mail = {id: 'mail-agent', name: 'Mail agent', owner: 'ops-team', purpose: 'customer replies', sources: ['alpha-agent'], actors: ['mail-agent'],
-  tools: [{name: 'mailer', enforcement: 'required'}], dataCategories: ['customer'], destinations: ['smtp.vendor.example'], fingerprint: {codeCommit: 'abc1234'}};
+  tools: [{name: 'mailer', enforcement: 'required'}], dataCategories: ['customer'], destinations: ['smtp.vendor.example'],
+  fingerprint: {codeCommit: 'abc1234'}};
 let beforeSuspension;
 
 test('registry entries are created as signed drafts with history; roles and links are enforced', async () => {
@@ -93,12 +94,14 @@ test('lifecycle: immediate transitions, four-eyes approvals, data-driven gates, 
   const refused = await call('/api/registry/mail-agent/transitions', {to: 'production', reason: 'go live'}, 'admin');
   assert.equal((await asSecond(`/api/registry/transitions/${refused.body.transition.id}/refuse`, {reason: 'not yet'})).body.transition.status, 'refused');
   const stale = await call('/api/registry/mail-agent/transitions', {to: 'production', reason: 'go live'}, 'admin');
-  assert.equal((await call('/api/assets', {id: 'mail-asset', actor: 'mail-agent', tool: 'mailer', owner: 'ops', policyVersion: 'p1', approvalRequired: false})).status, 200);
+  const mailAsset = {id: 'mail-asset', actor: 'mail-agent', tool: 'mailer', owner: 'ops', policyVersion: 'p1', approvalRequired: false};
+  assert.equal((await call('/api/assets', mailAsset)).status, 200);
   assert.equal((await call('/api/registry/mail-agent', {assetIds: ['mail-asset']})).status, 200, 'links can change while approved');
   assert.equal((await asSecond(`/api/registry/transitions/${stale.body.transition.id}/approve`, {reason: 'ok'})).status, 409, 'stale request');
   const detail = (await call('/api/registry/mail-agent', undefined, 'auditor')).body;
   assert.equal(detail.transitions.find(t => t.id === stale.body.transition.id).status, 'superseded');
-  const live = await call('/api/registry/mail-agent/transitions', {to: 'production', reason: 'go live', evidence: [{type: 'asset', ref: 'mail-asset'}]}, 'admin');
+  const live = await call('/api/registry/mail-agent/transitions', {to: 'production', reason: 'go live', evidence: [{type: 'asset', ref: 'mail-asset'}]},
+    'admin');
   assert.deepEqual(live.body.transition.evidence, [{type: 'asset', ref: 'mail-asset', verification: 'signed_object_at_request'}]);
   assert.equal((await call('/api/registry/mail-agent/transitions', {to: 'retired', reason: 'x', evidence: [{type: 'event', ref: 'alpha-agent/none'}]},
     'admin')).status, 400, 'event evidence must be a retained event');
@@ -147,7 +150,8 @@ test('risk overrides are independent and bound to the configuration; retired age
   assert.deepEqual([changed.body.risk.override, changed.body.risk.tier], [null, 'high'], 'a changed configuration drops the override');
   assert.equal((await call('/api/registry/pay-agent/transitions', {to: 'retired', reason: 'replaced'})).body.entry.state, 'retired');
   assert.equal((await call('/api/registry/pay-agent', {owner: 'x'})).status, 409, 'retired is terminal');
-  await send('tool', {id: 'pay-after', actionId: 'pay-after', traceId: 'pay-trace', kind: 'execution', status: 'success', actor: 'pay-agent', tool: 'payment_transfer'});
+  await send('tool', {id: 'pay-after', actionId: 'pay-after', traceId: 'pay-trace', kind: 'execution', status: 'success', actor: 'pay-agent',
+    tool: 'payment_transfer'});
   await send('tool', {id: 'shadow-1', actionId: 'shadow-1', traceId: 'shadow-trace', kind: 'execution', status: 'success', actor: 'shadow-agent', tool: 'crm'});
   assert.equal((await call('/api/registry/policy', {enforcement: 'unregistered_activity'})).status, 403, 'policy is admin-only');
   assert.equal((await call('/api/registry/policy', {gates: {high: {production: [{id: 'x', check: 'run_code'}]}}}, 'admin')).status, 400);

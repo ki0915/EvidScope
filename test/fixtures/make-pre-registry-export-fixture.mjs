@@ -27,7 +27,8 @@ const analyze=()=>{
  for(let round=0;round<10;round++){const {jobs}=service.analysis.claim(worker);if(!jobs.length)return;
   for(const job of jobs)service.analysis.commit(worker,{leaseId:job.leaseId,result:evaluateJob(JSON.parse(JSON.stringify(job)))});}
 };
-const at=new Date(Date.now()-60000).toISOString(),base={traceId:'pre-trace',actor:'pre-agent',tool:'mailer',action:'send',resource:'case-1',policyVersion:'p1',occurredAt:at};
+const at=new Date(Date.now()-60000).toISOString();
+const base={traceId:'pre-trace',actor:'pre-agent',tool:'mailer',action:'send',resource:'case-1',policyVersion:'p1',occurredAt:at};
 await call('/api/assets','alpha-reviewer',{id:'pre-asset',actor:'pre-agent',tool:'mailer',owner:'owner',policyVersion:'p1',approvalRequired:true,
  validFrom:'2026-01-01T00:00:00.000Z',destinations:['mail.internal']});
 for(const [source,event] of [['alpha-agent',{...base,id:'pre-intent',actionId:'pre-action',kind:'intent',destination:'external.example'}],

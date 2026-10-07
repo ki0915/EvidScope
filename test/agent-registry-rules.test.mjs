@@ -110,7 +110,8 @@ test('repeated denies for one actor are counted across actions within the window
 test('decision intake: allowlisted fields, enforcement source only, validated values', () => {
   const enforcement = {id: 'alpha-enforcement', tenant: 'alpha', kind: 'enforcement'}, agent = {id: 'alpha-agent', tenant: 'alpha', kind: 'agent'};
   const raw = {id: 'd-1', actionId: 'a1', traceId: 't1', kind: 'policy_decision', occurredAt: new Date().toISOString(), decision: 'deny', actor: 'agent-x',
-    tool: 'mailer', action: 'send', resource: 'r', destination: 'x.example', decisionId: 'opa-1', enforcementPointId: 'gw-1', engine: 'opa', engineVersion: '1.4.0',
+    tool: 'mailer', action: 'send', resource: 'r', destination: 'x.example', decisionId: 'opa-1', enforcementPointId: 'gw-1', engine: 'opa',
+    engineVersion: '1.4.0',
     policyId: 'http/authz/allow', policyVersion: 'rev-1', bundleDigest: 'sha256:' + 'a'.repeat(64), latencyMs: 3, recordedBeforeExecution: true};
   const accepted = validateEvent(raw, enforcement);
   assert.equal(accepted.decision, 'deny');assert.equal(accepted.latencyMs, 3);assert.equal(accepted.sourceKind, 'enforcement');
@@ -146,16 +147,19 @@ test('offline lifecycle check accepts the API shape and names forged transitions
   push('agent_transition', 'alice', {id: 't1', agentId: 'agent-x', from: 'draft', to: 'testing', requestedBy: 'alice', registryVersion: 1, status: 'applied'});
   push('agent_registry', 'alice', {...entry, version: 2, state: 'testing', change: 'transition', lastTransition: {id: 't1'}});
   push('agent_transition', 'bob', {id: 't2', agentId: 'agent-x', from: 'testing', to: 'approved', requestedBy: 'bob', registryVersion: 2, status: 'pending'});
-  const approved = {id: 't2', agentId: 'agent-x', from: 'testing', to: 'approved', requestedBy: 'bob', registryVersion: 2, status: 'approved', reviewedBy: 'carol'};
+  const approved = {id: 't2', agentId: 'agent-x', from: 'testing', to: 'approved', requestedBy: 'bob', registryVersion: 2, status: 'approved',
+    reviewedBy: 'carol'};
   push('agent_transition', 'carol', approved);
   push('agent_registry', 'carol', {...entry, version: 3, state: 'approved', change: 'transition', lastTransition: {id: 't2'}});
   assert.deepEqual(verifyRegistryHistory(rows).problems, []);
   const forged = structuredClone(rows);forged[4] = {...forged[4], principal: 'bob', payload: {...approved, reviewedBy: 'bob'}};
   assert.ok(verifyRegistryHistory(forged).problems.some(p => /four-eyes/.test(p.message)), 'requester approving');
-  const skipped = structuredClone(rows.slice(0, 1));skipped.push({seq: 2, type: 'agent_registry', principal: 'alice', payload: {...entry, version: 2, state: 'production',
+  const skipped = structuredClone(rows.slice(0, 1));
+  skipped.push({seq: 2, type: 'agent_registry', principal: 'alice', payload: {...entry, version: 2, state: 'production',
     change: 'transition', lastTransition: {id: 'none'}}});
   assert.ok(verifyRegistryHistory(skipped).problems.some(p => /without an applied or approved transition/.test(p.message)));
-  const changed = structuredClone(rows);changed.push({seq: 7, type: 'agent_registry', principal: 'alice', payload: {...entry, tools: [{name: 'shell'}], version: 4,
+  const changed = structuredClone(rows);
+  changed.push({seq: 7, type: 'agent_registry', principal: 'alice', payload: {...entry, tools: [{name: 'shell'}], version: 4,
     state: 'approved', change: 'updated'}});
   assert.ok(verifyRegistryHistory(changed).problems.some(p => /configuration changed in approved/.test(p.message)));
 });
