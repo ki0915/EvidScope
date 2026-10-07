@@ -71,7 +71,7 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET /api/metrics | tenant 접수·분석·backlog와 vault RSS |
 | GET /api/governance | 요구사항·시스템·평가·보완과제 |
 | POST /api/governance/systems | 사실관계 및 별도 한국/EU 분류 입력 |
-| POST /api/governance/assessments | 출처 snapshot·통제·증거·인간 평가·기한 |
+| POST /api/governance/assessments | 출처 snapshot·통제·증거·인간 평가·기한. 평가마다 과제를 연다(작성자의 `legalReview`와 무관, 2라운드 S11) |
 | POST /api/governance/assessments/:id/legal-review | reason; 평가 작성자가 아닌 reviewer·admin이 최신 평가(해시 결합)의 법률 검토를 확인 |
 | GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제, 항목별 `evidenceAssurance`(`self_asserted` 등)·`legalReview` |
 | POST /api/governance/tasks/:id | status,reason; 조치/재검토 기록. 종결은 작성자 외 법률 검토 확인 뒤, 포함된 평가의 작성자가 아닌 검토자 |

@@ -155,10 +155,11 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const states=[];
    for(const tenant of tenants){
     const p={id:'startup-governance-initializer',tenant};
-    states.push({tenant,p,catalogs:verifiedPolicyObjects(p,'catalog'),systems:verifiedPolicyObjects(p,'system'),assessments:verifiedPolicyObjects(p,'assessment')});
+    states.push({tenant,p,catalogs:verifiedPolicyObjects(p,'catalog'),systems:verifiedPolicyObjects(p,'system'),assessments:verifiedPolicyObjects(p,'assessment'),
+     tasks:verifiedPolicyObjects(p,'governance_task'),legalReviews:verifiedPolicyObjects(p,'governance_legal_review')});
    }
    const identity=applicabilityCatalogIdentity(requirements),hash=identity.hash;
-   for(const {tenant,catalogs,systems,assessments} of states){
+   for(const {tenant,catalogs,systems,assessments,tasks,legalReviews} of states){
     const previous=catalogs.get('current');
     if(previous?.hash!==hash){
      const p={id:'catalog-loader',tenant},snapshot={...identity,requirements,legalSourceCoverage,createdAt:new Date().toISOString()};store.put(p,'catalog','current',snapshot);
@@ -167,6 +168,14 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
     const p={id:'system-facts-migration-v4',tenant};
     for(const old of systems.values())if((old.schemaVersion||1)<4){
      const upgraded={...normalizeSystemFacts(old),updatedAt:old.updatedAt||new Date().toISOString()};store.put(p,'system',old.id,upgraded);const id=randomUUID();store.put(p,'governance_task',id,{id,systemId:old.id,title:'한국 사업자·공급사·모델 사실 추가: 미확인 항목 검토',owner:old.owner,status:'open',previousSystemHash:digest(old)});
+    }
+    // Round 2 (S11): an author who claimed legalReview 'reviewed' got no task. Each current assessment with such a claim,
+    // no task and no independent confirmation gets its legal-review task once, so it shows as outstanding work.
+    const backfill={id:'legal-review-task-migration-v1',tenant},reviews=[...legalReviews.values()];
+    const current=new Map([...assessments.values()].map(a=>[canonical([a.systemId,a.requirementId]),a]));
+    for(const a of current.values())if(a.legalReview==='reviewed'&&!tasks.has(a.id)&&legalReviewState(a,reviews).status!=='reviewed'){
+     store.put(backfill,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:'법률 적용성 검토(작성자 자기 확인만 있음)',
+      owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:[],orderTargets:governanceOrderTargets(a)});
     }
    }
   });
@@ -370,7 +379,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const a={id:randomUUID(),systemId:x.systemId,systemHash:digest(system),requirementId:x.requirementId,requirementHash:digest(requirement),requirementSnapshot:requirement,applicabilityPolicyVersion,applicabilitySnapshot:applicabilityCapture.snapshot,applicabilitySnapshotHash:applicabilityCapture.hash,applicability:x.applicability,evidence,control:cleanText(x.control,1000),owner:cleanText(x.owner,200),assessment:x.assessment,legalReview:x.legalReview,reason:cleanText(x.reason,2000),nextReviewAt:date(x.nextReviewAt),reviewer:p.id,createdAt:new Date().toISOString()};
    if(!a.reason.trim())fail(400,'사람의 적용성·증거 판단 근거가 필요합니다');
    const technical=technicalEvidenceState(requirement,a,{system}),technicalEvidenceRequired=!technical.supportsHumanAssessment;
-   store.put(p,'assessment',a.id,a);if(a.assessment!=='sufficient'||a.legalReview==='pending'||technicalEvidenceRequired||a.applicability==='unknown')store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
+   // Every assessment opens its task (round 2, S11): a new assessment has no independent legal review yet, and the
+   // author's own legalReview is only the claim shown in the report. Closing the task needs another reviewer's confirmation.
+   store.put(p,'assessment',a.id,a);store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
    });
   }
   const legalReviewPath=path.match(/^\/api\/governance\/assessments\/([^/]+)\/legal-review$/);
