@@ -2,9 +2,10 @@
 // from the ledger records that precede it and compare with the recorded findings.
 // Usage: node scripts/replay-findings.mjs EXPORT.json TRUSTED_PUBLIC_KEY.pem [EXTERNAL_CHECKPOINT.json]
 //          [--witness VKEY]... [--quorum N] [--origin-base BASE] [--min-checkpoint FILE] [--max-staleness S] [--require-transparency]
-//          [--require-tenant-witness]
+//          [--require-tenant-witness] [--heads-key VKEY]... [--require-heads-signer]
 // The transparency flags pin the ledger order to a witnessed checkpoint, so ordering findings also exclude rollback;
-// --require-tenant-witness demands that this holds against a holder of the vault signing key as well (see verify.mjs).
+// --require-tenant-witness demands that this holds against a holder of the vault signing key as well (see verify.mjs), and
+// --require-heads-signer against whoever controls the vault host, through the pinned heads signer key (docs/signer.md).
 // Exit status: 0 = verified and no mismatch (not_replayable entries are reported, not failures);
 //              1 = usage, verification failure or at least one mismatch.
 import {readFileSync} from 'node:fs';

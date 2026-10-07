@@ -2,11 +2,13 @@
 // witnesses accept only its key for the heads origin, and verifiers that pin it get rollbackCheckedAgainst 'vault_host'.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {execFile} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
-import {readFileSync, rmSync} from 'node:fs';
+import {readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {setTimeout as delay} from 'node:timers/promises';
+import {promisify} from 'node:util';
 import {verifyBundle} from '../src/crypto.mjs';
 import * as T from '../src/tlog.mjs';
 import {createSignerClient} from '../src/signer-client.mjs';
@@ -373,4 +375,46 @@ test('a restore epoch moves the heads signer to the new origin base from the res
     /continues origin base vault\.test\/evidscope-s2 after a tlog epoch from the pinned vault\.test\/evidscope/);
   // The old heads origin is closed: the original vault, started again, is refused by the signer (retired) and stops in enforce mode.
   assert.match(await refusedStart(f, 'enforce', cfg), /retired vault\.test\/evidscope\/heads at a restore epoch .* \(fork\)/);
+});
+
+// Asynchronous: the signer and the development witness answer from this process's event loop.
+const run = async (script, args) => {
+  const r = await promisify(execFile)(process.execPath, [script, ...args], {encoding: 'utf8', windowsHide: true, timeout: 30000})
+    .then(x => ({...x, code: 0}), error => ({stdout: error.stdout || '', stderr: error.stderr || '', code: error.code}));
+  return {status: r.code, out: r.code === 0 && r.stdout.trim().startsWith('{') ? JSON.parse(r.stdout) : r.stdout, err: r.stderr};
+};
+test('the CLIs: verify.mjs pins the heads key and can require it; transparency.mjs registers and reports the signer', async t => {
+  const {f, signer, open} = await setup(t);
+  const s = await open();
+  f.write(s, 'alpha', 2);
+  await s.transparency.pump();
+  const file = name => join(f.root, name), keyPath = file('trusted.pem'), privatePath = file('vault.pem');
+  writeFileSync(keyPath, f.publicKey.export({format: 'pem', type: 'spki'}));
+  writeFileSync(privatePath, f.privateKey.export({format: 'pem', type: 'pkcs8'}), {mode: 0o600});
+  writeFileSync(file('export.json'), JSON.stringify(await f.call(s, '/api/export')));
+  const flags = [file('export.json'), keyPath, '--witness', f.w.vkey, '--quorum', '1', '--origin-base', BASE];
+  let r = await run('scripts/verify.mjs', [...flags, '--heads-key', signer.vkey, '--require-heads-signer']);
+  assert.equal(r.status, 0, r.err);
+  assert.deepEqual([r.out.transparency.rollbackCheckedAgainst, r.out.transparency.heads.headsKeyPinned], ['vault_host', true]);
+  r = await run('scripts/verify.mjs', flags);
+  assert.deepEqual([r.status, r.out.transparency.rollbackCheckedAgainst], [0, 'database_tamper']);
+  r = await run('scripts/verify.mjs', [...flags, '--require-heads-signer']);
+  assert.equal(r.status, 1);
+  assert.match(r.err, /needs a pinned heads key \(--heads-key\)/);
+  r = await run('scripts/verify.mjs', [...flags, '--heads-key', signerKeys(BASE).vkey]);
+  assert.equal(r.status, 1);
+  assert.match(r.err, /signed by a key other than the vault key and the pinned heads keys/);
+
+  const config = file('transparency.json');
+  writeFileSync(config, JSON.stringify({origin: BASE, mode: 'enforce', witnesses: [{vkey: f.w.vkey, url: f.ws.url}], signer: signer.config}));
+  r = await run('scripts/transparency.mjs', ['vkeys', '--config', config, '--key', privatePath]);
+  assert.deepEqual([r.out.logVkey, r.out.vaultLogVkey], [signer.vkey, T.logVkey(HEADS, f.publicKey)]);
+  r = await run('scripts/transparency.mjs', ['witnessctl', '--config', config, '--key', privatePath, '--db', '/srv/witness.db']);
+  assert.ok(r.out.includes(`witnessctl add-key -db /srv/witness.db -origin ${HEADS} -key ${signer.vkey}`), r.out);
+  r = await run('scripts/signer.mjs', ['vkey', '--state-dir', signer.stateDir, '--origin-base', BASE]);
+  assert.equal(r.out.trim(), signer.vkey);
+  await f.close(s);
+  r = await run('scripts/transparency.mjs', ['status', '--config', config, '--key', privatePath, '--data-dir', f.dataDir, '--probe']);
+  assert.equal(r.status, 0, r.err + JSON.stringify(r.out));
+  assert.deepEqual([r.out.ok, r.out.signer], [true, {known: true, status: 'active', size: 1}]);
 });
