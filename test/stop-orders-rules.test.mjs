@@ -79,6 +79,10 @@ test('propagation view: latency per enforcement point, overdue and not covering 
     [['gw', true, 'activated_in_window', 12000], ['other-gw', false, 'activated_in_window', 3000]]);
   assert.equal(stopOrderPropagation(rows, [], T0 + 30e3)[0].propagation, 'pending');
   assert.equal(stopOrderPropagation(rows, [], T0 + 61e3)[0].propagation, 'overdue');
+  // The order's summary is its worst covering point: one gateway that never activated leaves the order overdue.
+  const two = [rows[0], row(2, 'agent_stop_order', order('stop-1', {enforcementPoints: [{id: 'gw', basis: ['policy']}, {id: 'gw-2', basis: ['listed']}]}))];
+  const [partial] = stopOrderPropagation(two, [activation(3, 'gw', revisionOf(two[1]), 12)], T0 + 600e3);
+  assert.deepEqual([partial.propagation, ...partial.points.map(p => p.status)], ['overdue', 'activated_in_window', 'overdue']);
   const nobody = [rows[0], row(2, 'agent_stop_order', order('stop-1', {enforcementPoints: []}))];
   assert.equal(stopOrderPropagation(nobody, [], T0)[0].propagation, 'no_enforcement_point');
   assert.deepEqual([...contentRevisions(rows).keys()], [revisionOf(rows[0]), revision]);
