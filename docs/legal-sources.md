@@ -104,6 +104,10 @@ NIA의 [공식 배포 페이지](https://www.nia.or.kr/site/nia_kor/ex/bbs/View.
 
 **ISO/IEC 42001:2023**: 공식 소개 페이지의 표준명·범위만 확인했다. 정당하게 확보한 유료 전체 본문이 없으므로 세부 조항 매핑은 제공하지 않는다. 인증 보장·문서 재배포도 하지 않는다. [ISO 공식 소개](https://www.iso.org/standard/42001)
 
+## ISMS-P 참고 정렬
+
+정보보호 및 개인정보보호 관리체계(ISMS-P) 인증기준과 EvidScope 증거의 분야 단위 참고 정렬은 [ISMS-P 인증기준 참고 정렬](isms-p-alignment.md)과 `data/isms-p-alignment.json`에 둔다. 2026-10-07 KISA ISMS-P 누리집에서 영역·분야 번호와 명칭, 기준 수만 확인했다. 인증 판정이 아니며 `data/requirements.json`의 법률 요구사항 목록이나 catalog identity와 섞지 않는다.
+
 ## 증거와 평가를 연결하는 방법
 
 `data/requirements.json`은 현재 31개 요구사항·준비 기록의 기준 목록이다. 개별 레코드의 출처·조항·구속력·조건·필요 증거·한계·확인일·효력일을 확인해야 한다. ISO 준비 기록을 법률상 의무나 유료 표준 본문의 세부 조항으로 세지 않는다. `data/governance-examples.json`은 생성형 고객안내와 고영향 후보 대출심사의 사실관계, 통제 연결, 합성 문서, 누락, 담당자·기한, 출처 변경 예제를 제공한다.
