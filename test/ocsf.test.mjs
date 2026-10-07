@@ -109,7 +109,9 @@ test('OCSF Detection Finding export: schema, versions, attestation, tenant isola
       assert.ok(['event.message', 'event.evidences', 'event.resources', 'event.status_id', 'event.timezone_offset'].every(present));
       if (version === '1.9.0') {
         assert.ok(['event.is_alert', 'event.attestation_list[].chain_uid', 'event.attestation_list[].prev_event'].every(present));
+        // The demo's OTLP model calls name a model; OTel GenAI spans carry no model uid or separate model version.
         assert.deepEqual([...recommended].filter(path => path.includes('ai_agent.')).sort(), ['event.evidences[].ai_agent.ai_model',
+          'event.evidences[].ai_agent.ai_model.uid', 'event.evidences[].ai_agent.ai_model.version',
           'event.evidences[].ai_agent.instance_uid', 'event.evidences[].ai_agent.uid', 'event.evidences[].ai_agent.version']);
       }
     }

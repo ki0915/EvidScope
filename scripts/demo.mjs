@@ -1,10 +1,25 @@
 import {readFileSync} from 'node:fs';
-import {randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {localOptions} from './local.mjs';
 import {submit} from '../src/client.mjs';
 import {digest} from '../src/crypto.mjs';
+// OTLP/JSON GenAI spans shaped like OTel SDK output, so the AI visibility screen has observations after the demo:
+// a registered service calling its allowed and an unlisted destination, a tool span, and an unregistered service.
+export function demoTraces(now=Date.now()){
+ const hex=n=>randomBytes(n).toString('hex'),traceId=hex(16),nanos=offset=>String(BigInt(now+offset)*1000000n);
+ const attributes=o=>Object.entries(o).map(([key,value])=>({key,value:typeof value==='number'?{intValue:String(value)}:{stringValue:value}}));
+ const span=(name,values,offset)=>({traceId,spanId:hex(8),name,kind:3,startTimeUnixNano:nanos(offset),endTimeUnixNano:nanos(offset+800),
+  attributes:attributes(values),status:{}});
+ const service=(name,spans)=>({resource:{attributes:attributes({'service.name':name})},scopeSpans:[{scope:{name:'evidscope-demo'},spans}]});
+ const chat=(model,host)=>({'gen_ai.operation.name':'chat','gen_ai.provider.name':'openai','gen_ai.request.model':model,'server.address':host,'server.port':443});
+ return {resourceSpans:[
+  service('support-agent',[span('chat gpt-4o-mini',{...chat('gpt-4o-mini','api.openai.com'),'gen_ai.usage.input_tokens':812,'gen_ai.usage.output_tokens':164},-9000),
+   span('execute_tool customer-api',{'gen_ai.operation.name':'execute_tool','gen_ai.tool.name':'customer-api'},-8000),
+   span('chat gpt-4o-mini',chat('gpt-4o-mini','llm-proxy.example.net'),-7000)]),
+  service('shadow-notebook',[span('chat',{...chat('unknown-llm','llm.example.net'),'gen_ai.provider.name':'other'},-6000)])]};
+}
 export async function demo({config,ingress='http://127.0.0.1:8081',audit='http://127.0.0.1:8082'}){
  const principal=kind=>config.principals.find(p=>p.tenant==='alpha'&&(p.kind===kind||p.role===kind));
  async function api(path,body,role='reviewer'){const r=await fetch(audit+path,{method:body?'POST':'GET',headers:{authorization:`Bearer ${principal(role).token}`,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});const x=await r.json();if(!r.ok)throw Error(`${path} ${r.status} ${x.error}`);return x;}
@@ -27,6 +42,13 @@ export async function demo({config,ingress='http://127.0.0.1:8081',audit='http:/
  for(const[kind,e]of events){const r=await submit(ingress,principal(kind),e);if(r.status!==202)throw Error(JSON.stringify(r));}
  const c=await api('/api/cases',{title:'승인 범위 불일치와 성공 보고 상충 조사',actionId:common.actionId,owner:'감사팀'});
  await api(`/api/cases/${c.id}`,{status:'in_review',comment:'독립 API 실패 결과와 자기보고를 분리해서 검토합니다.',task:{title:'승인 대상 확인 및 notice-v2 렌더링 시험',owner:'서비스운영팀',dueAt:when(7*86400000),status:'open'}});
+ await api('/api/assets',{id:'otel-service:support-agent',actor:'support-agent',tool:'model-api',owner:'서비스운영팀',purpose:'합성 고객안내 모델 호출',
+  version:'1.0',policyVersion:'auth-v1',approvalRequired:false,validFrom:when(-60000),destinations:['api.openai.com']});
+ const otlpSource=config.principals.find(p=>p.tenant==='alpha'&&p.kind==='otlp');let otlp={skipped:'no_otlp_source'};
+ if(otlpSource){const traces=demoTraces(now),r=await fetch(ingress+'/v1/traces',{method:'POST',
+   headers:{authorization:`Bearer ${otlpSource.token}`,'content-type':'application/json'},body:JSON.stringify(traces)});
+  if(r.status!==200)throw Error(`OTLP demo spans rejected: ${r.status} ${await r.text()}`);
+  otlp={spans:traces.resourceSpans.reduce((n,s)=>n+s.scopeSpans[0].spans.length,0),response:await r.json()};}
  const examples=JSON.parse(readFileSync(new URL('../data/governance-examples.json',import.meta.url),'utf8'));
  for(const s of examples.systems){const f=s.facts;await api('/api/governance/systems',{id:s.id,name:s.name,owner:f.owner,purpose:f.purpose,role:f.role,markets:f.markets,domain:f.sector,generative:f.generative,highImpact:s.id.includes('high-impact')?'candidate':'unknown',dataCategories:f.dataCategories,affectedPeople:f.affectedPeople.join(', ')});
   for(const control of s.controls)for(const requirementId of control.requirementIds){const refs=control.evidenceIds.map(id=>({type:'document',ref:`synthetic:governance-examples/${id}`,version:'synthetic-v1',notes:'합성 자료 참조입니다. 실제 문서 검증 완료가 아닙니다.'}));
@@ -35,7 +57,7 @@ export async function demo({config,ingress='http://127.0.0.1:8081',audit='http:/
   }
  }
  const ruleId=`${prefix}-external`;const rule=await api('/api/rules',{id:ruleId,title:'외부 목적지 합성 조사 룰',field:'destination',op:'eq',value:'external.example',severity:'medium'});await api(`/api/rules/${ruleId}/test`,{version:rule.version});await api(`/api/rules/${ruleId}/approve`,{version:rule.version},'admin');
- return {synthetic:true,events:events.length,actionId:common.actionId,caseId:c.id,systems:examples.systems.length};
+ return {synthetic:true,events:events.length,actionId:common.actionId,caseId:c.id,systems:examples.systems.length,otlp};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const options=localOptions();

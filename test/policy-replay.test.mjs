@@ -60,7 +60,8 @@ test('demo scenario replays exactly; a re-signed altered finding is a mismatch',
   const report = verifyAndReplay(bundle, h.publicKey);
   assert.equal(report.valid, true, JSON.stringify(report.evaluations.filter(e => e.status !== 'replayed')));
   const [first, second] = evaluationsOf(bundle, result.actionId).map(r => byId(report, r.payload.id));
-  assert.equal(report.summary.evaluations, 2);
+  // The demo also sends OTLP spans with their own actions; this scenario is about the demo action's two evaluations.
+  assert.equal(evaluationsOf(bundle, result.actionId).length, 2);
   assert.equal(second.inputs.events.length, first.inputs.events.length + 1, 'the late notice is only an input of the later evaluation');
   assert.equal(report.summary.replayed, report.summary.evaluations);
   for (const e of report.evaluations) {

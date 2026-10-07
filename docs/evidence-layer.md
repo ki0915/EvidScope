@@ -131,6 +131,8 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   `GET /api/export/ocsf?version=1.3.0|1.9.0`, `scripts/export-ocsf.mjs`(검증 후 NDJSON, 선택적으로 Splunk HEC 전송).
   1.9.0의 `attestation_list`는 원장 레코드 해시를 fingerprint로, 투명성 로그를 켠 경우 tenant의 C2SP origin을 `chain_uid`로 담아
   SIEM 분석가가 발견사항 하나를 위트니스가 서명한 로그까지 거슬러 검증할 수 있습니다.
+  OTLP로 받은 AI 모델 호출에는 별도 대상 자원이 없으므로 목적지 호스트(없으면 모델 이름)를 `resources`에 유형과 함께 담아
+  프록시·방화벽 로그와 이어 볼 수 있게 했습니다(2라운드).
   스키마 기능이라 누구나 따라 할 수 있으므로 단독 차별점이 아니라 D1·D2의 연동 증명으로 봅니다. Amazon Security Lake 사용자 정의 소스는
   OCSF 1.3까지만 받으므로 1.3 하위 호환 출력을 기본으로 둡니다.
 

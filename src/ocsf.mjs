@@ -30,6 +30,18 @@ const sha256 = (value, serialization = LEDGER_SERIALIZATION) => ({algorithm_id: 
 const unique = values => [...new Set(values.filter(value => typeof value === 'string' && value))];
 const times = (events, field) => events.map(e => Date.parse(e[field])).filter(Number.isFinite);
 
+// Target resources: the event's own resource; an OTLP model call has none, so its destination host (correlates with
+// proxy and firewall logs) or else its model stands in, typed so a SIEM rule can tell them apart.
+function targets(events) {
+  const seen = new Map();
+  for (const e of events) {
+    const r = typeof e.resource === 'string' && e.resource ? {name: e.resource}
+      : typeof e.destination === 'string' && e.destination ? {name: e.destination, type: 'Network endpoint'}
+      : typeof e.model === 'string' && e.model ? {name: e.model, type: 'AI model'} : null;
+    if (r) seen.set(`${r.type || ''}\0${r.name}`, r);
+  }
+  return [...seen.values()];
+}
 function evidence(ref, event, v19) {
   const item = {data: event ? {ref, kind: event.kind, sourceKind: event.sourceKind, occurredAt: event.occurredAt, seq: event.seq} : {ref, retained: false}};
   // Authority, safety and telemetry records name the agent they concern; only agent/tool records are its activity.
@@ -66,7 +78,7 @@ function findingEvent({tenant, ledger, finding, index, events, version, checkpoi
   const [severityId, severity] = SEVERITY[finding.severity] || [0, 'Unknown'], suppressed = typeof finding.suppressedBy === 'string';
   const refs = Array.isArray(finding.evidence) ? finding.evidence : [], found = refs.map(ref => events.get(ref)).filter(Boolean);
   const custom = /^CUSTOM:(.+):v(\d+)$/.exec(finding.code), engine = evaluation.replay?.engine || 'unrecorded';
-  const firstSeen = times(found, 'occurredAt'), resources = unique(found.map(e => e.resource));
+  const firstSeen = times(found, 'occurredAt'), resources = targets(found);
   return {
     activity_id: CREATE.id, activity_name: CREATE.name, category_uid: CATEGORY.uid, category_name: CATEGORY.name,
     class_uid: CLASS.uid, class_name: CLASS.name, type_uid: CLASS.uid * 100 + CREATE.id, type_name: `${CLASS.name}: ${CREATE.name}`,
@@ -85,7 +97,7 @@ function findingEvent({tenant, ledger, finding, index, events, version, checkpoi
       ...(firstSeen.length ? {first_seen_time: Math.min(...firstSeen), last_seen_time: Math.max(...firstSeen)} : {}),
     },
     evidences: refs.slice(0, 50).map(ref => evidence(ref, events.get(ref), v19)),
-    ...(resources.length ? {resources: resources.map(name => ({name, ...(v19 ? {role_id: 1, role: 'Target'} : {})}))} : {}),
+    ...(resources.length ? {resources: resources.map(r => ({...r, ...(v19 ? {role_id: 1, role: 'Target'} : {})}))} : {}),
     ...(v19 ? {is_alert: !suppressed, attestation_list: [attestation(tenant, ledger, keyId, chainUid)]} : {}),
     unmapped: {evidscope: {
       format: 'evidscope-ocsf-reference-v1', tenant, actionId: evaluation.actionId, evaluationId: evaluation.id, evaluationVersion: evaluation.version,
