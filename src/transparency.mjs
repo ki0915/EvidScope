@@ -285,7 +285,7 @@ async function eachLimited(items, limit, fn) {
   await Promise.all(Array.from({length: Math.min(limit, items.length)}, async () => { while (next < items.length) await fn(items[next++]); }));
 }
 // A tlog_state (or tlog_checkpoints) row whose frontier folds to its root and whose signed note names the same origin, size and root.
-function verifiedTenantRow(row, logV) {
+export function verifiedTenantRow(row, logV) {
   let peaks = null, c = null;
   try { peaks = T.blobToPeaks(row.peaks, row.size); c = T.parseCheckpoint(T.openNote(row.note, [logV]).text); } catch { c = null; }
   const root = Buffer.from(row.root);

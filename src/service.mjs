@@ -32,6 +32,8 @@ import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparency
 import {ocsfFindings,evaluationLedgerRows} from './ocsf.mjs';
 import {tenantOrigin} from './tlog.mjs';
 import {AccessLog} from './access-log.mjs';
+import {attestationSigner} from './attestation-signer.mjs';
+import {createReceipts} from './receipt-service.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
  workerTenantScopes(config.principals||[],config.profile);
@@ -44,6 +46,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  // Reads are recorded in a separate hash-chained access log and sealed into the ledger in batches (src/access-log.mjs).
  let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
  const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
+ // Attestations are signed through one function (src/attestation-signer.mjs) so a separate signer process can take its place.
+ const receipts=createReceipts({store,config:tlogConfig,signer:attestationSigner(key)});
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
  // Separation starts with the first start under DATA_KEY_FILE, not with the first document: from then on the vault, its backups and
  // recovery frontiers refuse to run without this key (a backup sealed by the signing key would expose every retained event key).
@@ -266,7 +270,11 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   if(path.startsWith('/api/governance/')){const documentResult=governanceDocuments.handle(p,method,url,x);if(documentResult!==undefined)return documentResult;const result=finance.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
-  if(path==='/api/investigations'||path.startsWith('/api/cases/')){const result=workbench.handle(p,method,url,x);if(result!==undefined)return result;}
+  if(path==='/api/investigations'||path.startsWith('/api/cases/')){
+   // ?attest=intoto wraps the signed report and its in-toto attestation (docs/receipts.md); the proofs read this request's snapshot.
+   const attest=method==='GET'&&/^\/api\/cases\/[^/]+\/report$/.test(path)&&receipts.requested(url);
+   const result=workbench.handle(p,method,url,x);if(result!==undefined)return attest?receipts.attestCaseReport(result):result;
+  }
   if(path==='/api/overview'&&method==='GET'){
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),events=store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n;
    const actions=store.db.prepare('SELECT * FROM actions WHERE tenant=?').all(p.tenant);
@@ -331,7 +339,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    // Only a pending request can be approved: the signed action history admits pending -> approved -> expired only.
    if(e.status!=='pending')fail(409,'승인 대기 중인 예외만 승인할 수 있습니다');if(Date.parse(e.expiresAt)<=Date.now())fail(409,'만료된 예외');e.status='approved';e.approvedBy=p.id;store.put(p,'exception',e.id,e);dirty(p.tenant);return e;});}
   // The export seals the unsealed reads first, so it carries the batch that covers its own read.
-  if(path==='/api/export'&&method==='GET'){sealReads(p,'export');return store.read(()=>store.exportBundle(p.tenant));}
+  if(path==='/api/export'&&method==='GET'){const attest=receipts.requested(url);sealReads(p,'export');const bundle=store.read(()=>store.exportBundle(p.tenant));return attest?receipts.attestExport(bundle):bundle;}
+  if(path==='/api/receipts/record'&&method==='GET')return receipts.record(p,url);
   if(path==='/api/audit/reads'&&method==='GET'){auditReader(p);const fromSeq=Math.max(1,Math.floor(Number(url.searchParams.get('fromSeq'))||1)),limit=Math.max(1,Math.min(500,Math.floor(Number(url.searchParams.get('limit'))||100)));
    return store.transaction(()=>({items:accessLog.entries(p.tenant,{fromSeq,limit}),status:accessLog.status(p.tenant)}));}
   if(path==='/api/audit/reads/proof'&&method==='GET'){auditReader(p);const seq=Number(url.searchParams.get('seq'));if(!Number.isSafeInteger(seq)||seq<1)fail(400,'seq 오류');
