@@ -6,11 +6,13 @@
 // erased before the evaluation, every asset registration in log order, the latest record of each rule (active versions)
 // and of each exception. Recorded snapshotHash = digest(snapshot) proves that the reconstruction is the exact input.
 // Engine v2 adds the registry input (every agent_registry / agent_registry_policy version) and the related deny decisions of
-// other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot.
+// other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot. Engine v3 adds the
+// action's approval requests (latest version of each, in the order they were opened under the action; src/approvals.mjs).
 import {EVALUATION_ENGINE, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine} from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
+import {APPROVAL_TYPE, approvalAnalysisInput} from './approvals.mjs';
 
 export const POLICY_REPLAY_FORMAT = 'evidscope-policy-replay-v1';
 // Limits in force before evaluations recorded them (src/analysis.mjs analysisLimits for engine evidscope-evaluate-v1).
@@ -26,7 +28,7 @@ const findingKey = finding => `${finding.code}|${(finding.evidence || []).join('
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
-    exceptions: new Map(), registry: []};
+    exceptions: new Map(), registry: [], approvals: new Map(), approvalActions: new Map()};
 }
 
 function addEvent(state, event) {
@@ -57,11 +59,19 @@ function apply(state, row, disclosures) {
   else if (row.type === 'rule' && payload.id) state.rules.set(payload.id, payload);
   else if (row.type === 'exception' && payload.id) state.exceptions.set(payload.id, payload);
   else if (REGISTRY_INPUT_TYPES.includes(row.type)) state.registry.push({type: row.type, payload});
+  else if (row.type === APPROVAL_TYPE && typeof payload.id === 'string' && payload.id) {
+    state.approvals.set(payload.id, payload);
+    if (typeof payload.actionId === 'string') {
+      const ids = state.approvalActions.get(payload.actionId) || [];
+      if (!ids.includes(payload.id)) state.approvalActions.set(payload.actionId, [...ids, payload.id]);
+    }
+  }
 }
 
 function snapshot(state, actionId) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
+  const approvals = approvalAnalysisInput((state.approvalActions.get(actionId) || []).map(id => state.approvals.get(id)));
   return {
     events: events.sort(eventOrder),
     assets: [...state.assets.values()],
@@ -69,10 +79,12 @@ function snapshot(state, actionId) {
     exceptions: [...state.exceptions.values()],
     ...(registry ? {registry} : {}),
     ...(relatedDecisions ? {relatedDecisions} : {}),
+    ...(approvals ? {approvals} : {}),
   };
 }
-const extraBytes = data => (data.registry || data.relatedDecisions
-  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {})}) + 1 : 0);
+const extraBytes = data => (data.registry || data.relatedDecisions || data.approvals
+  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {}),
+    ...(data.approvals ? {approvals: data.approvals} : {})}) + 1 : 0);
 
 // Mirrors Store.cachedAnalysisSnapshot resource checks followed by the claim-time size check in src/analysis.mjs.
 function quarantineReason(data, limits) {
@@ -120,6 +132,7 @@ function inputSummary(data, matches) {
   return {events: data.events.map(e => e.seq), assets: data.assets.length, rules: data.rules.map(r => ({id: r.id, version: r.version})),
     exceptions: data.exceptions.length, ...(data.registry ? {registry: {entries: data.registry.entries.length, policies: data.registry.policies.length}} : {}),
     ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions.map(d => d.seq)} : {}),
+    ...(data.approvals ? {approvals: data.approvals.map(a => ({id: a.id, version: a.version}))} : {}),
     snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 

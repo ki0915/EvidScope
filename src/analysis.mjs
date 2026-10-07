@@ -12,7 +12,8 @@ const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const keys=(x,allowed)=>{if(!object(x)||Object.keys(x).some(k=>!allowed.includes(k)))fail(400,'분석 결과의 객체 또는 필드가 유효하지 않습니다');};
 // Signed evaluations name their engine, bounds and inputs so src/policy-replay.mjs can recompute them offline.
 // Registry and related-deny inputs are named only when present, so a v1 evaluation record keeps its v1 shape.
-const v2Inputs=data=>({...(data.registry?{registry:{entries:data.registry.entries.length,policies:data.registry.policies.length}}:{}),...(data.relatedDecisions?{relatedDecisions:data.relatedDecisions.map(d=>d.seq)}:{})});
+const v2Inputs=data=>({...(data.registry?{registry:{entries:data.registry.entries.length,policies:data.registry.policies.length}}:{}),...(data.relatedDecisions?{relatedDecisions:data.relatedDecisions.map(d=>d.seq)}:{}),
+ ...(data.approvals?{approvals:data.approvals.map(a=>({id:a.id,version:a.version}))}:{})});
 const replayInputs=data=>({engine:evaluationEngine(data),limits:{findings:analysisLimits.findings,resultBytes:analysisLimits.resultBytes},
  inputs:{events:data.events.map(e=>e.seq),assets:data.assets.length,rules:data.rules.map(r=>({id:r.id,version:r.version})),exceptions:data.exceptions.length,...v2Inputs(data)}});
 const quarantineInputs=(engine=EVALUATION_ENGINE)=>({engine,limits:{events:analysisLimits.events,assets:analysisLimits.assets,rules:analysisLimits.rules,exceptions:analysisLimits.exceptions,snapshotBytes:analysisLimits.snapshotBytes}});

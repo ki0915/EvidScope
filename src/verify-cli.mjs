@@ -5,6 +5,7 @@ import {join, resolve} from 'node:path';
 import {parseArgs} from 'node:util';
 import {verifyBundle} from './crypto.mjs';
 import {REGISTRY_TYPES, verifyRegistryHistory} from './agent-registry.mjs';
+import {APPROVAL_TYPE, verifyApprovalAnswer, verifyApprovalHistory} from './approvals.mjs';
 import {replayEvaluations} from './policy-replay.mjs';
 import {unpackResponse, verifyAttestation, verifyRecordReceipt} from './receipts.mjs';
 import {verifyCaseReport} from './report-verifier.mjs';
@@ -19,6 +20,7 @@ export const USAGE = `Usage:
   evidscope-verify tlog-proof RECORD.tlog-proof RECORD.json (--policy FILE.tlog-policy | --key KEY.pem) [--key KEY.pem] [--witness VKEY]...
                    [--quorum N] [--origin-base BASE]
   evidscope-verify unpack RESPONSE.json [--out DIR]
+  evidscope-verify approval ANSWER.json KEY.pem --action-id ID --target TARGET.json [--auth-req-id ID] [--tenant T] [--at ISO-TIME]
 FLAGS (transparency, opt-in): --witness VKEY (repeatable) --quorum N --origin-base BASE --max-staleness SECONDS
   --require-transparency --require-tenant-witness --heads-key VKEY (repeatable, the heads signer's key) --require-heads-signer (needs --origin-base)
 Exit status: 0 verified, 1 not verified, 2 usage error.`;
@@ -65,8 +67,11 @@ function bundleCommand(args) {
   const replay = values.replay ? replayEvaluations(bundle) : undefined, attestation = attestationFor(values, bytes, key, transparency);
   // An export with agent registry records also has its signed lifecycle checked (docs/agent-registry.md); older exports have none.
   const registry = bundle.records.some(row => REGISTRY_TYPES.includes(row.type)) ? verifyRegistryHistory(bundle.records) : undefined;
-  return {ok: (!replay || replay.valid) && (!registry || registry.valid),
-    output: {...result, ...(registry ? {registry} : {}), ...(replay ? {replay} : {}), ...(attestation ? {attestation} : {})}};
+  // Approval requests and answers (docs/approval-queue.md) are checked the same way; older exports have none.
+  const approvals = bundle.records.some(row => row.type === APPROVAL_TYPE) ? verifyApprovalHistory(bundle.records) : undefined;
+  return {ok: (!replay || replay.valid) && (!registry || registry.valid) && (!approvals || approvals.valid),
+    output: {...result, ...(registry ? {registry} : {}), ...(approvals ? {approvals} : {}), ...(replay ? {replay} : {}),
+      ...(attestation ? {attestation} : {})}};
 }
 function reportCommand(args) {
   const {values, positionals: [file, keyPath, checkpointPath]} = parse(args, {...transparencyFlags, attestation: {type: 'string'}}, 3);
@@ -111,7 +116,21 @@ function unpackCommand(args) {
   });
   return {ok: true, output: {unpacked: written, note: 'Unpacking checks nothing but the file digest; run dsse or tlog-proof on the files.'}};
 }
-const COMMANDS = {bundle: bundleCommand, report: reportCommand, dsse: dsseCommand, 'tlog-proof': tlogProofCommand, unpack: unpackCommand};
+// The gateway's check of a signed approval answer: the poll response (or its `answer` envelope) against the action and target the
+// gateway is about to execute. Exit 0 only for an approval of exactly that target inside its execution window.
+function approvalCommand(args) {
+  const {values, positionals: [file, keyPath]} = parse(args, {'action-id': {type: 'string'}, target: {type: 'string'}, 'auth-req-id': {type: 'string'},
+    tenant: {type: 'string'}, at: {type: 'string'}}, 2);
+  need([file, keyPath, values['action-id'], values.target], ['ANSWER.json', 'KEY.pem', '--action-id', '--target']);
+  const now = values.at === undefined ? Date.now() : Date.parse(values.at);
+  if (!Number.isFinite(now)) throw new UsageError('--at must be an ISO 8601 time');
+  const response = readJson(file, MiB, 'Answer'), envelope = response?.answer ?? response;
+  const result = verifyApprovalAnswer({envelope, publicKey: readKey(keyPath), now, expected: {actionId: values['action-id'],
+    target: readJson(values.target, 64 * 1024, 'Target'), auth_req_id: values['auth-req-id'], tenant: values.tenant}});
+  return {ok: result.approved, output: result};
+}
+const COMMANDS = {bundle: bundleCommand, approval: approvalCommand, report: reportCommand, dsse: dsseCommand, 'tlog-proof': tlogProofCommand,
+ unpack: unpackCommand};
 
 // Returns the exit status: 0 verified, 1 not verified, 2 usage error.
 export function main(argv, {stdout = process.stdout, stderr = process.stderr} = {}) {
