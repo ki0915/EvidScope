@@ -13,6 +13,7 @@ import {pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {dataKeyId, generateDataKeyFile, readDataKeyFile} from '../src/data-keys.mjs';
 import {documentKeyUsage, migrateDocuments} from './data-key.mjs';
+import {duplicatePrincipalIds} from '../src/credentials.mjs';
 
 const RESTORATION_MARKER = 'vault-restoration.json';
 
@@ -36,6 +37,10 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
   // 1. OTLP principals. A restored vault binds config.json by hash, so editing it in place would stop the vault from starting
   //    until the operator records a signed config rebinding (scripts/vault-backup.mjs rebind).
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
+  // The vault refuses to start with duplicate principal ids (round-2 re-audit, S6). Ids name ledger records and source
+  // receipts, so they are not renamed here: give each credential its own id first, then rerun.
+  const duplicates = duplicatePrincipalIds(config.principals);
+  if (duplicates.length) throw Error(`config.json has duplicate principal ids (${duplicates.join(', ')}); give each credential its own id, then rerun`);
   const tenants = [...new Set(config.principals.filter(p => p.role === 'source').map(p => p.tenant))].sort();
   const missing = tenants.filter(t => !config.principals.some(p => p.tenant === t && p.role === 'source' && p.kind === 'otlp'));
   if (!missing.length) steps.push({step: 'otlp_principals', status: 'already_present'});

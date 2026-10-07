@@ -17,6 +17,7 @@ OIDC를 활성화하면 조직 인증 공급자에 로그인하고, 서버에 �
     "sessionTtlSeconds": 900,
     "idleTtlSeconds": 300,
     "maxAuthenticationAgeSeconds": 300,
+    "tokenExchangesPerMinute": 60,
     "requiredAcrValues": [],
     "bindings": [
       {"id": "audit-admin-01", "subject": "REPLACE_WITH_STABLE_SUBJECT", "tenant": "finance", "role": "admin"}
@@ -67,7 +68,13 @@ NetworkPolicy는 지정 IP·포트만 통제하며 HTTPS hostname·URL path·IdP
 
 세션은 무작위 opaque cookie이며 `__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/를 사용하고 Domain은 발급하지 않는다. vault는 cookie의 SHA-256 및 세션 정보를 메모리에 보관한다. ID/access/refresh token, PKCE verifier, flow state, cookie·CSRF는 증적 DB·백업에 저장하지 않는다. 세션은 10,000개로 제한한다.
 
-로그인 흐름(state·nonce·PKCE verifier·만료 시각)은 vault 메모리에 두지 않고, vault 프로세스마다 새로 만드는 키로 AES-256-GCM 봉인한 5분짜리 `__Host-evidscope-flow` cookie(HttpOnly, SameSite=Lax)에 담는다. 따라서 익명 `/auth/login` 반복 요청은 서버 상태를 만들지 않으며 다른 사용자의 로그인을 막지 못한다(감사 S9; 이전의 동시 흐름 1,000개 제한과 429 응답은 없앴다). callback은 봉인을 열어 URL의 `state`와 상수 시간으로 비교하고 만료를 확인한 뒤, token 교환 전에 그 state를 사용 완료로 기록한다. 같은 callback을 다시 보내면 token endpoint를 호출하지 않고 실패한다. 이 사용 완료 기록은 흐름 만료까지만 메모리에 두며 10,000개를 넘으면 가장 오래된 기록부터 버린다(재사용된 authorization code는 IdP가 다시 거부한다). vault를 재시작하면 진행 중인 로그인 흐름은 무효가 되어 다시 로그인해야 한다.
+로그인 흐름(state·nonce·PKCE verifier·만료 시각)은 vault 메모리에 두지 않고, vault 프로세스마다 새로 만드는 키로 AES-256-GCM 봉인한 5분짜리 `__Host-evidscope-flow` cookie(HttpOnly, SameSite=Lax)에 담는다. 따라서 익명 `/auth/login` 반복 요청은 서버 상태를 만들지 않으며 다른 사용자의 로그인을 막지 못한다(감사 S9; 이전의 동시 흐름 1,000개 제한과 429 응답은 없앴다). callback은 봉인을 열어 URL의 `state`와 상수 시간으로 비교하고 만료를 확인한 뒤, token 교환을 허용할지 판단한다. vault를 재시작하면 진행 중인 로그인 흐름은 무효가 되어 다시 로그인해야 한다.
+
+token 교환은 confidential client 비밀을 IdP에 사용하는 유일한 callback 단계다. 이전에는 계정 없는 익명 login/callback 한 쌍마다 token 요청이 하나씩 발생했다(2라운드 재감사 S9). 이제 vault 프로세스 전체가 하나의 token bucket과 동시 실행 제한을 거친다. 기본값은 분당 60회(`tokenExchangesPerMinute`, 정수 1~600), 연속 허용(burst) 20회(분당 값이 20보다 작으면 그 값), 동시 교환 4개다. 제한을 넘은 callback은 IdP에 아무 요청도 보내지 않고 `/?auth=failed`로 이동한다. 이때 state는 사용 완료로 기록하지 않으며 사용자는 다시 로그인하면 된다.
+
+허용된 교환은 token 요청 전에 그 state를 사용 완료로 기록한다. 이 기록은 해당 흐름이 만료될 때까지(사용 후 최대 5분) 메모리에 두고 만료된 기록만 지운다. 용량은 burst + 5 × 분당 값(기본 320개)이다. 시계가 정상적으로 흐르면 bucket이 5분 동안 허용하는 교환 수를 넘지 않으므로 차지 않는다. 시계가 뒤로 조정되는 등으로 용량이 차면 기록을 버리지 않고 새 callback을 실패시킨다(fail closed). 따라서 이미 사용한 callback을 다시 보내면 흐름 만료 전에는 이 기록에서, 만료 후에는 만료 검사에서 token endpoint 호출 없이 실패한다. 다른 vault 프로세스는 flow cookie를 열 수 없다. 재사용된 authorization code는 IdP도 거부한다.
+
+이 제한은 IP나 계정별이 아니라 vault 프로세스 전체에 하나다. 익명 callback 반복 요청이 만드는 IdP token 요청은 분당 값 이내로 묶이지만, 그동안 실제 사용자의 로그인도 `/?auth=failed`로 실패할 수 있다. 운영에서는 reverse proxy·WAF에서 IP별 `/auth/login`·`/auth/callback` 요청 제한을 함께 두고, 예상 로그인 수에 맞게 `tokenExchangesPerMinute`를 조정한다.
 
 state·nonce·PKCE와 별도 flow cookie를 결합해 검증한다. `openid-client`의 `enableNonRepudiationChecks`를 명시 적용해 ID token 서명을 검증한다. HTTPS만으로 서명 확인을 대체하지 않는다. 모든 cookie 인증 POST에는 고정 publicOrigin과 세션별 `X-Evid-CSRF`가 필요하다. Bearer 자격 혼용은 거부한다.
 
@@ -95,6 +102,7 @@ IdP의 외부 계정 삭제·그룹 변경을 실시간 수신하는 SCIM·back-
 ```powershell
 npm ci --ignore-scripts --no-audit --no-fund
 node --test --test-concurrency=1 test/identity-state.test.mjs test/oidc-http.test.mjs test/oidc-tls.test.mjs test/oidc-ui.test.mjs
+node --test --test-concurrency=1 test/oidc-login-flood.test.mjs test/oidc-callback-replay.test.mjs
 ```
 
 독립 합성 IdP와 audit·vault 프로세스에서 서명·코드 교환·권한·회수·만료·재시작·복구를 검증한다. HTTPS 시험은 임시 CA와 정상 hostname 검증을 사용하고 TLS 검증을 해제하지 않는다. UI 자동 시험은 VM DOM이다. 실제 조직 IdP, 다중 vault 세션 공유, 비밀 관리·회전, 고가용성·운영 부하 기준은 별도 검증이 필요하다.

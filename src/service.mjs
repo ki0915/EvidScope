@@ -32,9 +32,15 @@ import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparency
 import {ocsfFindings,evaluationLedgerRows} from './ocsf.mjs';
 import {tenantOrigin} from './tlog.mjs';
 import {AccessLog} from './access-log.mjs';
+import {duplicatePrincipalIds} from './credentials.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
- workerTenantScopes(config.principals||[],config.profile);
+ // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
+ const principals=config.principals||[];
+ if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
+ const duplicateIds=duplicatePrincipalIds(principals);
+ if(duplicateIds.length)throw Error(`Invalid credential configuration: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
+ workerTenantScopes(principals,config.profile);
  const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
@@ -50,10 +56,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  if(keyring.currentKeyId)try{recordDataKeyUsage(store.db,keyring.currentKeyId);}catch(error){store.close();throw error;}
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
- const principals=config.principals||[];
  const analysis=createAnalysis(store,principals,{profile:config.profile});
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
- if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
@@ -99,7 +103,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  function verifiedEvents(p){try{return store.verifiedFacets(p.tenant,['keys','events']);}catch{fail(409,'이벤트 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}}
  const latestEvaluations=values=>{const latest=new Map();for(const value of values)latest.set(value.actionId,value);return latest;};
  function verifiedEventReferences(p){try{return store.cachedEventIndex(p.tenant);}catch{fail(409,'이벤트 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}}
- function technicalEvidenceState(requirement,assessment,{documentStale=false,eventStale=false,system=null}={}){
+ function technicalEvidenceState(requirement,assessment,{documentStale=false,eventStale=false,system=null,provenanceReviews}={}){
   if(requirement?.id?.startsWith('KR-')&&assessment?.applicability==='not_applicable'){
    const basisVerified=!documentStale&&assessment.evidence.some(e=>e.type==='document'&&e.verification==='governance_document_verified_at_assessment'&&/^[a-f0-9]{64}$/.test(e.contentHash)&&/^[a-f0-9]{64}$/.test(e.documentSnapshotHash||''));
    return {status:basisVerified?'human_applicability_basis_document_verified':'human_applicability_basis_document_missing',supportsHumanAssessment:basisVerified,missingChecks:basisVerified?[]:['applicability_basis_document'],automaticLegalVerdict:false,limitations:['적용 제외 판단은 사람의 기록입니다. 연결된 근거 문서의 해시·복구 가능 여부만 검증하며 법적 결론의 진실성·충분성을 자동 판정하지 않습니다.']};
@@ -108,16 +112,26 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   const defaultStatus=assessment?.evidence?.some(e=>e.type==='event')?'event_linked_partial_support':'external_or_missing';
   // Non-KR requirements have no clause-level technical checks: a human assesses the evidence, and attestations or
   // references the vault did not fetch stay labelled self_asserted (S11).
-  return {status:defaultStatus,supportsHumanAssessment:true,assurance:evidenceAssurance(assessment).level,
+  return {status:defaultStatus,supportsHumanAssessment:true,assurance:evidenceAssurance(assessment,provenanceReviews).level,
    limitations:['조항별 기술 검증이 없는 요구사항입니다. self_asserted 증거는 작성자의 주장이며 vault가 내용을 확인하지 않았습니다.']};
  }
- // Assurance of one evidence item (S11): only retained documents, signed supplier bundles and authenticated source events
- // are bound by the vault; every attestation and every reference the vault did not fetch is the author's own claim.
- const assuranceByVerification={governance_document_verified_at_assessment:'vault_verified_document',
-  supplier_bundle_verified_at_assessment:'supplier_signed_bundle',linked_verified_minimized_record:'authenticated_source_record'};
- const assuranceOf=e=>e.type==='attestation'?'self_asserted':assuranceByVerification[e.verification]||'self_asserted';
- function evidenceAssurance(assessment){
-  const items=(assessment?.evidence||[]).map(e=>({type:e.type,ref:e.ref,assurance:assuranceOf(e)})),selfAsserted=items.filter(i=>i.assurance==='self_asserted').length;
+ // Assurance of one evidence item (S11): only retained documents, authenticated source events and vault-retained supplier
+ // bundles are bound by the vault; every attestation and every reference the vault did not fetch is the author's own claim.
+ const assuranceByVerification={governance_document_verified_at_assessment:'vault_verified_document',linked_verified_minimized_record:'authenticated_source_record'};
+ // The vault keeps a supplier bundle and checks its document hashes; it verifies no supplier signature (round 2, S11). The
+ // bundle binds its source only when it was declared real and the provenance review the assessment relied on (bound by its
+ // hash) confirmed this bundle content and was recorded by someone other than the assessment author. Synthetic bundles, and
+ // real ones only their author vouched for, stay self_asserted. provenanceReviews maps a review's hash to the review.
+ function supplierAssurance(e,assessment,provenanceReviews){
+  const review=typeof e.provenanceReviewHash==='string'?provenanceReviews.get(e.provenanceReviewHash):undefined;
+  const confirmed=review?.decision==='verified'&&review.bundleId===e.ref.slice('supplier-bundle:'.length)&&review.bundleHash===e.contentHash;
+  return confirmed&&review.reviewer!==assessment.reviewer?'vault_retained_supplier_bundle':'self_asserted';
+ }
+ const assuranceOf=(e,assessment,provenanceReviews)=>e.type==='attestation'?'self_asserted':e.verification==='supplier_bundle_verified_at_assessment'?
+  supplierAssurance(e,assessment,provenanceReviews):assuranceByVerification[e.verification]||'self_asserted';
+ function evidenceAssurance(assessment,provenanceReviews=new Map()){
+  const items=(assessment?.evidence||[]).map(e=>({type:e.type,ref:e.ref,assurance:assuranceOf(e,assessment,provenanceReviews)}));
+  const selfAsserted=items.filter(i=>i.assurance==='self_asserted').length;
   return {level:!items.length?'no_evidence':selfAsserted===items.length?'self_asserted':selfAsserted?'mixed':'source_bound',selfAssertedItems:selfAsserted,items};
  }
  // Legal review is maker-checker (S11): the author's own legalReview field is a claim. The report counts a legal review
@@ -151,10 +165,11 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const states=[];
    for(const tenant of tenants){
     const p={id:'startup-governance-initializer',tenant};
-    states.push({tenant,p,catalogs:verifiedPolicyObjects(p,'catalog'),systems:verifiedPolicyObjects(p,'system'),assessments:verifiedPolicyObjects(p,'assessment')});
+    states.push({tenant,p,catalogs:verifiedPolicyObjects(p,'catalog'),systems:verifiedPolicyObjects(p,'system'),assessments:verifiedPolicyObjects(p,'assessment'),
+     tasks:verifiedPolicyObjects(p,'governance_task'),legalReviews:verifiedPolicyObjects(p,'governance_legal_review')});
    }
    const identity=applicabilityCatalogIdentity(requirements),hash=identity.hash;
-   for(const {tenant,catalogs,systems,assessments} of states){
+   for(const {tenant,catalogs,systems,assessments,tasks,legalReviews} of states){
     const previous=catalogs.get('current');
     if(previous?.hash!==hash){
      const p={id:'catalog-loader',tenant},snapshot={...identity,requirements,legalSourceCoverage,createdAt:new Date().toISOString()};store.put(p,'catalog','current',snapshot);
@@ -163,6 +178,14 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
     const p={id:'system-facts-migration-v4',tenant};
     for(const old of systems.values())if((old.schemaVersion||1)<4){
      const upgraded={...normalizeSystemFacts(old),updatedAt:old.updatedAt||new Date().toISOString()};store.put(p,'system',old.id,upgraded);const id=randomUUID();store.put(p,'governance_task',id,{id,systemId:old.id,title:'한국 사업자·공급사·모델 사실 추가: 미확인 항목 검토',owner:old.owner,status:'open',previousSystemHash:digest(old)});
+    }
+    // Round 2 (S11): an author who claimed legalReview 'reviewed' got no task. Each current assessment with such a claim,
+    // no task and no independent confirmation gets its legal-review task once, so it shows as outstanding work.
+    const backfill={id:'legal-review-task-migration-v1',tenant},reviews=[...legalReviews.values()];
+    const current=new Map([...assessments.values()].map(a=>[canonical([a.systemId,a.requirementId]),a]));
+    for(const a of current.values())if(a.legalReview==='reviewed'&&!tasks.has(a.id)&&legalReviewState(a,reviews).status!=='reviewed'){
+     store.put(backfill,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:'법률 적용성 검토(작성자 자기 확인만 있음)',
+      owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:[],orderTargets:governanceOrderTargets(a)});
     }
    }
   });
@@ -174,6 +197,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   const system=policyObject(p,'system',systemId),assessments=[...verifiedPolicyObjects(p,'assessment').values()].filter(a=>a.systemId===systemId),tasks=[...verifiedPolicyObjects(p,'governance_task').values()].filter(t=>t.systemId===systemId);
   const legalReviews=[...verifiedPolicyObjects(p,'governance_legal_review').values()].filter(r=>r.systemId===systemId);
   const events=assessments.some(a=>a.evidence.some(e=>e.type==='event'))?verifiedEventReferences(p):new Map();
+  const cites=a=>a.evidence.some(e=>e.verification==='supplier_bundle_verified_at_assessment');
+  const provenanceReviews=new Map(assessments.some(cites)?[...verifiedPolicyObjects(p,'supplier_provenance_review').values()].map(r=>[digest(r),r]):[]);
   const items=requirements.map(requirement=>{
    // verifiedPolicyObjects iterates signed ledger order. Millisecond timestamps
    // can tie, so the last recorded assessment is authoritative for this view.
@@ -191,12 +216,12 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    }
    const applicabilityReview={status:applicabilityReasons.length?'review_required':'current',reasons:[...new Set(applicabilityReasons)],assessmentPolicyVersion:assessment?.applicabilityPolicyVersion||'not_recorded',currentPolicyVersion:applicabilityPolicyVersion,assessmentSnapshotHash:assessment?.applicabilitySnapshotHash||'not_recorded',currentSnapshotHash:currentApplicability.hash};
    const missingLinkedEvidence=assessment?.evidence.some(e=>e.type==='event'&&(!events.has(e.ref)||e.verification==='linked_verified_minimized_record'&&e.contentHash!==digest(events.get(e.ref))));
-   const documentStale=assessment&&(finance.staleEvidence(p,assessment)||governanceDocuments.staleEvidence(p,assessment)),technical=technicalEvidenceState(requirement,assessment,{documentStale,eventStale:missingLinkedEvidence,system});
+   const documentStale=assessment&&(finance.staleEvidence(p,assessment)||governanceDocuments.staleEvidence(p,assessment)),technical=technicalEvidenceState(requirement,assessment,{documentStale,eventStale:missingLinkedEvidence,system,provenanceReviews});
    const stale=assessment&&(assessment.requirementHash!==digest(requirement)||assessment.systemHash!==digest(system)||Date.parse(assessment.nextReviewAt)<=Date.now()||missingLinkedEvidence||documentStale||applicabilityReview.status==='review_required');
    const status=!assessment?'evidence_missing':stale?'review_required':assessment.applicability==='not_applicable'?(technical.supportsHumanAssessment?'human_marked_not_applicable':'evidence_insufficient'):assessment.assessment==='sufficient'&&assessment.evidence.length&&technical.supportsHumanAssessment?'human_evidence_assessed':'evidence_insufficient';
    const legalReview=legalReviewState(assessment,legalReviews);
    return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,
-    evidenceAssurance:evidenceAssurance(assessment),legalStatus:stale?'review_required':legalReview.status,legalReview};
+    evidenceAssurance:evidenceAssurance(assessment,provenanceReviews),legalStatus:stale?'review_required':legalReview.status,legalReview};
    });const catalog=applicabilityCatalogIdentity(requirements);return {system,items,tasks,legalSourceCoverage,applicabilityPolicyVersion,applicabilityPolicyIdentityHash:catalog.hash,limitations:['법적 적용성은 사실관계와 인간 검토를 요구합니다','증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다','한국 고영향과 EU 고위험 분류를 공유하지 않습니다','ISO/IEC 42001 본문 미확보: 조항 매핑 미지원']};
   });
  }
@@ -366,7 +391,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const a={id:randomUUID(),systemId:x.systemId,systemHash:digest(system),requirementId:x.requirementId,requirementHash:digest(requirement),requirementSnapshot:requirement,applicabilityPolicyVersion,applicabilitySnapshot:applicabilityCapture.snapshot,applicabilitySnapshotHash:applicabilityCapture.hash,applicability:x.applicability,evidence,control:cleanText(x.control,1000),owner:cleanText(x.owner,200),assessment:x.assessment,legalReview:x.legalReview,reason:cleanText(x.reason,2000),nextReviewAt:date(x.nextReviewAt),reviewer:p.id,createdAt:new Date().toISOString()};
    if(!a.reason.trim())fail(400,'사람의 적용성·증거 판단 근거가 필요합니다');
    const technical=technicalEvidenceState(requirement,a,{system}),technicalEvidenceRequired=!technical.supportsHumanAssessment;
-   store.put(p,'assessment',a.id,a);if(a.assessment!=='sufficient'||a.legalReview==='pending'||technicalEvidenceRequired||a.applicability==='unknown')store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
+   // Every assessment opens its task (round 2, S11): a new assessment has no independent legal review yet, and the
+   // author's own legalReview is only the claim shown in the report. Closing the task needs another reviewer's confirmation.
+   store.put(p,'assessment',a.id,a);store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
    });
   }
   const legalReviewPath=path.match(/^\/api\/governance\/assessments\/([^/]+)\/legal-review$/);
