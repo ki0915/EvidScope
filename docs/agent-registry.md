@@ -104,7 +104,7 @@ discovered → draft → testing → approved → production ⇄ suspended
 `tier`로 된 데이터입니다.
 
 검토자는 `POST /api/registry/:id/risk`(`{"tier":"high","reason":"..."}`, 해제는 `"tier":null`)로 등급을 재지정할 수 있습니다. 재지정은 새
-버전으로 기록되고, 등록자나 구성 수정자는 할 수 없습니다(403). 재지정은 당시 구성(도구·데이터 범주·목적지)의 해시에 묶여 있어, 구성이
+버전으로 기록되고(해제하면 해제한 사람과 사유가 그 버전에 남습니다), 등록자나 구성 수정자는 할 수 없습니다(403). 재지정은 당시 구성(도구·데이터 범주·목적지)의 해시에 묶여 있어, 구성이
 바뀌면 효력을 잃고 계산값으로 돌아갑니다.
 
 ## 레지스트리 정책
@@ -132,10 +132,10 @@ discovered → draft → testing → approved → production ⇄ suspended
 | 발견 | 등급 | 조건 |
 |---|---|---|
 | `AGENT_SUSPENDED_ACTIVITY` | high | 행동 시점에 정지 상태인 항목이 포함하는 출처·행위자의 활동 |
-| `AGENT_RETIRED_ACTIVITY` | high | 행동 시점에 폐기 상태인 항목의 활동 |
+| `AGENT_RETIRED_ACTIVITY` | high | 행동 시점에 폐기 상태인 항목의 활동. 같은 출처·행위자를 포함하는 폐기되지 않은 항목이 있으면(새 id로 다시 등록) 그 항목을 따릅니다. |
 | `AGENT_UNREGISTERED_ACTIVITY` | medium | `unregistered_activity`가 켜진 시점에 어느 항목에도 들지 않는 활동(악성 확정 아님) |
 | `AGENT_REGISTRY_STATE_UNCERTAIN` | medium | 시계 오차 범위 안에서 상태가 바뀌어 확정할 수 없음 |
-| `EXECUTION_AFTER_DENY` | high | 같은 대상에 대한 거부 결정 뒤의 실행 기록(그 사이 allow·modify가 있으면 제외) |
+| `EXECUTION_AFTER_DENY` | high | 같은 대상에 대한 거부 결정 뒤의 실행 기록. 그 사이 **같은 출처·집행 지점**의 allow·modify가 있으면 제외하며, 다른 집행 지점은 거부를 지울 수 없습니다. |
 | `DECISION_ORDER_UNCERTAIN` | medium | 거부와 실행의 순서를 시계 오차 때문에 확정할 수 없음 |
 | `ENFORCEMENT_DECISION_MISSING` | high | 행동 시점 등록 항목이 `enforcement:"required"`로 표시한 도구를, 앞선 결정 기록 없이 실행 |
 | `REQUIRED_APPROVAL_MISSING` | high | `require_approval` 결정 뒤 실행 시점에 유효한 사람 승인 없이 실행 |

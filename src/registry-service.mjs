@@ -237,8 +237,10 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    if([previous.registeredBy,previous.editedBy].includes(p.id))fail(403,'등록하거나 구성을 수정한 사람은 위험 등급을 재지정할 수 없습니다(4-eyes)');
    if(x.tier===null&&!previous.risk?.override)fail(409,'해제할 재지정이 없습니다');
    supersede(p,previous.id,'registry_version_changed');
-   const override=x.tier===null?null:{tier:x.tier,reason,by:p.id,at:now(),basisHash:riskBasis(previous)};
-   return putVersion(p,version(p,previous,{risk:{...previous.risk,override}},'risk_override'));
+   const at=now(),override=x.tier===null?null:{tier:x.tier,reason,by:p.id,at,basisHash:riskBasis(previous)};
+   const next=version(p,previous,{risk:{...previous.risk,override}},'risk_override');
+   // A cleared override names who cleared it on this version only; later versions recompute the risk record.
+   return putVersion(p,x.tier===null?{...next,risk:{...next.risk,cleared:{by:p.id,at,reason}}}:next);
   });
  }
  function apply(p,entry,t){

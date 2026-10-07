@@ -146,6 +146,10 @@ test('risk overrides are independent and bound to the configuration; retired age
   assert.equal((await call('/api/registry/pay-agent/risk', {tier: 'medium', reason: 'sandbox only'})).status, 403, 'the registrant cannot lower its tier');
   const override = await asSecond('/api/registry/pay-agent/risk', {tier: 'medium', reason: 'sandbox account only'});
   assert.deepEqual([override.body.change, override.body.risk.tier, override.body.risk.override.by], ['risk_override', 'medium', 'alpha-reviewer-2']);
+  const cleared = await asSecond('/api/registry/pay-agent/risk', {tier: null, reason: 'production account after all'});
+  assert.deepEqual([cleared.body.risk.override, cleared.body.risk.tier, cleared.body.risk.cleared.by], [null, 'high', 'alpha-reviewer-2']);
+  assert.equal((await call('/api/registry/pay-agent', undefined, 'auditor')).body.lifecycle.valid, true, 'a cleared override names who cleared it');
+  assert.equal((await asSecond('/api/registry/pay-agent/risk', {tier: 'medium', reason: 'sandbox account only'})).status, 200);
   const changed = await call('/api/registry/pay-agent', {tools: ['payment_transfer', 'refund_api']});
   assert.deepEqual([changed.body.risk.override, changed.body.risk.tier], [null, 'high'], 'a changed configuration drops the override');
   assert.equal((await call('/api/registry/pay-agent/transitions', {to: 'retired', reason: 'replaced'})).body.entry.state, 'retired');

@@ -93,8 +93,10 @@ function viewAt(registry,event,t){
  let enforcement='off';for(const v of registry.policies)if(effective(v.effectiveFrom)<=t)enforcement=v.enforcement;
  const covers=v=>v.sources.includes(event.source)||!!event.actor&&v.actors.includes(event.actor);
  const covering=[...current.values()].filter(covers).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
- return {suspended:covering.filter(v=>v.state==='suspended').map(v=>v.id),retired:covering.filter(v=>v.state==='retired').map(v=>v.id),
-  unregistered:!covering.length&&enforcement==='unregistered_activity',enforcedTools:[...new Set(covering.flatMap(v=>v.enforcedTools))].sort()};
+ // A retired entry is history once a live entry covers the same source or actor (re-registration under a new id).
+ const live=covering.filter(v=>v.state!=='retired'),applies=live.length?live:covering;
+ return {suspended:applies.filter(v=>v.state==='suspended').map(v=>v.id),retired:applies.filter(v=>v.state==='retired').map(v=>v.id),
+  unregistered:!covering.length&&enforcement==='unregistered_activity',enforcedTools:[...new Set(applies.flatMap(v=>v.enforcedTools))].sort()};
 }
 // Views at every instant where the state could differ within the event's clock bound [t-bound, t+bound].
 export function registryViews(registry,event,bound){
@@ -181,7 +183,7 @@ export function verifyRegistryHistory(rows){
      if(row.principal!==v.editedBy)problem(row,'registry edit principal differs from editedBy');
      if(['approved','production'].includes(v.state)&&configuration(v)!==configuration(previous))problem(row,'configuration changed in approved or production');
     }else if(v.change==='risk_override'){
-     const by=v.risk?.override?.by;
+     const by=v.risk?.override?.by??v.risk?.cleared?.by;
      if(row.principal!==by||by===v.registeredBy||by===previous.editedBy)problem(row,'risk override not recorded by an independent reviewer');
      if(v.editedBy!==previous.editedBy||configuration(v)!==configuration(previous))problem(row,'risk override changed the configuration');
     }else problem(row,'unknown registry change');

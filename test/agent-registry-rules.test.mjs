@@ -46,6 +46,10 @@ test('registry state is evaluated at the time of the activity, including suspend
   assert.deepEqual(registryCodes(codes([intent(11, {clockUncertaintyMs: 120000})], {registry})), ['AGENT_REGISTRY_STATE_UNCERTAIN']);
   assert.deepEqual(registryCodes(codes([intent(15, {clockUncertaintyMs: 'unknown'})], {registry})), ['AGENT_REGISTRY_STATE_UNCERTAIN']);
   assert.deepEqual(registryCodes(codes([intent(15)], {})), [], 'no registry, no registry findings');
+  // Re-registered under a new id after retirement: the live entry applies, the retired one is history.
+  const again = registryAnalysisInput([version(1, 'production', 0), version(2, 'retired', 30), version(1, 'production', 40, {id: 'agent-x2'})]);
+  assert.deepEqual(registryCodes(codes([intent(35)], {registry: again})), ['AGENT_RETIRED_ACTIVITY']);
+  assert.deepEqual(registryCodes(codes([intent(45)], {registry: again})), []);
 });
 
 test('unregistered activity is a finding only while enforcement is configured', () => {
@@ -63,6 +67,8 @@ test('unregistered activity is a finding only while enforcement is configured', 
 test('execution after a deny, cleared by a later allow, and uncertain order', () => {
   assert.ok(codes([decision(1, 'deny'), execution(2)]).includes('EXECUTION_AFTER_DENY'));
   assert.ok(!codes([decision(1, 'deny'), decision(1.5, 'allow'), execution(2)]).includes('EXECUTION_AFTER_DENY'));
+  for (const other of [{source: 'alpha-guardrail'}, {enforcementPointId: 'gw-2'}])
+    assert.ok(codes([decision(1, 'deny'), decision(1.5, 'allow', other), execution(2)]).includes('EXECUTION_AFTER_DENY'), 'only the denying point clears');
   assert.ok(!codes([decision(3, 'deny'), execution(2)]).includes('EXECUTION_AFTER_DENY'), 'a deny after the execution is not a bypass');
   assert.ok(!codes([decision(1, 'deny', {tool: 'other-tool'}), execution(2)]).includes('EXECUTION_AFTER_DENY'), 'another target');
   assert.ok(!codes([decision(1, 'deny'), execution(2, {kind: 'result', status: 'failure'})]).includes('EXECUTION_AFTER_DENY'));

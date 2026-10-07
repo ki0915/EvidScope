@@ -36,8 +36,10 @@ export function decisionFindings(events,{add,order,validity,approvals,enforcedTo
  const decisions=events.filter(isDecision);
  for(const e of events.filter(executed)){
   const matching=decisions.filter(d=>targets(d,e)),denies=matching.filter(d=>d.decision==='deny');
-  // A later allow/modify for the same target (for example after an approval) clears an earlier deny.
-  const cleared=d=>matching.some(a=>['allow','modify'].includes(a.decision)&&order(d,a)==='before'&&order(a,e)==='before');
+  // A later allow/modify for the same target from the same enforcement point (for example after an approval) clears an earlier
+  // deny; another source or enforcement point cannot clear it.
+  const samePoint=(a,d)=>a.source===d.source&&a.enforcementPointId===d.enforcementPointId;
+  const cleared=d=>matching.some(a=>['allow','modify'].includes(a.decision)&&samePoint(a,d)&&order(d,a)==='before'&&order(a,e)==='before');
   const violated=denies.filter(d=>order(d,e)==='before'&&!cleared(d));
   if(violated.length)add('EXECUTION_AFTER_DENY','high','정책 결정 지점이 거부한 행동의 실행 기록이 이후에 있습니다. 실제 차단 효력과 우회 경로를 검토하세요',[e,...violated]);
   else{const unknown=denies.filter(d=>order(d,e)==='unknown');
