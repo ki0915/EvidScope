@@ -11,6 +11,7 @@
 | 실제 성과와 남은 한계는 무엇인가 | [검증 현황과 원본 근거](verification-status.md) |
 | 실행·검토·복구 방법은 무엇인가 | [설치·첫 사용](first-release-20261006.md), [v0.1.1 권한 패치](first-release-security-patch-20261006.md) |
 | 증거를 밖에서 어떻게 검증하는가 | [투명성 로그](transparency-log.md), [heads 서명기](signer.md), [표준 영수증과 검증기](receipts.md), [이벤트 키 감싸기](event-key-wrapping.md), [개선 라운드 기록](improvement-rounds.md) |
+| 에이전트를 어떻게 등록하고 통제 결정을 받는가 | [에이전트 레지스트리·정책 결정 수집](agent-registry.md) |
 | 한국 거버넌스에서 무엇을 지원하는가 | [증거 계약](kr-governance-evidence.md), [공급사 조치 활용](kr-supplier-reliance.md), [ISMS-P 참고 정렬](isms-p-alignment.md) |
 
 아래 자료와 PDF는 각 작성 시점의 기록입니다. 기존 HTML 뷰어는 2026-09-09 설계를 설명하며 최신 상태는 위 제품·검증 문서를 따릅니다. 과거 문서의 `.local/`, `.test-runs/`, `releases/` 경로는 공개 저장소에 포함하지 않은 로컬 자료입니다.
