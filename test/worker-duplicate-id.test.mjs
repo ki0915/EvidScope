@@ -1,7 +1,7 @@
 // Regression tests for round-2 re-audit finding S6 (from the reviewer's PoC r2-poc-worker-duplicate-id): worker tenant
 // scopes were keyed by principal id and ids were not required to be unique, so a worker credential bound to alpha
 // received beta's decrypted analysis snapshots and could sign beta evaluations. Ids are now unique at config load, the
-// analysis keys scopes and leases by the credential that authenticated.
+// analysis keys scopes and leases by the credential that authenticated, and one credential's live leases are capped.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
@@ -10,7 +10,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {createService} from '../src/service.mjs';
-import {createAnalysis} from '../src/analysis.mjs';
+import {createAnalysis,analysisLimits} from '../src/analysis.mjs';
 import {credentialFingerprint} from '../src/credentials.mjs';
 import {rebindRecoveryConfig} from '../src/recovery-state.mjs';
 import {Store} from '../src/store.mjs';
@@ -92,6 +92,25 @@ test('R2 S6: leases claimed before credential binding are ended on upgrade and c
   coverage:{totalFindings:0,returnedFindings:0,truncated:false}}}),error=>error.status===409);
  const job=analysis.claim(alphaWorker).jobs[0];assert.equal(job.actionId,'old-action');
  assert.equal(analysis.commit(alphaWorker,{leaseId:job.leaseId,result:evaluateJob(job)}).accepted,true);
+});
+
+test('R2: one credential holds a bounded number of live leases and ended leases are pruned',t=>{
+ const {store:s}=store(t),cap=analysisLimits.liveLeasesPerCredential,actions=cap+analysisLimits.jobs+3;
+ for(let i=0;i<actions;i++)event(s,'alpha',`action-${String(i).padStart(3,'0')}`);
+ const other={id:'alpha-worker-2',role:'worker',tenant:'alpha',token:'x'.repeat(40)},analysis=createAnalysis(s,[alphaWorker,other]);
+ let held=0;for(let i=0;i<Math.ceil(cap/analysisLimits.jobs)+2;i++)held+=analysis.claim(alphaWorker).jobs.length;
+ assert.equal(held,cap,'a credential that never completes stops at the live-lease cap');
+ assert.deepEqual(analysis.claim(alphaWorker).jobs,[]);
+ assert.equal(analysis.claim(other).jobs.length,analysisLimits.jobs,'another credential still gets work from the same tenant');
+ // Expired and rejected leases claimed longer ago than the retention are deleted at the next claim; completed ones are kept.
+ const old=Date.now()-analysisLimits.leaseRetentionMs-1000;
+ s.db.prepare(`UPDATE analysis_leases SET state=CASE WHEN rowid%2 THEN 'expired' ELSE 'rejected' END,analysis_time=?,expires=? WHERE credential=?`)
+  .run(old,old+analysisLimits.leaseMs,credentialFingerprint(alphaWorker));
+ const fresh=analysis.claim(alphaWorker);assert.equal(fresh.jobs.length,analysisLimits.jobs,'the cap counts live leases only');
+ assert.equal(s.db.prepare(`SELECT COUNT(*) n FROM analysis_leases WHERE state IN ('expired','rejected')`).get().n,0);
+ const job=fresh.jobs[0];analysis.commit(alphaWorker,{leaseId:job.leaseId,result:evaluateJob(job)});
+ s.db.prepare('UPDATE analysis_leases SET analysis_time=?,expires=? WHERE id=?').run(old,old+analysisLimits.leaseMs,job.leaseId);analysis.claim(alphaWorker);
+ assert.equal(s.db.prepare('SELECT state FROM analysis_leases WHERE id=?').get(job.leaseId).state,'completed');
 });
 
 test('R2 S6: a signed config rebinding and the local upgrade refuse duplicate principal ids',t=>{

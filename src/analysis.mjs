@@ -3,7 +3,10 @@ import {canonical,digest} from './crypto.mjs';
 import {fail,cleanText,identifier,EVALUATION_ENGINE,boundedEvaluation,suppressingException} from './model.mjs';
 import {credentialFingerprint} from './credentials.mjs';
 
-export const analysisLimits=Object.freeze({jobs:5,snapshotBytes:10*1024*1024,events:1000,assets:5000,rules:100,exceptions:5000,findings:100,resultBytes:1024*1024,leaseMs:30000});
+export const analysisLimits=Object.freeze({jobs:5,snapshotBytes:10*1024*1024,events:1000,assets:5000,rules:100,exceptions:5000,findings:100,resultBytes:1024*1024,leaseMs:30000,
+ // One credential holds at most this many live leases (worker replicas sharing a credential share it); expired and
+ // rejected leases are deleted leaseRetentionMs after they were claimed (round-2 re-audit).
+ liveLeasesPerCredential:64,leaseRetentionMs:24*3600*1000});
 const bytes=x=>Buffer.byteLength(JSON.stringify(x));
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const keys=(x,allowed)=>{if(!object(x)||Object.keys(x).some(k=>!allowed.includes(k)))fail(400,'분석 결과의 객체 또는 필드가 유효하지 않습니다');};
@@ -51,6 +54,9 @@ export function createAnalysis(store,principals,{profile}={}){
  // have none; they are ended here and claimed again.
  if(!store.db.prepare("SELECT 1 FROM pragma_table_info('analysis_leases') WHERE name='credential'").get())
   store.db.exec("ALTER TABLE analysis_leases ADD COLUMN credential TEXT;UPDATE analysis_leases SET state='expired' WHERE state='leased';");
+ store.db.exec(`CREATE INDEX IF NOT EXISTS analysis_lease_state ON analysis_leases(state,expires);
+  CREATE INDEX IF NOT EXISTS analysis_lease_claimed ON analysis_leases(state,analysis_time);
+  CREATE INDEX IF NOT EXISTS analysis_lease_credential ON analysis_leases(credential,state,expires);`);
  // Worker entries by credential, not by id: two entries that share an id keep their own tenant scope and leases.
  const workers=new Map();
  for(const entry of principals){
@@ -82,11 +88,15 @@ export function createAnalysis(store,principals,{profile}={}){
  function claim(p){const {scope,credential}=worker(p);return store.transaction(()=>{
   const tenants=scopeTenants(scope);for(const tenant of tenants)verifyActions(tenant);const now=Date.now();expireExceptions(now,tenants);
   store.db.prepare("UPDATE analysis_leases SET state='expired' WHERE state='leased' AND expires<=?").run(now);
+  store.db.prepare("DELETE FROM analysis_leases WHERE state IN ('expired','rejected') AND analysis_time<=?").run(now-analysisLimits.leaseRetentionMs);
+  // A credential that never completes cannot keep more than its share of the scope leased (round-2 re-audit).
+  const live=store.db.prepare("SELECT COUNT(*) n FROM analysis_leases WHERE credential=? AND state='leased' AND expires>?").get(credential,now).n;
+  const room=Math.min(analysisLimits.jobs,Math.max(0,analysisLimits.liveLeasesPerCredential-live));
   const filter=within(scope,'a.tenant');
   const candidates=store.db.prepare(`SELECT a.* FROM actions a WHERE a.analyzed<a.version${filter.sql}
    AND NOT EXISTS(SELECT 1 FROM analysis_quarantine q WHERE q.tenant=a.tenant AND q.action_id=a.id AND q.version=a.version)
    AND NOT EXISTS(SELECT 1 FROM analysis_leases l WHERE l.tenant=a.tenant AND l.action_id=a.id AND l.version=a.version AND l.state='leased' AND l.expires>?)
-   ORDER BY a.tenant,a.id LIMIT ?`).all(...filter.args,now,analysisLimits.jobs);
+   ORDER BY a.tenant,a.id LIMIT ?`).all(...filter.args,now,room);
   const jobs=[];let sent=0;
   for(const a of candidates){
    const data=snapshot(a.tenant,a.id),size=data.resourceLimit?.snapshotBytesAtLeast||bytes(data);
