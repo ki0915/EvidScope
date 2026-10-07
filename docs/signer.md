@@ -272,6 +272,9 @@ node scripts/signer.mjs init --state-dir /signer/state --backend command --publi
 
 서명기가 예전 origin을 서명한 적이 없으면(핸드오버 이전 백업 등) `authorize-epoch` 대신 `authorize-genesis --origin-base NEW`로 새 origin을
 시작할 수 있습니다(코드 경로만 있고 별도 시험은 없습니다). 이때 예전 origin과의 연결은 vault 키로 서명한 epoch 기록만 보증합니다.
+서명기가 다른 heads origin을 아직 `active`로 서명하고 있으면 `authorize-genesis`는 승인을 만들되 표준 오류와 출력의 `warning`에 그 origin을
+적습니다. genesis는 이전에 서명한 이력과 아무것도 비교하지 않기 때문입니다. 그 vault를 복구한 것이라면 `authorize-epoch`를 쓰고 genesis 승인은
+`revoke --id`로 취소하며, 같은 서명기를 쓰는 별개의 vault일 때만 그대로 둡니다(3라운드 재감사, `test/signer-genesis-warning.test.mjs`).
 
 ## 배포
 

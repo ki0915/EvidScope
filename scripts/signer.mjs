@@ -83,6 +83,17 @@ export function handoverAuthorization({stateDir, checkpoint, vaultKey, witnesses
   return createAuthorization(stateDir, {kind: 'handover', origin, predecessor: {origin, size: c.size, root: c.root.toString('hex'), key: logV.vkey,
     cosignatures: got}}, {now});
 }
+// A genesis starts a heads origin with no predecessor, unchecked against anything the signer signed. While another origin is active
+// that is usually a restored vault that needs authorize-epoch (which checks the restored prefixes); a separate vault is the exception.
+export function genesisAuthorization({stateDir, originBase, note, now}) {
+  const origin = headsOriginOf(originBase), state = readSignerState(stateDir);
+  if (state.origins[origin]) throw Error(`The signer already signs ${origin}`);
+  const active = Object.keys(state.origins).filter(o => state.origins[o].status === 'active').sort();
+  const auth = createAuthorization(stateDir, {kind: 'genesis', origin, predecessor: null, ...(note ? {note} : {})}, {now});
+  if (!active.length) return auth;
+  return {...auth, warning: `The signer still signs ${active.join(', ')}: this genesis starts ${origin} unchecked against it. After restoring that vault`
+    + ` use authorize-epoch instead and revoke this authorization (revoke --id ${auth.id}); keep it only for a separate vault.`};
+}
 export function epochAuthorization({stateDir, fromBase, toBase, acceptLoss, restored, dropLogs = [], now}) {
   const from = headsOriginOf(fromBase), to = headsOriginOf(toBase), state = readSignerState(stateDir), p = state.origins[from];
   if (!p || p.status !== 'active') throw Error(`The signer holds no active heads origin ${from}`);
@@ -201,9 +212,9 @@ async function main(argv) {
     }
     case 'authorize-genesis': {
       need(values, 'state-dir', 'origin-base');
-      const origin = headsOriginOf(values['origin-base']);
-      if (readSignerState(dir).origins[origin]) throw Error(`The signer already signs ${origin}`);
-      return print(createAuthorization(dir, {kind: 'genesis', origin, predecessor: null, ...(values.note ? {note: values.note} : {})}));
+      const auth = genesisAuthorization({stateDir: dir, originBase: values['origin-base'], note: values.note});
+      if (auth.warning) console.error(JSON.stringify({warning: auth.warning}));
+      return print(auth);
     }
     case 'authorize-handover':
       need(values, 'state-dir', 'checkpoint', 'vault-key');
