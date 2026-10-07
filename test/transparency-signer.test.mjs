@@ -239,7 +239,9 @@ test('a vault-key heads log moves to the heads signer from its witnessed checkpo
   f.write(s, 'alpha', 3);
   f.write(s, 'beta', 1);
   await s.transparency.pump();
-  const old = await f.call(s, '/api/export'), before = verifyBundle(old, f.publicKey, undefined, {transparency: policy(f)}).transparency;
+  // One clock for both verifications of the old export, so witness ages compare equal however long the steps between take.
+  const now = Date.now(), old = await f.call(s, '/api/export');
+  const before = verifyBundle(old, f.publicKey, undefined, {transparency: policy(f, {now})}).transparency;
   assert.deepEqual([before.rollbackCheckedAgainst, before.heads.signedBy], ['database_tamper', undefined]);
   await f.close(s);
   // Operator: the newest heads checkpoint of the stopped vault with its cosignature, a handover authorization on the signer, and the
@@ -267,7 +269,7 @@ test('a vault-key heads log moves to the heads signer from its witnessed checkpo
   assert.equal(verifyBundle(fresh, f.publicKey, undefined, {transparency: policy(f, {headsKeys: [signer.vkey]})}).transparency.rollbackCheckedAgainst,
     'vault_host');
   // Exports from before the handover verify exactly as they did, and still do once a verifier pins the heads key.
-  assert.deepEqual(verifyBundle(old, f.publicKey, undefined, {transparency: policy(f)}).transparency, before);
+  assert.deepEqual(verifyBundle(old, f.publicKey, undefined, {transparency: policy(f, {now})}).transparency, before);
   const oldPinned = verifyBundle(old, f.publicKey, undefined, {transparency: policy(f, {headsKeys: [signer.vkey]})}).transparency;
   assert.deepEqual([oldPinned.rollbackCheckedAgainst, oldPinned.heads.signedBy, oldPinned.heads.headsKeyPinned], ['database_tamper', 'vault_key', false]);
   assert.throws(() => verifyBundle(old, f.publicKey, undefined, {transparency: policy(f, {headsKeys: [signer.vkey], requireHeadsSigner: true})}),
