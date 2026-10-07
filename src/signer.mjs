@@ -154,6 +154,8 @@ export function initSignerState(dir, publicKey, {now = () => Date.now()} = {}) {
   mkdirSync(abs, {recursive: true, mode: 0o700});
   for (const d of [p.pending, p.used, p.revoked]) mkdirSync(d, {recursive: true, mode: 0o700});
   if (existsSync(p.state)) throw Error(`Signer state already exists at ${p.state}`);
+  // An audit log without a state is a lost state: a new one would sign the old origins again from scratch.
+  if (existsSync(p.audit)) throw Error(`Signer state ${p.state} is missing but ${p.audit} exists: restore state.json from backup, never re-create it`);
   const release = lock(abs);
   try {
     writeState(abs, {generation: 0, createdAt: new Date(now()).toISOString(), keys: [keyName(T.ed25519RawPublic(publicKey))], consumed: [], origins: {}});
@@ -347,6 +349,16 @@ export function openSigner({stateDir, backend, limits = {}, now = () => Date.now
     audit = openAudit(p.audit, now);
   } catch (error) { release(); throw error; }
   const max = {...DEFAULT_LIMITS, ...limits}, pub = T.ed25519RawPublic(backend.publicKey), consumed = new Set(state.consumed);
+  // Only this process writes the state file (rename gives every write a new file). A different file under it means a second
+  // signer on the same state directory (the lock cannot see another container) or a copy restored while running: refuse to sign.
+  const stamp = () => { const s = statSync(p.state); return `${s.ino}:${s.size}:${s.mtimeMs}`; };
+  let written = stamp();
+  const unchangedState = () => {
+    if (stamp() !== written) {
+      throw refusal('state_changed', 'the signer state file changed outside this signer process (a second signer on the same state directory, or a '
+        + 'restored copy); stop every other signer and restart this one', 503);
+    }
+  };
   // A consumed authorization whose file was not yet moved (a crash right after the state write) is moved now and never reused.
   for (const id of consumed) if (existsSync(join(p.pending, id + '.json'))) renameSync(join(p.pending, id + '.json'), join(p.used, id + '.json'));
   audit.append({event: 'start', pid: process.pid, backend: backend.kind, key: keyName(pub), origins: Object.keys(state.origins).length});
@@ -407,6 +419,7 @@ export function openSigner({stateDir, backend, limits = {}, now = () => Date.now
   }
   async function sign(req) {
     if (!plain(req) || !plain(req.leaf) || (req.proofs !== undefined && !plain(req.proofs))) throw invalid('request needs origin, previous, leaf and proofs');
+    unchangedState();
     const origin = req.origin, base = headsBaseOf(origin), start = startOf(req, origin, base), proofs = req.proofs ?? {};
     const next = parseEntries(req.leaf.entries, base, max.maxEntries);
     let epoch = null;
@@ -428,7 +441,9 @@ export function openSigner({stateDir, backend, limits = {}, now = () => Date.now
     const origins = {...state.origins, [origin]: record};
     if (epoch) origins[start.predecessor.origin] = {...start.predecessor, status: 'retired', retired: {at, by: origin, authorization: start.auth.id}};
     const updated = {...state, generation: state.generation + 1, origins, consumed: start.auth ? [...state.consumed, start.auth.id] : state.consumed};
+    unchangedState();
     writeState(dir, updated);
+    written = stamp();
     state = updated;
     if (start.auth) {
       consumed.add(start.auth.id);

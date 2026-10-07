@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync, randomBytes} from 'node:crypto';
-import {copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
+import {copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -134,6 +134,7 @@ test('signer state survives restarts, ignores torn temporary writes and refuses 
   assert.throws(() => s.open(), /unreadable .* restore it from backup/);
   rmSync(state);
   assert.throws(() => s.open(), /No signer state .* never re-created/);
+  assert.throws(() => initSignerState(s.stateDir, s.backend.publicKey), /state\.json is missing but .*audit\.log exists: restore state\.json from backup/);
   writeFileSync(state, saved);
   core = s.open();
   assert.equal(core.head(ORIGIN).size, 2);
@@ -142,6 +143,43 @@ test('signer state survives restarts, ignores torn temporary writes and refuses 
   const other = generateKeyPairSync('ed25519').privateKey, otherFile = join(s.root, 'other.pem');
   writeFileSync(otherFile, other.export({format: 'pem', type: 'pkcs8'}), {mode: 0o600});
   assert.throws(() => openSigner({stateDir: s.stateDir, backend: fileBackend({keyFile: otherFile})}), /not the key of this state/);
+});
+
+test('a state file replaced under a running signer (a second signer, a restored copy) stops it from signing', async t => {
+  const s = setup(t);
+  s.authorize({kind: 'genesis', origin: ORIGIN, predecessor: null});
+  let core = s.open();
+  const a = tenant(1);
+  const one = await core.signHeads({origin: ORIGIN, previous: {size: 0, root: EMPTY}, leaf: {entries: [entry('alpha', a)]}});
+  const state = join(s.stateDir, 'state.json');
+  copyFileSync(state, state + '.copy');
+  renameSync(state + '.copy', state);
+  a.push(...tenant(1));
+  const next = {origin: ORIGIN, previous: {size: 1, root: one.root}, leaf: {entries: [entry('alpha', a)]}, proofs: {[logOf('alpha')]: proof(a, 1)}};
+  const error = await refused(core.signHeads(next), 'state_changed', /changed outside this signer process/);
+  assert.equal(error.status, 503);
+  assert.equal(audit(s.stateDir).at(-1).reason, 'state_changed');
+  core.close();
+  core = s.open();
+  assert.equal((await core.signHeads(next)).size, 2);
+  core.close();
+});
+
+test('signer.mjs init --if-missing keeps an existing state of the same key and refuses another key', t => {
+  const root = mkdtempSync(join(tmpdir(), 'evs-signer-init-'));
+  t.after(() => rmSync(root, {recursive: true, force: true}));
+  const key = (name, k = generateKeyPairSync('ed25519').privateKey) => {
+    writeFileSync(join(root, name), k.export({format: 'pem', type: 'pkcs8'}), {mode: 0o600});
+    return join(root, name);
+  };
+  const cli = keyFile => spawnSync(process.execPath, ['scripts/signer.mjs', 'init', '--state-dir', join(root, 'state'), '--backend', 'file',
+    '--key-file', keyFile, '--if-missing'], {encoding: 'utf8'});
+  const first = cli(key('a.pem')), again = cli(join(root, 'a.pem')), other = cli(key('b.pem'));
+  assert.equal(first.status, 0, first.stderr);
+  assert.deepEqual([JSON.parse(again.stdout).existing, JSON.parse(again.stdout).publicKey], [true, JSON.parse(first.stdout).publicKey]);
+  assert.equal(other.status, 1);
+  assert.match(other.stderr, /is not the key of the existing signer state/);
+  assert.equal(audit(join(root, 'state')).filter(e => e.event === 'init').length, 1);
 });
 
 test('the state directory may not live on the vault data volume', t => {

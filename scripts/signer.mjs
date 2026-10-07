@@ -2,7 +2,7 @@
 // socket, a Windows named pipe, or TCP with a bearer token (TLS off loopback).
 //   node scripts/signer.mjs keygen --out SIGNER_KEY.pem [--public-out SIGNER_PUBLIC.pem]
 //   node scripts/signer.mjs token  --out TOKEN_FILE
-//   node scripts/signer.mjs init   --state-dir DIR BACKEND
+//   node scripts/signer.mjs init   --state-dir DIR BACKEND [--if-missing]   (--if-missing: keep an existing state of the same key)
 //   node scripts/signer.mjs serve  --state-dir DIR BACKEND (--socket PATH [--socket-mode 600] | --pipe NAME | --host 127.0.0.1 --port N)
 //                                  [--token-file FILE] [--tls-cert CERT.pem --tls-key KEY.pem] [--signs-per-minute N] [--max-request-bytes N]
 //   node scripts/signer.mjs public-key --state-dir DIR [--out SIGNER_PUBLIC.pem]       (the vault's signer.publicKeyFile)
@@ -21,7 +21,7 @@
 //        | --backend ssh-agent --fingerprint SHA256:... [--agent-socket PATH_OR_PIPE]
 //        | --backend command --public-key SIGNER_PUBLIC.pem --command '["prog","arg",...]' [--command-timeout-ms N] [--command-output auto|raw|base64]
 import {generateKeyPairSync, randomBytes} from 'node:crypto';
-import {readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
@@ -41,7 +41,7 @@ const OPTIONS = {
   'tls-key': {type: 'string'}, 'signs-per-minute': {type: 'string'}, 'max-request-bytes': {type: 'string'}, 'max-entries': {type: 'string'},
   'origin-base': {type: 'string'}, checkpoint: {type: 'string'}, 'vault-key': {type: 'string'}, witness: {type: 'string', multiple: true},
   quorum: {type: 'string'}, 'max-age': {type: 'string'}, 'from-base': {type: 'string'}, 'to-base': {type: 'string'}, 'accept-loss': {type: 'string'},
-  restored: {type: 'string'},
+  restored: {type: 'string'}, 'if-missing': {type: 'boolean'},
   'drop-log': {type: 'string', multiple: true}, id: {type: 'string'}, verify: {type: 'boolean'}, note: {type: 'string'},
 };
 const need = (values, ...names) => { for (const n of names) if (values[n] === undefined) throw Error(`--${n} is required`); };
@@ -125,6 +125,12 @@ async function main(argv) {
       need(values, 'state-dir');
       const backend = await createBackend(backendSpec(values));
       await selfTest(backend);
+      // For an init container: an existing state is kept (and checked), never replaced.
+      if (values['if-missing'] && existsSync(resolve(dir, 'state.json'))) {
+        const key = T.b64(T.ed25519RawPublic(backend.publicKey)), current = readSignerState(dir).keys.at(-1);
+        if (key !== current) throw Error(`The backend key ${key} is not the key of the existing signer state (${current})`);
+        return print({stateDir: dir, publicKey: key, existing: true});
+      }
       return print(initSignerState(dir, backend.publicKey));
     }
     case 'rotate-key': {
@@ -146,10 +152,15 @@ async function main(argv) {
         token: values['token-file'] ? readSignerToken(resolve(values['token-file'])) : null,
         tls: values['tls-cert'] ? {cert: readFileSync(resolve(values['tls-cert'])), key: readFileSync(resolve(values['tls-key']))} : null,
         socketMode: values['socket-mode'] ? parseInt(values['socket-mode'], 8) : 0o600});
-      if (process.send) process.send({ready: true, address: server.address});
-      const stop = () => server.close().then(() => process.exit(0));
+      let stopping = null;
+      const stop = () => (stopping ??= server.close().then(() => process.exit(0)));
       process.once('SIGTERM', stop);
       process.once('SIGINT', stop);
+      // Started by scripts/local.mjs: it asks for a clean stop over IPC, like the vault processes.
+      if (process.send) {
+        process.on('message', message => { if (message === 'shutdown') stop(); });
+        process.send({ready: true, address: server.address});
+      }
       return;
     }
     case 'public-key': {
