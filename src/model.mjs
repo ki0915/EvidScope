@@ -2,13 +2,16 @@ import {digest} from './crypto.mjs';
 import {validateAIObservation} from './ai-observations.mjs';
 import {aiScenarioFindings} from './ai-visibility.mjs';
 import {normalizeGovernanceCheck,knownGovernanceReference} from './kr-governance-evidence.mjs';
+import {registryFindings,enforcedToolsAt} from './agent-registry.mjs';
+import {DECISION_FIELDS,DECISION_KINDS,DECISIONS,decisionFindings} from './decision-rules.mjs';
 export class HttpError extends Error {constructor(status,message){super(message);this.status=status;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
 export const cleanText=(s,max=1000)=>{if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(s)) fail(400,'문자열 형식 또는 길이가 유효하지 않습니다');return s;};
 export const identifier=s=>{if(typeof s!=='string'||!/^[a-zA-Z0-9._:@/-]{1,120}$/.test(s))fail(400,'잘못된 식별자');return s;};
 export const date=s=>{if(typeof s!=='string'||!/^\d{4}-\d\d-\d\dT/.test(s)||!Number.isFinite(Date.parse(s)))fail(400,'ISO 시각이 필요합니다');return new Date(s).toISOString();};
-const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check'],otlp:['notice','self_report']};
-const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs'];
+const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check'],otlp:['notice','self_report'],
+ enforcement:DECISION_KINDS};
+const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs',...DECISION_FIELDS];
 export function validateReference(ref){
  if(!ref||Array.isArray(ref)||typeof ref!=='object'||Object.keys(ref).some(k=>!['id','kind','version','hash','role','locator','description'].includes(k)))fail(400,'참고 데이터는 허용된 참조 메타데이터만 제출할 수 있습니다');
  if(!['document','dataset','record','retrieval','artifact'].includes(ref.kind)||!['input','retrieved','output'].includes(ref.role))fail(400,'참고 데이터 종류 또는 역할 오류');
@@ -20,9 +23,14 @@ export function validateEvent(raw,p) {
  if(!raw||Array.isArray(raw)||typeof raw!=='object')fail(400,'이벤트 객체가 필요합니다');
  for(const k of Object.keys(raw))if(!fields.includes(k))fail(400,`미수집 또는 예약 필드: ${k}`);
  if(!kindBySource[p.kind]?.includes(raw.kind))fail(403,'출처 자격에 허용되지 않은 이벤트 유형');
+ // Decision fields belong to enforcement-point records only; every other source keeps its v1 field set.
+ if(p.kind!=='enforcement'&&DECISION_FIELDS.some(k=>Object.hasOwn(raw,k)))fail(400,'정책 결정 필드는 enforcement 출처의 결정 기록에만 허용됩니다');
  const e={};for(const [k,v] of Object.entries(raw)){
   if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
   else if(k==='aiObservation')e[k]=validateAIObservation(v);
+  else if(k==='decision'){if(!DECISIONS.includes(v))fail(400,'정책 결정은 allow, deny, require_approval, modify 중 하나입니다');e[k]=v;}
+  else if(k==='latencyMs'){if(!Number.isSafeInteger(v)||v<0||v>3600000)fail(400,'결정 지연은 0~3600000ms 정수');e[k]=v;}
+  else if(k==='recordedBeforeExecution'){if(typeof v!=='boolean')fail(400,'recordedBeforeExecution은 true 또는 false');e[k]=v;}
   else if(k==='governanceCheck')e[k]=normalizeGovernanceCheck(v);
   else if(k==='dataCategories'){if(!Array.isArray(v)||v.length>16)fail(400,'데이터 범주 최대 16개');e[k]=v.map(s=>cleanText(s,64));}
   else if(k==='dataRefs'){if(!Array.isArray(v)||v.length>16)fail(400,'참고 데이터 참조는 최대 16개');e[k]=v.map(validateReference);}
@@ -31,6 +39,11 @@ export function validateEvent(raw,p) {
  }
  ['id','actionId','traceId'].forEach(k=>identifier(e[k]));date(e.occurredAt);
  for(const k of ['systemId','requestId','attemptId','modelId'])if(e[k]!==undefined)identifier(e[k]);
+ if(DECISION_KINDS.includes(e.kind)){
+  if(!e.decision||!e.engine||!e.actor||!e.tool&&!e.action)fail(400,'정책 결정 기록에는 결정·엔진·행위자와 도구 또는 행동이 필요합니다');
+  for(const k of ['decisionId','enforcementPointId'])identifier(e[k]);if(e.policyId!==undefined)identifier(e.policyId);
+  if(e.bundleDigest!==undefined&&!/^[A-Za-z0-9._:+/=-]{8,200}$/.test(e.bundleDigest))fail(400,'정책 번들 digest 형식 오류');
+ }
  if(Date.parse(e.occurredAt)>Date.now()+300000)fail(400,'미래 시각 오차가 5분을 초과했습니다');
  if(e.validFrom)date(e.validFrom);if(e.validUntil)date(e.validUntil);
  if(e.validFrom&&e.validUntil&&Date.parse(e.validFrom)>=Date.parse(e.validUntil))fail(400,'유효기간 역전');
@@ -58,12 +71,18 @@ const sameTarget=(a,b)=>sameContext(a,b)&&['actor','tool','action','resource'].e
 // Bump when evaluate()/boundedEvaluation() can return different output for the same inputs: signed evaluations record
 // this identifier and src/policy-replay.mjs never compares results produced by a different engine.
 export const EVALUATION_ENGINE='evidscope-evaluate-v1';
+// v2 adds the agent registry and policy-decision rules. Their inputs (registry rows, enforcement records, related denies) never
+// occur in a v1 snapshot, and for any v1 snapshot v2 returns exactly the v1 output. An evaluation therefore names v2 only
+// when its snapshot holds a v2 input, so verifiers that know only v1 keep replaying every tenant without a registry.
+export const EVALUATION_ENGINE_V2='evidscope-evaluate-v2';
+export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2]);
+export const evaluationEngine=data=>data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
 // The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
 // recorded for the same action and rule. The vault applies the same predicate to worker results.
 export function suppressingException(exceptions,finding,actionId,now){
  return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
 }
-export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -122,6 +141,8 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
   if(/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i.test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
   for(const r of rules)if(matches(r,e))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
+ registryFindings(events,registry,{add,clockBound});
+ decisionFindings(events,{add,order,validity,approvals,related:relatedDecisions,enforcedTools:e=>enforcedToolsAt(registry,e)});
  const unique=[...new Map(findings.map(f=>[f.code+'|'+f.evidence.join(','),f])).values()];
  for(const f of unique){
   const exception=suppressingException(exceptions,f,events[0]?.actionId,now);
@@ -132,7 +153,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
 }
 // The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
 export function boundedEvaluation(input,limits){
- const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime);
+ const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions});
  const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
  const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
  result.coverage=coverage();

@@ -5,8 +5,12 @@
 // The prefix state mirrors Store._applyActionStateRow / Store.cachedAnalysisSnapshot: events of the action that were not
 // erased before the evaluation, every asset registration in log order, the latest record of each rule (active versions)
 // and of each exception. Recorded snapshotHash = digest(snapshot) proves that the reconstruction is the exact input.
-import {EVALUATION_ENGINE, boundedEvaluation} from './model.mjs';
+// Engine v2 adds the registry input (every agent_registry / agent_registry_policy version) and the related deny decisions of
+// other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot.
+import {EVALUATION_ENGINE, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine} from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
+import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
+import {relatedDenyInput} from './decision-rules.mjs';
 
 export const POLICY_REPLAY_FORMAT = 'evidscope-policy-replay-v1';
 // Limits in force before evaluations recorded them (src/analysis.mjs analysisLimits for engine evidscope-evaluate-v1).
@@ -22,7 +26,7 @@ const findingKey = finding => `${finding.code}|${(finding.evidence || []).join('
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
-    exceptions: new Map()};
+    exceptions: new Map(), registry: []};
 }
 
 function addEvent(state, event) {
@@ -52,20 +56,28 @@ function apply(state, row, disclosures) {
   } else if (row.type === 'asset' && payload.id) state.assets.set(`${payload.id}:${row.seq}`, payload);
   else if (row.type === 'rule' && payload.id) state.rules.set(payload.id, payload);
   else if (row.type === 'exception' && payload.id) state.exceptions.set(payload.id, payload);
+  else if (REGISTRY_INPUT_TYPES.includes(row.type)) state.registry.push({type: row.type, payload});
 }
 
 function snapshot(state, actionId) {
+  const events = [...(state.byAction.get(actionId)?.values() || [])];
+  const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
   return {
-    events: [...(state.byAction.get(actionId)?.values() || [])].sort(eventOrder),
+    events: events.sort(eventOrder),
     assets: [...state.assets.values()],
     rules: [...state.rules.values()].flatMap(rule => (rule.versions || []).filter(version => version.status === 'active')),
     exceptions: [...state.exceptions.values()],
+    ...(registry ? {registry} : {}),
+    ...(relatedDecisions ? {relatedDecisions} : {}),
   };
 }
+const extraBytes = data => (data.registry || data.relatedDecisions
+  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {})}) + 1 : 0);
 
 // Mirrors Store.cachedAnalysisSnapshot resource checks followed by the claim-time size check in src/analysis.mjs.
 function quarantineReason(data, limits) {
-  const used = 100 + [...data.events, ...data.assets, ...data.rules, ...data.exceptions].reduce((total, value) => total + bytes(value) + 1, 0);
+  const used = 100 + extraBytes(data)
+    + [...data.events, ...data.assets, ...data.rules, ...data.exceptions].reduce((total, value) => total + bytes(value) + 1, 0);
   const reasons = ['events', 'assets', 'rules', 'exceptions'].filter(name => data[name].length > limits[name]);
   if (used > limits.snapshotBytes - 4096) reasons.push('snapshotBytes');
   const size = reasons.length ? used : bytes(data);
@@ -106,20 +118,25 @@ function ordering(events) {
 
 function inputSummary(data, matches) {
   return {events: data.events.map(e => e.seq), assets: data.assets.length, rules: data.rules.map(r => ({id: r.id, version: r.version})),
-    exceptions: data.exceptions.length, snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
+    exceptions: data.exceptions.length, ...(data.registry ? {registry: {entries: data.registry.entries.length, policies: data.registry.policies.length}} : {}),
+    ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions.map(d => d.seq)} : {}),
+    snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 
-function replayOne(state, row, engine) {
+function replayOne(state, row, engines) {
   const evaluation = row.payload || {}, recordedEngine = evaluation.replay?.engine;
   const base = {seq: row.seq, id: evaluation.id ?? null, actionId: evaluation.actionId ?? null, version: evaluation.version ?? null,
     evaluationStatus: evaluation.status ?? null, engine: recordedEngine ?? 'unrecorded'};
   const notReplayable = (reason, extra = {}) => ({...base, status: 'not_replayable', reason, ...extra});
   if (typeof evaluation.actionId !== 'string') return notReplayable('invalid_record');
-  if (recordedEngine !== undefined && recordedEngine !== engine) return notReplayable('engine_unavailable');
+  if (recordedEngine !== undefined && !engines.includes(recordedEngine)) return notReplayable('engine_unavailable');
   const data = snapshot(state, evaluation.actionId);
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
-  const erased = recordedSeqs ? recordedSeqs.filter(seq => hidden.includes(seq)) : hidden;
+  // Related denies of other actions erased since the evaluation cannot be re-examined either.
+  const related = Array.isArray(evaluation.replay?.inputs?.relatedDecisions) ? evaluation.replay.inputs.relatedDecisions : [];
+  const erased = [...(recordedSeqs ? recordedSeqs.filter(seq => hidden.includes(seq)) : hidden),
+    ...related.filter(seq => Number.isSafeInteger(seq) && !state.events.has(seq) && !hidden.includes(seq))];
   if (evaluation.status === 'quarantined_resource_limit') {
     if (erased.length) return notReplayable('erased_input', {erasedEvents: erased});
     const expected = quarantineReason(data, {...LEGACY_ANALYSIS_LIMITS, ...evaluation.replay?.limits});
@@ -134,7 +151,10 @@ function replayOne(state, row, engine) {
   if (!matches && erased.length) return notReplayable('erased_input', {erasedEvents: erased});
   const limits = {...LEGACY_ANALYSIS_LIMITS, ...evaluation.replay?.limits};
   const replayed = boundedEvaluation({...data, analysisTime: Date.parse(evaluation.analysisTime)}, limits);
-  const diff = compare(evaluation, replayed);
+  let diff = compare(evaluation, replayed);
+  // The engine an evaluation names must be the one its inputs call for (v1 snapshots never name v2, and the reverse).
+  const expectedEngine = evaluationEngine(data);
+  if (recordedEngine !== undefined && recordedEngine !== expectedEngine) diff = {...diff, engine: {recorded: recordedEngine, replayed: expectedEngine}};
   const order = ordering(data.events);
   const report = {...base, inputs: inputSummary(data, matches), ordering: order,
     approvalRecordedAfterExecution: order.some(o => o.authorityRecordedAfter.some(a => a.kind === 'human_approval'))};
@@ -154,12 +174,13 @@ function replayOne(state, row, engine) {
 }
 
 // Call only on a bundle that passed verifyBundle(bundle, trustedKey) with disclosures (not chainOnly).
-export function replayEvaluations(bundle, {engine = EVALUATION_ENGINE} = {}) {
+// engine (one identifier) or engines (a list) restricts what is replayed; by default every engine this module implements.
+export function replayEvaluations(bundle, {engine, engines = engine ? [engine] : EVALUATION_ENGINES} = {}) {
   if (!bundle || !Array.isArray(bundle.records)) throw TypeError('An export bundle with records is required');
   const disclosures = new Map((bundle.disclosures || []).map(d => [d.seq, d.event]));
   const state = emptyState(), evaluations = [];
   for (const row of bundle.records) {
-    if (row.type === 'evaluation') evaluations.push(replayOne(state, row, engine));
+    if (row.type === 'evaluation') evaluations.push(replayOne(state, row, engines));
     apply(state, row, disclosures);
   }
   const count = status => evaluations.filter(e => e.status === status).length;
@@ -168,7 +189,7 @@ export function replayEvaluations(bundle, {engine = EVALUATION_ENGINE} = {}) {
   const summary = {evaluations: evaluations.length, replayed: count('replayed'), mismatch: count('mismatch'), notReplayable: count('not_replayable'),
     notReplayableReasons: reasons, approvalRecordedAfterExecution: evaluations.filter(e => e.approvalRecordedAfterExecution).length};
   return {
-    format: POLICY_REPLAY_FORMAT, engine, tenant: bundle.checkpoint?.tenant ?? null,
+    format: POLICY_REPLAY_FORMAT, engine: engine ?? EVALUATION_ENGINE, engines: [...engines], tenant: bundle.checkpoint?.tenant ?? null,
     checkpoint: bundle.checkpoint ? {count: bundle.checkpoint.count, head: bundle.checkpoint.head} : null,
     valid: summary.mismatch === 0, summary, evaluations,
     limitations: [
