@@ -98,7 +98,7 @@ async function route(req,res){
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
    const output=await service.handle(req.method,url,req.headers,body);res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
-  }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition','attachment; filename="evidscope-evidence.json"');res.end(output.body);}
+  }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition',`attachment; filename="evidscope-evidence${url.searchParams.has('attest')?'-attested':''}.json"`);res.end(output.body);}
  }catch(caught){
   const error=caught instanceof URIError?new HttpError(400,'경로의 퍼센트 인코딩 형식 오류'):caught;
   res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다'}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}

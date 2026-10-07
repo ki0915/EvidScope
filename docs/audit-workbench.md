@@ -25,7 +25,11 @@ EvidScope의 기본 화면은 **행동 조사함**이다. 한 행동의 관측 �
 ```powershell
 node scripts/verify-case-report.mjs <사건보고서.json> <별도보관-public-key.pem>
 node scripts/verify-case-report.mjs <사건보고서.json> <별도보관-public-key.pem> <별도보관-checkpoint.json>
+node scripts/verify-case-report.mjs <사건보고서.json> <별도보관-public-key.pem> --attestation <사건보고서.json>.intoto.json
 ```
+
+EvidScope를 설치하지 않는 외부 감사자에게는 `GET /api/cases/:id/report?attest=intoto` 응답을 준다. 같은 보고서와 DSSE in-toto 증명이 들어
+있어 별도 배포 검증기(`evidscope-verify dsse`)나 일반 DSSE 도구로 확인할 수 있다. 형식과 증명 범위는 [표준 영수증](receipts.md)을 본다.
 
 검증기는 `canonical({format,snapshot})`의 Ed25519 서명, DER SPKI 공개키 SHA-256 지문, 스냅샷과 체크포인트의 테넌트 결합을 검사한다. 키를 보고서에서 받아 신뢰하지 않는다. 외부 체크포인트는 정확한 스냅샷 비교이며, 제공하지 않으면 정상 서명된 과거 보고서로의 교체는 탐지할 수 없다. 성공 exit 0, 변조·다른 키·외부 체크포인트 불일치는 exit 1이다.
 
