@@ -7,6 +7,7 @@
 //   <dir>/epochs/t-<tenant hash>/<epoch>.json  sealed secret, AAD bound to keystore id, tenant, epoch, createdAt and data key id
 //   <dir>/tombstones/t-<tenant hash>/<epoch>.json  destroyed epochs (not secret); an epoch with a tombstone is never re-created
 //   <dir>/vault.json                          the one vault (signing key) this keystore serves, written when it is first attached
+//   <dir>/moved.json                          the completed first move from evidence.db: no epoch row is imported after it
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from 'node:crypto';
 import {
  closeSync,existsSync,fsyncSync,linkSync,mkdirSync,openSync,readFileSync,readdirSync,realpathSync,renameSync,statSync,unlinkSync,writeSync,
@@ -18,6 +19,7 @@ import {EPOCH_SECRET_BYTES,checkEpoch,epochOperations,migrateEventKeys} from './
 
 export const KEYSTORE_FORMAT='evidscope-event-keystore-v1',EPOCH_FILE_FORMAT='evidscope-event-key-epoch-v1';
 export const TOMBSTONE_FORMAT='evidscope-event-key-epoch-tombstone-v1',VAULT_FORMAT='evidscope-event-keystore-vault-v1';
+export const MOVED_FORMAT='evidscope-event-keystore-moved-v1';
 const UUID=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/,MAX_FILE_BYTES=64*1024;
 
 // Seals epoch secrets with the data key. kid is the data key id; previous data keys stay able to unseal until resealed.
@@ -171,6 +173,12 @@ export function openEventKeystore({dir,sealer,dataDir}){
    const value=readJson(file);
    if(value.format!==VAULT_FORMAT||value.keystoreId!==meta.id||value.signingKey!==signingKey)throw Error('EVENT_KEYSTORE_DIR already serves another vault');
   },
+  // The first move recorded where a database writer cannot clear it (evidence.db's moved_at alone could be reset).
+  moved:()=>existsSync(join(root,'moved.json')),
+  markMoved(){
+   const file=join(root,'moved.json');
+   if(!existsSync(file))createExclusive(file,JSON.stringify({format:MOVED_FORMAT,keystoreId:meta.id,movedAt:new Date().toISOString()})+'\n');
+  },
  };
  return epochs;
 }
@@ -204,8 +212,11 @@ export function attachEventKeystore(store,{dir,keyring,dataDir,migrate=true}){
  if(!migrate&&!keystoreIdsInUse(store.db).length)return {keystoreId:epochs.id,migrationPending:true};
  store.useEventKeys(epochs);if(!migrate)return {keystoreId:epochs.id};
  ensureKeystoreUsageTable(store.db);ensureDataKeyUsageTable(store.db);for(const kid of sealedBy)recordDataKeyUsage(store.db,kid);
- const firstMove=!keystoreMoved(store.db);
+ const firstMove=!keystoreMoved(store.db)&&!epochs.moved();
  store.db.prepare('INSERT OR IGNORE INTO event_keystore_usage VALUES(?,?,NULL)').run(epochs.id,new Date().toISOString());
  const moved=()=>store.db.prepare('UPDATE event_keystore_usage SET moved_at=? WHERE id=? AND moved_at IS NULL').run(new Date().toISOString(),epochs.id);
- return {keystoreId:epochs.id,...migrateEventKeys(store,{importEpochs:firstMove,moved})};
+ const result={keystoreId:epochs.id,...migrateEventKeys(store,{importEpochs:firstMove,moved})};
+ // After the commit (and for vaults that moved before this marker existed): epoch rows are never imported again.
+ epochs.markMoved();
+ return result;
 }
