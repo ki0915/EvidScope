@@ -8,9 +8,11 @@ import {fail,cleanText,identifier} from './model.mjs';
 import {CONFIGURATION_FIELDS,DEFAULT_GATES,DEFAULT_RISK_RULES,ENFORCEMENT_MODES,GATE_CHECKS,GATE_TARGETS,REGISTRY_STATES,RISK_RULE_FIELDS,RISK_RULE_OPS,
  RISK_TIERS,allowedTransition,approvalRequired,computeRisk,riskBasis,tierAtLeast,verifyRegistryHistory} from './agent-registry.mjs';
 import {isDecision} from './decision-rules.mjs';
+import {createStopOrders} from './stop-order-service.mjs';
+import {STOP_PROPAGATION_DEFAULTS} from './stop-orders.mjs';
 import {normalizeApprovalPolicy} from './approval-service.mjs';
 
-const RESERVED=new Set(['candidates','policy','transitions']);
+const RESERVED=new Set(['candidates','policy','transitions','stops']);
 const SOURCE_KINDS=['agent','tool','authority','safety','telemetry','otlp','enforcement'];
 const ENTRY_FIELDS=['name','owner','purpose','sources','actors','assetIds','systemId','models','tools','dataCategories','destinations','fingerprint'];
 const GATE_FIELDS=['owner','purpose','systemId','assetIds','fingerprint','models','tools','dataCategories','destinations'];
@@ -248,12 +250,21 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   const lastTransition={id:t.id,from:t.from,to:t.to,requestedBy:t.requestedBy,...(t.reviewedBy?{approvedBy:t.reviewedBy}:{}),at:now()};
   return putVersion(p,version(p,entry,{state:t.to,lastTransition},'transition'));
  }
+ // production→suspended applied by a stop order in the order's commit; the transition names the order.
+ function suspend(p,entry,{id,reason,evidence,stopOrderId}){
+  const t={id,agentId:entry.id,from:entry.state,to:'suspended',reason,evidence,requestedBy:p.id,requestedAt:now(),registryVersion:entry.version,
+   registeredBy:entry.registeredBy,editedBy:entry.editedBy,approvalRequired:false,
+   gate:gate(p,entry,'suspended',evidence,policy(p)),status:'applied',stopOrderId};
+  store.put(p,'agent_transition',t.id,t);
+  return {transition:t,entry:apply(p,entry,t)};
+ }
  function request(p,id,x){
   only(x,['to','reason','evidence'],'전이 요청');const reason=cleanText(x.reason,1000);if(!reason.trim())fail(400,'전이 사유가 필요합니다');
   if(!REGISTRY_STATES.includes(x.to))fail(400,'알 수 없는 상태입니다');
   return store.transaction(()=>{
    const entry=entryOf(p,id),from=entry.state,to=x.to;
    if(!allowedTransition(from,to))fail(409,`${from}에서 ${to}로 전이할 수 없습니다`);
+   stops.assertPromotion(p,entry,to);
    const evidence=evidenceRefs(p,x.evidence),needs=approvalRequired(from,to),current=policy(p),result=gate(p,entry,to,evidence,current);
    if(needs&&pendingOf(p,entry.id).length)fail(409,'승인 대기 중인 전이 요청이 이미 있습니다');
    if(!needs&&!result.met)fail(409,`전이 조건 미충족: ${result.unmet.join(', ')}`);
@@ -273,14 +284,18 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    if(operation==='refuse')return {transition:store.put(p,'agent_transition',t.id,{...t,status:'refused',...reviewed})};
    if(entry.version!==t.registryVersion||entry.state!==t.from)fail(409,'요청 이후 등록 항목이 바뀌었습니다. 새로 요청하세요');
    if([entry.registeredBy,entry.editedBy,t.requestedBy].includes(p.id))fail(403,'등록·구성 수정·전이 요청을 한 사람은 이 전이를 승인할 수 없습니다(4-eyes)');
+   stops.assertPromotion(p,entry,t.to);
    const result=gate(p,entry,t.to,t.evidence,policy(p));
    if(!result.met)fail(409,`전이 조건 미충족: ${result.unmet.join(', ')}`);
    const approved=store.put(p,'agent_transition',t.id,{...t,status:'approved',...reviewed,approvalGate:result});
-   return {transition:approved,gate:result,entry:apply(p,entry,approved)};
+   const applied=apply(p,entry,approved);
+   // The approved resume is the four-eyes lift of the agent's whole-agent stop orders (docs/kill-switch.md).
+   const lifted=t.from==='suspended'&&t.to==='production'?stops.liftOnResume(p,entry.id,approved):[];
+   return {transition:approved,gate:result,entry:applied,...(lifted.length?{liftedStopOrders:lifted}:{})};
   });
  }
  function setPolicy(p,x){
-  admin(p);only(x,['enforcement','gates','riskRules','approvals'],'레지스트리 정책');
+  admin(p);only(x,['enforcement','gates','riskRules','approvals','stopPropagation'],'레지스트리 정책');
   if(x.enforcement!==undefined&&!ENFORCEMENT_MODES.includes(x.enforcement))fail(400,'enforcement는 off 또는 unregistered_activity입니다');
   const gates=x.gates===undefined?undefined:normalizeGates(x.gates);
   const riskRules=x.riskRules===undefined?undefined:list(x.riskRules,100,normalizeRiskRule,'riskRules');
@@ -289,11 +304,19 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   const approvals=x.approvals===undefined?undefined:normalizeApprovalPolicy(x.approvals);
   return store.transaction(()=>{
    const previous=policy(p),at=now();
+   // stopPropagation (docs/kill-switch.md) is written only once set, so other policy records keep their earlier shape.
+   const stopPropagation=x.stopPropagation===undefined?previous.stopPropagation:normalizeStopPropagation(p,x.stopPropagation,previous.stopPropagation);
    const next={id:'current',version:previous.version+1,enforcement:x.enforcement??previous.enforcement,gates:gates??previous.gates,
-    riskRules:riskRules??previous.riskRules,...(approvals??previous.approvals?{approvals:approvals??previous.approvals}:{}),updatedBy:p.id,updatedAt:at,
-    effectiveFrom:at};
+    riskRules:riskRules??previous.riskRules,...(approvals??previous.approvals?{approvals:approvals??previous.approvals}:{}),
+    ...(stopPropagation?{stopPropagation}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
    store.put(p,'agent_registry_policy','current',next);dirty(p.tenant);return next;
   });
+ }
+ function normalizeStopPropagation(p,x,previous){
+  only(x,['windowSeconds','enforcementPoints'],'stopPropagation');const base={...STOP_PROPAGATION_DEFAULTS,...(previous||{})};
+  const points=x.enforcementPoints===undefined?base.enforcementPoints:list(x.enforcementPoints,20,identifier,'enforcementPoints');
+  for(const id of points)if(!sources(p).some(q=>q.id===id&&q.kind==='enforcement'))fail(400,`등록되지 않은 집행 지점(enforcement 출처 자격)입니다: ${id}`);
+  return {windowSeconds:x.windowSeconds===undefined?base.windowSeconds:integer(x.windowSeconds,10,86400,'windowSeconds'),enforcementPoints:[...points].sort()};
  }
  // Unregistered agents EvidScope already sees: agent/OTLP sources and reported actors with activity, tool records' actors,
  // UNREGISTERED_ASSET / AI_UNREGISTERED_ASSET findings, and agent source principals without any entry. Listed, never registered.
@@ -338,20 +361,25 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    .map(to=>({to,approvalRequired:approvalRequired(entry.state,to),gate:gate(p,entry,to,[],current)}));
   const transitionRecords=records.map(r=>({seq:r.seq,recordedAt:r.recordedAt,principal:r.principal,...r.payload}));
   return {entry,risk:effectiveRisk(entry,current),versions,transitions,transitionRecords,next,lifecycle:verifyRegistryHistory(registryRows),
-   policy:{version:current.version,source:current.source,enforcement:current.enforcement}};
+   policy:{version:current.version,source:current.source,enforcement:current.enforcement},stopOrders:stops.forAgent(p,entry.id)};
  }
+ // Stop orders and their propagation (src/stop-order-service.mjs, docs/kill-switch.md) share this storage and four-eyes path.
+ const stops=createStopOrders({store,principals,policyObjects,dirty,rows,retained,policy,entryOf,suspend,supersede,evidenceRefs,now});
  function handle(p,method,url,x){
   const path=url.pathname;if(path!=='/api/registry'&&!path.startsWith('/api/registry/'))return undefined;
   const parts=path.split('/').slice(3).map(decodeURIComponent);
   if(method==='GET'){
    return store.transaction(()=>{
     if(!parts.length){const current=policy(p),pending=[...policyObjects(p,'agent_transition').values()].filter(t=>t.status==='pending');
+     const stopped=entry=>{const n=stops.activeOf(p,entry.id).length;return n?{activeStopOrders:n}:{};};
      return {items:[...policyObjects(p,'agent_registry').values()].map(entry=>({...entry,effectiveRisk:effectiveRisk(entry,current).tier,
-      pendingTransition:pending.find(t=>t.agentId===entry.id)||null})),policy:{version:current.version,source:current.source,enforcement:current.enforcement},
+      pendingTransition:pending.find(t=>t.agentId===entry.id)||null,...stopped(entry)})),
+     policy:{version:current.version,source:current.source,enforcement:current.enforcement},
       states:REGISTRY_STATES,limitations:['등록·상태 전이는 서명 원장의 기록입니다. EvidScope는 실행을 차단하지 않으며 차단은 게이트웨이·정책 엔진이 합니다',
        '위험 등급은 등록된 도구·데이터 범주·목적지에 대한 규칙 계산이며 법적 위험 판정이 아닙니다']};}
     if(parts.length===1&&parts[0]==='candidates')return candidates(p);
     if(parts.length===1&&parts[0]==='policy')return policy(p);
+    if(parts[0]==='stops')return stops.handle(p,'GET',parts,x);
     if(parts.length===1)return detail(p,parts[0]);
     fail(404,'지원하지 않는 레지스트리 경로입니다');
    });
@@ -361,6 +389,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   reviewer(p);
   if(!parts.length)return create(p,x);
   if(parts.length===3&&parts[0]==='transitions'&&['approve','refuse'].includes(parts[2]))return decide(p,parts[1],parts[2],x);
+  if(parts[0]==='stops')return stops.handle(p,'POST',parts,x);
+  if(parts.length===2&&parts[1]==='stop')return stops.issue(p,parts[0],x);
   if(parts.length===1&&!RESERVED.has(parts[0]))return update(p,parts[0],x);
   if(parts.length===2&&parts[1]==='risk')return overrideRisk(p,parts[0],x);
   if(parts.length===2&&parts[1]==='transitions')return request(p,parts[0],x);

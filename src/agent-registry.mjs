@@ -108,7 +108,7 @@ export const enforcedToolsAt=(registry,event)=>registry?viewAt(registry,event,Da
 
 const ACTIVITY_KINDS=['intent','execution','self_report','result','delegation'];
 // Agent and OTLP sources are the agent itself; a tool record is attributed only through the actor it names.
-const attributable=e=>ACTIVITY_KINDS.includes(e.kind)&&(e.sourceKind==='agent'||e.sourceKind==='otlp'||e.sourceKind==='tool'&&!!e.actor);
+export const attributable=e=>ACTIVITY_KINDS.includes(e.kind)&&(e.sourceKind==='agent'||e.sourceKind==='otlp'||e.sourceKind==='tool'&&!!e.actor);
 const names=ids=>ids.slice(0,5).join(', ')+(ids.length>5?` 외 ${ids.length-5}개`:'');
 export function registryFindings(events,registry,{add,clockBound}){
  if(!registry)return;

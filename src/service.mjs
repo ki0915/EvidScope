@@ -38,9 +38,12 @@ import {duplicatePrincipalIds} from './credentials.mjs';
 import {attestationSigner} from './attestation-signer.mjs';
 import {createReceipts} from './receipt-service.mjs';
 import {createRegistry} from './registry-service.mjs';
+import {ENFORCEMENT_PREFIX,STATUS_PATH,createEnforcement,enforcementPoint} from './enforcement-service.mjs';
+import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 
-export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
+export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
+ bundleSigning}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -109,6 +112,10 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  const governanceDocuments=createGovernanceDocuments({store,dataDir,keyring,getSystem:(p,id)=>policyObject(p,'system',id)});
  // Agent registry and lifecycle (src/registry-service.mjs, docs/agent-registry.md).
  const registry=createRegistry({store,principals,policyObjects:verifiedPolicyObjects,dirty,reviewer,admin});
+ // Pull distribution and activation reports for enforcement points (src/enforcement-service.mjs, docs/kill-switch.md). The
+ // optional OPA bundle signing key is RSA or P-256 (OPA verifies no Ed25519), never the vault key.
+ let opaSigner;try{opaSigner=bundleSigning?bundleSigner(bundleSigning.key,bundleSigning.keyId):undefined;}catch(error){store.close();throw error;}
+ const enforcement=createEnforcement({store,policyObjects:verifiedPolicyObjects,key,signer:opaSigner,verifiedActions});
  // Approval queue for enforcement points (src/approval-service.mjs, docs/approval-queue.md); answers are signed like attestations.
  const approvals=createApprovals({store,principals,policyObjects:verifiedPolicyObjects,signer});
  function verifiedEvaluations(p,options){
@@ -258,6 +265,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
   const p=auth(headers,method);
   if(path==='/internal/complete'){if(p.role!=='worker')fail(403,'인증된 분석 서비스 전용');}
   else if(path==='/api/ingest/otlp'){if(p.role!=='source'||p.kind!=='otlp')fail(403,'OTLP 수집 출처 자격이 필요합니다');}
+  else if(STATUS_PATH.test(path))enforcementPoint(p);
   else if(preauthorizedPaths.has(path))reviewer(p);
   else fail(400,'사전 인증 대상 경로가 아닙니다');
   return {authorized:true};
@@ -270,11 +278,12 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
   // The audit gateway asks here before it buffers a large upload; the body names only the target route.
   if(path==='/internal/preauthorize'&&method==='POST'){
    let target;try{target=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}
-   if(typeof target?.path!=='string'||!preauthorizedPaths.has(target.path))fail(400,'사전 인증 대상 경로가 아닙니다');
+   if(typeof target?.path!=='string'||!preauthorizedPaths.has(target.path)&&!STATUS_PATH.test(target.path))fail(400,'사전 인증 대상 경로가 아닙니다');
    return preauthorize('POST',new URL(target.path,'http://localhost'),headers);
   }
   const p=auth(headers,method);
   const developmentResult=developmentRuns.handle(p,method,url,headers,body);if(developmentResult!==undefined)return developmentResult;
+  if(path.startsWith(ENFORCEMENT_PREFIX))return enforcement.handle(p,method,url,headers,body);
   if(path==='/api/ingest'&&method==='POST'){
    if(p.role!=='source')fail(403,'수집 출처 자격이 필요합니다');
    const ts=headers['x-evid-timestamp'],nonce=headers['x-evid-nonce'],signature=headers['x-evid-signature'];

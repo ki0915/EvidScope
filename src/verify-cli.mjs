@@ -5,6 +5,7 @@ import {join, resolve} from 'node:path';
 import {parseArgs} from 'node:util';
 import {verifyBundle} from './crypto.mjs';
 import {REGISTRY_TYPES, verifyRegistryHistory} from './agent-registry.mjs';
+import {STOP_ORDER_TYPE, verifyExportStopOrders} from './stop-orders.mjs';
 import {APPROVAL_TYPE, verifyApprovalAnswer, verifyApprovalHistory} from './approvals.mjs';
 import {replayEvaluations} from './policy-replay.mjs';
 import {unpackResponse, verifyAttestation, verifyRecordReceipt} from './receipts.mjs';
@@ -69,8 +70,10 @@ function bundleCommand(args) {
   const registry = bundle.records.some(row => REGISTRY_TYPES.includes(row.type)) ? verifyRegistryHistory(bundle.records) : undefined;
   // Approval requests and answers (docs/approval-queue.md) are checked the same way; older exports have none.
   const approvals = bundle.records.some(row => row.type === APPROVAL_TYPE) ? verifyApprovalHistory(bundle.records) : undefined;
-  return {ok: (!replay || replay.valid) && (!registry || registry.valid) && (!approvals || approvals.valid),
-    output: {...result, ...(registry ? {registry} : {}), ...(approvals ? {approvals} : {}), ...(replay ? {replay} : {}),
+  // Stop orders and their propagation (docs/kill-switch.md) are checked whenever the export holds any.
+  const stopOrders = bundle.records.some(row => row.type === STOP_ORDER_TYPE) ? verifyExportStopOrders(bundle) : undefined;
+  return {ok: (!replay || replay.valid) && (!registry || registry.valid) && (!approvals || approvals.valid) && (!stopOrders || stopOrders.valid),
+    output: {...result, ...(registry ? {registry} : {}), ...(approvals ? {approvals} : {}), ...(stopOrders ? {stopOrders} : {}), ...(replay ? {replay} : {}),
       ...(attestation ? {attestation} : {})}};
 }
 function reportCommand(args) {

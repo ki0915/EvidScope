@@ -53,8 +53,9 @@ function reducer(tenant,seed){
    }else if(payload.tenant!==undefined&&payload.tenant!==tenant)mismatch('event tenant mismatch');
    eventSequences.add(row.seq);eventActions.set(row.seq,id);increment(id);return;
   }
-  // Registry and registry-policy versions are evaluation input like asset versions (src/agent-registry.mjs).
-  if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'){incrementAll();return;}
+  // Registry, registry-policy and stop-order versions are evaluation input like asset versions (src/agent-registry.mjs,
+  // src/stop-orders.mjs).
+  if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'||row.type==='agent_stop_order'){incrementAll();return;}
   // An approval request version is evaluation input of its one action (src/approvals.mjs); it never creates an action.
   if(row.type==='approval_request'){const value=typeof row.payload.actionId==='string'?actions.get(row.payload.actionId):undefined;if(value)value.version++;return;}
   if(row.type==='rule'){

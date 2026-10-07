@@ -14,6 +14,7 @@ import {checkEvaluationProjection} from './evaluation-integrity.mjs';
 import {applyGovernanceDocumentRecord,checkGovernanceDocumentRows} from './governance-documents.mjs';
 import {REGISTRY_INPUT_TYPES,REGISTRY_TYPES,registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
+import {STOP_ORDER_TYPE,stopOrderAnalysisInput} from './stop-orders.mjs';
 import {APPROVAL_TYPE,approvalAnalysisInput} from './approvals.mjs';
 import {evaluationEngine} from './model.mjs';
 import {types} from 'node:util';
@@ -345,17 +346,21 @@ export class Store {
   const registry=registryAnalysisInput(state.registryRows.filter(row=>REGISTRY_INPUT_TYPES.includes(row.type))),relatedDecisions=relatedDenyInput(events,state.eventsBySequence.values());
   // Approval requests of this action (latest versions, in the order they were opened) join only when there are any.
   const approvals=actionId===null?undefined:approvalAnalysisInput(this._approvalValues(state,actionId).map(value=>value.payload));
-  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{})},extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
+  // Stop orders (docs/kill-switch.md) join only when the tenant has one; their activations come from every retained event.
+  const stopOrders=stopOrderAnalysisInput(state.registryRows,state.eventsBySequence.values());
+  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{})};
+  const extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
   const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');
   if(reasons.length)return {resourceLimit:{reasons:[...new Set(reasons)],observedEventsComplete:true,snapshotBytesAtLeast:used,engine:evaluationEngine({events,...extra})},observedEvents:events.length};
   return {events:events.sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id)),assets,rules,exceptions,...extra};
  }
- // Signed agent registry, transition and registry-policy records in ledger order (deep copies) for history and lifecycle reads.
+ // Signed agent registry, transition, registry-policy and stop-order records in ledger order (deep copies) for history,
+ // lifecycle and bundle-revision reads.
  cachedRegistryRows(tenant){
-  const state=this._verifiedActionState(tenant);
-  if(REGISTRY_TYPES.some(type=>state.oversizedTypes.has(type))||state.oversizedTypes.has('*'))return {oversized:true,rows:[]};
-  this._assertFacets(state,REGISTRY_TYPES.map(type=>'objects:'+type));
+  const state=this._verifiedActionState(tenant),types=[...REGISTRY_TYPES,STOP_ORDER_TYPE];
+  if(types.some(type=>state.oversizedTypes.has(type))||state.oversizedTypes.has('*'))return {oversized:true,rows:[]};
+  this._assertFacets(state,types.map(type=>'objects:'+type));
   return {oversized:false,rows:state.registryRows.map(row=>structuredClone(row))};
  }
  // Approval requests of a tenant (one action, or all) as latest signed versions with their ledger seq and record hash, in the
@@ -483,7 +488,7 @@ export class Store {
   const remember=id=>{if(typeof id==='string'&&id&&!touched.actions.has(id))touched.actions.set(id,state.action.get(id));};
   if(row.type==='event')remember(disclosed?.actionId??row.payload.actionId);
   else if(row.type===APPROVAL_TYPE)remember(row.payload.actionId);
-  else if(['asset','rule','exception',...REGISTRY_INPUT_TYPES].includes(row.type)){if(!touched.allActions){for(const value of state.action.rows())remember(value.id);touched.allActions=true;}}
+  else if(['asset','rule','exception',...REGISTRY_INPUT_TYPES,STOP_ORDER_TYPE].includes(row.type)){if(!touched.allActions){for(const value of state.action.rows())remember(value.id);touched.allActions=true;}}
   else if(row.type==='evaluation')remember(row.payload.actionId);
   else if(row.type==='retention_disposition'){
    const sequences=Array.isArray(row.payload.sequences)?row.payload.sequences:(row.payload.keyIds||[]).map(keyId=>state.eventKeys.get(keyId));
@@ -532,7 +537,8 @@ export class Store {
   if(row.type==='asset'&&row.payload?.id)state.analysisAssets.set(`${row.payload.id}:${row.seq}`,row.payload);
   if(row.type==='rule'&&row.payload?.id)state.analysisRules.set(row.payload.id,row.payload);
   if(row.type==='exception'&&row.payload?.id)state.analysisExceptions.set(row.payload.id,row.payload);
-  if(REGISTRY_TYPES.includes(row.type))state.registryRows.push({seq:row.seq,type:row.type,principal:row.principal,recordedAt:row.recordedAt,payload:row.payload});
+  if(REGISTRY_TYPES.includes(row.type)||row.type===STOP_ORDER_TYPE)
+   state.registryRows.push({seq:row.seq,type:row.type,principal:row.principal,recordedAt:row.recordedAt,hash:row.hash,payload:row.payload});
   if(row.type===APPROVAL_TYPE&&typeof row.payload?.id==='string'){
    const id=row.payload.id,ids=state.approvalActions.get(row.payload.actionId)||[];
    if(typeof row.payload.actionId==='string'&&!ids.includes(id))state.approvalActions.set(row.payload.actionId,[...ids,id]);
