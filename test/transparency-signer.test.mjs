@@ -267,7 +267,6 @@ test('a vault-key heads log moves to the heads signer from its witnessed checkpo
   assert.equal(verifyBundle(fresh, f.publicKey, undefined, {transparency: policy(f, {headsKeys: [signer.vkey]})}).transparency.rollbackCheckedAgainst,
     'vault_host');
   // Exports from before the handover verify exactly as they did, and still do once a verifier pins the heads key.
-  assert.deepEqual(verifyBundle(old, f.publicKey, undefined, {transparency: policy(f)}), verifyBundle(old, f.publicKey, undefined, {transparency: policy(f)}));
   assert.deepEqual(verifyBundle(old, f.publicKey, undefined, {transparency: policy(f)}).transparency, before);
   const oldPinned = verifyBundle(old, f.publicKey, undefined, {transparency: policy(f, {headsKeys: [signer.vkey]})}).transparency;
   assert.deepEqual([oldPinned.rollbackCheckedAgainst, oldPinned.heads.signedBy, oldPinned.heads.headsKeyPinned], ['database_tamper', 'vault_key', false]);

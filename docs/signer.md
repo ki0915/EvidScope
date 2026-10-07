@@ -96,6 +96,8 @@ node scripts/verify.mjs export.json trust-anchor.pem --witness "<위트니스 vk
   loopback이 아닌 주소는 TLS가 필수입니다. 요청은 기본 8 MiB, 서명 분당 60회(버스트 10), 요청 분당 600회로 제한하며, 모든 서명은
   origin에 상관없이 한 줄로 직렬화합니다.
 - 키 백엔드는 시작할 때 고정 벡터에 서명하고 설정된 공개 키로 검증합니다. 다른 키이거나 prehash 변형이면 시작하지 않습니다.
+- 서명기에 연결할 수 있는 사람은 vault 대신 잎을 보낼 수 있습니다. 규칙을 지키는 성장 잎이라도 vault 원장과 맞지 않으면 vault가 그 잎을
+  `fork`로 보고 멈추므로, 소켓 권한과 token은 vault만 갖게 합니다. token 파일과 키 파일은 소유자가 읽는 사용자이면 600이어야 합니다.
 
 ## vault 설정
 
@@ -236,6 +238,8 @@ node scripts/signer.mjs init --state-dir /signer/state --backend command --publi
 1. 서명기의 예전 origin head를 받습니다: `node scripts/signer.mjs head --state-dir /signer/state --origin-base OLD --out signer-head.json`
 2. 복구할 때 `--signer-head signer-head.json`을 줍니다. 서명기 head가 아카이브의 heads 크기와 같으면 그것만으로 신선도를 확인하고, 더 크면
    `--frontier-transparency`(복구 frontier의 companion)가 그 크기를 덮어야 합니다. 아카이브보다 작거나 같은 크기에서 루트가 다르면 거부합니다.
+   head 파일에는 시각이 없으므로 복구 직전에 서명기에서 직접 받습니다. 오래된 head 파일은 신선도 확인을 속일 수 있지만, 4단계의
+   `losses`와 감사 줄은 서명기의 현재 상태로 계산하므로 실제 손실은 승인할 때 드러납니다.
 3. 복구된 데이터 디렉터리에서 tenant별 복구 범위를 뽑습니다:
    `node scripts/transparency.mjs epoch-claims --config NEW.json --key signing-private.pem --data-dir RESTORED --out claims.json`
 4. 서명기에서 승인합니다. 출력의 `losses`(서명했던 크기보다 작게 복구된 tenant 로그)를 확인합니다.
@@ -310,6 +314,10 @@ npm start                                                         # 서명기를
 ## 한계
 
 - 서명기는 앵커된 이력만 지킵니다. 장악된 vault가 앵커를 멈추면 그 뒤 기록은 보호받지 못합니다(위 "여전히 할 수 있는 일").
+- 핸드오버는 vault 키로 서명된 마지막 heads 체크포인트에서 시작합니다. 핸드오버 전에 이미 vault 호스트가 장악되어 공동서명된 되돌리기는
+  되돌리지 못합니다. 보호는 핸드오버 시점부터입니다.
+- 서명과 거부마다 감사 줄을 남기므로, 장악된 vault는 속도 제한(기본 분당 60건) 안에서 서명기 볼륨의 감사 로그를 계속 키울 수 있습니다.
+  볼륨 사용량을 감시합니다. 디스크가 차면 서명이 멈출 뿐 잘못된 서명은 나오지 않습니다.
 - tenant 로그와 원장 체크포인트는 여전히 vault 키로 서명합니다. tenant 단위로 위트니스까지 묶으려면 `witnessTenantLogs`를 함께 씁니다.
 - 1라운드 검증기(cf45e19)는 vault 키 서명만 heads 앵커로 받아들이므로, 서명기로 서명한 새 내보내기는 이 라운드의 검증기로 검증해야 합니다.
   vault 키로 서명된 예전 내보내기는 두 검증기 모두에서 예전과 같습니다.

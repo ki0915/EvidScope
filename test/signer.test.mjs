@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync, randomBytes} from 'node:crypto';
-import {copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -13,7 +13,7 @@ import {fileBackend} from '../src/signer-backends.mjs';
 import {
   assertSignerStateDir, createAuthorization, initSignerState, openSigner, readSignerState, revokeAuthorization, startSignerServer, verifyAuditLog,
 } from '../src/signer.mjs';
-import {createSignerClient} from '../src/signer-client.mjs';
+import {createSignerClient, readSignerToken} from '../src/signer-client.mjs';
 import {epochAuthorization, handoverAuthorization} from '../scripts/signer.mjs';
 
 const BASE = 'vault.test/evidscope', ORIGIN = T.headsOrigin(BASE), EMPTY = T.EMPTY_ROOT.toString('hex');
@@ -308,7 +308,13 @@ test('the signer server: Unix socket, token, request size and rate limits', asyn
 });
 
 test('the signer server over loopback TCP needs the bearer token', async t => {
-  const s = setup(t), token = randomBytes(32).toString('hex');
+  const s = setup(t), token = randomBytes(32).toString('hex'), tokenFile = join(s.root, 'token');
+  writeFileSync(tokenFile, token + '\n', {mode: 0o600});
+  assert.equal(readSignerToken(tokenFile), token);
+  if (process.platform !== 'win32') {
+    chmodSync(tokenFile, 0o644);
+    assert.throws(() => readSignerToken(tokenFile), /readable by other users/);
+  }
   const server = await startSignerServer({stateDir: s.stateDir, backend: s.backend, listen: {host: '127.0.0.1', port: 0}, token, log: () => {}});
   t.after(() => server.close());
   assert.match(server.address, /^http:\/\/127\.0\.0\.1:\d+$/);

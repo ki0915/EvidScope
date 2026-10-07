@@ -3,9 +3,15 @@
 // failures reject. Nothing the signer returns is trusted here: transparency.mjs re-derives and verifies every note.
 import http from 'node:http';
 import https from 'node:https';
-import {readFileSync} from 'node:fs';
+import {readFileSync, statSync} from 'node:fs';
 
+// Whoever holds the token can send heads leaves in the vault's place. A token file of the reader's own user must be private
+// (POSIX, as for keys); a Kubernetes Secret file (root:fsGroup 0440) is read through its group bits.
 export function readSignerToken(file) {
+  const st = statSync(file);
+  if (process.platform !== 'win32' && st.uid === process.getuid() && (st.mode & 0o077)) {
+    throw Error(`Signer token file ${file} is readable by other users (chmod 600)`);
+  }
   const token = readFileSync(file, 'utf8').trim();
   if (token.length < 32 || /\s/.test(token)) throw Error(`Signer token file ${file} must hold one token of at least 32 characters`);
   return token;
