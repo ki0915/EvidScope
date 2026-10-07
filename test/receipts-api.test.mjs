@@ -5,17 +5,14 @@ import assert from 'node:assert/strict';
 import {sign} from 'node:crypto';
 import {canonical} from '../src/crypto.mjs';
 import {INTOTO_PAYLOAD_TYPE, pae, sha256Hex} from '../src/dsse.mjs';
-import {appendSourceEvent} from '../src/event-ingest.mjs';
-import {validateEvent} from '../src/model.mjs';
 import * as R from '../src/receipts.mjs';
 import * as T from '../src/tlog.mjs';
 import {parseTlogPolicy} from '../src/tlog-policy.mjs';
+import {caseFor} from './support/receipt-fixture.mjs';
 import {BASE, tamper, transparencyFixture} from './support/transparency-fixture.mjs';
 
 const alphaOrigin = T.tenantOrigin(BASE, 'alpha');
 const flags = f => ({witnesses: [f.w.vkey], quorum: 1, originBase: BASE, require: true, maxStalenessSeconds: 3600});
-const post = (s, path, body, tenant = 'alpha') =>
-  s.handle('POST', new URL(path, 'http://local'), {authorization: 'Bearer ' + tenant.repeat(40)}, JSON.stringify(body));
 const check = (f, wrapper, options = {}) => R.verifyAttestation({envelope: wrapper.envelope, subject: subjectOf(wrapper), publicKey: f.publicKey, options});
 const subjectOf = wrapper => Buffer.from(wrapper.file.content, 'utf8');
 // Re-signs a changed statement with the vault key: what a vault bug or a key holder could publish.
@@ -25,15 +22,6 @@ function resign(f, wrapper, change) {
   const body = Buffer.from(canonical(statement), 'utf8');
   return {...wrapper.envelope, payload: body.toString('base64'), signatures: [{keyid: wrapper.envelope.signatures[0].keyid,
     sig: sign(null, pae(INTOTO_PAYLOAD_TYPE, body), f.privateKey).toString('base64')}]};
-}
-async function caseFor(s, tenant = 'alpha') {
-  const src = {id: 'agent-src', tenant, role: 'source', kind: 'agent'}, actionId = 'act-receipt';
-  for (const id of ['intent-1', 'claim-1']) {
-    const e = validateEvent({id, kind: id.startsWith('intent') ? 'intent' : 'self_report', status: 'success', actionId, traceId: 'trace-1',
-      occurredAt: new Date().toISOString(), actor: 'assistant', tool: 'crm', action: 'update', resource: 'case-7'}, src);
-    s.store.transaction(() => appendSourceEvent(s.store, src, e));
-  }
-  return (await post(s, '/api/cases', {title: 'receipt case', owner: 'audit-team', actionId})).id;
 }
 
 test('an attested export is the plain export bytes plus a DSSE in-toto statement with tlog-proofs', async t => {
