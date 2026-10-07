@@ -3,6 +3,7 @@ import {join,resolve,dirname,basename} from 'node:path';
 import {createPublicKey,sign,verify,randomUUID} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import {canonical,digest,verifyCheckpoint} from './crypto.mjs';
+import {duplicatePrincipalIds} from './credentials.mjs';
 
 const FORMAT='evidscope-restoration-state-v1',FILE='vault-restoration.json';
 export const recoveryPinPath=dataDir=>join(dirname(resolve(dataDir)),'.'+basename(resolve(dataDir))+'-recovery-pin.json');
@@ -175,6 +176,9 @@ export function rebindRecoveryConfig({dataDir,key,currentConfig,config,reason,no
  if(!config||typeof config!=='object'||Array.isArray(config)||!Array.isArray(principals))fail('the new configuration must be an object with principals');
  if(principals.some(p=>!p?.id||!p.tenant||typeof p.token!=='string'||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)
   fail('the new configuration has invalid credentials');
+ // The vault refuses to start with duplicate principal ids (round 2, S6); a rebinding to such a configuration is refused too.
+ const duplicateIds=duplicatePrincipalIds(principals);
+ if(duplicateIds.length)fail(`the new configuration has invalid credentials: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
  const state=verifyActivation({dataDir,key,config:currentConfig,allowUnpinnedHead:true});
  if(!state)fail('no activated restoration to rebind');
  const {marker,rebindings,pending}=state,configHash=digest(config);

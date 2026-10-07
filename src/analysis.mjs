@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {canonical,digest} from './crypto.mjs';
 import {fail,cleanText,identifier,EVALUATION_ENGINE,boundedEvaluation,suppressingException} from './model.mjs';
+import {credentialFingerprint} from './credentials.mjs';
 
 export const analysisLimits=Object.freeze({jobs:5,snapshotBytes:10*1024*1024,events:1000,assets:5000,rules:100,exceptions:5000,findings:100,resultBytes:1024*1024,leaseMs:30000});
 const bytes=x=>Buffer.byteLength(JSON.stringify(x));
@@ -13,19 +14,26 @@ const quarantineInputs=()=>({engine:EVALUATION_ENGINE,limits:{events:analysisLim
 // A worker principal analyzes only the tenants it is bound to (S6): its `tenants` list or, without one, its own
 // `tenant`. A legacy worker with tenant 'internal' and no list still serves every tenant in the synthetic-local
 // profile; the enterprise profile refuses to start with such an unbound worker. null means "every tenant".
+export function workerTenantScope(p,profile){
+ if(p.tenants!==undefined){
+  if(!Array.isArray(p.tenants)||!p.tenants.length||p.tenants.length>1000)throw Error('Invalid worker tenant binding');
+  let scope;try{scope=new Set(p.tenants.map(tenant=>identifier(tenant)));}catch{throw Error('Invalid worker tenant binding');}
+  if(scope.size!==p.tenants.length)throw Error('Invalid worker tenant binding');
+  return scope;
+ }
+ if(p.tenant!=='internal')return new Set([p.tenant]);
+ if(profile==='enterprise')throw Error('Enterprise profile requires each worker principal to list its tenants');
+ return null;
+}
+// Validates the worker bindings of a configuration and returns the scopes by principal id. Ids are unique in a loaded
+// configuration (src/credentials.mjs); the analysis itself keys scopes by credential, never by id (round-2 re-audit).
 export function workerTenantScopes(principals=[],profile){
  const scopes=new Map();
  for(const p of principals){
   if(p.tenants!==undefined&&p.role!=='worker')throw Error('Only worker principals take a tenants list');
   if(p.role!=='worker')continue;
-  let scope=null;
-  if(p.tenants!==undefined){
-   if(!Array.isArray(p.tenants)||!p.tenants.length||p.tenants.length>1000)throw Error('Invalid worker tenant binding');
-   try{scope=new Set(p.tenants.map(tenant=>identifier(tenant)));}catch{throw Error('Invalid worker tenant binding');}
-   if(scope.size!==p.tenants.length)throw Error('Invalid worker tenant binding');
-  }else if(p.tenant!=='internal')scope=new Set([p.tenant]);
-  else if(profile==='enterprise')throw Error('Enterprise profile requires each worker principal to list its tenants');
-  scopes.set(p.id,scope);
+  if(scopes.has(p.id))throw Error('Duplicate worker principal id');
+  scopes.set(p.id,workerTenantScope(p,profile));
  }
  return scopes;
 }
@@ -36,12 +44,27 @@ export function createAnalysis(store,principals,{profile}={}){
  store.db.exec(`CREATE TABLE IF NOT EXISTS analysis_leases(
   id TEXT PRIMARY KEY,tenant TEXT NOT NULL,action_id TEXT NOT NULL,version INTEGER NOT NULL,
   worker TEXT NOT NULL,expires INTEGER NOT NULL,analysis_time INTEGER NOT NULL,snapshot_hash TEXT NOT NULL,
-  state TEXT NOT NULL,result_hash TEXT,evaluation_id TEXT);
+  state TEXT NOT NULL,result_hash TEXT,evaluation_id TEXT,credential TEXT);
   CREATE INDEX IF NOT EXISTS analysis_lease_action ON analysis_leases(tenant,action_id,version,state,expires);
   CREATE TABLE IF NOT EXISTS analysis_quarantine(tenant TEXT,action_id TEXT,version INTEGER,reason TEXT,PRIMARY KEY(tenant,action_id,version));`);
- const scopes=workerTenantScopes(principals,profile);
- // Returns the worker's tenant scope (a Set, or null for a legacy all-tenant worker).
- const worker=p=>{if(p?.role!=='worker'||!principals.some(v=>v.id===p.id&&v.role==='worker'&&v.tenant===p.tenant))fail(403,'인증된 분석 서비스 전용');return scopes.get(p.id)??null;};
+ // A lease records the fingerprint of the credential that claimed it (round-2 re-audit, S6). Live leases from before
+ // have none; they are ended here and claimed again.
+ if(!store.db.prepare("SELECT 1 FROM pragma_table_info('analysis_leases') WHERE name='credential'").get())
+  store.db.exec("ALTER TABLE analysis_leases ADD COLUMN credential TEXT;UPDATE analysis_leases SET state='expired' WHERE state='leased';");
+ // Worker entries by credential, not by id: two entries that share an id keep their own tenant scope and leases.
+ const workers=new Map();
+ for(const entry of principals){
+  if(entry.tenants!==undefined&&entry.role!=='worker')throw Error('Only worker principals take a tenants list');
+  if(entry.role!=='worker')continue;
+  const credential=credentialFingerprint(entry);if(workers.has(credential))throw Error('Duplicate worker credential');
+  workers.set(credential,{credential,entry,scope:workerTenantScope(entry,profile)});
+ }
+ // The authenticated worker: its credential fingerprint and tenant scope (a Set, or null for a legacy all-tenant worker).
+ const worker=p=>{
+  const bound=p?.role==='worker'?workers.get(credentialFingerprint(p)):undefined;
+  if(!bound||bound.entry.id!==p.id||bound.entry.tenant!==p.tenant)fail(403,'인증된 분석 서비스 전용');
+  return bound;
+ };
  const snapshot=(tenant,actionId)=>store.cachedAnalysisSnapshot(tenant,actionId,analysisLimits);
  // SQL filter for a scope; json_each keeps the tenant list a bound parameter.
  const within=(scope,column)=>scope?{sql:` AND ${column} IN (SELECT value FROM json_each(?))`,args:[JSON.stringify([...scope])]}:{sql:'',args:[]};
@@ -56,7 +79,7 @@ export function createAnalysis(store,principals,{profile}={}){
    store.projectionMutation(()=>store.db.prepare('UPDATE actions SET version=version+1 WHERE tenant=?').run(tenant));
   }
  }
- function claim(p){const scope=worker(p);return store.transaction(()=>{
+ function claim(p){const {scope,credential}=worker(p);return store.transaction(()=>{
   const tenants=scopeTenants(scope);for(const tenant of tenants)verifyActions(tenant);const now=Date.now();expireExceptions(now,tenants);
   store.db.prepare("UPDATE analysis_leases SET state='expired' WHERE state='leased' AND expires<=?").run(now);
   const filter=within(scope,'a.tenant');
@@ -79,7 +102,8 @@ export function createAnalysis(store,principals,{profile}={}){
    const jobSize=bytes(job);
    // Count envelope and separators conservatively toward the full response limit.
    if(sent+jobSize+4096>analysisLimits.snapshotBytes)break;
-   store.db.prepare('INSERT INTO analysis_leases(id,tenant,action_id,version,worker,expires,analysis_time,snapshot_hash,state) VALUES(?,?,?,?,?,?,?,?,?)').run(job.leaseId,a.tenant,a.id,a.version,p.id,now+analysisLimits.leaseMs,now,digest(data),'leased');
+   store.db.prepare(`INSERT INTO analysis_leases(id,tenant,action_id,version,worker,expires,analysis_time,snapshot_hash,state,credential)
+    VALUES(?,?,?,?,?,?,?,?,?,?)`).run(job.leaseId,a.tenant,a.id,a.version,p.id,now+analysisLimits.leaseMs,now,digest(data),'leased',credential);
    jobs.push(job);sent+=jobSize;
   }
   return {jobs,backlog:backlog(scope),coverage:coverage(scope),limits:analysisLimits};
@@ -99,10 +123,12 @@ export function createAnalysis(store,principals,{profile}={}){
   keys(result.coverage,['totalFindings','returnedFindings','truncated']);const c=result.coverage;
   if(!Number.isSafeInteger(c.totalFindings)||c.totalFindings<result.findings.length||c.returnedFindings!==result.findings.length||c.truncated!==(c.totalFindings>c.returnedFindings))fail(400,'분석 coverage 오류');
  }
- function commit(p,body){const scope=worker(p);keys(body,['leaseId','result']);cleanText(body.leaseId,100);keys(body.result,['findings','authority','effect','limitations','coverage']);if(bytes(body.result)>analysisLimits.resultBytes)fail(400,'분석 결과 크기 한도 초과');
+ function commit(p,body){const {scope,credential}=worker(p);keys(body,['leaseId','result']);cleanText(body.leaseId,100);keys(body.result,['findings','authority','effect','limitations','coverage']);if(bytes(body.result)>analysisLimits.resultBytes)fail(400,'분석 결과 크기 한도 초과');
   const output=store.transaction(()=>{
   const lease=store.db.prepare('SELECT * FROM analysis_leases WHERE id=?').get(body.leaseId);
-  if(!lease||lease.worker!==p.id)fail(403,'이 분석 서비스에 할당된 lease가 아닙니다');
+  // Only the credential that claimed a lease commits it; a lease from before credential binding is claimed again.
+  if(!lease||lease.worker!==p.id||lease.credential!==null&&lease.credential!==credential)fail(403,'이 분석 서비스에 할당된 lease가 아닙니다');
+  if(lease.credential===null)fail(409,'분석 lease 만료: 다시 claim 하세요');
   if(scope&&!scope.has(lease.tenant))fail(403,'이 분석 서비스에 허용되지 않은 테넌트입니다');
   const resultHash=digest(body.result);
   if(lease.state==='completed'){

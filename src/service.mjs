@@ -32,9 +32,15 @@ import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparency
 import {ocsfFindings,evaluationLedgerRows} from './ocsf.mjs';
 import {tenantOrigin} from './tlog.mjs';
 import {AccessLog} from './access-log.mjs';
+import {duplicatePrincipalIds} from './credentials.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
- workerTenantScopes(config.principals||[],config.profile);
+ // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
+ const principals=config.principals||[];
+ if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
+ const duplicateIds=duplicatePrincipalIds(principals);
+ if(duplicateIds.length)throw Error(`Invalid credential configuration: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
+ workerTenantScopes(principals,config.profile);
  const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
@@ -50,10 +56,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  if(keyring.currentKeyId)try{recordDataKeyUsage(store.db,keyring.currentKeyId);}catch(error){store.close();throw error;}
  if(typeof runtimeReceipt!=='function')throw Error('Invalid model runtime receipt reader');
  const runtimeStatus=()=>{try{return modelRuntimeStatus({receipt:runtimeReceipt()});}catch{return modelRuntimeStatus();}};
- const principals=config.principals||[];
  const analysis=createAnalysis(store,principals,{profile:config.profile});
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
- if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
