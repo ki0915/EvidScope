@@ -1,7 +1,7 @@
 import {randomUUID,createPublicKey} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {Store} from './store.mjs';
-import {assertRecoveryActivation} from './recovery-state.mjs';
+import {assertRecoveryActivation,recordConfigRebindings} from './recovery-state.mjs';
 import {canonical,digest,mac,equal,verifyBundle} from './crypto.mjs';
 import {fail,cleanText,identifier,date,validateEvent,validateRule,matches} from './model.mjs';
 import {createRetention} from './retention.mjs';
@@ -35,7 +35,7 @@ import {AccessLog} from './access-log.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
  workerTenantScopes(config.principals||[],config.profile);
- assertRecoveryActivation({dataDir,key,config});
+ const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
  const legalSourceCoverage=krLegalSourceCoverage(requirements);
@@ -146,6 +146,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  try{
   store.transaction(()=>{
    tlogStartup.recheck?.(store.db);store.syncTlog();
+   // An activated restoration's signed config rebindings enter each restored tenant's ledger (S8).
+   recordConfigRebindings(store,activation);
    const states=[];
    for(const tenant of tenants){
     const p={id:'startup-governance-initializer',tenant};

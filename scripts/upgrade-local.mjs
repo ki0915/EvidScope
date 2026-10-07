@@ -33,13 +33,16 @@ export function upgradeLocal({dir, transparency = false, dryRun = false, now = (
     copyFileSync(file, join(backupDir, file.slice(dir.length + 1).replace(/[\\/]/g, '__')));
   };
 
-  // 1. OTLP principals. A restored vault binds config.json by hash, so editing it there would stop the vault from starting.
+  // 1. OTLP principals. A restored vault binds config.json by hash, so editing it in place would stop the vault from starting
+  //    until the operator records a signed config rebinding (scripts/vault-backup.mjs rebind).
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
   const tenants = [...new Set(config.principals.filter(p => p.role === 'source').map(p => p.tenant))].sort();
   const missing = tenants.filter(t => !config.principals.some(p => p.tenant === t && p.role === 'source' && p.kind === 'otlp'));
   if (!missing.length) steps.push({step: 'otlp_principals', status: 'already_present'});
   else if (existsSync(join(dataDir, RESTORATION_MARKER))) {
-    steps.push({step: 'otlp_principals', status: 'skipped', reason: 'restored vault binds config.json; add principals before restoring or re-pin'});
+    steps.push({step: 'otlp_principals', status: 'skipped',
+      reason: 'restored vault binds config.json; add the principals to a new config file and record a signed rebinding with '
+        + 'scripts/vault-backup.mjs rebind (docs/vault-recovery.md) before starting the vault with it'});
   } else {
     const taken = new Set(config.principals.map(p => p.id)), added = [];
     for (const tenant of missing) {
