@@ -79,8 +79,13 @@ export const noteSigner = (name, privateKey) => ({name, privateKey, pub: ed25519
 // ---------- signed note ----------
 export function signNote(text, signer) {
   if (!text.endsWith('\n')) throw Error('note text must end with newline');
-  const id = keyId(signer.name, SIG_ED25519, signer.pub);
-  return `${text}\n${EMDASH} ${signer.name} ${b64(Buffer.concat([id, edSign(null, Buffer.from(text, 'utf8'), signer.privateKey)]))}\n`;
+  return noteWithSignature(text, signer.name, signer.pub, edSign(null, Buffer.from(text, 'utf8'), signer.privateKey));
+}
+// A signed note from a detached Ed25519 signature over the note text (for signers whose key is not a KeyObject here).
+export function noteWithSignature(text, name, pub, signature) {
+  if (!text.endsWith('\n')) throw Error('note text must end with newline');
+  if (!Buffer.isBuffer(signature) || signature.length !== 64) throw Error('Ed25519 signature must be 64 bytes');
+  return `${text}\n${EMDASH} ${name} ${b64(Buffer.concat([keyId(name, SIG_ED25519, pub), signature]))}\n`;
 }
 // verifiers: [{name, id, type, verify(textBuf, sigBytesAfterKeyId) -> bool}]. Unknown signatures are ignored,
 // a failing known signature rejects the note, and at least one known signature must verify.
@@ -550,12 +555,36 @@ function originBaseFor(tenant, origin, originBase, epochs = []) {
   }
   return originBaseOf(origin, tenant);
 }
-function openLogNote(note, origin, publicKey, extraVerifiers = []) {
-  const logV = noteVerifier(logVkey(origin, publicKey)), n = openNote(note, [logV, ...extraVerifiers]), c = parseCheckpoint(n.text);
+// logVerifiers: the keys that may sign this log (default: the vault key); `signer` is the one that did.
+function openLogNote(note, origin, publicKey, extraVerifiers = [], logVerifiers = [noteVerifier(logVkey(origin, publicKey))]) {
+  const n = openNote(note, [...logVerifiers, ...extraVerifiers]), c = parseCheckpoint(n.text);
   if (c.origin !== origin) throw Error('Transparency checkpoint origin mismatch');
-  if (!n.sigs.some(s => s.name === logV.name && s.id === logV.id.toString('hex'))) throw Error('Transparency checkpoint log signature missing');
+  const signer = logVerifiers.find(v => n.sigs.some(s => s.name === v.name && s.id === v.id.toString('hex')));
+  if (!signer) throw Error('Transparency checkpoint log signature missing');
   if (c.extensions.length) throw Error('Transparency checkpoint has unexpected extension lines');
-  return {note: n, checkpoint: c};
+  return {note: n, checkpoint: c, signer};
+}
+// Keys a heads checkpoint of `origin` may carry: the vault key (heads logs without a separate signer, and every heads
+// checkpoint before a deployment moved to one), the pinned heads keys (options.headsKeys: vkeys of `<base>/heads`, as
+// --heads-key) and the heads key the evidence carries (heads.logVkey), which proves nothing unless it is also pinned.
+// anyName: an earlier heads origin (restore epochs) is checked with the same raw keys under its own name.
+function headsLogVerifiers(origin, publicKey, {headsKeys = [], carried, anyName = false} = {}) {
+  const out = new Map(), add = (vkey, role) => { if (!out.has(vkey)) out.set(vkey, {...noteVerifier(vkey), role}); };
+  const renamed = k => vkeyString(origin, SIG_ED25519, k.pub);
+  add(logVkey(origin, publicKey), 'vault_key');
+  if (!Array.isArray(headsKeys)) throw Error('Transparency heads keys must be a list of vkeys');
+  for (const v of headsKeys) {
+    const k = parseVkey(v);
+    if (k.type !== SIG_ED25519 || !k.name.endsWith('/heads')) throw Error('A pinned heads key must be the Ed25519 note vkey of a heads origin');
+    if (k.name === origin) add(v, 'pinned');
+    else if (anyName) add(renamed(k), 'pinned');
+  }
+  if (carried !== undefined && carried !== null) {
+    const k = parseVkey(carried);
+    if (k.type !== SIG_ED25519 || k.name !== origin && !anyName) throw Error('Transparency heads log key is not an Ed25519 key of the heads origin');
+    add(renamed(k), 'carried');
+  }
+  return [...out.values()];
 }
 // Counts distinct configured cosigners; future timestamps beyond the skew reject the evidence.
 function witnessSummary(opened, verifiers, options, skewSeconds = 300) {
@@ -571,10 +600,18 @@ function witnessSummary(opened, verifiers, options, skewSeconds = 300) {
   return {witnesses, quorum: policy.quorum, quorumMet: met(witnesses.length), fresh: met(fresh)};
 }
 // The heads leaf must be the newest leaf of the cosigned heads checkpoint, so the cosignature time applies to it.
+// A heads checkpoint signed by a pinned heads key reports which key signed it; so does any heads checkpoint once heads keys
+// are pinned. Without pinned keys a vault-key checkpoint reports exactly what it did before heads signers existed.
 function verifyHeads(heads, {tenantOriginValue, base, publicKey, verifiers, options}) {
   const hOrigin = headsOrigin(base);
   if (!heads || heads.origin !== hOrigin) throw Error('Transparency heads origin mismatch');
-  const opened = openLogNote(heads.checkpoint, hOrigin, publicKey, verifiers), cp = opened.checkpoint, leaf = heads.leaf, entry = heads.entry;
+  const pinnedKeys = (options.headsKeys || []).length > 0;
+  const logVerifiers = headsLogVerifiers(hOrigin, publicKey, {headsKeys: options.headsKeys, carried: heads.logVkey});
+  const opened = openLogNote(heads.checkpoint, hOrigin, publicKey, verifiers, logVerifiers), cp = opened.checkpoint, leaf = heads.leaf, entry = heads.entry;
+  const role = opened.signer.role;
+  if (pinnedKeys && role === 'carried') throw Error('Transparency heads checkpoint is signed by a key other than the vault key and the pinned heads keys');
+  const signer = role === 'vault_key' && !pinnedKeys ? null : {signedBy: role === 'vault_key' ? 'vault_key' : 'heads_key', headsKeyPinned: role === 'pinned',
+    ...(role === 'vault_key' ? {} : {headsKey: opened.signer.vkey})};
   const hex64 = /^[a-f0-9]{64}$/, count = v => Number.isSafeInteger(v) && v > 0;
   if (!leaf || !count(leaf.entries) || !hex64.test(leaf.entriesRoot || '')) throw Error('Transparency heads leaf invalid');
   if (!entry || entry.log !== tenantOriginValue || !count(entry.size) || !hex64.test(entry.root || '')) {
@@ -586,7 +623,7 @@ function verifyHeads(heads, {tenantOriginValue, base, publicKey, verifiers, opti
   if (!verifyInclusion(headsEntryLeaf(entry), heads.entryIndex, leaf.entries, entryProof, Buffer.from(leaf.entriesRoot, 'hex'))) {
     throw Error('Transparency heads entry inclusion proof failed');
   }
-  return {cp, entry, summary: witnessSummary(opened.note, verifiers, options)};
+  return {cp, entry, signer, summary: witnessSummary(opened.note, verifiers, options)};
 }
 // The tenant log's own cosigned checkpoint. Witnesses refuse to cosign a smaller or forked tenant log, so a fresh quorum on
 // it bounds rollback even for a holder of the vault signing key; a heads leaf is signed by that key alone.
@@ -611,24 +648,49 @@ function requireTenantWitness(result, options) {
       + 'a rollback since then is not excluded');
   }
 }
+function requireHeadsSigner(result, options) {
+  const h = result.heads;
+  if (!(options.headsKeys || []).length) {
+    throw Error('Heads signer check needs a pinned heads key (--heads-key): the heads key the evidence carries is not proof of who signed');
+  }
+  if (!h) throw Error('Transparency heads evidence missing: rollback is not checked against a vault host compromise');
+  if (!h.headsKeyPinned) {
+    throw Error(`Transparency heads checkpoint is signed by the ${h.signedBy === 'vault_key' ? 'vault key' : 'unpinned heads key'}, not by the pinned `
+      + 'heads key: anyone on the vault host could have signed it');
+  }
+  if (pinnedBase(options) && result.originBase !== options.originBase) {
+    throw Error(`Heads signer check: the evidence continues origin base ${result.originBase} after a tlog epoch from the pinned ${options.originBase}`);
+  }
+  if (!h.quorumMet) throw Error(`Transparency witness quorum not met: ${h.witnesses.length}/${h.quorum}`);
+  if (!h.fresh) {
+    throw Error(`Transparency heads cosignatures are older than ${result.witnessPolicy.maxStalenessSeconds} seconds: a rollback since then is not excluded`);
+  }
+}
 // rollbackCheckedAgainst names who the witness-anchored check holds against: 'signing_key_holder' needs a fresh quorum on the
 // tenant log of the pinned origin base; a heads quorum (or a tenant quorum on an unpinned origin) only binds an attacker who
-// cannot sign. A satisfied minimumCheckpoint is relative to the checkpoint the verifier supplied and does not set it.
+// cannot sign. 'vault_host' needs a fresh heads quorum on a checkpoint signed by a pinned heads key (a heads signer outside the
+// vault host, src/signer.mjs, that refuses heads leaves which shrink, fork or drop a tenant log): whoever controls the vault
+// host, its key and its database cannot present this tenant behind the newest heads entry the witnesses saw then.
+// A satisfied minimumCheckpoint is relative to the checkpoint the verifier supplied and does not set it.
 function finishResult(result, options) {
   result.witnessPolicy = policyOf(options);
   const tenantFresh = !!result.tenantCosigned?.fresh, headsFresh = !!result.heads?.fresh;
   const pinned = pinnedBase(options) && result.originBase === options.originBase;
+  const signerFresh = headsFresh && result.heads.headsKeyPinned === true && (pinned || !pinnedBase(options));
   result.rollbackChecked = !!(result.minimumCheckpoint?.satisfied || headsFresh || tenantFresh);
-  result.rollbackCheckedAgainst = tenantFresh && pinned ? 'signing_key_holder' : tenantFresh || headsFresh ? 'database_tamper' : null;
+  result.rollbackCheckedAgainst = signerFresh ? 'vault_host'
+    : tenantFresh && pinned ? 'signing_key_holder' : tenantFresh || headsFresh ? 'database_tamper' : null;
   if (options.require) {
     if (!result.present) throw Error('Transparency evidence missing');
     if (result.witnessPolicy.quorum > 0 && !result.heads?.quorumMet) throw Error('Transparency witness quorum not met');
   }
   if (options.requireTenantWitness) requireTenantWitness(result, options);
+  if (options.requireHeadsSigner) requireHeadsSigner(result, options);
   return result;
 }
 const headsResult = (heads, material, base) => ({
   origin: headsOrigin(base), size: heads.cp.size, leafIndex: material.heads.leafIndex, witnessedTenantSize: heads.entry.size, ...heads.summary,
+  ...heads.signer,
 });
 const rangeText = r => (r ? `${r[0]}-${r[1] ?? 'unknown'}` : 'none');
 function epochLossText(epoch, size) {
@@ -669,7 +731,7 @@ function checkMinimum(minimumCheckpoint, {tenant, tOrigin, publicKey, records, c
 }
 // Offline epoch checks against the exported records: the restored prefix root, the previous origin's own signed checkpoint
 // (a prefix of these records), the newest previous cosigned heads checkpoint, and the link from the last epoch to the export.
-function verifyTlogEpochs({records, summaries, publicKey, rootAt, verifiers, base}) {
+function verifyTlogEpochs({records, summaries, publicKey, rootAt, verifiers, base, options = {}, carried}) {
   if (base && summaries.length && summaries.at(-1).originBase !== base) throw Error('Transparency origin base differs from the latest tlog epoch');
   const bySeq = new Map(records.filter(r => r.type === TLOG_EPOCH_TYPE).map(r => [r.seq, r.payload]));
   return summaries.map(s => {
@@ -684,7 +746,9 @@ function verifyTlogEpochs({records, summaries, publicKey, rootAt, verifiers, bas
       previousCheckpointSize = c.size;
     }
     if (p.previousCosignedCheckpoint !== null) {
-      const o = openLogNote(p.previousCosignedCheckpoint, headsOrigin(p.previousOriginBase), publicKey, verifiers);
+      const origin = headsOrigin(p.previousOriginBase);
+      const o = openLogNote(p.previousCosignedCheckpoint, origin, publicKey, verifiers,
+        headsLogVerifiers(origin, publicKey, {headsKeys: options.headsKeys, carried, anyName: true}));
       if (o.checkpoint.size > Math.max(p.restoredHeadsSize, p.witnessedHeadsSize ?? 0)) {
         throw Error(`${at}: previous cosigned checkpoint exceeds the acknowledged heads size`);
       }
@@ -737,7 +801,8 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
     result.tenantCosigned = tenantCosignedResult(cosigned, tOrigin);
   }
   if (epochs.length) {
-    result.epochs = verifyTlogEpochs({records: bundle.records, summaries: epochs, publicKey, rootAt, verifiers, base: material ? base : null});
+    result.epochs = verifyTlogEpochs({records: bundle.records, summaries: epochs, publicKey, rootAt, verifiers, base: material ? base : null, options,
+      carried: material?.heads?.logVkey});
     if (options.originBase && options.originBase !== base) result.pinnedOriginBase = options.originBase;
   }
   if (hasMinimum) {
