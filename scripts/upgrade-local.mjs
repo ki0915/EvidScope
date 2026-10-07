@@ -17,7 +17,7 @@ import {parseArgs} from 'node:util';
 import {dataKeyId, generateDataKeyFile, readDataKeyFile} from '../src/data-keys.mjs';
 import {documentKeyUsage, migrateDocuments} from './data-key.mjs';
 import {migrateEventKeystore} from './event-keys.mjs';
-import {createEventKeystore} from '../src/event-keystore.mjs';
+import {createEventKeystore, keystoreMoved} from '../src/event-keystore.mjs';
 import {pendingEventKeyMigration} from '../src/event-keys.mjs';
 import {duplicatePrincipalIds} from '../src/credentials.mjs';
 
@@ -26,7 +26,7 @@ const RESTORATION_MARKER = 'vault-restoration.json';
 // Raw (unwrapped) event keys and epoch secrets still inside evidence.db, read without opening a Store.
 function pendingEventKeys(file) {
   const db = new DatabaseSync(file, {readOnly: true});
-  try { const pending = pendingEventKeyMigration(db); return pending.rawKeys + pending.epochs; } finally { db.close(); }
+  try { const pending = pendingEventKeyMigration(db); return pending.rawKeys + (keystoreMoved(db) ? 0 : pending.epochs); } finally { db.close(); }
 }
 
 function writeAtomic(file, text) {

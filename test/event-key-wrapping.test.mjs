@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDecipheriv,createPublicKey,generateKeyPairSync} from 'node:crypto';
-import {copyFileSync,cpSync,existsSync,mkdirSync,readFileSync,readdirSync,writeFileSync} from 'node:fs';
+import {chmodSync,copyFileSync,cpSync,existsSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -14,7 +14,7 @@ import {createKeyring,dataKeyId,generateDataKeyFile,readDataKeyFile} from '../sr
 import {compareFingerprint,epochEnd} from '../src/event-keys.mjs';
 import {createEventKeystore,dataKeySealer,openEventKeystore} from '../src/event-keystore.mjs';
 import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
-import {destroyEventKeyEpoch,listEventKeyEpochs} from '../scripts/event-keys.mjs';
+import {destroyEventKeyEpoch,listEventKeyEpochs,migrateEventKeystore} from '../scripts/event-keys.mjs';
 import {migrateDocuments} from '../scripts/data-key.mjs';
 import {submit} from '../src/client.mjs';
 import {harness} from './harness.mjs';
@@ -131,6 +131,31 @@ function destroyEpoch(v,w,epoch){
  return destroyEventKeyEpoch({...common,tenant:'alpha',epoch,reason:'all events of the epoch disposed',now:epochEnd(epoch)});
 }
 
+test('a keystore backup restored after an epoch destruction brings the epoch back; /api/integrity fails until it is destroyed again',async t=>{
+ const w=workspace(),v=vault(t,{dir:w.dataDir,options:keystoreOptions(w),cleanup:false});
+ assert.equal((await policy(v,1)).status,200);assert.equal((await v.ingest(event('old'))).status,202);
+ const epoch=TAG.exec(receiptOf(v.store,'old').fingerprint)[1];await later(1100);await v.erase('expired');
+ const keystoreBackup=join(w.root,'keystore-backup');cpSync(w.keystoreDir,keystoreBackup,{recursive:true});
+ const first=destroyEpoch(v,w,epoch),epochDir=readdirSync(join(w.keystoreDir,'epochs'))[0];
+ const common={dataDir:w.dataDir,signingKey:v.key.export({format:'pem',type:'pkcs8'}),env:{DATA_KEY_FILE:w.keyFile,EVENT_KEYSTORE_DIR:w.keystoreDir}};
+ const check=async pattern=>{
+  const opened=vault(t,{dir:w.dataDir,key:v.key,options:keystoreOptions(w),cleanup:false}),body=(await opened.call('/api/integrity','alpha-reviewer')).body;
+  opened.store.close();if(pattern)assert.match(body.error||'',pattern);else assert.equal(body.valid,true,body.error);
+ };
+ const again=reason=>{
+  const item=listEventKeyEpochs({...common,now:epochEnd(epoch)}).epochs.find(value=>value.epoch===epoch);
+  assert.deepEqual([item.presentAgain,item.destroyable],[true,true]);
+  const result=destroyEventKeyEpoch({...common,tenant:'alpha',epoch,reason,now:epochEnd(epoch)});assert.equal(result.recordSeq,first.recordSeq);
+ };
+ // The whole keystore restored from the earlier backup: epoch file back, tombstone gone.
+ rmSync(w.keystoreDir,{recursive:true});cpSync(keystoreBackup,w.keystoreDir,{recursive:true});chmodSync(w.keystoreDir,0o700);
+ await check(/present again/);again('restored keystore backup');await check();
+ // Only the epoch file copied back beside its tombstone.
+ copyFileSync(join(keystoreBackup,'epochs',epochDir,`${epoch}.json`),join(w.keystoreDir,'epochs',epochDir,`${epoch}.json`));
+ await check(/present again/);again('restored epoch file');await check();
+ assert.deepEqual(keystoreFor(w).tombstones('alpha').map(item=>item.epoch),[epoch]);
+});
+
 test('startup wraps the raw keys of a base-commit vault; the explicit migrate command does the same once',async t=>{
  const w=workspace(),{fixture,dir,key}=restoreBaseFixture(t,{dir:join(w.root,'data')});w.dataDir=dir;
  const raw=new DatabaseSync(gunzipFixture(fixture),{readOnly:true});
@@ -171,6 +196,8 @@ test('epoch secrets and tombstones made in database mode move to the keystore an
  destroy(v.store,{tenant:'alpha',epoch:goneEpoch,reason:'disposed in database mode',now:epochEnd(goneEpoch)});
  const secret=Buffer.from(v.store.db.prepare('SELECT secret FROM event_key_epochs WHERE epoch=?').get(keptEpoch).secret);
  v.store.close();
+ await assert.rejects(createVaultBackup({dataDir:w.dataDir,backupDir:join(w.root,'early-backup'),privateKey:v.key,publicKey:v.store.publicKey,
+  ...keystoreOptions(w)}),/has not moved its event keys/);
  const moved=vault(t,{dir:w.dataDir,key:v.key,options:keystoreOptions(w),cleanup:false});
  assert.deepEqual(moved.service.eventKeystore,{keystoreId:keystoreFor(w).id,wrappedKeys:1,importedEpochs:1,importedTombstones:1});
  assert.equal(moved.store.db.prepare('SELECT (SELECT COUNT(*) FROM event_key_epochs)+(SELECT COUNT(*) FROM event_key_epoch_tombstones) n').get().n,0);
@@ -179,6 +206,32 @@ test('epoch secrets and tombstones made in database mode move to the keystore an
  assert.equal((await moved.ingest(kept)).body.duplicate,true,'tags made with the imported secret still compare');
  const refused=await moved.ingest(gone);assert.equal(refused.status,409);assert.match(refused.body.error,/파기/);
  assert.equal((await moved.call('/api/integrity','alpha-reviewer')).body.valid,true);
+ moved.store.close();
+ // After the first move, epoch rows written into evidence.db (a known secret for a later month, a tombstone for a live epoch)
+ // are never imported: the keystore keeps its own state and /api/integrity reports the rows until they are deleted.
+ const db=new DatabaseSync(join(w.dataDir,'evidence.db'));t.after(()=>db.close());
+ db.prepare('INSERT INTO event_key_epochs VALUES(?,?,?,?)').run('alpha','2099-01',Buffer.alloc(32,7),new Date().toISOString());
+ db.prepare('INSERT INTO event_key_epoch_tombstones VALUES(?,?,?,?)').run('alpha',keptEpoch,new Date().toISOString(),'database');
+ const planted=vault(t,{dir:w.dataDir,key:v.key,options:keystoreOptions(w),cleanup:false});
+ assert.deepEqual([planted.service.eventKeystore.importedEpochs,planted.service.eventKeystore.importedTombstones],[0,0]);
+ assert.deepEqual(keystoreFor(w).list('alpha').map(item=>item.epoch),[keptEpoch]);
+ assert.match((await planted.call('/api/integrity','alpha-reviewer')).body.error,/never imported/);
+ assert.equal((await planted.ingest(kept)).body.duplicate,true,'the live epoch was not destroyed');
+ db.exec('DELETE FROM event_key_epochs; DELETE FROM event_key_epoch_tombstones;');
+ assert.equal((await planted.call('/api/integrity','alpha-reviewer')).body.valid,true);
+});
+
+test('a vault still running without the keystore cannot add raw keys once its database moved to the keystore',async t=>{
+ const w=workspace(),v=vault(t,{dir:w.dataDir,cleanup:false});
+ assert.equal((await v.ingest(event('before'))).status,202);
+ const env={DATA_KEY_FILE:w.keyFile,EVENT_KEYSTORE_DIR:w.keystoreDir};
+ assert.equal(migrateEventKeystore({dataDir:w.dataDir,signingKey:v.key.export({format:'pem',type:'pkcs8'}),env}).wrappedKeys,1);
+ // The running vault fails closed on its next request (its verified state no longer matches); a direct append is refused too.
+ assert.equal((await v.ingest(event('after'))).status,409);
+ const direct={...event('direct'),receivedAt:new Date().toISOString(),source:'alpha-agent'};
+ assert.throws(()=>v.store.transaction(()=>v.store.append('alpha','event',direct,'alpha-agent')),/moved its event keys/);
+ assert.equal((await v.call('/api/integrity','alpha-reviewer')).body.valid,false);
+ assert.equal(v.store.db.prepare('SELECT COUNT(*) n FROM event_keys WHERE length(key) IN (32,64)').get().n,0);
 });
 
 test('data-key rotation reseals the keystore and refuses to run without it',async t=>{

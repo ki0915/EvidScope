@@ -182,6 +182,7 @@ export class Store {
   const seq=(head?.seq||0)+1;
   if(type==='event'){
    const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
+   if(!this.eventKeyEpochs().wrapsEventKeys)this._assertNoEventKeystore();
    const stored=storedEventKey(this.eventKeyEpochs(),encrypted.payload,encrypted.material);
    this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
   }
@@ -195,6 +196,11 @@ export class Store {
   const policy=this.get(tenant,'retention_policy','current')||{version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'};
   const retainUntil=new Date(Date.parse(receivedAt)+policy.retentionSeconds*1000).toISOString();
   return {policy,retainUntil,keyEpoch:epochOfRetainUntil(retainUntil)};
+ }
+ // A database whose event keys moved to a keystore never takes another raw key, e.g. from a vault started before the move.
+ _assertNoEventKeystore(){
+  if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_keystore_usage'").get()
+   &&this.db.prepare('SELECT 1 FROM event_keystore_usage LIMIT 1').get())throw Error('This vault moved its event keys to an event keystore; restart it with EVENT_KEYSTORE_DIR and DATA_KEY_FILE');
  }
  // Epoch secrets: the configured keystore, else the tables in this database (event-keys.mjs).
  eventKeyEpochs(){return this.eventKeyProvider??=databaseEpochStore(this.db,{mutate:fn=>this.projectionMutation(fn)});}

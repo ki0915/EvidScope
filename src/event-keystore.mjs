@@ -124,9 +124,12 @@ export function openEventKeystore({dir,sealer,dataDir}){
  };
  const epochs={
   kind:'keystore',id:meta.id,wrapsEventKeys:true,...epochOperations(secret,destroyed),destroyed,
+  // An epoch file on disk, readable or not (a file restored next to its tombstone still holds the secret).
+  present:(tenant,epoch)=>typeof tenant==='string'&&existsSync(epochFile(tenant,epoch)),
   ensure(tenant,epoch){if(!secret(tenant,epoch))create(tenant,epoch,randomBytes(EPOCH_SECRET_BYTES),new Date().toISOString());},
   // The same secret keeps the receipt tags and keys made with it valid; a different one for the same epoch is refused.
   importEpoch(tenant,epoch,value,createdAt){
+   if(destroyed(tenant,epoch))throw Error(`Event-key epoch ${epoch} was destroyed in this keystore; evidence.db is an older copy and is not moved`);
    const existing=secret(tenant,epoch);
    const same=other=>equal(other.toString('hex'),Buffer.from(value).toString('hex'));
    if(existing){if(!same(existing))throw Error(`Event keystore already holds another secret for ${epoch}`);return;}
@@ -173,12 +176,14 @@ export function openEventKeystore({dir,sealer,dataDir}){
 }
 
 // Non-secret record in evidence.db of the keystore that wraps its event keys: without it, or with another one, the vault and
-// its tools refuse to start instead of writing unwrapped keys beside wrapped ones.
-export function ensureKeystoreUsageTable(db){db.exec('CREATE TABLE IF NOT EXISTS event_keystore_usage(id TEXT PRIMARY KEY,first_used_at TEXT NOT NULL)');}
-export function keystoreIdsInUse(db){
- if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_keystore_usage'").get())return [];
- return db.prepare('SELECT id FROM event_keystore_usage ORDER BY id').all().map(row=>row.id);
+// its tools refuse to start instead of writing unwrapped keys beside wrapped ones. moved_at marks the completed first move:
+// epoch rows that show up in evidence.db after it are never imported (they could plant a known secret or a tombstone).
+export function ensureKeystoreUsageTable(db){
+ db.exec('CREATE TABLE IF NOT EXISTS event_keystore_usage(id TEXT PRIMARY KEY,first_used_at TEXT NOT NULL,moved_at TEXT)');
 }
+const usageTable=db=>!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_keystore_usage'").get();
+export function keystoreIdsInUse(db){return usageTable(db)?db.prepare('SELECT id FROM event_keystore_usage ORDER BY id').all().map(row=>row.id):[];}
+export const keystoreMoved=db=>usageTable(db)&&!!db.prepare('SELECT 1 FROM event_keystore_usage WHERE moved_at IS NOT NULL').get();
 export function assertEventKeystore(db,epochs){
  const ids=keystoreIdsInUse(db);if(!ids.length)return;
  if(!epochs?.wrapsEventKeys)throw Error(`Event keys of this vault are wrapped by event keystore ${ids.join(',')}; set EVENT_KEYSTORE_DIR and DATA_KEY_FILE`);
@@ -199,6 +204,8 @@ export function attachEventKeystore(store,{dir,keyring,dataDir,migrate=true}){
  if(!migrate&&!keystoreIdsInUse(store.db).length)return {keystoreId:epochs.id,migrationPending:true};
  store.useEventKeys(epochs);if(!migrate)return {keystoreId:epochs.id};
  ensureKeystoreUsageTable(store.db);ensureDataKeyUsageTable(store.db);for(const kid of sealedBy)recordDataKeyUsage(store.db,kid);
- store.db.prepare('INSERT OR IGNORE INTO event_keystore_usage VALUES(?,?)').run(epochs.id,new Date().toISOString());
- return {keystoreId:epochs.id,...migrateEventKeys(store)};
+ const firstMove=!keystoreMoved(store.db);
+ store.db.prepare('INSERT OR IGNORE INTO event_keystore_usage VALUES(?,?,NULL)').run(epochs.id,new Date().toISOString());
+ const moved=()=>store.db.prepare('UPDATE event_keystore_usage SET moved_at=? WHERE id=? AND moved_at IS NULL').run(new Date().toISOString(),epochs.id);
+ return {keystoreId:epochs.id,...migrateEventKeys(store,{importEpochs:firstMove,moved})};
 }

@@ -42,6 +42,7 @@ test('v2 envelopes: per-event salt, HMAC commitment recorded with its algorithm,
   assert.equal(row.payload.format,'evidscope-encrypted-event-v2');assert.equal(row.payload.commitmentAlg,'evidscope/payload-commitment/v2');
   assert.equal(row.payload.payloadHash,undefined);assert.match(row.payload.payloadCommitment,/^[a-f0-9]{64}$/);
   assert.equal(row.payload.keyEpoch,row.payload.retainUntil.slice(0,7));
+  assert.equal(Buffer.from(row.payload.ciphertext,'base64').length%64,0,'the plaintext is padded to 64-byte steps');
   const disclosure=bundle.disclosures.find(item=>item.seq===row.seq);assert.match(disclosure.salt,/^[a-f0-9]{64}$/);
   const expected=createHmac('sha256',Buffer.from(disclosure.salt,'hex')).update(tag+canonical(disclosure.event)).digest('hex');
   assert.equal(row.payload.payloadCommitment,expected);

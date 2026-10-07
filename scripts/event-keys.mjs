@@ -9,8 +9,8 @@
 // destroy: signs an event_key_epoch_destroyed record, then destroys the epoch secret. Allowed once the month has ended and every
 // event of the epoch was disposed by a two-person retention plan. Irreversible. list and destroy need DATA_KEY_FILE and
 // EVENT_KEYSTORE_DIR when the vault uses a keystore.
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {existsSync,readFileSync} from 'node:fs';
+import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {Store} from '../src/store.mjs';
 import {destroyEpoch,epochInventory,pendingEventKeyMigration} from '../src/event-keys.mjs';
@@ -21,6 +21,7 @@ const tenantsOf=store=>store.db.prepare('SELECT DISTINCT tenant FROM ledger ORDE
 
 // The vault's own startup checks: data keys in use must be configured, the keystore must be the recorded one.
 function openVault({dataDir,signingKey,env,migrate}){
+ if(!existsSync(join(dataDir,'evidence.db')))throw Error('DATA_DIR holds no evidence.db');
  const store=new Store(dataDir,signingKey);
  try{
   const {dataKey,previousDataKeys}=dataKeysFromEnv({...env,DATA_DIR:dataDir});ensureDataKeyUsageTable(store.db);

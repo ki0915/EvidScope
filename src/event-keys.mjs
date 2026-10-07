@@ -8,7 +8,7 @@
 //   database keep the secrets.
 // - keystore (src/event-keystore.mjs): files outside DATA_DIR sealed by the data key; event keys are stored wrapped.
 // Epoch store interface, also the hook for a KMS or the signer process to hold the secrets (calls are synchronous because
-// Store.transaction is): kind, wrapsEventKeys, available, ensure, destroyed, destroy, list, tombstones, mac, wrap, unwrap.
+// Store.transaction is): kind, wrapsEventKeys, available, present, ensure, destroyed, destroy, list, tombstones, mac, wrap, unwrap.
 import {createCipheriv,createDecipheriv,createHmac,hkdfSync,randomBytes} from 'node:crypto';
 import {canonical,equal,isEncryptedEvent,verifyBundle,ENCRYPTED_EVENT_V2} from './crypto.mjs';
 import {eventKeyMaterialBytes,openEvent} from './encryption.mjs';
@@ -69,7 +69,7 @@ export function databaseEpochStore(db,{mutate=fn=>fn()}={}){
   return row?Buffer.from(row.secret):undefined;
  };
  const destroyed=(tenant,epoch)=>tables()&&!!db.prepare('SELECT 1 FROM event_key_epoch_tombstones WHERE tenant=? AND epoch=?').get(tenant,epoch);
- return {kind:'database',wrapsEventKeys:false,...epochOperations(secret,destroyed),destroyed,
+ return {kind:'database',wrapsEventKeys:false,...epochOperations(secret,destroyed),destroyed,present:(tenant,epoch)=>!!secret(tenant,epoch),
   ensure(tenant,epoch){
    checkEpoch(epoch);if(secret(tenant,epoch))return;
    if(destroyed(tenant,epoch))throw Error(`Event-key epoch ${epoch} was destroyed; it cannot take new events`);
@@ -79,7 +79,7 @@ export function databaseEpochStore(db,{mutate=fn=>fn()}={}){
    mutate(()=>{
     const deleted=db.prepare('DELETE FROM event_key_epochs WHERE tenant=? AND epoch=?').run(tenant,checkEpoch(epoch)).changes;
     if(deleted!==1)throw Error('Event-key epoch is not stored');
-    db.prepare('INSERT INTO event_key_epoch_tombstones VALUES(?,?,?,?)').run(tenant,epoch,at,'database');
+    db.prepare('INSERT OR IGNORE INTO event_key_epoch_tombstones VALUES(?,?,?,?)').run(tenant,epoch,at,'database');
    });
   },
   list:tenant=>tables()?db.prepare('SELECT tenant,epoch,created_at AS createdAt FROM event_key_epochs WHERE tenant=? ORDER BY epoch').all(tenant):[],
@@ -144,8 +144,9 @@ export function epochInventory(store,tenant,{now=Date.now()}={}){
  for(const {epoch,destroyedAt} of epochStore.tombstones(tenant))Object.assign(entry(epoch),{destroyed:true,destroyedAt});
  for(const row of bundle.records)if(row.type===EPOCH_DESTROYED&&epochs.has(row.payload?.epoch))epochs.get(row.payload.epoch).destructionSeq=row.seq;
  return [...epochs.values()].sort((a,b)=>a.epoch.localeCompare(b.epoch)).map(item=>{
-  const periodEnded=now>=epochEnd(item.epoch);
-  return {...item,storage:epochStore.kind,periodEnded,destroyable:item.stored&&!item.destroyed&&periodEnded&&!item.retainedEvents&&!item.retainedFingerprints};
+  const periodEnded=now>=epochEnd(item.epoch),presentAgain=!!item.destructionSeq&&epochStore.present(tenant,item.epoch);
+  const destroyable=(item.stored&&!item.destroyed||presentAgain)&&periodEnded&&!item.retainedEvents&&!item.retainedFingerprints;
+  return {...item,storage:epochStore.kind,periodEnded,presentAgain,destroyable};
  });
 }
 
@@ -154,18 +155,18 @@ export function destroyEpoch(store,{tenant,epoch,reason,actor='event-keys-cli',n
  checkEpoch(epoch);if(typeof reason!=='string'||!reason.trim()||reason.length>1000)throw Error('A reason (1-1000 characters) is required');
  const destroyedAt=new Date(now).toISOString();
  const result=store.transaction(()=>{
-  const item=epochInventory(store,tenant,{now}).find(value=>value.epoch===epoch);
-  // A keystore destruction whose ledger commit failed (secret gone, no record) is completed by recording it.
-  const unrecorded=item?.destroyed&&!item.destructionSeq;
-  if(!item?.stored&&!unrecorded)throw Error(`Event-key epoch ${tenant}/${epoch} is not stored or was already destroyed`);
+  const item=epochInventory(store,tenant,{now}).find(value=>value.epoch===epoch),epochStore=store.eventKeyEpochs();
+  // A keystore destruction whose ledger commit failed (secret gone, no record) is completed by recording it. An epoch the ledger
+  // records as destroyed that is present again (a restored keystore backup) is destroyed again under the same record.
+  const unrecorded=item?.destroyed&&!item.destructionSeq,present=epochStore.present(tenant,epoch);
+  if(!item?.stored&&!unrecorded&&!(item?.destructionSeq&&present))throw Error(`Event-key epoch ${tenant}/${epoch} is not stored or was already destroyed`);
   if(!item.periodEnded)throw Error(`Event-key epoch ${epoch} has not ended; new events can still join it`);
   if(item.retainedEvents||item.retainedFingerprints)throw Error(`Event-key epoch ${tenant}/${epoch} still has retained events`);
-  const epochStore=store.eventKeyEpochs();
   // Signed first, destroyed second: a failed destruction rolls the record back, and only a failed commit could leave the
   // secret destroyed without its record.
   const record=item.destructionSeq?{seq:item.destructionSeq}:store.append(tenant,EPOCH_DESTROYED,{format:EPOCH_DESTRUCTION_FORMAT,epoch,
    storage:epochStore.kind,basis:'all_events_disposed',disposedEvents:item.disposedEvents,reason:reason.trim(),destroyedAt},actor);
-  if(item.stored)epochStore.destroy(tenant,epoch,{at:destroyedAt});
+  if(item.stored||present)epochStore.destroy(tenant,epoch,{at:destroyedAt});
   return {destroyed:true,tenant,epoch,storage:epochStore.kind,disposedEvents:item.disposedEvents,recordSeq:record.seq,destroyedAt};
  });
  store.checkpointAfterErasure?.();
@@ -181,17 +182,20 @@ export function pendingEventKeyMigration(db){
  return {rawKeys:table('event_keys')?count('SELECT COUNT(*) n FROM event_keys WHERE length(key) IN (32,64)'):0,
   epochs:table('event_key_epochs')?count('SELECT COUNT(*) n FROM event_key_epochs')+count('SELECT COUNT(*) n FROM event_key_epoch_tombstones'):0};
 }
-export function migrateEventKeys(store){
+// importEpochs is false once the first move has completed (moved() marks it in the same transaction).
+export function migrateEventKeys(store,{importEpochs=true,moved=()=>{}}={}){
  const epochs=store.eventKeyEpochs(),db=store.db;
  if(!epochs.wrapsEventKeys||!epochs.importEpoch)throw Error('Event-key migration requires a configured event keystore');
  const raw='FROM event_keys WHERE length(key) IN (32,64)',counts={wrappedKeys:0,importedEpochs:0,importedTombstones:0};
- const pending=pendingEventKeyMigration(db);
- if(!pending.rawKeys&&!pending.epochs)return counts;
+ const pending=pendingEventKeyMigration(db),move=importEpochs&&pending.epochs>0;
+ if(!pending.rawKeys&&!move){moved();return counts;}
  store.transaction(()=>{
   const database=databaseEpochStore(db,{mutate:fn=>store.projectionMutation(fn)});
-  for(const {tenant,epoch,secret,createdAt} of database.exportAll()){epochs.importEpoch(tenant,epoch,secret,createdAt);counts.importedEpochs++;}
-  for(const {tenant,epoch,destroyedAt} of database.allTombstones()){epochs.importTombstone(tenant,epoch,destroyedAt);counts.importedTombstones++;}
-  database.clear();
+  if(move){
+   for(const {tenant,epoch,secret,createdAt} of database.exportAll()){epochs.importEpoch(tenant,epoch,secret,createdAt);counts.importedEpochs++;}
+   for(const {tenant,epoch,destroyedAt} of database.allTombstones()){epochs.importTombstone(tenant,epoch,destroyedAt);counts.importedTombstones++;}
+   database.clear();
+  }
   for(const {tenant} of db.prepare(`SELECT DISTINCT tenant ${raw} ORDER BY tenant`).all()){
    const bundle=store.rawBundle(tenant);verifyBundle(bundle,store.publicKey,undefined,{chainOnly:true});
    const payloads=new Map(bundle.records.filter(row=>row.type==='event'&&isEncryptedEvent(row.payload)).map(row=>[row.payload.keyId,row.payload]));
@@ -204,6 +208,7 @@ export function migrateEventKeys(store){
     counts.wrappedKeys++;
    }
   }
+  moved();
  });
  // The raw keys and secrets were overwritten in place (secure_delete); older page images leave the WAL here.
  store.checkpointAfterErasure();
@@ -213,6 +218,13 @@ export function migrateEventKeys(store){
 // Honest /api/integrity summary of event-key storage, commitments, receipt fingerprints and epochs for one tenant.
 export function eventKeyStatus(store,tenant,records){
  const commitments={saltedV2:0,unsaltedV1:0},fingerprints={keyed:0,unkeyed:0},keys={wrapped:0,unwrapped:0},epochs=store.eventKeyEpochs();
+ // An epoch the ledger records as destroyed must stay gone; a restored keystore backup or database copy would bring it back.
+ const back=[...new Set(records.filter(row=>row.type===EPOCH_DESTROYED).map(row=>row.payload?.epoch))]
+  .filter(epoch=>EPOCH_PATTERN.test(epoch||'')&&epochs.present(tenant,epoch));
+ if(back.length)throw Error(`Destroyed event-key epoch ${back.join(',')} is present again; destroy it again with scripts/event-keys.mjs destroy`);
+ // With a keystore, epoch rows in evidence.db are never used and never imported after the first move: only tampering adds them.
+ const stray=epochs.wrapsEventKeys?pendingEventKeyMigration(store.db).epochs:0;
+ if(stray)throw Error(`evidence.db holds ${stray} event-key epoch row(s) beside its event keystore; they are never imported. Review and delete them`);
  const payloads=new Map();
  for(const row of records){
   if(row.type==='event'&&isEncryptedEvent(row.payload)){

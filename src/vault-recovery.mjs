@@ -5,7 +5,7 @@ import {resolve,join,dirname,basename,relative,isAbsolute,sep} from 'node:path';
 import {pipeline} from 'node:stream/promises';
 import {Store} from './store.mjs';
 import {canonical,digest,verifyBundle,verifyCheckpoint} from './crypto.mjs';
-import {assertEventKeystore,openConfiguredKeystore} from './event-keystore.mjs';
+import {assertEventKeystore,keystoreIdsInUse,openConfiguredKeystore} from './event-keystore.mjs';
 import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkObjectProjection} from './object-integrity.mjs';
 import {checkEvaluationProjection} from './evaluation-integrity.mjs';
@@ -75,9 +75,12 @@ function assertSeparationKept(file,keyring,config,operation){
   if(!keyring.separated&&config?.profile==='enterprise')throw Error(`Enterprise profile requires DATA_KEY_FILE for a ${operation}`);
  }finally{db.close();}
 }
+// The configured event keystore serves a database that records it; one that has not moved to it yet keeps its own epochs.
+function keystoreFor(db,eventKeys){assertEventKeystore(db,eventKeys);return keystoreIdsInUse(db).length?eventKeys:undefined;}
 function readonlyStore(file,key,eventKeys){
- const store=Object.create(Store.prototype);store.key=key;store.publicKey=createPublicKey(key);store.eventKeyProvider=eventKeys||undefined;
- store.db=new DatabaseSync(file,{readOnly:true,timeout:5000});return store;
+ const store=Object.create(Store.prototype);store.key=key;store.publicKey=createPublicKey(key);store.db=new DatabaseSync(file,{readOnly:true,timeout:5000});
+ try{store.eventKeyProvider=keystoreFor(store.db,eventKeys);}catch(error){store.db.close();throw error;}
+ return store;
 }
 // Keystore vaults: the plaintext search projection of retained events never enters a backup. Restore rebuilds it from the ledger
 // through the keystore, so an epoch destroyed after the backup cannot be read back from it either.
@@ -113,7 +116,6 @@ function rebuildEventProjection(file,key,eventKeys){
 function inspectDatabase(file,dataDir,key,keyring,expectedCheckpoints,eventKeys){
  const store=readonlyStore(file,key,eventKeys),documents=new Map(),tenants=[];
  try{
-  assertEventKeystore(store.db,eventKeys);
   if(store.db.prepare('PRAGMA integrity_check').all().some(r=>r.integrity_check!=='ok'))throw Error('SQLite integrity check failed');
   const hasDevelopment=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='development_run_events'").get(),hasGovernanceDocuments=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='governance_documents'").get();
   const hasTlog=!!store.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='tlog_state'").get();
@@ -143,7 +145,7 @@ function inspectDatabase(file,dataDir,key,keyring,expectedCheckpoints,eventKeys)
    tenants.push({tenant,checkpoint:bundle.checkpoint,retainedEvents:events.length,objects:objectProjection.objects,governanceDocuments:checkedDocuments.governanceDocumentProjection.documents,governanceDocumentRevisions:checkedDocuments.governanceDocumentProjection.revisions,documentFiles:checkedDocuments.summary.uniqueFiles,evaluations:evaluations.length,developmentEvents:developmentProjection.developmentEvents,receipts:receiptProjection.receipts,signedReceipts:receiptProjection.signedReceipts,legacyRetainedReceipts:receiptProjection.legacyRetainedReceipts});
   }
   for(const path of documents.keys())member(dataDir,path);
-  return {tenants,documents:[...documents.keys()].sort()};
+  return {tenants,documents:[...documents.keys()].sort(),eventKeystore:store.eventKeyEpochs().wrapsEventKeys};
  }finally{store.close();}
 }
 
@@ -159,6 +161,9 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,
   await backup(sourceDb,temporary);sourceDb.close();sourceDb=null;chmodSync(temporary,0o600);
   assertSeparationKept(temporary,keyring,config,'backup');
   const snapshot=inspectDatabase(temporary,source,key,keyring,undefined,eventKeys);
+  // No silent fallback to a backup that still carries raw event keys and the plaintext projection.
+  if(eventKeys&&!snapshot.eventKeystore)throw Error('EVENT_KEYSTORE_DIR is set but this vault has not moved its event keys there yet;'
+   +' start the vault once or run scripts/event-keys.mjs migrate');
   const accessSource=join(source,ACCESS_LOG_FILE),accessTemporary=join(output,'.access-log.db'),hasAccessLog=existsSync(accessSource);
   if(hasAccessLog){if(!member(source,ACCESS_LOG_FILE)||!lstatSync(accessSource).isFile())throw Error('Invalid access log file');
    const accessDb=new DatabaseSync(accessSource,{readOnly:true,timeout:5000});try{await backup(accessDb,accessTemporary);}finally{accessDb.close();}chmodSync(accessTemporary,0o600);}
@@ -167,7 +172,7 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,
   for(const path of snapshot.documents){const input=member(source,path),target=member(output,path);mkdirSync(dirname(target),{recursive:true,mode:0o700});copyFileSync(input,target);chmodSync(target,0o600);inventory.push({path,bytes:lstatSync(target).size,sha256:await hashFile(target)});}
   // Read copied ciphertext back, so concurrent loss or corruption cannot be sealed.
   inspectDatabase(temporary,output,key,keyring,Object.fromEntries(snapshot.tenants.map(t=>[t.tenant,t.checkpoint])),eventKeys);
-  if(eventKeys)excludeEventProjection(temporary);
+  if(snapshot.eventKeystore)excludeEventProjection(temporary);
   const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',encryption,iv);cipher.setAAD(backupAad(format,keyId));
   const encrypted=join(output,'evidence.db.enc');
   await pipeline(createReadStream(temporary),cipher,createWriteStream(encrypted,{flags:'wx',mode:0o600}));
@@ -179,7 +184,7 @@ export async function createVaultBackup({dataDir,backupDir,privateKey,publicKey,
    inventory.splice(1,0,{path:ACCESS_MEMBER,bytes:lstatSync(accessEncrypted).size,sha256:await hashFile(accessEncrypted)});
    accessLog={algorithm:'aes-256-gcm',iv:accessIv.toString('base64'),tag:accessCipher.getAuthTag().toString('base64'),plaintextSha256:await hashFile(accessTemporary),tenants:accessTenants};
   }
-  const statement={format,createdAt:new Date().toISOString(),keyFingerprint:hashBytes(pub.export({format:'der',type:'spki'})),database:{algorithm:'aes-256-gcm',...(format===FORMAT_V2?{kdf:'hkdf-sha256',info:PURPOSES.vaultBackup,keyId}:{}),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),plaintextSha256:await hashFile(temporary)},...(accessLog?{accessLog}:{}),files:inventory,tenants:snapshot.tenants,...(eventKeys?{eventProjection:EVENT_PROJECTION_EXCLUDED,eventKeystore:{id:eventKeys.id}}:{}),scope:'Whole local vault; credentials, signing private key and data-encryption keys excluded. Historical supplier and first-party governance document ciphertext included. This snapshot does not prove elapsed five-year retention. External backups and later erasures require separate disposition.'};
+  const statement={format,createdAt:new Date().toISOString(),keyFingerprint:hashBytes(pub.export({format:'der',type:'spki'})),database:{algorithm:'aes-256-gcm',...(format===FORMAT_V2?{kdf:'hkdf-sha256',info:PURPOSES.vaultBackup,keyId}:{}),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),plaintextSha256:await hashFile(temporary)},...(accessLog?{accessLog}:{}),files:inventory,tenants:snapshot.tenants,...(snapshot.eventKeystore?{eventProjection:EVENT_PROJECTION_EXCLUDED,eventKeystore:{id:eventKeys.id}}:{}),scope:'Whole local vault; credentials, signing private key and data-encryption keys excluded. Historical supplier and first-party governance document ciphertext included. This snapshot does not prove elapsed five-year retention. External backups and later erasures require separate disposition.'};
   const manifest={...statement,signature:sign(null,Buffer.from(canonical(statement)),key).toString('base64')};
   unlinkSync(temporary);
   writeFileSync(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o600});
@@ -258,7 +263,7 @@ export async function restoreVaultBackup({backupDir,restoreDir,privateKey,public
   if(canonical(checkAccessLogSnapshot(database,access?accessFile:null,restored.tenants.map(t=>t.tenant)))!==canonical(access?access.tenants:{}))throw Error('Restored access log differs from signed inventory');
   // A restore forks the transparency log: plan the new origin epoch and the witness freshness check before writing anything.
   const epoch=await planTlogEpoch({database,key,archiveAnchor:anchor,transparency,frontier:frontierStatement,frontierSha256:frontier?digest(frontier):null,restoreDir:target});
-  const store=new Store(stage,key,{eventKeys});let activation,applied=null;
+  const store=new Store(stage,key,{eventKeys:restored.eventKeystore?eventKeys:undefined});let activation,applied=null;
   try{
    if(activationAccepted)applied=applyRecoveryFrontier({store,frontier,anchor:frontierAnchor,archiveAnchor:anchor,config,freshness:epoch.freshness});
    writeTlogEpochs(store,epoch);
