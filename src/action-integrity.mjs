@@ -55,6 +55,8 @@ function reducer(tenant,seed){
   }
   // Registry and registry-policy versions are evaluation input like asset versions (src/agent-registry.mjs).
   if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'){incrementAll();return;}
+  // An approval request version is evaluation input of its one action (src/approvals.mjs); it never creates an action.
+  if(row.type==='approval_request'){const value=typeof row.payload.actionId==='string'?actions.get(row.payload.actionId):undefined;if(value)value.version++;return;}
   if(row.type==='rule'){
    const next=ruleStatuses(row.payload),prior=rules.get(row.payload.id)||new Map();
    if([...next].some(([version,status])=>status==='active'&&prior.get(version)!=='active'))incrementAll();
