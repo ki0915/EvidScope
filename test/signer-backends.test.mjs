@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createHash, generateKeyPairSync, randomBytes, verify} from 'node:crypto';
-import {chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {chmodSync, chownSync, existsSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import net from 'node:net';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
@@ -39,6 +39,12 @@ test('file backend: PKCS#8 Ed25519 key, private permissions, self-test', async t
   if (process.platform !== 'win32') {
     chmodSync(good.key, 0o644);
     assert.throws(() => fileBackend({keyFile: good.key}), /readable by other users/);
+    // A key file of another owner is read through its group bits, as a Kubernetes Secret under fsGroup (root:fsGroup 0440).
+    if (process.getuid() === 0) {
+      chmodSync(good.key, 0o440);
+      chownSync(good.key, 4242, 4242);
+      assert.ok(await signs(fileBackend({keyFile: good.key})));
+    }
   }
   const rsa = generateKeyPairSync('rsa', {modulusLength: 2048}).privateKey, rsaFile = join(k.dir, 'rsa.pem');
   writeFileSync(rsaFile, rsa.export({format: 'pem', type: 'pkcs8'}), {mode: 0o600});

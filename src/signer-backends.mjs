@@ -17,11 +17,15 @@ export function readEd25519PublicKey(file) {
   if (!isEd25519(key)) throw Error(`${file} is not an Ed25519 public key`);
   return key;
 }
-// A key readable by group or others is refused on POSIX (as OpenSSH does); Kubernetes secrets need defaultMode 0400.
+// As OpenSSH does on POSIX: a key file owned by the signer's user may not be readable by group or others. A file owned by
+// another user is read through its group or other bits, as a Kubernetes Secret is (root, group fsGroup, mode 0440 whatever
+// defaultMode says): mount that volume into the signer container only.
 function privateFile(file) {
   const st = statSync(file);
   if (!st.isFile() || st.size > 64 * 1024) throw Error(`Signer key file ${file} must be a regular file of at most 64 KiB`);
-  if (process.platform !== 'win32' && (st.mode & 0o077)) throw Error(`Signer key file ${file} is readable by other users (chmod 600)`);
+  if (process.platform !== 'win32' && st.uid === process.getuid() && (st.mode & 0o077)) {
+    throw Error(`Signer key file ${file} is readable by other users (chmod 600)`);
+  }
   return readFileSync(file);
 }
 

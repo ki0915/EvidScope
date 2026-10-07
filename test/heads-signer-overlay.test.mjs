@@ -64,6 +64,9 @@ test('deployment overlay: one signer replica off the vault node, TLS with a toke
   assert.deepEqual([arg(main, '--host'), arg(main, '--port'), arg(main, '--tls-cert'), arg(main, '--token-file')],
     ['0.0.0.0', '8443', '/tls/tls.crt', '/heads-signer-token/token']);
   assert.equal(pod.automountServiceAccountToken, false);
+  // Its own user and group: Secret files are readable by the pod's fsGroup.
+  const ids = [pod.securityContext.runAsUser, pod.securityContext.fsGroup, main.securityContext.runAsGroup, pod.initContainers[0].securityContext.runAsGroup];
+  assert.deepEqual(ids, [1001, 1001, 1001, 1001]);
   const vault = deployment(manifest, 'vault'), vaultMounts = mountsOf(vault)[0].volumes;
   assert.equal(vault.spec.template.spec.containers.length, 1);
   assert.deepEqual(secrets(vaultMounts).filter(s => s.startsWith('heads-signer')), ['heads-signer-ca', 'heads-signer-token']);

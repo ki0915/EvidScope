@@ -110,14 +110,16 @@ export function renderHeadsSignerOverlay({base = JSON.parse(readFileSync(new URL
     const mounts = [...structuredClone(stateMounts), {name: 'tls', mountPath: P.tls, readOnly: true},
       {name: 'heads-signer-token', mountPath: P.token, readOnly: true}];
     const probe = {tcpSocket: {port: 'https'}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3};
-    const main = signerContainer(COMPONENT, serve, mounts, {ports: [{name: 'https', containerPort: PORT}], readinessProbe: probe, livenessProbe: probe});
+    const own = c => ({...c, securityContext: {...c.securityContext, runAsGroup: SIGNER_UID}});
+    const main = own(signerContainer(COMPONENT, serve, mounts, {ports: [{name: 'https', containerPort: PORT}], readinessProbe: probe, livenessProbe: probe}));
     items.push({apiVersion: 'apps/v1', kind: 'Deployment', metadata: meta(COMPONENT), spec: {replicas: 1, strategy: {type: 'Recreate'}, selector,
       template: {metadata: {labels: labels(COMPONENT)}, spec: {automountServiceAccountToken: false, terminationGracePeriodSeconds: 30,
-        securityContext: structuredClone(pod.securityContext),
+        // Its own group: Secret files are group-readable (fsGroup) whatever defaultMode says.
+        securityContext: {...structuredClone(pod.securityContext), runAsUser: SIGNER_UID, runAsGroup: SIGNER_UID, fsGroup: SIGNER_UID},
         // Never on the vault's node: a vault host (node) compromise must not reach the signer key.
         affinity: {podAntiAffinity: {requiredDuringSchedulingIgnoredDuringExecution: [{labelSelector: {matchLabels: labels('vault')},
           topologyKey: 'kubernetes.io/hostname'}]}},
-        initContainers: [structuredClone(initContainer)], containers: [main],
+        initContainers: [own(structuredClone(initContainer))], containers: [main],
         volumes: [...structuredClone(stateVolumes), {name: 'tls', secret: {secretName: 'heads-signer-tls', defaultMode: 288}},
           {name: 'heads-signer-token', secret: {secretName: 'heads-signer-token', defaultMode: 288, items: [{key: 'token', path: 'token'}]}}]}},
       minReadySeconds: 3, progressDeadlineSeconds: 180}});
