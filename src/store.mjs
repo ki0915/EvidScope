@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {createPublicKey,createHash} from 'node:crypto';
 import {canonical,digest,makeCheckpoint,verifyBundle,verifyCheckpoint,isEncryptedEvent,RECEIPT_FINGERPRINT} from './crypto.mjs';
 import {encryptEvent,openEvent} from './encryption.mjs';
-import {compareFingerprint,databaseEpochStore,epochOfRetainUntil,sealFingerprint} from './event-keys.mjs';
+import {compareFingerprint,databaseEpochStore,epochOfRetainUntil,eventKeyMaterial,sealFingerprint,storedEventKey} from './event-keys.mjs';
 import {checkActionRows,createActionProjectionReducer} from './action-integrity.mjs';
 import {checkEventProjection} from './event-integrity.mjs';
 import {checkDevelopmentRunProjection} from './development-integrity.mjs';
@@ -109,6 +109,7 @@ export class Store {
    ${tlogSchema}
    ${facetSchema}
    ${epochSchema}`);
+  this.eventKeyProvider=options.eventKeys||undefined;
   this.actionProjectionCache=new Map();this.rollbackActions=[];this.projectionMutationDepth=0;this.projectionMutationSerial=0;this.verifiedStateMaxAgeMs=options.verifiedStateMaxAgeMs??600000;
   this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;
    const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables,...facetTables,...epochTables]);
@@ -181,7 +182,8 @@ export class Store {
   const seq=(head?.seq||0)+1;
   if(type==='event'){
    const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
-   this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,encrypted.material));payload=encrypted.payload;
+   const stored=storedEventKey(this.eventKeyEpochs(),encrypted.payload,encrypted.material);
+   this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
   }
   const record={tenant,seq,previous:head?.hash||'0'.repeat(64),type,recordedAt:new Date().toISOString(),principal,payload};
   const hash=digest(record);this.projectionMutation(()=>this.db.prepare('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,canonical(record),hash));
@@ -196,11 +198,16 @@ export class Store {
  }
  // Epoch secrets: the configured keystore, else the tables in this database (event-keys.mjs).
  eventKeyEpochs(){return this.eventKeyProvider??=databaseEpochStore(this.db,{mutate:fn=>this.projectionMutation(fn)});}
+ // Attach the keystore before the first event is read or written (event-keystore.mjs attachEventKeystore).
+ useEventKeys(epochs){
+  if(this.eventKeyProvider&&this.eventKeyProvider!==epochs&&this.eventKeyProvider.kind!=='database')throw Error('Another event-key store is attached');
+  this.eventKeyProvider=epochs;
+ }
  // Source ingest replaces the raw-body digest by a tag keyed by the event's epoch (call inside the ingest transaction).
  sealEventFingerprint(tenant,event){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,this.eventRetention(tenant,event.receivedAt).keyEpoch,event.fingerprint)};}
  compareEventFingerprint(tenant,stored,rawDigest){return compareFingerprint(this.eventKeyEpochs(),tenant,stored,rawDigest);}
- // {event, salt} of one encrypted ledger event from its stored key material.
- _openEvent(payload,stored){return openEvent(payload,stored);}
+ // {event, salt} of one encrypted ledger event from its stored key (raw, or wrapped under its epoch with a keystore).
+ _openEvent(payload,stored){return openEvent(payload,eventKeyMaterial(this.eventKeyEpochs(),payload,stored));}
  // Read-only scope (GET requests): one deferred WAL read snapshot for the whole request under PRAGMA query_only, so every
  // write on this connection fails and Store.transaction inside it is a savepoint of that snapshot. What is verified is what
  // is served; other connections may commit meanwhile (the next read then fails closed). The scope owns the ledger context,

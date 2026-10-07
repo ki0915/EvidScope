@@ -12,6 +12,8 @@ export const PURPOSES=Object.freeze({
  governanceDocument:'evidscope/data-key/v1/governance-document',
  financeDocument:'evidscope/data-key/v1/finance-document',
  vaultBackup:'evidscope/data-key/v1/vault-backup',
+ // Seals the per-tenant key-epoch secrets in the event keystore (src/event-keystore.mjs); never derived from the signing key.
+ eventKeyEpoch:'evidscope/data-key/v1/event-key-epoch',
 });
 const LEGACY_LABELS=Object.freeze({
  governanceDocument:'evidscope-governance-documents-v1',

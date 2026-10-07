@@ -33,7 +33,7 @@ function fixture(t){
 
 test('HKDF purpose keys are distinct, key ids are stable, legacy derivation is byte-identical to v1',()=>{
  const root=randomBytes(32),{privateKey}=generateKeyPairSync('ed25519'),ring=createKeyring({signingKey:privateKey,dataKey:root});
- const keys=Object.keys(PURPOSES).map(p=>ring.key(p,ring.currentKeyId).toString('hex'));assert.equal(new Set(keys).size,3);
+ const keys=Object.keys(PURPOSES).map(p=>ring.key(p,ring.currentKeyId).toString('hex'));assert.equal(new Set(keys).size,4);
  assert.match(dataKeyId(root),/^dk1-[a-f0-9]{32}$/);assert.equal(dataKeyId(root),ring.currentKeyId);
  assert.deepEqual(ring.key('governanceDocument',ring.currentKeyId),Buffer.from(hkdfSync('sha256',root,Buffer.alloc(0),
   Buffer.from('evidscope/data-key/v1/governance-document'),32)));

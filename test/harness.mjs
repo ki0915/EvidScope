@@ -9,12 +9,14 @@ import {rmSync} from 'node:fs';
 // written for them or EVIDSCOPE_KEEP_TEST_RUNS=1. A failing file keeps every fixture for diagnosis.
 const fixtures=new Set();process.on('exit',code=>{if(code===0&&process.env.EVIDSCOPE_KEEP_TEST_RUNS!=='1')for(const dir of fixtures)try{rmSync(dir,{recursive:true,force:true});}catch{}});
 // beforeStart({dir,publicKey}) runs after the keys exist and before any server starts (e.g. to register a witness).
-export async function harness({vaultOnly=false,beforeStart}={}){
+// eventKeystore: run the vault with the event keystore that initialize() creates (EVENT_KEYSTORE_DIR, docs/event-key-wrapping.md).
+export async function harness({vaultOnly=false,beforeStart,eventKeystore=false}={}){
  mkdirSync('.test-runs',{recursive:true});const dir=mkdtempSync(resolve('.test-runs','run-')),config=initialize(dir),children=[],servers=[];let vault;
  fixtures.add(dir);
  if(beforeStart)await beforeStart({dir,publicKey:readFileSync(join(dir,'trust-anchor.pem'),'utf8')});
  const host=process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1';if(!['127.0.0.1','::1'].includes(host))throw Error('Tests require numeric loopback host');const urlHost=host==='::1'?'[::1]':host;
- const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),DATA_KEY_FILE:join(dir,'data-encryption.key'),HOST:host,PORT:'0'};
+ const env={DATA_DIR:join(dir,'data'),CONFIG_FILE:join(dir,'config.json'),SIGNING_KEY_FILE:join(dir,'signing-private.pem'),DATA_KEY_FILE:join(dir,'data-encryption.key'),HOST:host,PORT:'0',
+  ...(eventKeystore?{EVENT_KEYSTORE_DIR:join(dir,'event-keystore')}:{})};
  const redact=value=>{
   let text=String(value);for(const principal of config.principals)if(principal.token)text=text.split(principal.token).join('[REDACTED]');return text;
  };

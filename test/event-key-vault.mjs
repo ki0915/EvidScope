@@ -1,7 +1,7 @@
 // In-process vault helpers for the event-key tests (round 2, audit S3). createService has the same signature on the base commit.
 import assert from 'node:assert/strict';
 import {createPrivateKey,generateKeyPairSync,randomUUID} from 'node:crypto';
-import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -40,7 +40,7 @@ export function vault(t,{dir=mkdtempSync(join(tmpdir(),'evidscope-s3-')),key=gen
 // The base-commit vault in test/fixtures/event-keys-base-9177cee.json (see make-event-keys-base-fixture.mjs), restored to a new directory.
 export function restoreBaseFixture(t,{dir=mkdtempSync(join(tmpdir(),'evidscope-s3-base-'))}={}){
  const fixture=JSON.parse(readFileSync(new URL('./fixtures/event-keys-base-9177cee.json',import.meta.url),'utf8'));
- writeFileSync(join(dir,'evidence.db'),gunzipSync(Buffer.from(fixture.evidenceDbGzipBase64,'base64')),{mode:0o600});
+ mkdirSync(dir,{recursive:true,mode:0o700});writeFileSync(join(dir,'evidence.db'),gunzipSync(Buffer.from(fixture.evidenceDbGzipBase64,'base64')),{mode:0o600});
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  return {fixture,dir,key:createPrivateKey({key:Buffer.from(fixture.signingKeyPkcs8Base64,'base64'),format:'der',type:'pkcs8'})};
 }
