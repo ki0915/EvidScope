@@ -101,6 +101,11 @@ node scripts/verify.mjs export.json trust-anchor.pem --witness "<위트니스 vk
 - 연결: Unix 소켓(기본 권한 600), Windows named pipe, loopback TCP, TLS TCP. TCP와 named pipe는 32자 이상의 bearer token 파일이 필수이고
   loopback이 아닌 주소는 TLS가 필수입니다. 요청은 기본 8 MiB, 서명 분당 60회(버스트 10), 요청 분당 600회로 제한하며, 모든 서명은
   origin에 상관없이 한 줄로 직렬화합니다.
+- TCP 연결은 token을 보내기 전까지 인증되지 않으므로, 주소 하나가 전체 64개 연결 중 최대 8개만 열 수 있고(`maxConnectionsPerAddress`, 넘으면
+  바로 끊고 `counters.refusedConnections`에 셉니다) TLS 핸드셰이크는 5초 안에 끝나야 합니다(`handshakeTimeoutMs`). 2라운드에는 한 주소가
+  핸드셰이크 없이 소켓 64개를 열어 두면 기본 120초 동안 vault가 서명기에 닿지 못했습니다(3라운드 재감사, `test/signer-tls-slots.test.mjs`).
+  주소를 여럿 가진 공격자나 같은 주소로 보이는 NAT 뒤의 접속은 이 한도로 구별하지 못하므로, 서명기 포트는 NetworkPolicy·방화벽으로
+  vault만 닿게 합니다.
 - 키 백엔드는 시작할 때 고정 벡터에 서명하고 설정된 공개 키로 검증합니다. 다른 키이거나 prehash 변형이면 시작하지 않습니다.
 - 서명기에 연결할 수 있는 사람은 vault 대신 잎을 보낼 수 있습니다. 규칙을 지키는 성장 잎이라도 vault 원장과 맞지 않으면 vault가 그 잎을
   `fork`로 보고 멈추므로, 소켓 권한과 token은 vault만 갖게 합니다. token 파일과 키 파일은 소유자가 읽는 사용자이면 600이어야 합니다.

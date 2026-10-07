@@ -18,7 +18,7 @@ export const AUTHORIZATION_FORMAT = 'evidscope-signer-authorization-v1';
 export const AUDIT_FORMAT = 'evidscope-signer-audit-v1';
 export const AUTHORIZATION_KINDS = ['genesis', 'handover', 'epoch'];
 export const DEFAULT_LIMITS = Object.freeze({maxRequestBytes: 8 * 1024 * 1024, maxEntries: 100000, signsPerMinute: 60, signBurst: 10,
-  requestsPerMinute: 600, requestBurst: 60});
+  requestsPerMinute: 600, requestBurst: 60, handshakeTimeoutMs: 5000, maxConnectionsPerAddress: 8});
 const HEX64 = /^[a-f0-9]{64}$/, LOG_ID = /^[a-f0-9]{32}$/, AUTH_ID = /^[a-f0-9]{32}$/, MAX_PROOF = 128;
 const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const hex = buf => Buffer.from(buf).toString('hex');
@@ -509,7 +509,7 @@ export async function startSignerServer({stateDir, backend, listen, token = null
   await selfTest(backend);
   const core = openSigner({stateDir, backend, limits, now}), max = {...DEFAULT_LIMITS, ...limits}, expected = token && tokenDigest(token);
   const signBucket = bucket(max.signsPerMinute, max.signBurst, now), requestBucket = bucket(max.requestsPerMinute, max.requestBurst, now);
-  const counters = {unauthorized: 0, rateLimited: 0, tooLarge: 0};
+  const counters = {unauthorized: 0, rateLimited: 0, tooLarge: 0, refusedConnections: 0};
   const send = (res, status, body, headers = {}) => {
     const text = JSON.stringify(body);
     res.writeHead(status, {'content-type': 'application/json', 'cache-control': 'no-store', ...headers}).end(text);
@@ -559,8 +559,20 @@ export async function startSignerServer({stateDir, backend, listen, token = null
       if (!res.headersSent) send(res, 500, {status: 'error', reason: 'internal'});
     }
   };
-  const server = tls ? https.createServer({cert: tls.cert, key: tls.key, minVersion: 'TLSv1.2'}, handler) : http.createServer(handler);
+  const server = tls ? https.createServer({cert: tls.cert, key: tls.key, minVersion: 'TLSv1.2', handshakeTimeout: max.handshakeTimeoutMs}, handler)
+    : http.createServer(handler);
   Object.assign(server, {requestTimeout: 15000, headersTimeout: 5000, keepAliveTimeout: 5000, maxHeadersCount: 50, maxConnections: 64});
+  // A TCP peer is unauthenticated until its request carries the token: one address holds at most a few of the 64 connections (and a
+  // TLS handshake must finish within handshakeTimeoutMs), so a peer that opens sockets and sends nothing cannot lock the vault out.
+  if (tcp) {
+    const open = new Map();
+    server.prependListener('connection', socket => {
+      const from = socket.remoteAddress, n = open.get(from) ?? 0;
+      if (n >= max.maxConnectionsPerAddress) { counters.refusedConnections++; return socket.destroy(); }
+      open.set(from, n + 1);
+      socket.once('close', () => { if (open.get(from) > 1) open.set(from, open.get(from) - 1); else open.delete(from); });
+    });
+  }
   const target = listen.socket ?? listen.pipe;
   if (listen.socket !== undefined && lstatSync(listen.socket, {throwIfNoEntry: false})?.isSocket()) rmSync(listen.socket);
   try {
