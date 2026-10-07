@@ -62,7 +62,7 @@ ssh-agent의 하드웨어 키·클라우드 KMS를 씁니다.
 
 | 값 | 조건 | 상대할 수 있는 공격자 |
 |---|---|---|
-| `vault_host` | 검증자가 `--heads-key`로 고정한 서명기 키가 서명한 heads 체크포인트에 `maxStalenessSeconds` 안의 정족수 공동서명이 있고, `--origin-base`를 고정했다면 그 origin base인 경우 | vault 호스트 전체(vault 키·DB)를 가진 공격자도 이 tenant를 그 시각까지 위트니스가 본 heads 항목보다 뒤로 되돌린 내보내기를 보일 수 없습니다. |
+| `vault_host` | 검증자가 `--heads-key`로 고정한 서명기 키가 서명한 heads 체크포인트에 `maxStalenessSeconds` 안의 정족수 공동서명이 있고, 그 체크포인트가 `--origin-base`로 고정한 origin base의 heads origin인 경우 | vault 호스트 전체(vault 키·DB)를 가진 공격자도 이 tenant를 그 시각까지 위트니스가 본 heads 항목보다 뒤로 되돌린 내보내기를 보일 수 없습니다. |
 | `signing_key_holder` | 고정한 origin base의 tenant 로그 공동서명이 신선한 경우 | vault 서명 키를 가진 공격자의 tenant 되돌리기 |
 | `database_tamper` | heads 공동서명만 신선한 경우 | DB만 조작하는 공격자 |
 
@@ -70,9 +70,13 @@ ssh-agent의 하드웨어 키·클라우드 KMS를 씁니다.
   보고하고 `heads.signedBy: "heads_key"`, `heads.headsKeyPinned: false`로 밝힙니다.
 - 고정한 키와 다른 키로 서명한 heads 체크포인트는 거부합니다. vault 키로 서명한 예전 체크포인트는 예전과 같이 검증하며 `signedBy: "vault_key"`로
   보고합니다. 키를 고정하지 않은 검증은 vault 키 체크포인트에 대해 이전과 같은 결과를 냅니다.
-- `--require-heads-signer`는 결과가 `vault_host`가 아니면 이유와 함께 실패합니다.
-- `--origin-base`를 고정하지 않으면 `vault_host`는 서명기가 서명한 어느 heads origin에도 나옵니다. 복구 epoch로 은퇴한 origin의
-  공동서명이 계속 갱신되면 epoch 이전 내보내기도 `vault_host`가 되므로([복구 epoch](#복구-epoch) 7단계), `--origin-base`를 함께 고정합니다.
+- `--require-heads-signer`는 결과가 `vault_host`가 아니면 이유와 함께 실패합니다. `--origin-base` 없이 주면 사용법 오류입니다
+  (`evidscope-verify`는 종료 코드 2, `scripts/verify*.mjs`는 오류 메시지와 종료 코드 1).
+- `vault_host`에는 `--origin-base` 고정이 필요합니다. 위트니스는 이미 본 체크포인트를 다시 받으면 새 시각으로 공동서명하므로, 복구 epoch로
+  은퇴한 heads origin의 마지막 체크포인트도 계속 신선해질 수 있습니다. 2라운드 검증기는 base를 고정하지 않아도 `vault_host`를 주었기 때문에
+  epoch 이전 내보내기가 그대로 `vault_host`로 통과했습니다(3라운드 재감사, `test/heads-signer-retired-origin.test.mjs`). 이제 base를 고정하지
+  않으면 그 아래에서 성립하는 수준(heads 공동서명만 신선하면 `database_tamper`)을 보고합니다. 예전 base를 계속 고정한 검증자는 오프라인으로
+  구별할 수 없으므로 [복구 epoch](#복구-epoch) 6·7단계를 따릅니다.
 
 ```powershell
 node scripts/signer.mjs vkey --state-dir /signer/state --origin-base evidscope.example.com/prod   # 검증자에게 전달할 heads 키
@@ -257,8 +261,8 @@ node scripts/signer.mjs init --state-dir /signer/state --backend command --publi
 7. 새 origin의 첫 서명기 체크포인트가 공동서명되면 위트니스마다 예전 heads origin에서 서명기 키를 지웁니다
    (`witnessctl del-key -origin OLD/heads -key <예전 origin 이름의 서명기 vkey>`, 개발용 위트니스는 `scripts/witness.mjs del-key`).
    위트니스는 이미 본 크기의 체크포인트를 다시 받으면 새 시각으로 공동서명하므로, 지우지 않으면 vault 호스트 장악자가 은퇴한 origin의
-   마지막 체크포인트를 언제든 신선하게 만들어 epoch 이전의 내보내기를 `--origin-base`를 고정하지 않았거나 아직 예전 base를 고정한
-   검증자에게 `vault_host`로 보일 수 있습니다(3라운드 재감사에서 재현). 지운 뒤 `maxStalenessSeconds`(기본 24시간)가 지나면 예전
+   마지막 체크포인트를 언제든 신선하게 만들어 epoch 이전의 내보내기를 아직 예전 base를 고정한 검증자에게 `vault_host`로 보일 수
+   있습니다(3라운드 재감사에서 재현, base를 고정하지 않은 검증은 이제 `vault_host`를 주지 않습니다). 지운 뒤 `maxStalenessSeconds`(기본 24시간)가 지나면 예전
    origin의 앵커는 더 이상 신선하지 않습니다.
 
 서명기가 예전 origin을 서명한 적이 없으면(핸드오버 이전 백업 등) `authorize-epoch` 대신 `authorize-genesis --origin-base NEW`로 새 origin을

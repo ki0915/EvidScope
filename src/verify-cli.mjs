@@ -8,7 +8,7 @@ import {replayEvaluations} from './policy-replay.mjs';
 import {unpackResponse, verifyAttestation, verifyRecordReceipt} from './receipts.mjs';
 import {verifyCaseReport} from './report-verifier.mjs';
 import {sha256Hex} from './dsse.mjs';
-import {transparencyFlags, transparencyOptions} from './verify-options.mjs';
+import {transparencyFlags, transparencyOptions, transparencyUsage} from './verify-options.mjs';
 
 const MiB = 1024 * 1024;
 export const USAGE = `Usage:
@@ -19,7 +19,7 @@ export const USAGE = `Usage:
                    [--quorum N] [--origin-base BASE]
   evidscope-verify unpack RESPONSE.json [--out DIR]
 FLAGS (transparency, opt-in): --witness VKEY (repeatable) --quorum N --origin-base BASE --max-staleness SECONDS
-  --require-transparency --require-tenant-witness --heads-key VKEY (repeatable, the heads signer's key) --require-heads-signer
+  --require-transparency --require-tenant-witness --heads-key VKEY (repeatable, the heads signer's key) --require-heads-signer (needs --origin-base)
 Exit status: 0 verified, 1 not verified, 2 usage error.`;
 
 class UsageError extends Error {}
@@ -40,6 +40,8 @@ const parse = (args, options, max) => {
   try {
     const r = parseArgs({args, allowPositionals: true, strict: true, options});
     if (r.positionals.length > max) throw new UsageError('Too many arguments');
+    const usage = transparencyUsage(r.values);
+    if (usage) throw new UsageError(usage);
     return r;
   } catch (error) { throw error instanceof UsageError ? error : new UsageError(error.message); }
 };
