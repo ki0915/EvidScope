@@ -166,7 +166,7 @@ Go 독립 검증기로 보정했습니다. RFC 9942 COSE 영수증은 CBOR·COSE
 
 | 차별점 | 2라운드 결과 |
 |---|---|
-| D1 되돌리기·삭제 거부 로그 | heads 로그 서명 키를 vault 밖의 [heads 서명기](signer.md)로 옮겼습니다. 서명기는 루트를 스스로 계산하고 tenant 로그가 빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로 고정한 검증자는 새 수준 `rollbackCheckedAgainst:"vault_host"`를 받습니다 |
+| D1 되돌리기·삭제 거부 로그 | heads 로그 서명 키를 vault 밖의 [heads 서명기](signer.md)로 옮겼습니다. 서명기는 루트를 스스로 계산하고 tenant 로그가 빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로 고정한 검증자는 새 수준 `rollbackCheckedAgainst:"vault_host"`를 받습니다(3라운드부터 `--origin-base` 고정도 필요) |
 | D2 권한에 묶인 증거 사슬 | 내보내기·사건 보고서를 `?attest=intoto`로 받으면 같은 바이트를 subject로 하는 DSSE 증명이 함께 나오고, `GET /api/receipts/record?seq=N`이 레코드 하나의 `c2sp.org/tlog-proof@v1`을 냅니다. 의존성 없는 `evidscope-verify` 묶음을 따로 배포할 수 있습니다([표준 영수증](receipts.md)) |
 | D3 한국 규제 증거 묶음 | 국내 접속으로 고시를 다시 확인했습니다(아래). ISMS-P 인증기준 101개 항목과 [항목 단위 참고 정렬](isms-p-alignment.md)을 만들어 27개 항목에는 증거가 닿는 확인사항 위치와 사람이 할 일을, 74개에는 제외 사유를 적었습니다. `scripts/isms-p-report.mjs`는 내보내기를 먼저 검증한 뒤 항목별 증거 건수·기간을 뽑습니다. 증거가 있다는 것이 기준 충족 판정은 아닙니다 |
 | D4 검증 가능한 최소화·파기 | 원장에 salt를 넣은 커밋먼트만 서명하고 이벤트 키를 키 epoch 비밀로 감쌌습니다. epoch를 파기하면 모든 DB 사본과 vault 백업에서 그 기간을 읽을 수 없습니다([이벤트 키 감싸기](event-key-wrapping.md), 감사 S3) |

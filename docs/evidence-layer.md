@@ -85,7 +85,7 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   (DB만 조작하는 공격자 S1 기준)로 표시합니다. 선택 기능 `witnessTenantLogs`를 켜면 tenant 로그마다 위트니스가 되돌리기를 거부하고, 고정한 origin
   base에서 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 표시합니다(`--require-tenant-witness`로 요구).
 - **vault 호스트 범위(2라운드):** heads 잎을 vault 밖의 [heads 서명기](signer.md)가 서명하게 하면, 서명기가 루트를 스스로 계산하고 tenant 로그가
-  빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로 고정한 검증자는
+  빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로, origin base를 `--origin-base`로 고정한 검증자는
   `rollbackCheckedAgainst:"vault_host"`를 받으며, 이는 vault 호스트 전체를 장악한 공격자도 위트니스가 본 heads 항목보다 tenant를 되돌린 내보내기를
   보일 수 없다는 뜻입니다. 실제 litewitness 시험에서 시작 커밋은 vault 키로 만든 되돌리기 잎에 공동서명을 받았고(200), 서명기를 쓰면 위트니스가 403,
   서명기가 422 rollback으로 거부합니다. 서명기는 설정에 `signer`를 넣을 때만 켜집니다.

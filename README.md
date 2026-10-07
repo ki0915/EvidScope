@@ -18,7 +18,7 @@
 >
 > **개선 1라운드(2026-10-06):** 적대적 감사 결과에 따라 "SIEM" 표현을 내리고 증거 계층으로 재정의했습니다. 수집은 OpenTelemetry 표준으로, 변조 증거는 C2SP 투명성 로그와 독립 위트니스로, 경보는 OCSF로 바꿨습니다. 변경 내용과 다음 라운드 후보는 [개선 라운드 기록](docs/improvement-rounds.md)에 있습니다.
 >
-> **개선 2라운드(2026-10-07):** heads 로그 서명 키를 vault 밖의 [heads 서명기](docs/signer.md)로 옮길 수 있게 해, 서명기를 켜고 검증자가 그 키를 고정하면 vault 호스트를 장악한 공격자도 tenant를 되돌린 기록에 위트니스 공동서명을 받을 수 없게 했고, 원장에는 salt를 넣은 커밋먼트만 남기고 이벤트 키를 [키 epoch로 감싸](docs/event-key-wrapping.md) 파기가 백업까지 미치게 했습니다. 내보내기는 DSSE·in-toto 증명과 C2SP `tlog-proof` [영수증](docs/receipts.md)으로 받고 따로 배포하는 `evidscope-verify`로 확인합니다. ISMS-P 인증기준 101개 항목과의 [참고 정렬](docs/isms-p-alignment.md)을 고시 원문으로 고정했습니다. 인증 판정은 아닙니다.
+> **개선 2라운드(2026-10-07):** heads 로그 서명 키를 vault 밖의 [heads 서명기](docs/signer.md)로 옮길 수 있게 해, 서명기를 켜고 검증자가 그 키와 origin base를 고정하면 vault 호스트를 장악한 공격자도 tenant를 되돌린 기록에 위트니스 공동서명을 받을 수 없게 했고, 원장에는 salt를 넣은 커밋먼트만 남기고 이벤트 키를 [키 epoch로 감싸](docs/event-key-wrapping.md) 파기가 백업까지 미치게 했습니다. 내보내기는 DSSE·in-toto 증명과 C2SP `tlog-proof` [영수증](docs/receipts.md)으로 받고 따로 배포하는 `evidscope-verify`로 확인합니다. ISMS-P 인증기준 101개 항목과의 [참고 정렬](docs/isms-p-alignment.md)을 고시 원문으로 고정했습니다. 인증 판정은 아닙니다.
 
 ## 목적과 대상
 
