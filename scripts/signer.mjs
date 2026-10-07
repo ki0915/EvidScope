@@ -11,6 +11,7 @@
 //   node scripts/signer.mjs head   --state-dir DIR --origin-base BASE [--out FILE]     (restore --signer-head)
 //   node scripts/signer.mjs authorize-genesis  --state-dir DIR --origin-base BASE
 //   node scripts/signer.mjs authorize-handover --state-dir DIR --checkpoint FILE --vault-key VAULT_PUBLIC.pem [--witness VKEY]... [--quorum N]
+//                                             [--max-age SECONDS]   (FILE: scripts/transparency.mjs heads-checkpoint of the stopped vault)
 //   node scripts/signer.mjs authorize-epoch    --state-dir DIR --from-base OLD --to-base NEW [--accept-loss REASON] [--restored FILE]
 //                                             [--drop-log LOG_ID]...
 //   node scripts/signer.mjs authorizations --state-dir DIR | revoke --state-dir DIR --id ID
@@ -39,7 +40,8 @@ const OPTIONS = {
   pipe: {type: 'string'}, host: {type: 'string'}, port: {type: 'string'}, 'token-file': {type: 'string'}, 'tls-cert': {type: 'string'},
   'tls-key': {type: 'string'}, 'signs-per-minute': {type: 'string'}, 'max-request-bytes': {type: 'string'}, 'max-entries': {type: 'string'},
   'origin-base': {type: 'string'}, checkpoint: {type: 'string'}, 'vault-key': {type: 'string'}, witness: {type: 'string', multiple: true},
-  quorum: {type: 'string'}, 'from-base': {type: 'string'}, 'to-base': {type: 'string'}, 'accept-loss': {type: 'string'}, restored: {type: 'string'},
+  quorum: {type: 'string'}, 'max-age': {type: 'string'}, 'from-base': {type: 'string'}, 'to-base': {type: 'string'}, 'accept-loss': {type: 'string'},
+  restored: {type: 'string'},
   'drop-log': {type: 'string', multiple: true}, id: {type: 'string'}, verify: {type: 'boolean'}, note: {type: 'string'},
 };
 const need = (values, ...names) => { for (const n of names) if (values[n] === undefined) throw Error(`--${n} is required`); };
@@ -66,14 +68,16 @@ function readCheckpointFile(file) {
   try { const j = JSON.parse(text); if (typeof j?.checkpoint === 'string') return j.checkpoint; } catch { /* a bare note */ }
   return text;
 }
-export function handoverAuthorization({stateDir, checkpoint, vaultKey, witnesses = [], quorum, now}) {
+// Only cosignatures made within maxAgeSeconds count: an old cosigned checkpoint may lie behind what the witnesses saw since.
+export function handoverAuthorization({stateDir, checkpoint, vaultKey, witnesses = [], quorum, maxAgeSeconds = 86400, now = () => Date.now()}) {
   const origin = T.parseCheckpoint(T.noteText(checkpoint)).origin, logV = T.noteVerifier(T.logVkey(origin, vaultKey));
   const cosigners = witnesses.map(w => T.cosignatureVerifier(w)), opened = T.openNote(checkpoint, [logV, ...cosigners]), c = T.parseCheckpoint(opened.text);
   if (!opened.sigs.some(s => s.name === logV.name && s.id === logV.id.toString('hex'))) throw Error('The checkpoint is not signed by the vault key');
   if (!origin.endsWith('/heads') || c.size < 1) throw Error('The checkpoint is not a non-empty heads checkpoint');
-  const required = quorum ?? (witnesses.length ? 1 : 0);
-  const got = opened.sigs.filter(s => cosigners.some(v => v.name === s.name && v.id.toString('hex') === s.id)).length;
-  if (got < required) throw Error(`The checkpoint carries ${got} of ${required} required witness cosignatures`);
+  const required = quorum ?? (witnesses.length ? 1 : 0), t = Math.floor(now() / 1000);
+  const got = opened.sigs.filter(s => cosigners.some(v => v.name === s.name && v.id.toString('hex') === s.id)
+    && Math.abs(t - T.cosignatureTimestamp(s.raw)) <= maxAgeSeconds).length;
+  if (got < required) throw Error(`The checkpoint carries ${got} of ${required} required witness cosignatures made in the last ${maxAgeSeconds} s`);
   const state = readSignerState(stateDir);
   if (state.origins[origin]) throw Error(`The signer already signs ${origin}`);
   return createAuthorization(stateDir, {kind: 'handover', origin, predecessor: {origin, size: c.size, root: c.root.toString('hex'), key: logV.vkey,
@@ -88,16 +92,18 @@ export function epochAuthorization({stateDir, fromBase, toBase, acceptLoss, rest
   let bound = null;
   if (restored !== undefined) {
     bound = {};
-    for (const [id, r] of Object.entries(restored.restored ?? restored)) {
-      if (!ids.has(id)) throw Error(`restored tenant log ${id} is not a tenant log of ${from}`);
-      bound[id] = {size: r.size, root: r.root};
-    }
+    // A restored log the predecessor never named (it had no anchored records) needs no claim.
+    for (const [id, r] of Object.entries(restored.restored ?? restored)) if (ids.has(id)) bound[id] = {size: r.size, root: r.root};
     if (restored.fromBase !== undefined && (restored.fromBase !== fromBase || restored.toBase !== toBase)) {
       throw Error('The restored file names other origin bases');
     }
   }
-  return createAuthorization(stateDir, {kind: 'epoch', origin: to, predecessor: {origin: from, size: p.size, root: p.root},
+  const auth = createAuthorization(stateDir, {kind: 'epoch', origin: to, predecessor: {origin: from, size: p.size, root: p.root},
     acceptLoss: acceptLoss === undefined ? null : {reason: acceptLoss}, dropLogs: [...dropLogs].sort(), restored: bound}, {now});
+  // What the operator just accepted: every log whose restored prefix is shorter than the size the signer signed loses the rest.
+  const losses = p.entries.map(e => ({log: e.log.slice(fromBase.length + 3), signedSize: e.size}))
+    .map(l => ({...l, restoredSize: bound?.[l.log]?.size})).filter(l => l.restoredSize !== undefined && l.restoredSize < l.signedSize);
+  return {...auth, losses};
 }
 
 async function main(argv) {
@@ -182,7 +188,8 @@ async function main(argv) {
       need(values, 'state-dir', 'checkpoint', 'vault-key');
       return print(handoverAuthorization({stateDir: dir, checkpoint: readCheckpointFile(values.checkpoint),
         vaultKey: readEd25519PublicKey(resolve(values['vault-key'])), witnesses: values.witness ?? [],
-        ...(values.quorum ? {quorum: int(values.quorum, '--quorum')} : {})}));
+        ...(values.quorum ? {quorum: int(values.quorum, '--quorum')} : {}),
+        ...(values['max-age'] ? {maxAgeSeconds: int(values['max-age'], '--max-age')} : {})}));
     case 'authorize-epoch':
       need(values, 'state-dir', 'from-base', 'to-base');
       return print(epochAuthorization({stateDir: dir, fromBase: values['from-base'], toBase: values['to-base'], acceptLoss: values['accept-loss'],

@@ -166,7 +166,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
     }
    }
   });
-  transparency=createTransparency({store,config:tlogConfig,key,startup:tlogStartup,probe:prepared?.probe,fetchImpl:prepared?.fetchImpl,beforePublish:()=>accessLog.sealAll('checkpoint_publish')});
+  transparency=createTransparency({store,config:tlogConfig,key,startup:tlogStartup,probe:prepared?.probe,fetchImpl:prepared?.fetchImpl,signerClient:prepared?.signerClient,beforePublish:()=>accessLog.sealAll('checkpoint_publish')});
  }catch(error){store.close();throw error;}
 
  function report(p,systemId){

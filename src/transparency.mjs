@@ -5,6 +5,8 @@ import {basename, dirname, join, resolve} from 'node:path';
 import {createHash, createPublicKey, randomBytes} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import * as T from './tlog.mjs';
+import {readEd25519PublicKey} from './signer-backends.mjs';
+import {createSignerClient, readSignerToken} from './signer-client.mjs';
 
 export const TRANSPARENCY_MODES = ['off', 'monitor', 'enforce'];
 // required: the vault does not start until the witness quorum answered the startup probe (default in enforce mode).
@@ -35,7 +37,7 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
   if (raw === undefined || raw === null) return OFF;
   if (typeof raw !== 'object' || Array.isArray(raw)) throw Error('Transparency config must be a JSON object');
   const allowed = ['origin', 'witnesses', 'quorum', 'intervalMs', 'maxStalenessSeconds', 'refreshSeconds', 'timeoutMs', 'mode', 'pinFile', 'startupProbe',
-    'witnessTenantLogs'];
+    'witnessTenantLogs', 'signer'];
   for (const k of Object.keys(raw)) if (!allowed.includes(k)) throw Error('Unknown transparency config field: ' + k);
   const mode = raw.mode ?? 'monitor';
   if (!TRANSPARENCY_MODES.includes(mode)) throw Error('Transparency mode must be off, monitor or enforce');
@@ -67,6 +69,7 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
     throw Error(`Transparency pinFile (or TRANSPARENCY_PIN_FILE) is required: the data directory ${resolve(dataDir)} is a mount point, `
       + 'so the default pin path beside it would live on another (often read-only or ephemeral) filesystem');
   }
+  const signer = raw.signer === undefined ? null : normalizeSigner(raw.signer, T.headsOrigin(base));
   return Object.freeze({
     mode, base, headsOrigin: T.headsOrigin(base), witnesses,
     quorum: int(raw.quorum, witnesses.length ? 1 : 0, 0, witnesses.length, 'quorum'),
@@ -77,8 +80,70 @@ export function normalizeTransparencyConfig(raw, {dataDir, env = {}} = {}) {
     pinFile: resolve(env.TRANSPARENCY_PIN_FILE || raw.pinFile || transparencyPinPath(dataDir)),
     startupProbe,
     witnessTenantLogs: raw.witnessTenantLogs === true,
+    ...(signer ? {signer} : {}),
   });
 }
+// A heads signer (src/signer.mjs) signs the heads log instead of the vault key: publicKeyFile is its key, which verifiers pin
+// (--heads-key) and witnesses register for the heads origin; previousPublicKeyFiles keep checkpoints of rotated keys valid.
+const SIGNER_FIELDS = ['socket', 'pipe', 'url', 'tokenFile', 'publicKeyFile', 'previousPublicKeyFiles', 'caFile', 'timeoutMs'];
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '[::1]', 'localhost']);
+function normalizeSigner(raw, headsOrigin) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw Error('Transparency signer must be a JSON object');
+  for (const k of Object.keys(raw)) if (!SIGNER_FIELDS.includes(k)) throw Error('Unknown transparency signer field: ' + k);
+  const where = ['socket', 'pipe', 'url'].filter(k => raw[k] !== undefined);
+  if (where.length !== 1 || typeof raw[where[0]] !== 'string' || !raw[where[0]]) throw Error('Transparency signer needs exactly one of socket, pipe or url');
+  if (raw.url !== undefined) {
+    const u = new URL(raw.url);
+    if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || u.pathname !== '/') {
+      throw Error('Transparency signer url must be a plain http(s) origin');
+    }
+    if (u.protocol === 'http:' && !LOOPBACK_HOSTS.has(u.hostname)) throw Error('Transparency signer url must use https off loopback');
+  }
+  if (raw.socket === undefined && typeof raw.tokenFile !== 'string') throw Error('Transparency signer over TCP or a named pipe needs tokenFile');
+  for (const k of ['tokenFile', 'publicKeyFile', 'caFile']) {
+    if (raw[k] !== undefined && typeof raw[k] !== 'string') throw Error(`Transparency signer ${k} must be a path`);
+  }
+  if (typeof raw.publicKeyFile !== 'string') throw Error('Transparency signer needs publicKeyFile (the heads key that verifiers pin)');
+  const previous = raw.previousPublicKeyFiles ?? [];
+  if (!Array.isArray(previous) || !previous.every(f => typeof f === 'string')) {
+    throw Error('Transparency signer previousPublicKeyFiles must be a list of paths');
+  }
+  const timeoutMs = raw.timeoutMs ?? 10000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60000) throw Error('Transparency signer timeoutMs must be an integer in [100, 60000]');
+  const publicKey = readEd25519PublicKey(resolve(raw.publicKeyFile)), previousKeys = previous.map(f => readEd25519PublicKey(resolve(f)));
+  const pipe = raw.pipe === undefined ? undefined : raw.pipe.startsWith('\\\\') ? raw.pipe : `\\\\.\\pipe\\${raw.pipe}`;
+  return Object.freeze({...(raw.socket !== undefined ? {socket: resolve(raw.socket)} : pipe ? {pipe} : {url: new URL(raw.url).origin}),
+    ...(raw.tokenFile !== undefined ? {tokenFile: resolve(raw.tokenFile)} : {}), ...(raw.caFile !== undefined ? {caFile: resolve(raw.caFile)} : {}),
+    timeoutMs, publicKey, previousKeys: Object.freeze(previousKeys), vkey: T.logVkey(headsOrigin, publicKey)});
+}
+// The heads signer keys a raw transparency config names (none without a signer), for callers that hold only the raw config.
+export function signerKeysOf(raw) {
+  if (!raw?.signer) return [];
+  const s = normalizeSigner(raw.signer, T.headsOrigin(T.validateOriginBase(raw.origin)));
+  return [s.publicKey, ...s.previousKeys];
+}
+export function signerClientFor(config) {
+  const s = config.signer;
+  return createSignerClient({...(s.socket ? {socket: s.socket} : s.pipe ? {pipe: s.pipe} : {url: s.url}), timeoutMs: s.timeoutMs,
+    token: s.tokenFile ? readSignerToken(s.tokenFile) : null, ca: s.caFile ? readFileSync(s.caFile) : null});
+}
+// Keys that may sign checkpoints of a heads origin: the vault key (every heads log without a signer, and the checkpoints before
+// a deployment moved to one) and, with a heads signer, its current and previous keys.
+const headsKeysOf = (publicKey, config) => [publicKey, ...(config?.signer ? [config.signer.publicKey, ...config.signer.previousKeys] : [])];
+export function headsVerifiers(origin, publicKey, config) {
+  const vkeys = [...new Set(headsKeysOf(publicKey, config).map(k => T.logVkey(origin, k)))];
+  return vkeys.map(v => T.noteVerifier(v));
+}
+const signerVerifiers = (origin, config) => (config?.signer ? [config.signer.publicKey, ...config.signer.previousKeys] : [])
+  .map(k => T.noteVerifier(T.logVkey(origin, k)));
+// The verifier of the key that signed `note` among `verifiers` (null when none of them did).
+function signedWith(note, verifiers) {
+  try {
+    const sigs = T.openNote(note, verifiers).sigs;
+    return verifiers.find(v => sigs.some(s => s.name === v.name && s.id === v.id.toString('hex'))) ?? null;
+  } catch { return null; }
+}
+const asList = v => (Array.isArray(v) ? v : [v]);
 // Lives outside config.json so witness changes never alter the restore-bound config hash.
 export function loadTransparencyConfig({dataDir, env = process.env} = {}) {
   const file = env.TRANSPARENCY_CONFIG_FILE;
@@ -101,13 +166,13 @@ function readPinFile(file) {
   return pin;
 }
 // A pin holds a heads checkpoint signed by this vault plus the cosignatures known when it was written.
-export function openPin(pin, origin, publicKey, witnesses = []) {
+export function openPin(pin, origin, publicKey, witnesses = [], config = null) {
   if (pin?.format !== PIN_FORMAT || pin.origin !== origin || typeof pin.checkpoint !== 'string') {
     throw Error('Transparency pin file invalid or bound to another origin');
   }
-  const logV = T.noteVerifier(T.logVkey(origin, publicKey));
-  const opened = T.openNote(pin.checkpoint, [logV, ...witnesses.map(w => w.verifier)]), c = T.parseCheckpoint(opened.text);
-  if (!opened.sigs.some(s => s.name === logV.name && s.id === logV.id.toString('hex')) || c.origin !== origin) {
+  const logVs = headsVerifiers(origin, publicKey, config);
+  const opened = T.openNote(pin.checkpoint, [...logVs, ...witnesses.map(w => w.verifier)]), c = T.parseCheckpoint(opened.text);
+  if (!opened.sigs.some(s => logVs.some(v => s.name === v.name && s.id === v.id.toString('hex'))) || c.origin !== origin) {
     throw Error('Transparency pin is not a heads checkpoint signed by this vault');
   }
   return {size: c.size, root: c.root, note: pin.checkpoint, cosignatures: opened.sigs.length - 1};
@@ -180,7 +245,7 @@ export function verifyHeadsRow(row, origin, logV) {
   if (leaf.length !== 32 || !T.headsLeafHash(content).equals(leaf)) {
     throw kinded('inconsistent', 'Truncated or inconsistent heads log: leaf differs from its entries');
   }
-  const peaks = T.frontierAppend(peaksBefore, row.idx, leaf), root = T.frontierRoot(peaks), c = T.parseCheckpoint(T.openNote(row.note, [logV]).text);
+  const peaks = T.frontierAppend(peaksBefore, row.idx, leaf), root = T.frontierRoot(peaks), c = T.parseCheckpoint(T.openNote(row.note, asList(logV)).text);
   if (c.origin !== origin || c.size !== row.idx + 1 || !c.root.equals(root) || c.extensions.length) {
     throw kinded('inconsistent', 'Truncated or inconsistent heads log: row differs from its signed note');
   }
@@ -246,7 +311,7 @@ export async function exchange({w, size, note, old, proofFor, logV, config, fetc
     const r = await T.postAddCheckpoint(w.url, T.addCheckpointBody(old, proof, note), {timeoutMs: config.timeoutMs, fetchImpl});
     if (r.status === 200) {
       try {
-        const opened = T.openNote(note + T.parseCosignatureResponse(r.body).join(''), [logV, w.verifier]);
+        const opened = T.openNote(note + T.parseCosignatureResponse(r.body).join(''), [...asList(logV), w.verifier]);
         const sig = opened.sigs.find(s => s.name === w.name && s.id === w.keyId);
         if (!sig) throw Error('no cosignature from the configured key');
         const timestamp = T.cosignatureTimestamp(sig.raw);
@@ -263,7 +328,9 @@ export async function exchange({w, size, note, old, proofFor, logV, config, fetc
       return {status: 'fork', size: old, message: `witness rejected ${subject.checkpoint} ${size} as inconsistent with its size ${old} (fork)`};
     }
     if (r.status === 404) return {status: 'unregistered', message: `${subject.origin} is not registered at the witness`};
-    if (r.status === 403) return {status: 'untrusted', message: 'witness does not trust the vault log key'};
+    if (r.status === 403) {
+      return {status: 'untrusted', message: `witness does not trust the ${config.signer && subject === HEADS_SUBJECT ? 'heads signer' : 'vault log'} key`};
+    }
     if (r.status === 400) return {status: 'rejected', message: 'witness rejected the request as malformed'};
     return {status: 'unreachable', message: r.status ? `HTTP ${r.status}` : r.error || 'network error'};
   }
@@ -348,15 +415,47 @@ async function probeTenantLogs({db, publicKey, config, witnesses, fetchImpl, now
   return out;
 }
 
+// The heads signer's answer about the configured heads origin: {head} (unverified here) or {error}.
+async function signerHeadOf(config, client) {
+  try {
+    const r = await (client ?? signerClientFor(config)).head(config.headsOrigin);
+    return r.httpStatus === 200 ? {head: r.body} : {error: `heads signer answered HTTP ${r.httpStatus}${r.body?.reason ? ' ' + r.body.reason : ''}`};
+  } catch (error) { return {error: error.message}; }
+}
+// A heads signer's head of `origin`: a checkpoint of that origin signed by a signer key, whose size and root the answer repeats.
+// Its entries (the signer's newest leaf) are only used after foldSignerLeaf checked them against the local log.
+export function verifySignerHead(head, origin, config) {
+  if (!head || typeof head !== 'object' || head.origin !== origin) throw Error('the heads signer answered for another origin');
+  if (head.known !== true) return {known: false};
+  let c = null;
+  try { c = T.parseCheckpoint(T.openNote(head.note, signerVerifiers(origin, config)).text); } catch { c = null; }
+  if (!c || c.origin !== origin || c.size !== head.size || c.root.toString('hex') !== head.root || c.extensions.length) {
+    throw Error('the heads signer head is not a checkpoint it signed');
+  }
+  if (!['active', 'retired'].includes(head.status) || !Array.isArray(head.entries)) throw Error('the heads signer head is malformed');
+  return {known: true, status: head.status, size: c.size, root: c.root, note: head.note, entries: head.entries, retired: head.retired ?? null};
+}
+// The signer is exactly one leaf ahead of the local log (size, peaks) when its newest leaf appends to it and gives its root.
+function foldSignerLeaf(head, local) {
+  const entries = head.entries;
+  if (!entries.length || !entries.every(validEntry) || T.canonicalJson(T.sortHeadsEntries(entries)) !== T.canonicalJson(entries)) return null;
+  const leaf = T.headsLeafHash(T.headsLeafContent(entries)), peaks = T.frontierAppend(local.peaks, local.size, leaf);
+  return T.frontierRoot(peaks).equals(head.root) ? {leaf, peaks, entries} : null;
+}
+
 // Async, read-only, before createService. An empty local heads log is probed with a signed size-0 checkpoint
 // (empty-tree root), the only checkpoint that cannot conflict with anything, so a witness answers 409 S. With
 // witnessTenantLogs (and tenants), every tenant log is probed too, at the witnesses that answered for the heads log.
-export async function probeTransparency({dataDir, key, config, fetchImpl = fetch, now = () => Date.now(), tenants = true}) {
-  if (!config || config.mode === 'off' || !config.witnesses.length) return null;
-  const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
+// With a heads signer the vault key cannot sign heads checkpoints: the signer's head is asked for instead, and an empty local
+// heads log is not shown to the witnesses (the signer knows every heads checkpoint they could hold).
+export async function probeTransparency({dataDir, key, config, fetchImpl = fetch, now = () => Date.now(), tenants = true, signerClient = null}) {
+  if (!config || config.mode === 'off' || !config.witnesses.length && !config.signer) return null;
+  const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = headsVerifiers(hOrigin, publicKey, config);
   const file = join(dataDir, 'evidence.db'), db = existsSync(file) ? new DatabaseSync(file, {readOnly: true, timeout: 5000}) : null;
   try {
-    let local = {size: 0, root: T.EMPTY_ROOT, note: T.signNote(T.formatCheckpoint({origin: hOrigin, size: 0, root: T.EMPTY_ROOT}), T.noteSigner(hOrigin, key))};
+    const signer = config.signer ? {signer: await signerHeadOf(config, signerClient)} : {};
+    let local = {size: 0, root: T.EMPTY_ROOT,
+      note: config.signer ? null : T.signNote(T.formatCheckpoint({origin: hOrigin, size: 0, root: T.EMPTY_ROOT}), T.noteSigner(hOrigin, key))};
     let error = null;
     try {
       if (db && hasTable(db, 'tlog_heads')) {
@@ -364,15 +463,16 @@ export async function probeTransparency({dataDir, key, config, fetchImpl = fetch
         if (n) local = verifyHeadsRow(headsRow(db, hOrigin, n - 1), hOrigin, logV);
       }
     } catch (e) { error = e.message; }
-    if (error) return {checkedAt: new Date(now()).toISOString(), headsSize: null, error, witnesses: []};
+    if (error) return {checkedAt: new Date(now()).toISOString(), headsSize: null, error, witnesses: [], ...signer};
     const proofFor = m => witnessProof(db, hOrigin, logV, m, local.size, local.root);
     const witnesses = await Promise.all(config.witnesses.map(async w => ({
       name: w.name, keyId: w.keyId,
-      ...await exchange({w, size: local.size, note: local.note, old: 0, proofFor, logV, config, fetchImpl, now}),
+      ...local.note ? await exchange({w, size: local.size, note: local.note, old: 0, proofFor, logV, config, fetchImpl, now})
+        : {status: 'skipped', message: 'empty heads log: the heads signer answers for it'},
     })));
     const answering = config.witnesses.filter((w, i) => PROBE_ANSWERS.has(witnesses[i].status)), probeTenants = tenants && config.witnessTenantLogs;
     const tenantLogs = probeTenants ? {tenants: await probeTenantLogs({db, publicKey, config, witnesses: answering, fetchImpl, now})} : {};
-    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, headsRoot: local.root.toString('hex'), witnesses, ...tenantLogs};
+    return {checkedAt: new Date(now()).toISOString(), headsSize: local.size, headsRoot: local.root.toString('hex'), witnesses, ...tenantLogs, ...signer};
   } finally { db?.close(); }
 }
 // Explicit operator decision for a non-empty heads log without a pin (lost pin volume, upgrade from a build that never
@@ -385,7 +485,7 @@ export function bootstrapPin({dataDir, key, config, probe = null}) {
   const blocking = report.violations.filter(v => !v.missingPin);
   if (blocking.length) throw Error('Transparency pin bootstrap refused: ' + blocking.map(v => v.message).join('; '));
   if (!report.headsSize) throw Error('The heads log is empty; the vault writes its first pin when it starts');
-  const hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, createPublicKey(key)));
+  const hOrigin = config.headsOrigin, logV = headsVerifiers(hOrigin, createPublicKey(key), config);
   const db = new DatabaseSync(join(dataDir, 'evidence.db'), {readOnly: true, timeout: 5000});
   let latest;
   try { latest = verifyHeadsRow(headsRow(db, hOrigin, report.headsSize - 1), hOrigin, logV); } finally { db.close(); }
@@ -395,19 +495,20 @@ export function bootstrapPin({dataDir, key, config, probe = null}) {
     throw Error(`Transparency pin bootstrap needs ${quorum} witness cosignature(s) on heads size ${report.headsSize}; got ${lines.length}`);
   }
   writePinOrExplain(config, latest.size, latest.note + lines.join(''));
-  const pin = openPin(readPinFile(config.pinFile), hOrigin, createPublicKey(key), config.witnesses);
+  const pin = openPin(readPinFile(config.pinFile), hOrigin, createPublicKey(key), config.witnesses, config);
   return {pinFile: config.pinFile, origin: hOrigin, size: pin.size, cosignatures: pin.cosignatures};
 }
 // With startupProbe required, a witness that is still starting gets a few short retries before the vault refuses.
-export async function prepareTransparency({dataDir, key, env = process.env, fetchImpl, attempts = 3, retryMs = 1000}) {
+export async function prepareTransparency({dataDir, key, env = process.env, fetchImpl, attempts = 3, retryMs = 1000, signerClient = null}) {
   const config = loadTransparencyConfig({dataDir, env});
-  if (config.mode === 'off' || !config.witnesses.length) return {config, probe: null};
+  if (config.mode === 'off' || !config.witnesses.length && !config.signer) return {config, probe: null};
   for (let attempt = 1; ; attempt++) {
-    const probe = await probeTransparency({dataDir, key, config, fetchImpl, tenants: false});
-    const answered = probe.witnesses.filter(w => PROBE_ANSWERS.has(w.status)).length;
-    if (config.startupProbe !== 'required' || probe.error || answered >= config.quorum || attempt >= attempts) {
+    const probe = await probeTransparency({dataDir, key, config, fetchImpl, tenants: false, signerClient});
+    const answered = probe.witnesses.filter(w => PROBE_ANSWERS.has(w.status)).length, skipped = probe.witnesses.some(w => w.status === 'skipped');
+    const settled = (skipped || answered >= config.quorum) && (!config.signer || !!probe.signer?.head);
+    if (config.startupProbe !== 'required' || probe.error || settled || attempt >= attempts) {
       // Tenant logs are probed once, after the heads answers settled (one submission per tenant and witness).
-      return {config, probe: config.witnessTenantLogs && !probe.error ? await probeTransparency({dataDir, key, config, fetchImpl}) : probe};
+      return {config, probe: config.witnessTenantLogs && !probe.error ? await probeTransparency({dataDir, key, config, fetchImpl, signerClient}) : probe};
     }
     await new Promise(r => setTimeout(r, retryMs));
   }
@@ -427,7 +528,8 @@ export function assertTransparencyAnchors({dataDir, key, config, probe = null, i
   // missing pin is always a violation.
   if (!inspectOnly) {
     try {
-      if (!violations.length && !pin && !report.headsSize) {
+      // A heads signer pins the heads log itself; the pin file starts with its first cosigned checkpoint.
+      if (!violations.length && !pin && !report.headsSize && !config.signer) {
         writePinOrExplain(config, 0, T.signNote(T.formatCheckpoint({origin: hOrigin, size: 0, root: T.EMPTY_ROOT}), T.noteSigner(hOrigin, key)));
         report.pin = {size: 0, root: T.EMPTY_ROOT.toString('hex'), cosignatures: 0, bootstrapped: true};
       } else assertPinWritable(config);
@@ -451,7 +553,7 @@ function refuseFatal(config, violations) {
   if (fatal.length) throw Error('Transparency startup check failed: ' + fatal.map(v => v.message).join('; '));
 }
 function checkAnchors({db, key, config, probe}) {
-  const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
+  const publicKey = createPublicKey(key), hOrigin = config.headsOrigin, logV = headsVerifiers(hOrigin, publicKey, config);
   const violations = [], violate = (kind, message, hard = false) => violations.push(hard ? {kind, message, hard} : {kind, message});
   const report = {mode: config.mode, checkedAt: new Date().toISOString(), pin: null, headsSize: 0, probe, violations};
   let rawPin = null, pin = null, rawPinError = false;
@@ -463,7 +565,9 @@ function checkAnchors({db, key, config, probe}) {
     if (t.error) violate('inconsistent', t.error);
     for (const w of t.witnesses) if (['rollback', 'fork', 'inconsistent'].includes(w.status)) violate(w.status, `Witness ${w.name}: ${w.message}`);
   }
-  if (config.startupProbe === 'required' && config.witnesses.length && !probe?.error) {
+  // With a heads signer and an empty heads log the witnesses were not asked; checkSigner requires the signer's answer instead.
+  const witnessesSkipped = !!config.signer && probe?.headsSize === 0;
+  if (config.startupProbe === 'required' && config.witnesses.length && !probe?.error && !witnessesSkipped) {
     const answered = (probe?.witnesses || []).filter(w => PROBE_ANSWERS.has(w.status));
     if (answered.length < config.quorum) {
       const seen = (probe?.witnesses || []).map(w => `${w.name}: ${w.status}`).join(', ') || 'no probe ran';
@@ -473,7 +577,7 @@ function checkAnchors({db, key, config, probe}) {
   }
   try {
     if (rawPin?.origin === hOrigin) {
-      try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses); } catch (error) { rawPinError = true; violate('pin', error.message); }
+      try { pin = openPin(rawPin, hOrigin, publicKey, config.witnesses, config); } catch (error) { rawPinError = true; violate('pin', error.message); }
     }
     const ledger = !!db && hasTable(db, 'ledger'), retiredPin = rawPin && rawPin.origin !== hOrigin ? rawPin : null;
     if (retiredPin && !ledger) violate('pin', 'Transparency pin file invalid or bound to another origin');
@@ -489,7 +593,8 @@ function checkAnchors({db, key, config, probe}) {
         + `probed with (heads size ${probe.headsSize}); it changed after the probe`);
     }
     if (probe?.tenants) checkProbedTenants(db, config.base, probe.tenants, violate);
-    if (!pin && size && !rawPinError) {
+    const signerConfirmed = config.signer ? checkSigner({config, probe, size, latest, violate, report}) : false;
+    if (!pin && size && !rawPinError && !signerConfirmed) {
       violations.push({kind: 'pin', missingPin: true, message: `Transparency pin for ${hOrigin} is missing although the heads log has size ${size}; `
         + 'restore the pin file or create one explicitly with scripts/transparency.mjs pin-bootstrap'});
     }
@@ -506,6 +611,48 @@ function checkAnchors({db, key, config, probe}) {
     if (ledger) checkTenants(db, config.base, anchors, violate, epochs.requirements);
   } catch (error) { violate(error.kind || 'inconsistent', error.message); }
   return {report, pin};
+}
+// With a heads signer its head is the strongest pin: the database heads log must be exactly the signed one, or one leaf behind
+// it (the vault stopped after the signer signed; the pump adopts that leaf). Returns whether it confirmed the local log.
+function checkSigner({config, probe, size, latest, violate, report}) {
+  const answer = probe?.signer, hOrigin = config.headsOrigin;
+  if (!answer) return false;
+  if (answer.error) {
+    report.signer = {error: answer.error};
+    if (config.startupProbe === 'required') {
+      violate('probe', `Transparency startup probe: the heads signer did not answer (${answer.error}); refusing to start without it `
+        + '(startupProbe required)', true);
+    }
+    return false;
+  }
+  let head;
+  try { head = verifySignerHead(answer.head, hOrigin, config); } catch (error) {
+    violate('inconsistent', `Heads signer answer is invalid: ${error.message}`);
+    return false;
+  }
+  report.signer = head.known ? {known: true, status: head.status, size: head.size} : {known: false};
+  if (!head.known) {
+    // Not signed yet: an empty log (genesis or restore epoch pending) or a vault-key log (handover pending). A log that already
+    // carries signer checkpoints means the signer lost its state.
+    if (latest && signedWith(latest.note, signerVerifiers(hOrigin, config))) {
+      violate('inconsistent', `The heads signer holds no state for ${hOrigin} although the heads log carries its checkpoints; restore the signer state `
+        + 'from its backup');
+    }
+    return false;
+  }
+  if (head.status === 'retired') {
+    violate('fork', `The heads signer retired ${hOrigin} at a restore epoch (to ${head.retired?.by ?? 'another origin'}); refusing to extend it (fork)`, true);
+    return false;
+  }
+  if (head.size > size + 1) violate('rollback', `Ledger heads log (size ${size}) is behind the heads signer, which signed heads size ${head.size} (rollback)`);
+  else if (head.size === size + 1) {
+    if (foldSignerLeaf(head, {size, peaks: latest?.peaks ?? []})) return (report.signer.pending = true);
+    violate('fork', `Ledger heads log (size ${size}) conflicts with the heads checkpoint ${head.size} the heads signer signed (fork)`);
+  } else if (head.size < size) {
+    violate('inconsistent', `Truncated or inconsistent heads log: the database holds heads size ${size} beyond the ${head.size} the heads signer signed`);
+  } else if (!head.root.equals(latest.root)) violate('fork', `Ledger heads log conflicts with the heads signer at size ${size} (fork)`);
+  else return true;
+  return false;
 }
 // The tenant answers describe the tlog_state the probe read, like the heads answers above: every probed log is unchanged and
 // every signed tenant log of the database was probed.
@@ -602,7 +749,7 @@ function checkTenants(db, base, anchors, violate, extra = []) {
 // alone, so this replay is what exposes a key holder's leaf that rolls one tenant back while the heads log stays
 // append-only at the witnesses. It cannot see rows a database copy no longer holds.
 export function monitorHeads({dataDir, publicKey, config, now = () => Date.now()}) {
-  const hOrigin = config.headsOrigin, logV = logVerifierOf(hOrigin, publicKey), file = join(dataDir, 'evidence.db');
+  const hOrigin = config.headsOrigin, logV = headsVerifiers(hOrigin, publicKey, config), file = join(dataDir, 'evidence.db');
   if (!existsSync(file)) throw Error('No evidence database at ' + file);
   const violations = [], violate = (kind, message) => violations.push({kind, message});
   const result = {checkedAt: new Date(now()).toISOString(), headsOrigin: hOrigin, headsSize: 0, logs: 0, entries: 0, cosigned: null};
@@ -617,7 +764,7 @@ export function monitorHeads({dataDir, publicKey, config, now = () => Date.now()
       }
       peaks = T.frontierAppend(peaks, n++, Buffer.from(row.leaf));
       let c = null;
-      try { c = T.parseCheckpoint(T.openNote(row.note, [logV]).text); } catch { c = null; }
+      try { c = T.parseCheckpoint(T.openNote(row.note, logV).text); } catch { c = null; }
       if (c?.origin !== hOrigin || c.size !== n || !c.root.equals(T.frontierRoot(peaks)) || c.extensions.length) {
         throw kinded('inconsistent', `Truncated or inconsistent heads log: row ${row.idx} differs from its signed note`);
       }
@@ -653,7 +800,7 @@ function newestCosignedHeads(db, config, logV, now) {
   const row = best && headsRow(db, config.headsOrigin, best.size - 1);
   if (!row) return null;
   const lines = db.prepare('SELECT line FROM tlog_cosignatures WHERE origin=? AND size=? ORDER BY name,key_id').all(config.headsOrigin, best.size);
-  const opened = T.openNote(row.note + lines.map(l => l.line).join(''), [logV, ...config.witnesses.map(w => w.verifier)]);
+  const opened = T.openNote(row.note + lines.map(l => l.line).join(''), [...asList(logV), ...config.witnesses.map(w => w.verifier)]);
   const t = Math.floor(now() / 1000), witnesses = [];
   for (const sig of opened.sigs) {
     const w = config.witnesses.find(x => x.name === sig.name && x.keyId === sig.id);
@@ -764,7 +911,7 @@ function checkEpochs({db, config, publicKey, violate, retiredPin, report}) {
       continue;
     }
     if (!n) continue;
-    const latest = verifyHeadsRow(headsRow(db, origin, n - 1), origin, T.noteVerifier(T.logVkey(origin, publicKey)));
+    const latest = verifyHeadsRow(headsRow(db, origin, n - 1), origin, headsVerifiers(origin, publicKey, config));
     const logs = new Map(tenants.map(t => [T.tenantOrigin(oldBase, t), t]));
     for (const entry of latest.entries) {
       const tenant = logs.get(entry.log), e = tenant !== undefined && epochOf(tenant, oldBase)?.payload;
@@ -779,13 +926,13 @@ function checkEpochs({db, config, publicKey, violate, retiredPin, report}) {
     if (!ack) violate('pin', 'Transparency pin file invalid or bound to another origin');
     else {
       try {
-        const p = openPin(retiredPin, retiredPin.origin, publicKey, config.witnesses), n = headsSize(db, retiredPin.origin);
+        const p = openPin(retiredPin, retiredPin.origin, publicKey, config.witnesses, config), n = headsSize(db, retiredPin.origin);
         report.retiredPin = {origin: retiredPin.origin, size: p.size, cosignatures: p.cosignatures, acknowledgedHeadsSize: ack.acknowledged};
         if (p.size > ack.acknowledged) {
           violate('rollback', `Transparency pin of retired heads origin ${retiredPin.origin} (size ${p.size}) exceeds the heads size `
             + `its tlog epoch acknowledged (${ack.acknowledged}) (rollback)`);
         } else if (p.size && p.size <= n) {
-          const at = verifyHeadsRow(headsRow(db, retiredPin.origin, p.size - 1), retiredPin.origin, T.noteVerifier(T.logVkey(retiredPin.origin, publicKey)));
+          const at = verifyHeadsRow(headsRow(db, retiredPin.origin, p.size - 1), retiredPin.origin, headsVerifiers(retiredPin.origin, publicKey, config));
           if (!at.root.equals(p.root)) violate('fork', 'Retired heads log conflicts with the pinned heads checkpoint (fork)');
         }
       } catch (error) { violate('pin', error.message); }
@@ -799,22 +946,29 @@ const offController = Object.freeze({
   mode: 'off', start() {}, async stop() {}, async pump() {}, bundleOptions: () => ({}), integrity: result => result, quarantined: () => null,
   status: () => ({mode: 'off'}),
 });
-export function createTransparency({store, config, key, startup = null, probe = null, fetchImpl = fetch, now = () => Date.now(), beforePublish = null}) {
+// signerClient: the heads signer connection (default: signerClientFor(config)); only used with config.signer.
+export function createTransparency({store, config, key, startup = null, probe = null, fetchImpl = fetch, now = () => Date.now(), beforePublish = null,
+  signerClient = null}) {
   if (!config || config.mode === 'off') return offController;
   if (!store.tlog) throw Error('Store was opened without transparency state');
-  const db = store.db, hOrigin = config.headsOrigin, publicKey = createPublicKey(key), logV = T.noteVerifier(T.logVkey(hOrigin, publicKey));
-  const signer = T.noteSigner(hOrigin, key), tenantVerifiers = new Map();
+  const db = store.db, hOrigin = config.headsOrigin, publicKey = createPublicKey(key), logV = headsVerifiers(hOrigin, publicKey, config);
+  // With a heads signer the vault key never signs a heads checkpoint: the signer signs every leaf it accepts.
+  const vaultSigner = config.signer ? null : T.noteSigner(hOrigin, key), tenantVerifiers = new Map();
+  const remote = config.signer ? signerClient ?? signerClientFor(config) : null, bySigner = signerVerifiers(hOrigin, config);
   const violations = (startup?.violations || []).map(v => ({...v, at: startup.checkedAt}));
   const tenantVerifier = origin => {
     if (!tenantVerifiers.has(origin)) tenantVerifiers.set(origin, T.noteVerifier(T.logVkey(origin, publicKey)));
     return tenantVerifiers.get(origin);
   };
   const iso = () => new Date(now()).toISOString();
+  // signed: the vkey of the heads signer key that signed the newest leaf (null: the vault key signed it, or there is none).
+  const signerVkeyOf = note => (config.signer ? signedWith(note, bySigner)?.vkey ?? null : null);
   const loadLatest = () => {
     const n = headsSize(db, hOrigin);
-    if (!n) return {size: 0, root: T.EMPTY_ROOT, peaks: [], entries: new Map(), note: null, normalized: true};
+    if (!n) return {size: 0, root: T.EMPTY_ROOT, peaks: [], peaksBefore: [], entries: new Map(), note: null, normalized: true, signed: null};
     const row = headsRow(db, hOrigin, n - 1), v = verifyHeadsRow(row, hOrigin, logV);
-    return {size: n, root: v.root, peaks: v.peaks, entries: new Map(v.entries.map(e => [e.log, e])), note: v.note, normalized: !!row.normalized};
+    return {size: n, root: v.root, peaks: v.peaks, peaksBefore: v.peaksBefore, entries: new Map(v.entries.map(e => [e.log, e])), note: v.note,
+      normalized: !!row.normalized, signed: signerVkeyOf(v.note)};
   };
   let heads = loadLatest(), busy = null, timer = null, stopped = false;
   // The pin only ever moves forward along a heads log that extends it, and never after a rollback, fork, tenant removal or
@@ -895,46 +1049,237 @@ export function createTransparency({store, config, key, startup = null, probe = 
     }
   }
   // Tenant sets in heads leaves only grow and tenant sizes never shrink; changed tenant notes are re-verified before use.
+  // Returns the sorted entries of the next leaf, the tlog_state rows that changed since the newest leaf, and all rows.
+  function nextEntries() {
+    if (headsSize(db, hOrigin) !== heads.size) throw kinded('inconsistent', 'Truncated or inconsistent heads log: size changed outside the pump');
+    const prefix = config.base + '/t/';
+    const rows = db.prepare('SELECT tenant,origin,size,root,peaks,note FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix);
+    const seen = new Set(), entries = [], changed = [];
+    for (const r of rows) {
+      const prev = heads.entries.get(r.origin), root = Buffer.from(r.root);
+      seen.add(r.origin);
+      if (prev && r.size < prev.size) throw kinded('rollback', `Tenant log ${r.origin} shrank below its heads entry (rollback)`);
+      if (prev && r.size === prev.size && root.toString('hex') !== prev.root) {
+        throw kinded('fork', `Tenant log ${r.origin} changed below its heads entry (fork)`);
+      }
+      if (!prev || prev.size !== r.size) {
+        let c = null;
+        try { c = T.parseCheckpoint(T.openNote(r.note, [tenantVerifier(r.origin)]).text); } catch { c = null; }
+        if (c?.origin !== r.origin || c.size !== r.size || !c.root.equals(root)) {
+          throw kinded('inconsistent', 'Truncated or inconsistent tlog state for tenant log ' + r.origin);
+        }
+        changed.push(r);
+      }
+      entries.push(T.headsEntry(r.origin, r.size, root));
+    }
+    for (const log of heads.entries.keys()) {
+      if (!seen.has(log)) throw kinded('tenant_removal', `Tenant log ${log} is missing beneath the heads log (tenant removal)`);
+    }
+    return {entries: T.sortHeadsEntries(entries), changed, rows};
+  }
+  // Stores leaf heads.size. Only changed entries are stored; after a legacy (full-list) row, the first normalized row seeds every entry.
+  function storeLeaf(sorted, leaf, note) {
+    const stored = heads.normalized ? sorted.filter(e => heads.entries.get(e.log)?.size !== e.size) : sorted;
+    store.projectionMutation(() => {
+      db.prepare('INSERT INTO tlog_heads VALUES(?,?,?,?,?,?,?)').run(hOrigin, heads.size, leaf, T.peaksToBlob(heads.peaks), NORMALIZED, note, iso());
+      const insert = db.prepare('INSERT INTO tlog_heads_entries VALUES(?,?,?,?,?)');
+      for (const e of stored) insert.run(hOrigin, e.log, heads.size, e.size, e.root);
+    });
+  }
+  const appended = (sorted, leaf, peaks, note) => ({size: heads.size + 1, root: T.frontierRoot(peaks), peaks, peaksBefore: heads.peaks,
+    entries: new Map(sorted.map(e => [e.log, e])), note, normalized: true, signed: signerVkeyOf(note)});
   function appendHeads() {
     return store.transaction(() => {
-      if (headsSize(db, hOrigin) !== heads.size) throw kinded('inconsistent', 'Truncated or inconsistent heads log: size changed outside the pump');
-      const prefix = config.base + '/t/';
-      const rows = db.prepare('SELECT origin,size,root,note FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').all(prefix.length, prefix);
-      const seen = new Set(), entries = [];
-      let changed = false;
-      for (const r of rows) {
-        const prev = heads.entries.get(r.origin), root = Buffer.from(r.root);
-        seen.add(r.origin);
-        if (prev && r.size < prev.size) throw kinded('rollback', `Tenant log ${r.origin} shrank below its heads entry (rollback)`);
-        if (prev && r.size === prev.size && root.toString('hex') !== prev.root) {
-          throw kinded('fork', `Tenant log ${r.origin} changed below its heads entry (fork)`);
-        }
-        if (!prev || prev.size !== r.size) {
-          let c = null;
-          try { c = T.parseCheckpoint(T.openNote(r.note, [tenantVerifier(r.origin)]).text); } catch { c = null; }
-          if (c?.origin !== r.origin || c.size !== r.size || !c.root.equals(root)) {
-            throw kinded('inconsistent', 'Truncated or inconsistent tlog state for tenant log ' + r.origin);
-          }
-          changed = true;
-        }
-        entries.push(T.headsEntry(r.origin, r.size, root));
-      }
-      for (const log of heads.entries.keys()) {
-        if (!seen.has(log)) throw kinded('tenant_removal', `Tenant log ${log} is missing beneath the heads log (tenant removal)`);
-      }
-      if (!changed) return null;
-      const sorted = T.sortHeadsEntries(entries), leaf = T.headsLeafHash(T.headsLeafContent(sorted));
-      const peaks = T.frontierAppend(heads.peaks, heads.size, leaf), root = T.frontierRoot(peaks), size = heads.size + 1;
-      const note = T.signNote(T.formatCheckpoint({origin: hOrigin, size, root}), signer);
-      // Only changed entries are stored; after a legacy (full-list) row, the first normalized row seeds every entry.
-      const stored = heads.normalized ? sorted.filter(e => heads.entries.get(e.log)?.size !== e.size) : sorted;
-      store.projectionMutation(() => {
-        db.prepare('INSERT INTO tlog_heads VALUES(?,?,?,?,?,?,?)').run(hOrigin, heads.size, leaf, T.peaksToBlob(heads.peaks), NORMALIZED, note, iso());
-        const insert = db.prepare('INSERT INTO tlog_heads_entries VALUES(?,?,?,?,?)');
-        for (const e of stored) insert.run(hOrigin, e.log, heads.size, e.size, e.root);
-      });
-      return {size, root, peaks, entries: new Map(sorted.map(e => [e.log, e])), note, normalized: true};
+      const next = nextEntries();
+      if (!next.changed.length) return null;
+      const sorted = next.entries, leaf = T.headsLeafHash(T.headsLeafContent(sorted)), peaks = T.frontierAppend(heads.peaks, heads.size, leaf);
+      const note = T.signNote(T.formatCheckpoint({origin: hOrigin, size: heads.size + 1, root: T.frontierRoot(peaks)}), vaultSigner);
+      storeLeaf(sorted, leaf, note);
+      return appended(sorted, leaf, peaks, note);
     });
+  }
+
+  // ---------- heads signer (config.signer) ----------
+  // The vault sends each leaf with a consistency proof for every tenant log that grew and stores the checkpoint the signer
+  // returns. The first leaf after a vault-key heads log carries that log's newest leaf (handover); the first leaf of a heads
+  // origin a restore epoch started carries proofs from the retired origin's entries, as the signer holds them.
+  const signerState = config.signer ? {target: remote.target, status: 'pending', message: null, size: null, lastAttemptAt: null,
+    lastSuccessAt: null, retryAt: 0} : null;
+  let pendingHead = startup?.signer?.pending ? probe?.signer?.head ?? null : null, predecessor = null;
+  const epochFrom = config.signer && !heads.size ? epochPredecessorBase() : null;
+  function epochPredecessorBase() {
+    const bases = new Set();
+    try {
+      for (const list of readEpochs(db).values()) if (list.at(-1).payload.originBase === config.base) bases.add(list.at(-1).payload.previousOriginBase);
+    } catch { return null; }
+    return bases.size === 1 ? [...bases][0] : null;
+  }
+  function signerStatus(status, message = null, extra = {}) {
+    if (status !== 'consistent' && (signerState.status !== status || signerState.message !== message)) {
+      process.stderr.write(JSON.stringify({component: 'transparency', mode: config.mode, signer: status, message}) + '\n');
+    }
+    Object.assign(signerState, {status, message, ...extra});
+  }
+  // Proof that tlog_state row r extends the heads entry `from`, checked here: a local ledger that does not reproduce it is a fork.
+  function growthProof(r, from) {
+    if (from.size === 0) return {from: 0, hashes: []};
+    const proof = tenantConsistencyProof(db, r, from.size);
+    if (!T.verifyConsistency(from.size, r.size, Buffer.from(from.root, 'hex'), Buffer.from(r.root), proof)) {
+      throw kinded('fork', `Tenant log ${r.origin} does not extend its heads entry at size ${from.size} (fork)`);
+    }
+    return {from: from.size, hashes: proof.map(T.b64)};
+  }
+  // After a restore epoch each retired entry continues under this origin base when the restored ledger still holds it, else from
+  // the restored prefix its tlog epoch record names (the signer accepts that only as a loss its epoch authorization lists).
+  function epochProofs(rows) {
+    const out = {}, byOrigin = new Map(rows.map(r => [r.origin, r])), epochs = readEpochs(db), prefix = predecessor.base + '/t/';
+    for (const e of predecessor.entries) {
+      const r = e.log.startsWith(prefix) && byOrigin.get(`${config.base}/t/${e.log.slice(prefix.length)}`);
+      if (!r) continue;
+      const p = (epochs.get(r.tenant) || []).find(x => x.payload.previousOriginBase === predecessor.base)?.payload;
+      for (const from of [e, ...(p ? [{size: p.restoredSize, root: p.restoredRoot}] : [])]) {
+        if (from.size > r.size) continue;
+        try { out[r.origin] = growthProof(r, from); break; } catch (error) { if (error.kind !== 'fork') throw error; }
+      }
+    }
+    return out;
+  }
+  // Read-only: the request for the next leaf, or null when no tenant log changed (and no handover is due).
+  function planHeads() {
+    const next = nextEntries(), handover = heads.size > 0 && !heads.signed;
+    if (!next.entries.length || !next.changed.length && !handover) return null;
+    const proofs = {}, frontiers = next.changed.map(r => verifiedTenantRow(r, tenantVerifier(r.origin)));
+    for (const r of next.changed) if (heads.entries.has(r.origin)) proofs[r.origin] = growthProof(r, heads.entries.get(r.origin));
+    if (!heads.size && predecessor) Object.assign(proofs, epochProofs(next.rows));
+    const sorted = next.entries, leaf = T.headsLeafHash(T.headsLeafContent(sorted)), peaks = T.frontierAppend(heads.peaks, heads.size, leaf);
+    const seed = handover ? {seed: {entries: T.sortHeadsEntries([...heads.entries.values()]), peaksBefore: heads.peaksBefore.map(p => p.toString('hex'))}} : {};
+    const request = {origin: hOrigin, previous: {size: heads.size, root: heads.root.toString('hex')}, leaf: {entries: sorted}, proofs, ...seed};
+    return {request, sorted, leaf, peaks, size: heads.size + 1, root: T.frontierRoot(peaks), frontiers};
+  }
+  // The signed checkpoint must be exactly the leaf the vault sent. Each tenant frontier it names is kept (tlog_checkpoints), so the
+  // next growth proof needs only the ledger records after it.
+  function commitSigned(plan, note) {
+    let c = null;
+    try { c = T.parseCheckpoint(T.openNote(note, bySigner).text); } catch { c = null; }
+    if (c?.origin !== hOrigin || c.size !== plan.size || !c.root.equals(plan.root) || c.extensions.length) {
+      throw kinded('inconsistent', `The heads signer answered with a checkpoint other than heads size ${plan.size} of the leaf the vault sent`);
+    }
+    return store.transaction(() => {
+      if (headsSize(db, hOrigin) !== heads.size) throw kinded('inconsistent', 'Truncated or inconsistent heads log: size changed outside the pump');
+      storeLeaf(plan.sorted, plan.leaf, note);
+      const saved = db.prepare('SELECT root FROM tlog_checkpoints WHERE origin=? AND size=?');
+      const insert = db.prepare('INSERT INTO tlog_checkpoints VALUES(?,?,?,?,?,?)');
+      store.projectionMutation(() => {
+        for (const r of plan.frontiers) {
+          const s = saved.get(r.origin, r.size);
+          if (s && !Buffer.from(s.root).equals(r.root)) {
+            throw kinded('inconsistent', `Truncated or inconsistent tlog checkpoints: tenant log ${r.origin} holds another root at size ${r.size}`);
+          }
+          if (!s) insert.run(r.origin, r.size, r.root, T.peaksToBlob(r.peaks), r.note, iso());
+        }
+      });
+      return appended(plan.sorted, plan.leaf, plan.peaks, note);
+    });
+  }
+  // The signer holds one leaf more than this database (the vault stopped, or lost the answer, after the signer signed): that leaf
+  // is stored when it appends to the local heads log, keeps every tenant log monotone and names only heads the ledger holds.
+  function adopt(h) {
+    return store.transaction(() => {
+      if (headsSize(db, hOrigin) !== heads.size) throw kinded('inconsistent', 'Truncated or inconsistent heads log: size changed outside the pump');
+      const fold = foldSignerLeaf(h, heads);
+      if (!fold) throw kinded('fork', `Ledger heads log (size ${heads.size}) conflicts with the heads checkpoint ${h.size} the heads signer signed (fork)`);
+      const names = new Set(fold.entries.map(e => e.log)), tenants = new Map(ledgerTenants(db).map(t => [T.tenantOrigin(config.base, t), t]));
+      for (const log of heads.entries.keys()) if (!names.has(log)) throw kinded('tenant_removal', `Heads signer leaf ${h.size} drops tenant log ${log}`);
+      for (const e of fold.entries) {
+        const prev = heads.entries.get(e.log), tenant = tenants.get(e.log);
+        if (prev?.size === e.size && prev.root === e.root) continue;
+        if (prev && e.size <= prev.size) throw kinded('fork', `Heads signer leaf ${h.size} does not extend tenant log ${e.log} (fork)`);
+        if (tenant === undefined) throw kinded('tenant_removal', `Witnessed tenant missing for log ${e.log} (tenant removal)`);
+        const {roots, size} = T.rootsAtSizes(ledgerLeaves(db, tenant), [e.size]);
+        if (size < e.size) {
+          throw kinded('rollback', `Ledger for tenant log ${e.log} (size ${size}) is behind heads signer leaf ${h.size} (size ${e.size}) (rollback)`);
+        }
+        if (roots.get(e.size).toString('hex') !== e.root) {
+          throw kinded('fork', `Ledger for tenant log ${e.log} conflicts with heads signer leaf ${h.size} (fork)`);
+        }
+      }
+      storeLeaf(fold.entries, fold.leaf, h.note);
+      return appended(fold.entries, fold.leaf, fold.peaks, h.note);
+    });
+  }
+  // The signer's head when it does not continue the vault's: adopt the one leaf it is ahead (true), else report what the difference means.
+  function resync(head) {
+    let h;
+    try { h = verifySignerHead(head, hOrigin, config); } catch (error) {
+      violation('inconsistent', `Heads signer answer is invalid: ${error.message}`);
+      return false;
+    }
+    if (!h.known) return false;
+    if (h.status === 'retired') {
+      violation('fork', `The heads signer retired ${hOrigin} at a restore epoch; refusing to extend it (fork)`);
+      return false;
+    }
+    if (h.size === heads.size + 1) {
+      try { heads = adopt(h); } catch (error) {
+        if (!error.kind) throw error;
+        violation(error.kind, error.message);
+        return false;
+      }
+      signerStatus('consistent', null, {size: heads.size, lastSuccessAt: iso(), retryAt: 0});
+      return true;
+    }
+    if (h.size > heads.size) {
+      violation('rollback', `Ledger heads log (size ${heads.size}) is behind the heads signer, which signed heads size ${h.size} (rollback)`);
+    } else if (h.size < heads.size) {
+      violation('inconsistent', `Truncated or inconsistent heads log: the database holds heads size ${heads.size} beyond the ${h.size} the heads `
+        + 'signer signed');
+    } else if (!h.root.equals(heads.root)) violation('fork', `Ledger heads log conflicts with the heads signer at size ${heads.size} (fork)`);
+    return false;
+  }
+  async function predecessorHead() {
+    const origin = T.headsOrigin(epochFrom), r = await remote.head(origin);
+    if (r.httpStatus !== 200) throw Error(`heads signer answered HTTP ${r.httpStatus} for ${origin}`);
+    const h = verifySignerHead(r.body, origin, config);
+    return {base: epochFrom, entries: h.known && h.entries.every(validEntry) ? h.entries : []};
+  }
+  const SIGNER_REFUSALS = new Set(['rollback', 'fork', 'tenant_removal']);
+  async function signerRound() {
+    if (signerState.retryAt > now()) return;
+    if (pendingHead) {
+      const h = pendingHead;
+      pendingHead = null;
+      if (!resync(h) && store.quarantine) return;
+    }
+    if (!heads.size && epochFrom && !predecessor) {
+      try { predecessor = await predecessorHead(); } catch (error) { return signerStatus('unreachable', error.message, {lastAttemptAt: iso()}); }
+      if (stopped) return;
+    }
+    let plan;
+    try { plan = store.read(planHeads); } catch (error) {
+      if (!error.kind) throw error;
+      return violation(error.kind, error.message);
+    }
+    if (!plan) return;
+    signerState.lastAttemptAt = iso();
+    let answer;
+    try { answer = await remote.signHeads(plan.request); } catch (error) { return signerStatus('unreachable', error.message); }
+    if (stopped) return;
+    const body = answer.body;
+    if (answer.httpStatus === 200 && body.status === 'signed' && typeof body.note === 'string') {
+      try { heads = commitSigned(plan, body.note); } catch (error) {
+        if (!error.kind) throw error;
+        return violation(error.kind, error.message);
+      }
+      return signerStatus('consistent', null, {size: heads.size, lastSuccessAt: iso(), retryAt: 0});
+    }
+    const reason = typeof body.reason === 'string' ? body.reason.slice(0, 40) : `http_${answer.httpStatus}`;
+    const message = typeof body.message === 'string' ? body.message.slice(0, 500) : `heads signer answered HTTP ${answer.httpStatus}`;
+    signerStatus(reason, message);
+    if (reason === 'out_of_sync' && resync(body.head)) return;
+    if (SIGNER_REFUSALS.has(reason)) violation(reason, `Heads signer refused heads size ${plan.size}: ${message}`);
+    else if (reason === 'retired') violation('fork', `Heads signer refused heads size ${plan.size}: ${message} (fork)`);
+    // A refusal is audited by the signer: wait refreshSeconds before asking again (an authorization may be on its way).
+    if (!['rate_limited', 'backend'].includes(reason)) signerState.retryAt = now() + config.refreshSeconds * 1000;
   }
   function cosignedCheckpoint(size) {
     const row = headsRow(db, hOrigin, size - 1);
@@ -1031,13 +1376,18 @@ export function createTransparency({store, config, key, startup = null, probe = 
     // Seal pending reads first so each published checkpoint covers every read up to that moment; reads alone do not
     // start a round (the access-log timer seals them). A seal failure is logged by the sealer and reported by integrity.
     if (beforePublish && headsPending()) beforePublish();
-    try {
-      const next = appendHeads();
-      if (next) heads = next;
-    } catch (error) {
-      if (!error.kind) throw error;
-      violation(error.kind, error.message);
-      return;
+    if (config.signer) {
+      await signerRound();
+      if (stopped || store.quarantine) return;
+    } else {
+      try {
+        const next = appendHeads();
+        if (next) heads = next;
+      } catch (error) {
+        if (!error.kind) throw error;
+        violation(error.kind, error.message);
+        return;
+      }
     }
     if (!heads.size) return;
     const target = heads;
@@ -1066,8 +1416,11 @@ export function createTransparency({store, config, key, startup = null, probe = 
     }
     const c = cosignedCheckpoint(size), v = verifyHeadsRow(c.row, hOrigin, logV), i = v.entries.findIndex(e => e.log === tOrigin);
     if (i < 0) return null;
-    return {origin: hOrigin, checkpoint: c.checkpoint, leafIndex: size - 1, leafProof: v.peaksBefore.slice().reverse().map(T.b64), leaf: v.content,
-      entry: v.entries[i], entryIndex: i, entryProof: T.inclusionProof(v.entries.map(T.headsEntryLeaf), i).map(T.b64)};
+    // A checkpoint of the heads signer names its key (verifiers trust it only when they pin it with --heads-key).
+    const signed = signerVkeyOf(c.row.note);
+    return {origin: hOrigin, checkpoint: c.checkpoint, ...(signed ? {logVkey: signed} : {}), leafIndex: size - 1,
+      leafProof: v.peaksBefore.slice().reverse().map(T.b64), leaf: v.content, entry: v.entries[i], entryIndex: i,
+      entryProof: T.inclusionProof(v.entries.map(T.headsEntryLeaf), i).map(T.b64)};
   }
   // Newest cosigned checkpoint of a tenant log at or below maxSize: with the configured quorum if any, else with any configured
   // cosignature. The note and frontier come from tlog_checkpoints and are re-verified before they leave the vault.
@@ -1124,12 +1477,14 @@ export function createTransparency({store, config, key, startup = null, probe = 
   }
   function status() {
     const nowSeconds = Math.floor(now() / 1000);
-    return {mode: config.mode, origin: hOrigin, heads: {size: heads.size, root: T.b64(heads.root)}, quorum: config.quorum,
-      pinSize: pinned?.size ?? 0, ...(pinFrozen ? {pinFrozen: true} : {}),
+    return {mode: config.mode, origin: hOrigin, heads: {size: heads.size, root: T.b64(heads.root), ...(config.signer ? {signedBy: heads.signed} : {})},
+      quorum: config.quorum, pinSize: pinned?.size ?? 0, ...(pinFrozen ? {pinFrozen: true} : {}),
       witnesses: [...witnessState.values()].map(s => ({...s, ageSeconds: s.timestamp ? Math.max(0, nowSeconds - s.timestamp) : null})),
       ...(tenantLogs ? {tenantLogs: tenantLogStatus()} : {}),
+      ...(signerState ? {signer: {...signerState, vkey: config.signer.vkey, ...(epochFrom ? {epochFrom} : {})}} : {}),
       quarantine: store.quarantine, violations: violations.slice(),
-      startup: startup ? {checkedAt: startup.checkedAt, ok: startup.ok, headsSize: startup.headsSize} : null};
+      startup: startup ? {checkedAt: startup.checkedAt, ok: startup.ok, headsSize: startup.headsSize, ...(startup.signer ? {signer: startup.signer} : {})}
+        : null};
   }
   return {
     mode: config.mode, config, pump, status, violation,
@@ -1140,13 +1495,14 @@ export function createTransparency({store, config, key, startup = null, probe = 
       pump();
     },
     async stop() { stopped = true; if (timer) clearInterval(timer); timer = null; await busy; },
+    // With a heads signer the vault checks its own evidence as a verifier that pins the signer keys would.
     bundleOptions: () => ({transparency: {witnesses: config.witnesses.map(w => w.vkey), quorum: config.quorum, originBase: config.base,
-      maxStalenessSeconds: config.maxStalenessSeconds, now: now()}}),
+      maxStalenessSeconds: config.maxStalenessSeconds, now: now(), ...(config.signer ? {headsKeys: bySigner.map(v => v.vkey)} : {})}}),
     integrity(result) {
       const t = result.transparency, scope = result.verificationScope;
       if (t?.present && t.unsignedTail) throw Error('Truncated or inconsistent tlog checkpoint: the signed tenant note lags the ledger');
       scope.checks = [...scope.checks, 'merkle_tree', 'heads_log', ...(config.witnesses.length ? ['witness_cosignatures', 'witness_freshness'] : []),
-        ...(tenantLogs ? ['tenant_witness_cosignatures'] : [])];
+        ...(tenantLogs ? ['tenant_witness_cosignatures'] : []), ...(config.signer ? ['heads_signer'] : [])];
       // A fresh cosignature only bounds rollback to its own time; a detected rollback or fork keeps this vault unanchored.
       const anchored = !!t?.rollbackChecked && !violations.some(v => QUARANTINE_KINDS.has(v.kind) || v.kind === 'pin');
       scope.notChecked = anchored ? [] : [...UNANCHORED];

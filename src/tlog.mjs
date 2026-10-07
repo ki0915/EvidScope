@@ -567,7 +567,8 @@ function openLogNote(note, origin, publicKey, extraVerifiers = [], logVerifiers 
 // Keys a heads checkpoint of `origin` may carry: the vault key (heads logs without a separate signer, and every heads
 // checkpoint before a deployment moved to one), the pinned heads keys (options.headsKeys: vkeys of `<base>/heads`, as
 // --heads-key) and the heads key the evidence carries (heads.logVkey), which proves nothing unless it is also pinned.
-// anyName: an earlier heads origin (restore epochs) is checked with the same raw keys under its own name.
+// A pinned key is the signer's raw key: it counts under any heads origin (the signer signs a new origin base only after a
+// restore epoch the operator authorized on it). anyName: the carried key may name an earlier heads origin (restore epochs).
 function headsLogVerifiers(origin, publicKey, {headsKeys = [], carried, anyName = false} = {}) {
   const out = new Map(), add = (vkey, role) => { if (!out.has(vkey)) out.set(vkey, {...noteVerifier(vkey), role}); };
   const renamed = k => vkeyString(origin, SIG_ED25519, k.pub);
@@ -576,8 +577,7 @@ function headsLogVerifiers(origin, publicKey, {headsKeys = [], carried, anyName 
   for (const v of headsKeys) {
     const k = parseVkey(v);
     if (k.type !== SIG_ED25519 || !k.name.endsWith('/heads')) throw Error('A pinned heads key must be the Ed25519 note vkey of a heads origin');
-    if (k.name === origin) add(v, 'pinned');
-    else if (anyName) add(renamed(k), 'pinned');
+    add(renamed(k), 'pinned');
   }
   if (carried !== undefined && carried !== null) {
     const k = parseVkey(carried);

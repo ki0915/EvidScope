@@ -169,6 +169,10 @@ test('a vault-key heads log moves to the signer only from the authorized, witnes
   assert.throws(() => handoverAuthorization({stateDir: s.stateDir, checkpoint: note, vaultKey: vault.publicKey, witnesses: [wvkey]}),
     /0 of 1 required witness/);
   assert.throws(() => handoverAuthorization({stateDir: s.stateDir, checkpoint: note, vaultKey: generateKeyPairSync('ed25519').publicKey}), /signature|signed/);
+  // Only a recent cosignature counts: an old cosigned checkpoint may lie behind what the witnesses have seen since.
+  const stale = note + T.cosign(T.noteText(note), w, Math.floor(Date.now() / 1000) - 2 * 86400);
+  assert.throws(() => handoverAuthorization({stateDir: s.stateDir, checkpoint: stale, vaultKey: vault.publicKey, witnesses: [wvkey]}),
+    /0 of 1 required witness cosignatures made in the last 86400 s/);
   const cosigned = note + T.cosign(T.noteText(note), w, Math.floor(Date.now() / 1000));
   const auth = handoverAuthorization({stateDir: s.stateDir, checkpoint: cosigned, vaultKey: vault.publicKey, witnesses: [wvkey]});
   assert.deepEqual([auth.kind, auth.predecessor.size, auth.predecessor.cosignatures], ['handover', 2, 1]);
