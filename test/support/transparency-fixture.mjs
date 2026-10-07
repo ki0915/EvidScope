@@ -34,8 +34,10 @@ export async function transparencyFixture(t, {witness = true, tenantLogs = false
   const config = (mode, {dir = dataDir, ...extra} = {}) => normalizeTransparencyConfig(mode === 'off' ? null
     : {origin: BASE, mode, witnesses: w ? [{vkey: w.vkey, url: ws.url}] : [], intervalMs: 100, timeoutMs: 2000,
       ...(tenantLogs ? {witnessTenantLogs: true} : {}), ...extra}, {dataDir: dir});
-  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir}), fetchImpl} = {}) {
-    const probe = cfg.mode !== 'off' && cfg.witnesses.length ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg, fetchImpl}) : null;
+  // probe: the startup probe to hand to the vault instead of probing `dir` now.
+  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir}), fetchImpl, probe: given} = {}) {
+    const probe = given !== undefined ? given
+      : cfg.mode !== 'off' && cfg.witnesses.length ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg, fetchImpl}) : null;
     const service = createService({dataDir: dir, key: privateKey, config: {principals}, requirements, transparency: {config: cfg, probe, fetchImpl}});
     services.push(service);
     return service;

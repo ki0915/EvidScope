@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createHash, sign} from 'node:crypto';
-import {writeFileSync} from 'node:fs';
+import {mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {DatabaseSync} from 'node:sqlite';
@@ -225,6 +225,24 @@ test('enforce startup refuses an older database whose heads log and pin a key ho
   const shrink = new RegExp(`^Heads log row ${forged.n} shrinks tenant log ${esc(alphaOrigin)} from ${witnessed} to ${olderSize}`);
   assert.ok(messages.some(m => shrink.test(m)), messages);
   assert.ok(messages.some(m => /^Ledger for tenant log .* is behind its heads entry/.test(m)), messages);
+});
+
+test('the startup check refuses a tenant log the witnesses were not probed for', async t => {
+  const f = await transparencyFixture(t, {tenantLogs: true});
+  const s = await f.open('enforce');
+  f.write(s, 'alpha', 1);
+  await s.transparency.pump();
+  const probedDir = join(f.root, 'probed');
+  mkdirSync(probedDir);
+  snapshot(f.dataDir, join(probedDir, 'evidence.db'));
+  // gamma is signed but not yet in a heads leaf, so the heads log the witnesses saw is unchanged.
+  f.write(s, 'gamma', 1);
+  await f.close(s);
+  const probe = await probeTransparency({dataDir: probedDir, key: f.privateKey, config: f.config('enforce')});
+  assert.deepEqual(probe.tenants.map(x => x.tenant).sort(), ['alpha', 'beta']);
+  await assert.rejects(f.open('enforce', {probe}), new RegExp(`tenant log ${esc(T.tenantOrigin(BASE, 'gamma'))} \\(size 1\\) was not in the database `
+    + 'the witnesses were probed with'));
+  await f.close(await f.open('enforce'));
 });
 
 test('the pump submits changed tenant logs first, at most 64 per round with 4 in flight, and backs off origins a witness does not know', async t => {

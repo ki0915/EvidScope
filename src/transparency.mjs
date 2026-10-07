@@ -488,7 +488,7 @@ function checkAnchors({db, key, config, probe}) {
       violate('inconsistent', `Truncated or inconsistent heads log: the database (heads size ${size}) differs from the one the witnesses were `
         + `probed with (heads size ${probe.headsSize}); it changed after the probe`);
     }
-    if (probe?.tenants?.length) checkProbedTenants(db, probe.tenants, violate);
+    if (probe?.tenants) checkProbedTenants(db, config.base, probe.tenants, violate);
     if (!pin && size && !rawPinError) {
       violations.push({kind: 'pin', missingPin: true, message: `Transparency pin for ${hOrigin} is missing although the heads log has size ${size}; `
         + 'restore the pin file or create one explicitly with scripts/transparency.mjs pin-bootstrap'});
@@ -507,15 +507,23 @@ function checkAnchors({db, key, config, probe}) {
   } catch (error) { violate(error.kind || 'inconsistent', error.message); }
   return {report, pin};
 }
-// The tenant answers describe the tlog_state the probe read, like the heads answers above.
-function checkProbedTenants(db, tenants, violate) {
-  const at = db && hasTable(db, 'tlog_state') ? db.prepare('SELECT size,root FROM tlog_state WHERE tenant=? AND origin=?') : null;
+// The tenant answers describe the tlog_state the probe read, like the heads answers above: every probed log is unchanged and
+// every signed tenant log of the database was probed.
+function checkProbedTenants(db, base, tenants, violate) {
+  const has = !!db && hasTable(db, 'tlog_state'), at = has ? db.prepare('SELECT size,root FROM tlog_state WHERE tenant=? AND origin=?') : null;
   for (const t of tenants) {
     const r = at?.get(t.tenant, t.origin);
     if (!r || r.size !== t.size || Buffer.from(r.root).toString('hex') !== t.root) {
       violate('inconsistent', `Truncated or inconsistent tlog state: tenant log ${t.origin} (size ${r?.size ?? 0}) differs from the one the witnesses `
         + `were probed with (size ${t.size}); it changed after the probe`);
     }
+  }
+  if (!has) return;
+  const probed = new Set(tenants.map(t => t.origin)), prefix = base + '/t/';
+  for (const r of db.prepare('SELECT origin,size FROM tlog_state WHERE substr(origin,1,?)=? AND size>0').iterate(prefix.length, prefix)) {
+    if (probed.has(r.origin)) continue;
+    violate('inconsistent', `Truncated or inconsistent tlog state: tenant log ${r.origin} (size ${r.size}) was not in the database the witnesses `
+      + 'were probed with; it changed after the probe');
   }
 }
 // Every heads row after the anchor (the pin, or what a witness had cosigned before) keeps each tenant log monotone:
