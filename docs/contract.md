@@ -93,7 +93,9 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 
 반복 조회와 worker 분석은 매번 전체 원장을 다시 재생하지 않는다. 프로세스가 확인한 서명 checkpoint와 projection 상태를 tenant별로 보관하고, 다음 읽기에서 현재 checkpoint 서명·head, 이후 서명 원장 suffix, 이벤트·영수증·행동·키·객체·평가 projection delta와 SQLite mutation clock을 같은 transaction 안에서 인증한다. 외부 DB 변경, schema 변경, row 수 감소, checkpoint 후퇴·동일 길이 교체, 알 수 없는 trigger 부작용은 cache를 폐기하거나 409로 차단한다. `Store.transaction` 바깥에서 시작된 transaction의 중간 상태는 cache에 게시하지 않는다. 사람 판단의 최신 순서는 변경 가능한 SQL `rowid`가 아니라 서명 원장 `seq`로 정한다. `/api/integrity`, 전체 export, backup 검증은 이 빠른 경로와 별개로 전체 체인·사본을 끝까지 검사한다.
 
-내부 worker 계약은 `/internal/claim` 및 `/internal/complete`다. 일반 source/감사자에 허용하지 않는다. claim 최대5작업/10MiB, lease30초, commit 최대1MiB. worker가 분석해 `{leaseId,result}`를 제출하며 임의 tenant/action/타인의 증거 참조는 거부한다. 예전 `/internal/analyze`는410을 반환한다. 분석 한도 초과는 명시적 격리이며 분석완료로 집계하지 않는다.
+내부 worker 계약은 `/internal/claim` 및 `/internal/complete`다. 일반 source/감사자에 허용하지 않는다. claim 최대5작업/10MiB, lease30초, commit 최대1MiB. worker가 분석해 `{leaseId,result}`를 제출하며 임의 tenant/action/타인의 증거 참조는 거부한다. 예전 `/internal/analyze`는410을 반환한다. 분석 한도 초과는 명시적 격리이며 분석완료로 집계하지 않는다. worker는 config의 `tenants` 목록(없으면 자기 `tenant`)에 있는 tenant의 작업만 받고 제출한다. vault는 lease의 snapshot과 분석 시각으로 결과를 다시 계산해 같을 때만 서명하고, 다르면 422로 거부하며 lease를 닫는다. `suppressedBy`는 승인되고 만료되지 않은 예외만 가리킬 수 있다.
+
+문서·공급사 묶음·OTLP JSON·worker 결과·보조 결과처럼 본문이 큰 POST는 본문을 읽기 전에 인증과 역할을 확인한다. audit gateway는 업로드를 받기 전에 vault의 `POST /internal/preauthorize`로 확인한다. 경로의 퍼센트 인코딩이 잘못되면 400이다.
 
 증거 ref는 `event`: `sourceId/eventId` (동일 tenant에 실제 존재 검증), document/test/attestation: 인간이 제공한 참조·버전·내용 hash(선택)다. 후자 URL은 다운로드하지 않는다. 보고서는 과거 요구/시스템 hash 및 재검토일을 비교하여 stale 평가를 다시 검토 대상으로 표시한다. 전체 법률 자동 적용 엔진이나 외부 문서 검증 엔진이라고 주장하지 않는다.
 
