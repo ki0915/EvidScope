@@ -588,13 +588,43 @@ function verifyHeads(heads, {tenantOriginValue, base, publicKey, verifiers, opti
   }
   return {cp, entry, summary: witnessSummary(opened.note, verifiers, options)};
 }
+// The tenant log's own cosigned checkpoint. Witnesses refuse to cosign a smaller or forked tenant log, so a fresh quorum on
+// it bounds rollback even for a holder of the vault signing key; a heads leaf is signed by that key alone.
+function verifyTenantCosigned(material, {tOrigin, publicKey, verifiers, options}) {
+  if (!plainObject(material) || typeof material.checkpoint !== 'string') throw Error('Transparency tenant cosigned checkpoint invalid');
+  const opened = openLogNote(material.checkpoint, tOrigin, publicKey, verifiers);
+  return {cp: opened.checkpoint, summary: witnessSummary(opened.note, verifiers, options)};
+}
+const tenantCosignedResult = (t, tOrigin) => ({origin: tOrigin, size: t.cp.size, ...t.summary});
+const pinnedBase = options => options.originBase !== undefined && options.originBase !== null;
+function requireTenantWitness(result, options) {
+  const t = result.tenantCosigned;
+  if (!pinnedBase(options)) throw Error('Tenant witness check needs a pinned origin base (--origin-base): a signing key holder can sign a new origin');
+  if (result.originBase !== undefined && result.originBase !== options.originBase) {
+    throw Error(`Tenant witness check: the evidence continues origin base ${result.originBase} after a tlog epoch from the pinned ${options.originBase};`
+      + ' an epoch is signed by the vault key alone, so pin the new origin base once the epoch is confirmed');
+  }
+  if (!t) throw Error('Transparency tenant witness evidence missing: rollback is checked against database tamper only, not against a signing key holder');
+  if (!t.quorumMet) throw Error(`Transparency tenant witness quorum not met: ${t.witnesses.length}/${t.quorum}`);
+  if (!t.fresh) {
+    throw Error(`Transparency tenant witness cosignatures are older than ${result.witnessPolicy.maxStalenessSeconds} seconds: `
+      + 'a rollback since then is not excluded');
+  }
+}
+// rollbackCheckedAgainst names who the witness-anchored check holds against: 'signing_key_holder' needs a fresh quorum on the
+// tenant log of the pinned origin base; a heads quorum (or a tenant quorum on an unpinned origin) only binds an attacker who
+// cannot sign. A satisfied minimumCheckpoint is relative to the checkpoint the verifier supplied and does not set it.
 function finishResult(result, options) {
   result.witnessPolicy = policyOf(options);
-  result.rollbackChecked = !!(result.minimumCheckpoint?.satisfied || result.heads?.fresh);
+  const tenantFresh = !!result.tenantCosigned?.fresh, headsFresh = !!result.heads?.fresh;
+  const pinned = pinnedBase(options) && result.originBase === options.originBase;
+  result.rollbackChecked = !!(result.minimumCheckpoint?.satisfied || headsFresh || tenantFresh);
+  result.rollbackCheckedAgainst = tenantFresh && pinned ? 'signing_key_holder' : tenantFresh || headsFresh ? 'database_tamper' : null;
   if (options.require) {
     if (!result.present) throw Error('Transparency evidence missing');
     if (result.witnessPolicy.quorum > 0 && !result.heads?.quorumMet) throw Error('Transparency witness quorum not met');
   }
+  if (options.requireTenantWitness) requireTenantWitness(result, options);
   return result;
 }
 const headsResult = (heads, material, base) => ({
@@ -681,14 +711,16 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
   if (tenantNote && tenantNote.size > count) throw Error('Transparency checkpoint is ahead of exported records: Truncated or inconsistent export');
   const verifiers = witnessVerifiers(options.witnesses);
   const heads = material?.heads ? verifyHeads(material.heads, {tenantOriginValue: tOrigin, base, publicKey, verifiers, options}) : null;
+  const cosigned = material?.tenantCosigned !== undefined ? verifyTenantCosigned(material.tenantCosigned, {tOrigin, publicKey, verifiers, options}) : null;
   const cache = new Map();
   const rootAt = size => {
     if (!cache.has(size)) { const {roots} = rootsAtSizes(leaves, [size]); cache.set(size, roots.get(size)); }
     return cache.get(size);
   };
-  const sizes = [count, ...(tenantNote ? [tenantNote.size] : []), ...(heads ? [heads.entry.size] : []), ...epochs.map(e => e.restoredSize)];
+  const sizes = [count, ...(tenantNote ? [tenantNote.size] : []), ...(heads ? [heads.entry.size] : []), ...(cosigned ? [cosigned.cp.size] : []),
+    ...epochs.map(e => e.restoredSize)];
   for (const [k, v] of rootsAtSizes(leaves, sizes).roots) cache.set(k, v);
-  const result = {present: !!material, count, exportRoot: b64(rootAt(count)), heads: null};
+  const result = {present: !!material, count, exportRoot: b64(rootAt(count)), heads: null, tenantCosigned: null};
   if (tenantNote) {
     if (!rootAt(tenantNote.size).equals(tenantNote.root)) throw Error('Transparency checkpoint root differs from exported records (fork)');
     Object.assign(result, {origin: tOrigin, originBase: base, size: tenantNote.size, root: b64(tenantNote.root), unsignedTail: count - tenantNote.size});
@@ -697,6 +729,12 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
     if (heads.entry.size > count) throw Error('Export is behind witnessed tenant head: possible rollback or truncation');
     if (rootAt(heads.entry.size).toString('hex') !== heads.entry.root) throw Error('Witnessed tenant head differs from exported records (fork)');
     result.heads = headsResult(heads, material, base);
+  }
+  // Every leaf is present, so the export extends the cosigned tenant checkpoint exactly when its prefix root matches.
+  if (cosigned) {
+    if (cosigned.cp.size > count) throw Error('Export is behind the witnessed tenant checkpoint: possible rollback or truncation');
+    if (!rootAt(cosigned.cp.size).equals(cosigned.cp.root)) throw Error('Witnessed tenant checkpoint differs from exported records (fork)');
+    result.tenantCosigned = tenantCosignedResult(cosigned, tOrigin);
   }
   if (epochs.length) {
     result.epochs = verifyTlogEpochs({records: bundle.records, summaries: epochs, publicKey, rootAt, verifiers, base: material ? base : null});
@@ -711,7 +749,7 @@ export function verifyBundleTransparency({bundle, leaves, publicKey, options = {
 // consistency proof binds the witnessed tenant head to the report checkpoint. snapshot is verified by the caller.
 export function verifyReportTransparency({report, publicKey, options = {}}) {
   const s = report.snapshot, tenant = s.tenant, count = s.checkpoint.count, material = report.transparency;
-  if (!material) return finishResult({present: false, heads: null}, options);
+  if (!material) return finishResult({present: false, heads: null, tenantCosigned: null}, options);
   if (material.format !== TRANSPARENCY_FORMAT) throw Error('Unsupported transparency evidence');
   const base = originBaseFor(tenant, material.origin, options.originBase), tOrigin = tenantOrigin(base, tenant);
   const tenantNote = openLogNote(material.checkpoint, tOrigin, publicKey).checkpoint;
@@ -734,7 +772,8 @@ export function verifyReportTransparency({report, publicKey, options = {}}) {
     }
   }
   const verifiers = witnessVerifiers(options.witnesses);
-  const result = {present: true, origin: tOrigin, originBase: base, size: count, root: b64(tenantNote.root), includedEvents: events.length, heads: null};
+  const result = {present: true, origin: tOrigin, originBase: base, size: count, root: b64(tenantNote.root), includedEvents: events.length, heads: null,
+    tenantCosigned: null};
   if (material.heads) {
     const heads = verifyHeads(material.heads, {tenantOriginValue: tOrigin, base, publicKey, verifiers, options});
     if (heads.entry.size > count) throw Error('Report is behind witnessed tenant head: possible rollback or truncation');
@@ -743,6 +782,15 @@ export function verifyReportTransparency({report, publicKey, options = {}}) {
       throw Error('Witnessed tenant head is inconsistent with the report checkpoint (fork)');
     }
     result.heads = headsResult(heads, material, base);
+  }
+  // A report holds only some records, so a consistency proof binds the cosigned tenant checkpoint to the report checkpoint.
+  if (material.tenantCosigned !== undefined) {
+    const cosigned = verifyTenantCosigned(material.tenantCosigned, {tOrigin, publicKey, verifiers, options}), list = material.tenantCosigned.consistency ?? [];
+    if (cosigned.cp.size > count) throw Error('Report is behind the witnessed tenant checkpoint: possible rollback or truncation');
+    if (!Array.isArray(list) || !verifyConsistency(cosigned.cp.size, count, cosigned.cp.root, tenantNote.root, list.map(h => hash32(h, 'proof hash')))) {
+      throw Error('Witnessed tenant checkpoint is inconsistent with the report checkpoint (fork)');
+    }
+    result.tenantCosigned = tenantCosignedResult(cosigned, tOrigin);
   }
   return finishResult(result, options);
 }
