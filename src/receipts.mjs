@@ -13,10 +13,10 @@ export const ATTESTED_FILE_FORMAT = 'evidscope-attested-file-v1', RECORD_RECEIPT
 const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const str = v => (typeof v === 'string' ? v : null);
 const uniqueSorted = values => [...new Set(values.filter(v => typeof v === 'string'))].sort();
-const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, ISO_TIME = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$/;
 export const safeFileName = name => (typeof name === 'string' && SAFE_NAME.test(name) && !name.includes('..') ? name : null);
 export const exportFileName = bundle => `evidscope-export-${bundle.checkpoint.count}.json`;
-export const caseReportFileName = report => `evidscope-case-${String(report.snapshot.case.id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80)}`
+export const caseReportFileName = report => `evidscope-case-${String(report.snapshot.case.id).replace(/[^A-Za-z0-9._-]|\.(?=\.)/g, '_').slice(0, 80)}`
   + `-${report.snapshot.checkpoint.count}.json`;
 export const recordFileBase = (tenant, seq) => `evidscope-record-${T.tenantLogId(tenant).slice(0, 12)}-${seq}`;
 
@@ -213,10 +213,15 @@ export function verifyAttestation({envelope, subject, publicKey, options = {}}) 
     ? verifyBundle(value, publicKey, options.expectedCheckpoint, transparency ? {transparency} : {})
     : verifyCaseReport(value, publicKey, {expectedCheckpoint: options.expectedCheckpoint, ...(transparency ? {transparency} : {})});
   const facts = kind === 'export' ? exportFacts(value) : caseReportFacts(value), predicate = plain(statement.predicate) ? statement.predicate : {};
+  // Exactly the fields of the predicate type: nothing unverified rides along for tools that display the predicate.
+  const known = new Set([...Object.keys(facts), 'issuedAt', 'tlogProofs']), extra = Object.keys(predicate).find(k => !known.has(k));
+  if (extra !== undefined) throw Error('Attestation predicate has an unknown field ' + JSON.stringify(extra));
   for (const [k, v] of Object.entries(facts)) {
     if (canonical(predicate[k] ?? null) !== canonical(v)) throw Error(`Attestation predicate ${k} differs from the subject`);
   }
-  if (kind === 'export' && typeof predicate.issuedAt !== 'string') throw Error('Attestation predicate issuedAt missing');
+  if (kind === 'export' && !(typeof predicate.issuedAt === 'string' && ISO_TIME.test(predicate.issuedAt) && Number.isFinite(Date.parse(predicate.issuedAt)))) {
+    throw Error('Attestation predicate issuedAt is not an ISO 8601 UTC time');
+  }
   const plan = proofPlan(kind, value), proofs = Array.isArray(predicate.tlogProofs) ? predicate.tlogProofs : [];
   if (proofs.length !== plan.length) throw Error('Attestation tlog-proofs differ from the records they must cover');
   const policy = plan.length ? (options.policy !== undefined ? policyFor(options.policy, facts.tlog.origin, publicKey)

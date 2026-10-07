@@ -1,9 +1,11 @@
 // Builds the separately published offline verifier (docs/receipts.md): a folder and a reproducible .tar.gz holding
 // evidscope-verify.mjs, only the src modules it imports, a package.json without dependencies, README.md (Korean),
 // README.en.md (English) and SHA256SUMS (sha256sum -c format).
-//   node scripts/package-verifier.mjs [--out DIR]     default releases/; existing outputs are never overwritten
+//   node scripts/package-verifier.mjs [--out DIR] [--allow-dirty]   default releases/; existing outputs are never overwritten
+// The CLI refuses uncommitted changes in src/, deploy/verifier/ or package.json unless --allow-dirty is given.
 // The import closure is computed from src/verify-cli.mjs: only node: built-ins without network or process access and
 // modules beside it are allowed, and dynamic import() is refused, so what is listed is all the verifier can load.
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, posix, resolve} from 'node:path';
@@ -101,7 +103,12 @@ export function packageVerifier({out = join(root, 'releases'), mtime = Number(pr
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
-    const {values} = parseArgs({options: {out: {type: 'string'}}});
+    const {values} = parseArgs({options: {out: {type: 'string'}, 'allow-dirty': {type: 'boolean'}}});
+    if (!values['allow-dirty']) {
+      const git = spawnSync('git', ['status', '--porcelain', '--', 'src', 'deploy/verifier', 'package.json'], {cwd: root, encoding: 'utf8'});
+      if (git.status !== 0) throw Error('Cannot check the sources with git status; pass --allow-dirty to package the working tree as it is');
+      if (git.stdout.trim()) throw Error('Uncommitted changes in src/, deploy/verifier/ or package.json; commit them or pass --allow-dirty');
+    }
     console.log(JSON.stringify(packageVerifier(values.out ? {out: values.out} : {}), null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

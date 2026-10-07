@@ -1,5 +1,5 @@
 // Shared opt-in transparency flags for the offline verifier CLIs (scripts/verify*.mjs, src/verify-cli.mjs). Positional arguments keep their meaning.
-import {readFileSync} from 'node:fs';
+import {readFileSync, statSync} from 'node:fs';
 
 export const transparencyFlags = {
   witness: {type: 'string', multiple: true},
@@ -15,6 +15,8 @@ const count = (value, name) => {
 };
 // A minimum checkpoint file holds either a C2SP tenant note or an evidscope-checkpoint-v1 JSON object.
 function minimumCheckpoint(file) {
+  const st = statSync(file);
+  if (!st.isFile() || st.size > 1024 * 1024) throw Error(`--min-checkpoint ${file} must be a regular file of at most 1 MiB`);
   const raw = readFileSync(file, 'utf8');
   try {
     const value = JSON.parse(raw);

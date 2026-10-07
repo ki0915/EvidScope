@@ -65,8 +65,13 @@ const node = (args, cwd) => {
 test('package-verifier builds a dependency-free, reproducible verifier folder and tarball with a SHA-256 manifest', t => {
   const dir = mkdtempSync(join(tmpdir(), 'evidscope-verifier-pkg-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
-  const a = packageVerifier({out: join(dir, 'a')}), b = packageVerifier({out: join(dir, 'b')}), base = `${a.name}-${a.version}`;
+  // Built twice, once through the CLI (--allow-dirty: the tests run on working trees), the tarball is the same.
+  const a = packageVerifier({out: join(dir, 'a')}), base = `${a.name}-${a.version}`;
+  const cli = spawnSync(process.execPath, [join(repo, 'scripts', 'package-verifier.mjs'), '--out', join(dir, 'b'), '--allow-dirty'], {encoding: 'utf8'});
+  assert.equal(cli.status, 0, cli.stderr);
+  const b = JSON.parse(cli.stdout);
   assert.equal(a.tarballSha256, b.tarballSha256, 'the same sources give the same tarball');
+  assert.ok(readFileSync(b.tarball).equals(readFileSync(a.tarball)));
   assert.equal(sha256(readFileSync(a.tarball)), a.tarballSha256);
   assert.equal(readFileSync(a.tarball + '.sha256', 'utf8'), `${a.tarballSha256}  ${base}.tar.gz\n`);
   assert.throws(() => packageVerifier({out: join(dir, 'a')}), /Refusing to overwrite/);

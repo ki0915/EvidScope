@@ -74,6 +74,7 @@ test('evidscope-verify checks unpacked attestations, record receipts and the exi
     assert.equal(verify(args).status, 2, args.join(' '));
   }
   assert.match(verify(['bundle', '/dev/null', x.files.key]).err, /not a regular file/);
+  assert.match(verify(['bundle', path(exportName), x.files.key, '--min-checkpoint', '/dev/null']).err, /must be a regular file/);
 });
 
 test('scripts/receipts.mjs writes the same record receipt from the data directory and prints the tenant policy', async t => {

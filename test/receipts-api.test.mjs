@@ -55,6 +55,10 @@ test('an attested export is the plain export bytes plus a DSSE in-toto statement
     publicKey: f.publicKey}), /DSSE signature verification failed/);
   const lying = resign(f, wrapper, st => { st.predicate.requirementResults = [{requirementId: 'KR-1', assessment: 'sufficient'}]; });
   assert.throws(() => R.verifyAttestation({envelope: lying, subject: subjectOf(wrapper), publicKey: f.publicKey}), /predicate requirementResults differs/);
+  const padded = resign(f, wrapper, st => { st.predicate.legalConclusion = 'compliant'; });
+  assert.throws(() => R.verifyAttestation({envelope: padded, subject: subjectOf(wrapper), publicKey: f.publicKey}), /unknown field "legalConclusion"/);
+  const undated = resign(f, wrapper, st => { st.predicate.issuedAt = 'yesterday'; });
+  assert.throws(() => R.verifyAttestation({envelope: undated, subject: subjectOf(wrapper), publicKey: f.publicKey}), /issuedAt is not an ISO 8601/);
   const swapped = resign(f, wrapper, st => { st.predicate.tlogProofs.reverse(); });
   assert.throws(() => R.verifyAttestation({envelope: swapped, subject: subjectOf(wrapper), publicKey: f.publicKey}), /tlog-proof list is malformed/);
   const bent = resign(f, wrapper, st => {

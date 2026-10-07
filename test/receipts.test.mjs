@@ -5,7 +5,7 @@ import {createPublicKey, generateKeyPairSync, verify} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import * as D from '../src/dsse.mjs';
 import * as P from '../src/tlog-policy.mjs';
-import {tenantTlogPolicy} from '../src/receipts.mjs';
+import {caseReportFileName, safeFileName, tenantTlogPolicy} from '../src/receipts.mjs';
 import * as T from '../src/tlog.mjs';
 
 const V = JSON.parse(readFileSync(new URL('./fixtures/c2sp-vectors.json', import.meta.url), 'utf8'));
@@ -159,4 +159,13 @@ test('formatTlogPolicy and the EvidScope tenant policy produce parseable policie
   assert.throws(() => tenantTlogPolicy({origin, publicKey: privateKey, witnesses: [w[0].vkey], quorum: 2}), /quorum/);
   assert.throws(() => P.formatTlogPolicy({logs: ['a b'], quorum: 'none'}), /Invalid tlog-policy token/);
   assert.throws(() => P.formatTlogPolicy({witnesses: [{name: '#w', vkey: w[0].vkey}], quorum: '#w'}), /Invalid tlog-policy token/);
+});
+
+test('receipt file names stay single safe path components', () => {
+  const name = id => caseReportFileName({snapshot: {case: {id}, checkpoint: {count: 3}}});
+  for (const id of ['9fabd2a5-c6b5-43f2-b7ce-a04634d4ce6f', 'a..b', '../../etc/passwd', 'x/y\\z', '...', 'ü'.repeat(200)]) {
+    assert.equal(safeFileName(name(id)), name(id), id);
+  }
+  assert.equal(name('a..b'), 'evidscope-case-a_.b-3.json');
+  for (const bad of ['../x', 'a/b', '.hidden', 'a..b', '', 'x'.repeat(129), null]) assert.equal(safeFileName(bad), null, String(bad));
 });
