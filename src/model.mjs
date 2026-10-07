@@ -58,6 +58,11 @@ const sameTarget=(a,b)=>sameContext(a,b)&&['actor','tool','action','resource'].e
 // Bump when evaluate()/boundedEvaluation() can return different output for the same inputs: signed evaluations record
 // this identifier and src/policy-replay.mjs never compares results produced by a different engine.
 export const EVALUATION_ENGINE='evidscope-evaluate-v1';
+// The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
+// recorded for the same action and rule. The vault applies the same predicate to worker results.
+export function suppressingException(exceptions,finding,actionId,now){
+ return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
+}
 export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
@@ -118,7 +123,10 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
   for(const r of rules)if(matches(r,e))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
  const unique=[...new Map(findings.map(f=>[f.code+'|'+f.evidence.join(','),f])).values()];
- for(const f of unique){const exception=exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===events[0]?.actionId&&(x.ruleId===f.code||f.code.startsWith(`CUSTOM:${x.ruleId}:`)));if(exception){f.suppressedBy=exception.id;f.message+=' (승인된 한시 예외; 원본·법적 판단은 유지)';}}
+ for(const f of unique){
+  const exception=suppressingException(exceptions,f,events[0]?.actionId,now);
+  if(exception){f.suppressedBy=exception.id;f.message+=' (승인된 한시 예외; 원본·법적 판단은 유지)';}
+ }
  const reportedSuccess=executions.some(e=>e.kind==='result'&&e.status==='success'),reportedFailure=executions.some(e=>e.kind==='result'&&e.status==='failure');
  return {findings:unique,authority:executions.length?(unique.some(f=>f.code.startsWith('AUTHORITY'))?'unverified_or_mismatch':'matched_at_event_time'):'not_observed',effect:reportedSuccess&&reportedFailure?'mixed_results':reportedSuccess?'independently_reported_success':reportedFailure?'independently_reported_failure':'unconfirmed',limitations:['출처 인증은 내용의 진실성을 보증하지 않습니다','출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다','시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다','승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다']};
 }

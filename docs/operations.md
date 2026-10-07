@@ -65,6 +65,7 @@ kubectl --context $labContext create namespace evidscope
 다음 민감 파일을 보호된 로컬 디렉터리에 준비한다. 저장소에 커밋하지 않는다. 초기화 산출물을 사용할 경우 실험용 tenant/source/human/worker의 역할을 먼저 확인한다. 운영 키와 고객 데이터는 실험에 넣지 않는다.
 
 * `config.json`: vault가 읽는 검증된 principal 설정. source 제출 권한, tenant, source 유형, 인간 역할, worker identity를 구분한다.
+  worker principal은 `"tenants": ["alpha","beta"]`처럼 분석할 tenant를 명시한다(감사 S6). 목록이 없으면 그 principal의 `tenant` 하나만 분석한다. `tenant`가 `internal`이고 목록이 없는 기존 worker는 기존 로컬 설정 호환을 위해 `synthetic-local` 프로필에서만 모든 tenant를 분석하며, `enterprise` 프로필은 이런 worker가 있으면 시작을 거부한다. `npm run init`(scripts/init.mjs)이 새로 만드는 `analysis-worker`는 `tenants: ["alpha","beta"]`를 가진다. tenant를 추가하면 그 tenant를 맡을 worker의 `tenants`에도 추가해야 분석 backlog가 줄어든다. vault는 worker 결과를 같은 snapshot·분석 시각으로 직접 재계산한 결과와 비교해 다르면 HTTP 422로 거부하고 lease를 `rejected`로 닫는다(서명 원장에는 기록하지 않음). 따라서 vault와 worker는 같은 릴리스(평가 엔진)를 실행해야 하며, worker 로그의 `rejectedResults`는 버전 불일치나 변조된 worker를 뜻한다.
 * `signing-private.pem`: vault의 Ed25519 개인키. 대응 공개키와 trusted checkpoint는 export와 독립된 감사자 저장소에 전달한다.
 * `worker-token.txt`: config에 등록된 worker의 원시 토큰만 담은 파일. 줄바꿈을 추가하지 않는다.
 * `ca.crt`: TLS 발급 CA 공개 인증서.
