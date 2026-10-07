@@ -53,8 +53,9 @@ function reducer(tenant,seed){
    }else if(payload.tenant!==undefined&&payload.tenant!==tenant)mismatch('event tenant mismatch');
    eventSequences.add(row.seq);eventActions.set(row.seq,id);increment(id);return;
   }
-  // Registry and registry-policy versions are evaluation input like asset versions (src/agent-registry.mjs).
-  if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'){incrementAll();return;}
+  // Registry, registry-policy and stop-order versions are evaluation input like asset versions (src/agent-registry.mjs,
+  // src/stop-orders.mjs).
+  if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'||row.type==='agent_stop_order'){incrementAll();return;}
   if(row.type==='rule'){
    const next=ruleStatuses(row.payload),prior=rules.get(row.payload.id)||new Map();
    if([...next].some(([version,status])=>status==='active'&&prior.get(version)!=='active'))incrementAll();

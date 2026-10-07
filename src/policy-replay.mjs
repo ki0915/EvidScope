@@ -6,11 +6,13 @@
 // erased before the evaluation, every asset registration in log order, the latest record of each rule (active versions)
 // and of each exception. Recorded snapshotHash = digest(snapshot) proves that the reconstruction is the exact input.
 // Engine v2 adds the registry input (every agent_registry / agent_registry_policy version) and the related deny decisions of
-// other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot.
+// other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot. Engine v4 adds the
+// stop orders with the first activation per order and covering enforcement point (src/stop-orders.mjs), likewise.
 import {EVALUATION_ENGINE, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine} from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
+import {STOP_ORDER_TYPE, stopOrderAnalysisInput} from './stop-orders.mjs';
 
 export const POLICY_REPLAY_FORMAT = 'evidscope-policy-replay-v1';
 // Limits in force before evaluations recorded them (src/analysis.mjs analysisLimits for engine evidscope-evaluate-v1).
@@ -26,7 +28,7 @@ const findingKey = finding => `${finding.code}|${(finding.evidence || []).join('
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
-    exceptions: new Map(), registry: []};
+    exceptions: new Map(), registry: [], registryRows: []};
 }
 
 function addEvent(state, event) {
@@ -56,12 +58,16 @@ function apply(state, row, disclosures) {
   } else if (row.type === 'asset' && payload.id) state.assets.set(`${payload.id}:${row.seq}`, payload);
   else if (row.type === 'rule' && payload.id) state.rules.set(payload.id, payload);
   else if (row.type === 'exception' && payload.id) state.exceptions.set(payload.id, payload);
-  else if (REGISTRY_INPUT_TYPES.includes(row.type)) state.registry.push({type: row.type, payload});
+  if (REGISTRY_INPUT_TYPES.includes(row.type)) state.registry.push({type: row.type, payload});
+  if (REGISTRY_INPUT_TYPES.includes(row.type) || row.type === STOP_ORDER_TYPE) {
+    state.registryRows.push({seq: row.seq, type: row.type, recordedAt: row.recordedAt, hash: row.hash, payload});
+  }
 }
 
 function snapshot(state, actionId) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
+  const stopOrders = stopOrderAnalysisInput(state.registryRows, state.events.values());
   return {
     events: events.sort(eventOrder),
     assets: [...state.assets.values()],
@@ -69,10 +75,12 @@ function snapshot(state, actionId) {
     exceptions: [...state.exceptions.values()],
     ...(registry ? {registry} : {}),
     ...(relatedDecisions ? {relatedDecisions} : {}),
+    ...(stopOrders ? {stopOrders} : {}),
   };
 }
-const extraBytes = data => (data.registry || data.relatedDecisions
-  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {})}) + 1 : 0);
+const extraBytes = data => (data.registry || data.relatedDecisions || data.stopOrders
+  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {}),
+    ...(data.stopOrders ? {stopOrders: data.stopOrders} : {})}) + 1 : 0);
 
 // Mirrors Store.cachedAnalysisSnapshot resource checks followed by the claim-time size check in src/analysis.mjs.
 function quarantineReason(data, limits) {
@@ -120,6 +128,7 @@ function inputSummary(data, matches) {
   return {events: data.events.map(e => e.seq), assets: data.assets.length, rules: data.rules.map(r => ({id: r.id, version: r.version})),
     exceptions: data.exceptions.length, ...(data.registry ? {registry: {entries: data.registry.entries.length, policies: data.registry.policies.length}} : {}),
     ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions.map(d => d.seq)} : {}),
+    ...(data.stopOrders ? {stopOrders: {orders: data.stopOrders.orders.length, activations: data.stopOrders.activations.map(a => a.seq)}} : {}),
     snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 
@@ -134,7 +143,9 @@ function replayOne(state, row, engines) {
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
   // Related denies of other actions erased since the evaluation cannot be re-examined either.
-  const related = Array.isArray(evaluation.replay?.inputs?.relatedDecisions) ? evaluation.replay.inputs.relatedDecisions : [];
+  // So are stop-order activation reports of other actions.
+  const related = [...(Array.isArray(evaluation.replay?.inputs?.relatedDecisions) ? evaluation.replay.inputs.relatedDecisions : []),
+    ...(Array.isArray(evaluation.replay?.inputs?.stopOrders?.activations) ? evaluation.replay.inputs.stopOrders.activations : [])];
   const erased = [...(recordedSeqs ? recordedSeqs.filter(seq => hidden.includes(seq)) : hidden),
     ...related.filter(seq => Number.isSafeInteger(seq) && !state.events.has(seq) && !hidden.includes(seq))];
   if (evaluation.status === 'quarantined_resource_limit') {

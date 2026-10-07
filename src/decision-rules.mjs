@@ -11,7 +11,7 @@ export const REPEATED_DENIES=Object.freeze({windowMs:10*60*1000,threshold:3,rela
 export const isDecision=e=>e?.sourceKind==='enforcement'&&DECISION_KINDS.includes(e.kind);
 const isDeny=e=>isDecision(e)&&e.decision==='deny'&&typeof e.actor==='string';
 // A tool record of an execution: an execution report, or a successful result.
-const executed=e=>e.sourceKind==='tool'&&(e.kind==='execution'||e.kind==='result'&&e.status==='success');
+export const executed=e=>e.sourceKind==='tool'&&(e.kind==='execution'||e.kind==='result'&&e.status==='success');
 // A decision names the actor and the parts of the target it decided on; each named part must match the tool record.
 const targets=(d,e)=>!!d.actor&&d.actor===e.actor&&['tool','action','resource','destination'].every(k=>d[k]===undefined||d[k]===e[k]);
 const time=e=>Date.parse(e.occurredAt);
