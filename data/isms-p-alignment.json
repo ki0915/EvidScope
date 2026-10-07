@@ -316,7 +316,7 @@
             {"type": "api", "method": "POST", "path": "/api/exceptions/{id}/approve", "what": "예외 작성자·소유자의 자기 승인 거부"},
             {"type": "api", "method": "POST", "path": "/api/retention/plans/{id}/approve", "what": "파기 계획 작성자의 자기 승인 거부"},
             {"type": "api", "method": "POST", "path": "/api/cases/{id}", "what": "사건을 열거나 다시 연 사람의 종결 거부"},
-            {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "사람 승인은 authority 출처만 기록(에이전트·도구 자기 승인 거부)"},
+            {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "사람 승인은 authority 출처만 기록(에이전트·도구 자기 승인 거부)"},
             {"type": "file", "path": "test/four-eyes.test.mjs", "what": "직무 분리 회귀 시험"}
           ]
         },
@@ -359,7 +359,7 @@
           "evidence": [
             {"type": "api", "method": "POST", "path": "/api/ingest/otlp", "what": "OTLP로 모델 호출 관측 수집"},
             {"type": "api", "method": "GET", "path": "/api/ai-visibility", "what": "제공자·모델·목적지별 모델 호출 관측"},
-            {"type": "eventKind", "name": "notice", "source": "otlp", "alsoAllowed": ["telemetry"], "deniedSources": ["agent", "tool", "authority", "safety"], "what": "모델 호출 관측은 otlp·telemetry 출처만 기록"}
+            {"type": "eventKind", "name": "notice", "source": "otlp", "alsoAllowed": ["telemetry"], "deniedSources": ["agent", "tool", "authority", "safety", "enforcement"], "what": "모델 호출 관측은 otlp·telemetry 출처만 기록"}
           ]
         }
       ],
@@ -390,8 +390,8 @@
           "checkItems": [1],
           "shows": "에이전트 행동 권한의 부여·회수는 authority 출처만 기록하고, OIDC 계정의 접근 변경은 사유와 함께 서명 기록",
           "evidence": [
-            {"type": "eventKind", "name": "grant", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "권한 부여는 authority 출처만 기록"},
-            {"type": "eventKind", "name": "revoke", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "권한 회수는 authority 출처만 기록"},
+            {"type": "eventKind", "name": "grant", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "권한 부여는 authority 출처만 기록"},
+            {"type": "eventKind", "name": "revoke", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "권한 회수는 authority 출처만 기록"},
             {"type": "record", "name": "identity_access", "what": "OIDC 계정 접근 변경의 서명 기록"}
           ]
         },
@@ -414,7 +414,7 @@
           "shows": "에이전트 행동을 인증된 수집 출처와 에이전트 식별자에 귀속하고, 식별자에 귀속하지 못한 행동 수를 보고",
           "evidence": [
             {"type": "api", "method": "GET", "path": "/api/agents", "what": "에이전트별 행동 집계와 귀속 불명 행동 수"},
-            {"type": "eventKind", "name": "intent", "source": "agent", "deniedSources": ["tool", "authority", "safety", "telemetry", "otlp"], "what": "에이전트 의도는 agent 출처만 기록"}
+            {"type": "eventKind", "name": "intent", "source": "agent", "deniedSources": ["tool", "authority", "safety", "telemetry", "otlp", "enforcement"], "what": "에이전트 의도는 agent 출처만 기록"}
           ]
         }
       ],
@@ -442,7 +442,7 @@
           "checkItems": [1],
           "shows": "행동 당시 자산 정책이 건별 사람 승인을 요구하면 authority 출처의 승인 기록을 찾고, 없거나 맞지 않는 승인과 확인되지 않은 위임을 표시",
           "evidence": [
-            {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "사람 승인은 authority 출처만 기록"},
+            {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "사람 승인은 authority 출처만 기록"},
             {"type": "finding", "code": "HUMAN_APPROVAL_MISSING", "what": "승인이 필요한 행동에 사람 승인 기록이 없음"},
             {"type": "finding", "code": "APPROVAL_MISMATCH", "what": "승인 기록이 행동 시점·범위와 맞지 않음"},
             {"type": "finding", "code": "DELEGATION_UNVERIFIED", "what": "위임 행동에 독립 권한 증거가 없음"}
@@ -467,9 +467,9 @@
           "checkItems": [1],
           "shows": "에이전트 권한의 부여·회수와 도구 실행, OIDC 계정의 접근 변경과 세션 이력이 서명 원장에 남음",
           "evidence": [
-            {"type": "eventKind", "name": "grant", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "권한 부여 이력"},
-            {"type": "eventKind", "name": "revoke", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "권한 회수 이력"},
-            {"type": "eventKind", "name": "execution", "source": "tool", "deniedSources": ["agent", "authority", "safety", "telemetry", "otlp"], "what": "도구 실행은 tool 출처만 기록"},
+            {"type": "eventKind", "name": "grant", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "권한 부여 이력"},
+            {"type": "eventKind", "name": "revoke", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp", "enforcement"], "what": "권한 회수 이력"},
+            {"type": "eventKind", "name": "execution", "source": "tool", "deniedSources": ["agent", "authority", "safety", "telemetry", "otlp", "enforcement"], "what": "도구 실행은 tool 출처만 기록"},
             {"type": "record", "name": "identity_access", "what": "OIDC 계정 접근 변경 이력"},
             {"type": "record", "name": "identity_session", "what": "OIDC 세션 이력"}
           ]
@@ -578,7 +578,7 @@
           "evidence": [
             {"type": "api", "method": "GET", "path": "/api/overview", "what": "등록 출처별 마지막 수신과 상태"},
             {"type": "api", "method": "GET", "path": "/api/monitoring", "what": "기간별 수신·도구 성공·실패 집계"},
-            {"type": "eventKind", "name": "gap", "source": "telemetry", "deniedSources": ["agent", "tool", "authority", "safety", "otlp"], "what": "수집 공백은 telemetry 출처만 보고"},
+            {"type": "eventKind", "name": "gap", "source": "telemetry", "deniedSources": ["agent", "tool", "authority", "safety", "otlp", "enforcement"], "what": "수집 공백은 telemetry 출처만 보고"},
             {"type": "finding", "code": "COLLECTION_GAP", "what": "수집 출처가 보고한 관측 공백"}
           ]
         }
@@ -614,8 +614,8 @@
           "checkItems": [1],
           "shows": "에이전트 의도·도구 실행·모델 호출 기록을 출처 인증 뒤 서명 원장에 보관하고 보존기간을 정책으로 정함",
           "evidence": [
-            {"type": "eventKind", "name": "intent", "source": "agent", "deniedSources": ["tool", "authority", "safety", "telemetry", "otlp"], "what": "에이전트 의도 기록"},
-            {"type": "eventKind", "name": "execution", "source": "tool", "deniedSources": ["agent", "authority", "safety", "telemetry", "otlp"], "what": "도구 실행 기록"},
+            {"type": "eventKind", "name": "intent", "source": "agent", "deniedSources": ["tool", "authority", "safety", "telemetry", "otlp", "enforcement"], "what": "에이전트 의도 기록"},
+            {"type": "eventKind", "name": "execution", "source": "tool", "deniedSources": ["agent", "authority", "safety", "telemetry", "otlp", "enforcement"], "what": "도구 실행 기록"},
             {"type": "api", "method": "POST", "path": "/api/ingest/otlp", "what": "모델 호출 관측 수집"},
             {"type": "record", "name": "retention_policy", "what": "보존기간의 서명 기록"}
           ]
@@ -723,8 +723,8 @@
           "checkItems": [1],
           "shows": "에이전트 중지·차단 요청과 확인을 safety 출처로 기록하고, 확인이 없거나 중지 뒤 실행이 있으면 표시하며, 사람 판단을 사건 기록에 남김",
           "evidence": [
-            {"type": "eventKind", "name": "stop_requested", "source": "safety", "deniedSources": ["agent", "tool", "authority", "telemetry", "otlp"], "what": "중지 요청은 safety 출처만 기록"},
-            {"type": "eventKind", "name": "stop_confirmed", "source": "safety", "deniedSources": ["agent", "tool", "authority", "telemetry", "otlp"], "what": "중지 확인은 safety 출처만 기록"},
+            {"type": "eventKind", "name": "stop_requested", "source": "safety", "deniedSources": ["agent", "tool", "authority", "telemetry", "otlp", "enforcement"], "what": "중지 요청은 safety 출처만 기록"},
+            {"type": "eventKind", "name": "stop_confirmed", "source": "safety", "deniedSources": ["agent", "tool", "authority", "telemetry", "otlp", "enforcement"], "what": "중지 확인은 safety 출처만 기록"},
             {"type": "finding", "code": "STOP_UNCONFIRMED", "what": "중지 요청 뒤 확인 없음"},
             {"type": "finding", "code": "EXECUTION_AFTER_STOP_REQUEST", "what": "중지 요청 뒤 실행"},
             {"type": "finding", "code": "BLOCK_SUCCESS_CONFLICT", "what": "차단 등록 뒤 성공 결과"},

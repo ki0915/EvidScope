@@ -12,6 +12,9 @@ import {checkReceiptProjection,expectedReceiptProjection} from './receipt-integr
 import {checkObjectProjection,isSignedObjectType,signedObjectProjection} from './object-integrity.mjs';
 import {checkEvaluationProjection} from './evaluation-integrity.mjs';
 import {applyGovernanceDocumentRecord,checkGovernanceDocumentRows} from './governance-documents.mjs';
+import {REGISTRY_INPUT_TYPES,REGISTRY_TYPES,registryAnalysisInput} from './agent-registry.mjs';
+import {relatedDenyInput} from './decision-rules.mjs';
+import {evaluationEngine} from './model.mjs';
 import {types} from 'node:util';
 import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,frontierRoot,logVkey,noteVerifier,openNote,parseCheckpoint,peaksToBlob,recordLeaf,rootsAtSizes,signNote,tenantOrigin,validateOriginBase} from './tlog.mjs';
 
@@ -289,6 +292,7 @@ export class Store {
   }
   if(sequence!==cp.count||previous!==cp.head)throw Error('Truncated or inconsistent export');
  }
+ // Cold streaming reader of the v1 inputs (tests). Analysis uses cachedAnalysisSnapshot, which also carries the registry inputs.
  verifiedAnalysisSnapshot(tenant,actionId,limits){
   const maxBytes=limits.snapshotBytes-4096,maxRows={assets:limits.assets,rules:limits.rules,exceptions:limits.exceptions};
   const events=[],maps={assets:new Map(),rules:new Map(),exceptions:new Map()},types={asset:'assets',rule:'rules',exception:'exceptions'};
@@ -332,13 +336,24 @@ export class Store {
   if(reasons.size)return {resourceLimit:{reasons:[...reasons],observedEventsComplete,snapshotBytesAtLeast:usedBytes},observedEvents};
   return {events:events.sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id)),assets:[...maps.assets.values()],rules:[...maps.rules.values()].flatMap(r=>r.versions),exceptions:[...maps.exceptions.values()]};
  }
+ // Registry input (agent_registry / agent_registry_policy versions) and related deny decisions join the snapshot only when they
+ // exist, so tenants without them keep the v1 snapshot; src/policy-replay.mjs builds the same input from the export.
  cachedAnalysisSnapshot(tenant,actionId,limits){
   this.checkActionProjection(tenant);const state=this.ledgerTransaction?.actionCandidates.get(tenant)||this.actionProjectionCache.get(tenant);if(!state)throw Error('Verified action state is unavailable');
   const events=actionId===null?[]:[...state.eventsBySequence.values()].filter(event=>event.actionId===actionId),assets=[...state.analysisAssets.values()],rules=[...state.analysisRules.values()].flatMap(rule=>(rule.versions||[]).filter(version=>version.status==='active')),exceptions=[...state.analysisExceptions.values()];
-  const reasons=[],used=100+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
+  const registry=registryAnalysisInput(state.registryRows.filter(row=>REGISTRY_INPUT_TYPES.includes(row.type))),relatedDecisions=relatedDenyInput(events,state.eventsBySequence.values());
+  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{})},extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
+  const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');
-  if(reasons.length)return {resourceLimit:{reasons:[...new Set(reasons)],observedEventsComplete:true,snapshotBytesAtLeast:used},observedEvents:events.length};
-  return {events:events.sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id)),assets,rules,exceptions};
+  if(reasons.length)return {resourceLimit:{reasons:[...new Set(reasons)],observedEventsComplete:true,snapshotBytesAtLeast:used,engine:evaluationEngine({events,...extra})},observedEvents:events.length};
+  return {events:events.sort((a,b)=>a.receivedAt.localeCompare(b.receivedAt)||a.source.localeCompare(b.source)||a.id.localeCompare(b.id)),assets,rules,exceptions,...extra};
+ }
+ // Signed agent registry, transition and registry-policy records in ledger order (deep copies) for history and lifecycle reads.
+ cachedRegistryRows(tenant){
+  const state=this._verifiedActionState(tenant);
+  if(REGISTRY_TYPES.some(type=>state.oversizedTypes.has(type))||state.oversizedTypes.has('*'))return {oversized:true,rows:[]};
+  this._assertFacets(state,REGISTRY_TYPES.map(type=>'objects:'+type));
+  return {oversized:false,rows:state.registryRows.map(row=>structuredClone(row))};
  }
  cachedSignedObjects(tenant,types){
   if(!Array.isArray(types)||types.some(type=>!isSignedObjectType(type)))throw TypeError('Signed object types are required');
@@ -452,7 +467,7 @@ export class Store {
   if(!touched)return;
   const remember=id=>{if(typeof id==='string'&&id&&!touched.actions.has(id))touched.actions.set(id,state.action.get(id));};
   if(row.type==='event')remember(disclosed?.actionId??row.payload.actionId);
-  else if(['asset','rule','exception'].includes(row.type)){if(!touched.allActions){for(const value of state.action.rows())remember(value.id);touched.allActions=true;}}
+  else if(['asset','rule','exception',...REGISTRY_INPUT_TYPES].includes(row.type)){if(!touched.allActions){for(const value of state.action.rows())remember(value.id);touched.allActions=true;}}
   else if(row.type==='evaluation')remember(row.payload.actionId);
   else if(row.type==='retention_disposition'){
    const sequences=Array.isArray(row.payload.sequences)?row.payload.sequences:(row.payload.keyIds||[]).map(keyId=>state.eventKeys.get(keyId));
@@ -501,17 +516,18 @@ export class Store {
   if(row.type==='asset'&&row.payload?.id)state.analysisAssets.set(`${row.payload.id}:${row.seq}`,row.payload);
   if(row.type==='rule'&&row.payload?.id)state.analysisRules.set(row.payload.id,row.payload);
   if(row.type==='exception'&&row.payload?.id)state.analysisExceptions.set(row.payload.id,row.payload);
+  if(REGISTRY_TYPES.includes(row.type))state.registryRows.push({seq:row.seq,type:row.type,principal:row.principal,recordedAt:row.recordedAt,payload:row.payload});
  }
  _checkKeyCoverage(state,keyIds,sequences){
   for(const keyId of keyIds)if(state.eventKeys.has(keyId)&&!state.keys.has(keyId)&&!state.disposed.has(keyId))this._fault(state,'keys',Error('Event key missing without authorized disposition'));
   for(const sequence of sequences)if(!state.receiptCovered.has(sequence))this._fault(state,'receipts',Error('Receipt history is missing for disposed legacy event'));
  }
  _emptyActionState(tenant){return {tenant,count:0,head:'0'.repeat(64),action:createActionProjectionReducer(tenant),actionByEventSequence:new Map(),
-  analysisAssets:new Map(),analysisRules:new Map(),analysisExceptions:new Map(),objects:new Map(),evaluations:[],
+  analysisAssets:new Map(),analysisRules:new Map(),analysisExceptions:new Map(),registryRows:[],objects:new Map(),evaluations:[],
   receiptRecords:[],receiptEvents:new Map(),receiptEntries:new Map(),receiptCovered:new Set(),receiptSignedSequences:new Set(),receiptDispositions:new Map(),eventsBySequence:new Map(),eventKeys:new Map(),keys:new Map(),disposed:new Set(),
   faults:new Map(),faultSerial:0,oversizedTypes:new Set(),governanceDocuments:new Map(),developmentEvents:new Map(),verifiedAt:0,updatedAt:0,coldVerifications:0,versions:this._databaseVersions()};}
  _cloneActionState(state){return {...state,action:state.action.fork(),actionByEventSequence:new Map(state.actionByEventSequence),
-  analysisAssets:new Map(state.analysisAssets),analysisRules:new Map(state.analysisRules),analysisExceptions:new Map(state.analysisExceptions),objects:new Map(state.objects),
+  analysisAssets:new Map(state.analysisAssets),analysisRules:new Map(state.analysisRules),analysisExceptions:new Map(state.analysisExceptions),registryRows:state.registryRows.slice(),objects:new Map(state.objects),
   evaluations:state.evaluations.slice(),receiptRecords:state.receiptRecords.slice(),receiptEvents:new Map(state.receiptEvents),receiptEntries:new Map(state.receiptEntries),
   receiptCovered:new Set(state.receiptCovered),receiptSignedSequences:new Set(state.receiptSignedSequences),receiptDispositions:new Map(state.receiptDispositions),eventsBySequence:new Map(state.eventsBySequence),eventKeys:new Map(state.eventKeys),keys:new Map(state.keys),
   disposed:new Set(state.disposed),faults:new Map(state.faults),oversizedTypes:new Set(state.oversizedTypes),governanceDocuments:new Map(state.governanceDocuments),developmentEvents:new Map(state.developmentEvents)};}

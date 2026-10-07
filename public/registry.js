@@ -1,0 +1,172 @@
+'use strict';
+
+// Agent registry screen (docs/agent-registry.md): list, detail with version and transition history, transition requests,
+// approvals and refusals. Registry content is untrusted data and is rendered only as text. The server enforces roles,
+// four-eyes and gates; this screen shows what it answered. EvidScope blocks nothing.
+(() => {
+  const core = window.EvidScopeCore;
+  if (!core) return;
+  const { el, button, card, empty, table, field, form, jsonDetails, limits, api, date, showDetail, navigate } = core;
+  const stateLabels = { discovered: '발견됨', draft: '초안', testing: '시험', approved: '승인', production: '운영', suspended: '정지', retired: '폐기' };
+  const statusLabels = { pending: '승인 대기', applied: '적용', approved: '승인·적용', refused: '거절', superseded: '무효(이후 변경)' };
+  const tierLabels = { low: '낮음', medium: '중간', high: '높음' };
+  const evidenceTypes = ['event', 'asset', 'system', 'case', 'governance_document', 'external'];
+  const list = value => Array.isArray(value) ? value : [];
+  const text = value => String(value ?? '').trim();
+  const words = value => String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
+  const join = value => list(value).map(item => typeof item === 'object' && item ? item.name : String(item)).join(', ') || '—';
+  const pill = (value, dictionary) => {
+    const known = Object.hasOwn(dictionary, String(value));
+    return el('span', `badge registry-${known ? value : 'unknown'}`, known ? dictionary[value] : '미확인');
+  };
+
+  // Evidence references as `type:ref` lines; unknown types are refused here and again by the server.
+  function evidenceRefs(text) {
+    return words(text).map(line => {
+      const at = line.indexOf(':'), type = at > 0 ? line.slice(0, at) : '';
+      if (!evidenceTypes.includes(type)) throw new Error(`증거 참조는 ${evidenceTypes.join('·')} 중 하나로 시작해야 합니다: ${line}`);
+      return { type, ref: line.slice(at + 1).trim() };
+    });
+  }
+  function gateNode(gate) {
+    const node = el('div', 'registry-gate');
+    if (!gate) return node;
+    const met = list(gate.conditions).filter(c => c.met).length;
+    node.append(el('p', 'muted', `위험 등급 ${tierLabels[gate.tier] || gate.tier} · 조건 ${met}/${list(gate.conditions).length} 충족 · 정책 v${gate.policyVersion}`
+      + (gate.policySource === 'built_in_default' ? ' (기본값)' : '')));
+    const items = el('ul', 'limitations');
+    for (const c of list(gate.conditions)) items.append(el('li', '', `${c.met ? '충족' : '미충족'} · ${c.id} (${c.check}) ${JSON.stringify(c.detail || {})}`));
+    if (list(gate.conditions).length) node.append(items); else node.append(el('p', 'muted', '이 전이에 지정된 게이트 조건이 없습니다.'));
+    return node;
+  }
+  function transitionForms(data) {
+    const node = el('div');
+    const pending = list(data.transitions).find(t => t.status === 'pending');
+    if (pending) {
+      const box = card('승인 대기 전이', `${stateLabels[pending.from] || pending.from} → ${stateLabels[pending.to] || pending.to} · 요청 ${pending.requestedBy}`);
+      box.append(el('p', 'wrap', `사유: ${pending.reason}`), gateNode(pending.gate),
+        el('p', 'muted', '등록자, 마지막 구성 수정자, 요청자는 승인할 수 없습니다(4-eyes). 승인할 때 게이트를 다시 확인합니다.'));
+      for (const [operation, title] of [['approve', '승인'], ['refuse', '거절']]) {
+        box.append(form([field(`${title} 사유`, 'reason', { required: true, multiline: true, maxLength: 1000 })], title, async (values, result) => {
+          await api(`/api/registry/transitions/${encodeURIComponent(pending.id)}/${operation}`, 'POST', { reason: values.reason });
+          result.append(el('div', 'message', `${title} 기록을 서명했습니다.`)); await openEntry(data.entry.id); navigate('registry');
+        }));
+      }
+      node.append(box);
+    }
+    const next = list(data.next);
+    if (next.length) {
+      const box = card('상태 전이 요청', '요청할 때 게이트 조건을 서명된 기록과 대조합니다. 승인이 필요 없는 전이는 바로 적용됩니다.');
+      for (const option of next) {
+        const row = el('div', 'registry-next');
+        row.append(el('strong', '', `→ ${stateLabels[option.to] || option.to}${option.approvalRequired ? ' (다른 검토자 승인 필요)' : ''}`), gateNode(option.gate));
+        box.append(row);
+      }
+      box.append(form([
+        field('목표 상태', 'to', { choices: next.map(option => ({ value: option.to, label: stateLabels[option.to] || option.to })) }),
+        field('사유', 'reason', { required: true, multiline: true, maxLength: 1000 }),
+        field('증거 참조 (줄마다 유형:참조, 예: event:agent-1/e-1)', 'evidence', { multiline: true, wide: true, maxLength: 4000 }),
+      ], '전이 요청', async (values, result) => {
+        const response = await api(`/api/registry/${encodeURIComponent(data.entry.id)}/transitions`, 'POST',
+          { to: values.to, reason: values.reason, evidence: evidenceRefs(values.evidence) });
+        const status = response.transition?.status;
+        result.append(el('div', 'message', status === 'pending' ? '승인 대기로 기록했습니다.' : '전이를 적용했습니다.'));
+        await openEntry(data.entry.id); navigate('registry');
+      }));
+      node.append(box);
+    }
+    return node;
+  }
+  function historyNode(data) {
+    const node = el('div');
+    node.append(el('h3', '', '버전 이력'), table(['버전', '상태', '변경', '기록 주체', '효력 시작', '원장 seq'],
+      list(data.versions).map(v => [String(v.version), pill(v.state, stateLabels), v.change || '—', v.principal || '—', date(v.effectiveFrom),
+        String(v.seq)])));
+    node.append(el('h3', '', '전이 기록'), table(['원장 seq', '상태', '전이', '요청', '결정', '사유'],
+      list(data.transitionRecords).map(t => [String(t.seq), pill(t.status, statusLabels), `${t.from} → ${t.to}`, t.requestedBy || '—',
+        t.reviewedBy || t.supersededBy || '—', t.reviewReason || t.reason || '—'])));
+    return node;
+  }
+  async function openEntry(id) {
+    showDetail('에이전트 레지스트리', el('div', 'loading', '등록 항목과 이력을 조회하고 있습니다…'));
+    const context = core.captureDetailContext();
+    try {
+      const data = await api(`/api/registry/${encodeURIComponent(id)}`);
+      if (!core.isCurrentDetail(context)) return;
+      showDetail(`레지스트리 · ${data.entry.name || data.entry.id}`, entryNode(data));
+    } catch (error) { if (core.isCurrentDetail(context)) showDetail('레지스트리 조회 실패', empty('등록 항목을 불러오지 못했습니다', error.message)); }
+  }
+  function entryNode(data) {
+    const entry = data.entry, risk = data.risk || {}, node = el('div');
+    const tools = list(entry.tools).map(t => t.enforcement === 'required' ? `${t.name}(결정 필수)` : t.name).join(', ');
+    const override = risk.override ? ` (재지정: ${risk.override.by}, 계산값 ${tierLabels[risk.computed] || risk.computed})` : '';
+    node.append(core.factList([
+      ['상태', stateLabels[entry.state] || entry.state], ['버전', String(entry.version)], ['책임자', entry.owner], ['목적', entry.purpose],
+      ['출처 자격', join(entry.sources)], ['행위자 이름(자기 보고)', join(entry.actors)], ['자산', join(entry.assetIds)], ['거버넌스 시스템', entry.systemId],
+      ['모델', join(entry.models)], ['도구', tools], ['데이터 범주', join(entry.dataCategories)], ['목적지', join(entry.destinations)],
+      ['위험 등급', `${tierLabels[risk.tier] || risk.tier}${override}`],
+      ['위험 근거', list(risk.reasons).map(r => `${r.rule}: ${r.value}`).join(', ') || '규칙에 걸린 항목 없음'],
+      ['생애주기 검증', data.lifecycle?.valid ? '이상 없음' : `문제 ${list(data.lifecycle?.problems).length}건`],
+    ]));
+    if (data.lifecycle && !data.lifecycle.valid) node.append(limits(list(data.lifecycle.problems).map(p => `seq ${p.seq}: ${p.message}`)));
+    node.append(transitionForms(data), historyNode(data), jsonDetails('등록 항목 원문', entry));
+    return node;
+  }
+  function createForm(prefill = {}) {
+    return form([
+      field('등록 ID', 'id', { required: true, value: prefill.id, maxLength: 120 }), field('이름', 'name', { value: prefill.name, maxLength: 200 }),
+      field('책임자', 'owner', { maxLength: 200 }), field('목적', 'purpose', { multiline: true, maxLength: 1000 }),
+      field('출처 자격 ID (쉼표 구분)', 'sources', { value: prefill.sources, maxLength: 2000 }),
+      field('행위자 이름 (쉼표 구분)', 'actors', { value: prefill.actors, maxLength: 2000 }),
+      field('도구 (쉼표 구분)', 'tools', { value: prefill.tools, maxLength: 4000 }),
+      field('정책 결정이 필요한 도구 (쉼표 구분)', 'enforcedTools', { maxLength: 2000 }),
+      field('데이터 범주 (쉼표 구분)', 'dataCategories', { maxLength: 1000 }), field('목적지 (쉼표 구분)', 'destinations', { maxLength: 4000 }),
+      field('자산 ID (쉼표 구분)', 'assetIds', { maxLength: 2000 }), field('거버넌스 시스템 ID', 'systemId', { maxLength: 120 }),
+      field('초기 상태', 'state', { choices: [{ value: 'draft', label: '초안' }, { value: 'discovered', label: '발견됨' }], value: prefill.state || 'draft' }),
+    ], '등록 초안 만들기', async (values, result) => {
+      const enforced = new Set(words(values.enforcedTools));
+      const tools = [...new Set([...words(values.tools), ...enforced])].map(name => ({ name, enforcement: enforced.has(name) ? 'required' : 'not_required' }));
+      const body = { id: text(values.id), name: text(values.name) || undefined, owner: text(values.owner), purpose: text(values.purpose),
+        sources: words(values.sources), actors: words(values.actors), tools, dataCategories: words(values.dataCategories),
+        destinations: words(values.destinations), assetIds: words(values.assetIds), state: values.state,
+        ...(text(values.systemId) ? { systemId: text(values.systemId) } : {}), ...(prefill.discoveredFrom ? { discoveredFrom: prefill.discoveredFrom } : {}) };
+      const entry = await api('/api/registry', 'POST', body);
+      result.append(el('div', 'message', `${entry.id} v${entry.version}을 서명했습니다. 위험 등급 계산값: ${tierLabels[entry.risk?.computed] || '미확인'}`));
+      await openEntry(entry.id); navigate('registry');
+    });
+  }
+  function candidatesNode(data) {
+    const node = card('미등록 후보', '이미 수집된 활동·발견에서 찾은 후보입니다. 자동 등록하지 않으며, 행위자 이름은 출처의 자기 보고입니다.');
+    node.append(table(['출처 / 행위자', '근거', '행동 / 이벤트', '도구', '최근 수신', '등록'], list(data.items).map(item => [
+      `${item.source || '출처 미상'} / ${item.actor || '행위자 미상'}`, list(item.reasons).join(', '), `${item.actions} / ${item.events}`,
+      list(item.tools).slice(0, 5).join(', ') || '—', date(item.lastSeen),
+      button('초안으로', () => showDetail('후보에서 등록', createForm({ id: item.suggestedId, name: item.actor || item.source, actors: item.actor || '',
+        sources: item.sourceKinds?.includes('tool') && !item.source ? '' : item.source || '', tools: list(item.tools).join(', '), state: 'draft',
+        discoveredFrom: { ...(item.source ? { source: item.source } : {}), ...(item.actor ? { actor: item.actor } : {}) } })), 'ghost'),
+    ])), limits(data.limitations));
+    return node;
+  }
+  async function registryView() {
+    const [data, candidates] = await Promise.all([api('/api/registry'), api('/api/registry/candidates').catch(error => ({ error: error.message }))]);
+    const node = el('div');
+    const policy = data.policy || {};
+    const head = card('에이전트 레지스트리', `정책 v${policy.version}${policy.source === 'built_in_default' ? ' (기본값)' : ''} · 미등록 활동 발견 `
+      + (policy.enforcement === 'unregistered_activity' ? '켜짐' : '꺼짐'));
+    head.append(limits(data.limitations));
+    head.append(button('새 등록 초안', () => showDetail('에이전트 등록', createForm()), 'primary'));
+    node.append(head);
+    const items = list(data.items);
+    const listCard = card('등록 항목', `${items.length}개 · 상태는 서명된 전이 기록으로만 바뀝니다.`);
+    listCard.append(table(['등록 ID / 이름', '상태', '위험 등급', '책임자', '출처 / 행위자', '승인 대기', '버전', '상세'], items.map(entry => [
+      `${entry.id}${entry.name && entry.name !== entry.id ? ` / ${entry.name}` : ''}`, pill(entry.state, stateLabels), tierLabels[entry.effectiveRisk] || '미확인',
+      entry.owner || '—', `${join(entry.sources)} / ${join(entry.actors)}`,
+      entry.pendingTransition ? `${entry.pendingTransition.from} → ${entry.pendingTransition.to}` : '—', String(entry.version),
+      button('상세', () => openEntry(entry.id), 'ghost'),
+    ])));
+    node.append(listCard);
+    node.append(candidates.error ? empty('후보를 불러오지 못했습니다', candidates.error) : candidatesNode(candidates));
+    return node;
+  }
+  core.registerView('registry', '에이전트 레지스트리', '에이전트 등록·생애주기·게이트와 승인 이력을 확인합니다. 정지·폐기는 기록이며 실행을 차단하지 않습니다.', registryView);
+  window.EvidScopeRegistry = Object.freeze({ registryView, openEntry, entryNode, createForm, evidenceRefs });
+})();

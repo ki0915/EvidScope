@@ -167,7 +167,7 @@ test('every EvidScope route, record, finding, event rule, check and file named i
 
   const literal = model.match(/const kindBySource=(\{[^;]+\});/)[1];
   const sourceKinds = Object.keys(JSON.parse(literal.replaceAll("'", '"').replace(/([{,])(\w+):/g, '$1"$2":')));
-  assert.deepEqual(sourceKinds, ['agent', 'tool', 'authority', 'safety', 'telemetry', 'otlp']);
+  assert.deepEqual(sourceKinds, ['agent', 'tool', 'authority', 'safety', 'telemetry', 'otlp', 'enforcement']);
   const kindError = (kind, kindOfSource) => { try { validateEvent({ kind }, { kind: kindOfSource }); return ''; } catch (error) { return error.message; } };
   for (const e of evidence.filter(e => e.type === 'eventKind')) {
     const allowed = [e.source, ...(e.alsoAllowed || [])];

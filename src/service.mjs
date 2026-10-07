@@ -37,6 +37,7 @@ import {AccessLog} from './access-log.mjs';
 import {duplicatePrincipalIds} from './credentials.mjs';
 import {attestationSigner} from './attestation-signer.mjs';
 import {createReceipts} from './receipt-service.mjs';
+import {createRegistry} from './registry-service.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
@@ -105,6 +106,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  }
  const policyObject=(p,type,id)=>verifiedPolicyObjects(p,type).get(id)||fail(404,'대상을 찾을 수 없습니다');
  const governanceDocuments=createGovernanceDocuments({store,dataDir,keyring,getSystem:(p,id)=>policyObject(p,'system',id)});
+ // Agent registry and lifecycle (src/registry-service.mjs, docs/agent-registry.md).
+ const registry=createRegistry({store,principals,policyObjects:verifiedPolicyObjects,dirty,reviewer,admin});
  function verifiedEvaluations(p,options){
   let result;try{result=store.cachedEvaluations(p.tenant,options);}catch(error){if(error?.status)throw error;fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');}
   if(result.oversized)fail(413,'분석 조회 객체 한도 초과: 부분 검증으로 조회할 수 없습니다');
@@ -302,6 +305,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
   if(path.startsWith('/api/governance/')){const documentResult=governanceDocuments.handle(p,method,url,x);if(documentResult!==undefined)return documentResult;const result=finance.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
+  if(path==='/api/registry'||path.startsWith('/api/registry/')){const result=registry.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/investigations'||path.startsWith('/api/cases/')){
    // ?attest=intoto wraps the signed report and its in-toto attestation (docs/receipts.md); the proofs read this request's snapshot.
    const attest=method==='GET'&&/^\/api\/cases\/[^/]+\/report$/.test(path)&&receipts.requested(url);

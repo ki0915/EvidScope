@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {parseArgs} from 'node:util';
 import {verifyBundle} from '../src/crypto.mjs';
 import {replayEvaluations} from '../src/policy-replay.mjs';
+import {REGISTRY_TYPES,verifyRegistryHistory} from '../src/agent-registry.mjs';
 import {verifyAttestation} from '../src/receipts.mjs';
 import {transparencyOptions,transparencyFlags} from './transparency-flags.mjs';
 try{
@@ -16,5 +17,8 @@ try{
  const replay=values.replay?replayEvaluations(bundle):undefined;
  // --attestation: the companion DSSE in-toto envelope (docs/receipts.md) must name these exact export bytes.
  const attestation=values.attestation?verifyAttestation({envelope:JSON.parse(readFileSync(values.attestation,'utf8')),subject:readFileSync(bundlePath),publicKey:readFileSync(keyPath,'utf8'),options:transparency?{transparency}:{}}):undefined;
- console.log(JSON.stringify(replay||attestation?{...result,...(replay?{replay}:{}),...(attestation?{attestation}:{})}:result,null,2));if(replay&&!replay.valid)process.exitCode=1;
+ // Registry records (docs/agent-registry.md): the signed lifecycle is checked whenever the export holds any.
+ const registry=bundle.records.some(row=>REGISTRY_TYPES.includes(row.type))?verifyRegistryHistory(bundle.records):undefined;
+ console.log(JSON.stringify(replay||attestation||registry?{...result,...(registry?{registry}:{}),...(replay?{replay}:{}),...(attestation?{attestation}:{})}:result,null,2));
+ if(replay&&!replay.valid||registry&&!registry.valid)process.exitCode=1;
 }catch(e){console.error(e.message);process.exitCode=1;}

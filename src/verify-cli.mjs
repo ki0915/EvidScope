@@ -4,6 +4,7 @@ import {mkdirSync, readFileSync, statSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {parseArgs} from 'node:util';
 import {verifyBundle} from './crypto.mjs';
+import {REGISTRY_TYPES, verifyRegistryHistory} from './agent-registry.mjs';
 import {replayEvaluations} from './policy-replay.mjs';
 import {unpackResponse, verifyAttestation, verifyRecordReceipt} from './receipts.mjs';
 import {verifyCaseReport} from './report-verifier.mjs';
@@ -62,7 +63,10 @@ function bundleCommand(args) {
   const bundle = JSON.parse(bytes.toString('utf8')), transparency = transparencyOptions(values, bundle.transparency !== undefined);
   const result = verifyBundle(bundle, key, checkpointFile(checkpointPath), transparency ? {transparency} : {});
   const replay = values.replay ? replayEvaluations(bundle) : undefined, attestation = attestationFor(values, bytes, key, transparency);
-  return {ok: !replay || replay.valid, output: {...result, ...(replay ? {replay} : {}), ...(attestation ? {attestation} : {})}};
+  // An export with agent registry records also has its signed lifecycle checked (docs/agent-registry.md); older exports have none.
+  const registry = bundle.records.some(row => REGISTRY_TYPES.includes(row.type)) ? verifyRegistryHistory(bundle.records) : undefined;
+  return {ok: (!replay || replay.valid) && (!registry || registry.valid),
+    output: {...result, ...(registry ? {registry} : {}), ...(replay ? {replay} : {}), ...(attestation ? {attestation} : {})}};
 }
 function reportCommand(args) {
   const {values, positionals: [file, keyPath, checkpointPath]} = parse(args, {...transparencyFlags, attestation: {type: 'string'}}, 3);
