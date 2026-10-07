@@ -122,7 +122,7 @@ NIA의 [공식 배포 페이지](https://www.nia.or.kr/site/nia_kor/ex/bbs/View.
 
 ## ISMS-P 참고 정렬
 
-정보보호 및 개인정보보호 관리체계(ISMS-P) 인증기준과 EvidScope 증거의 분야 단위 참고 정렬은 [ISMS-P 인증기준 참고 정렬](isms-p-alignment.md)과 `data/isms-p-alignment.json`에 둔다. 2026-10-07 KISA ISMS-P 누리집에서 영역·분야 번호와 명칭, 기준 수만 확인했다. 인증 판정이 아니며 `data/requirements.json`의 법률 요구사항 목록이나 catalog identity와 섞지 않는다.
+ISMS-P 인증기준과 EvidScope 증거의 항목 단위 참고 정렬은 [ISMS-P 인증기준 참고 정렬](isms-p-alignment.md)과 `data/isms-p-alignment.json`에 둔다. 법적 출처는 「정보보호 및 개인정보보호 관리체계 인증 등에 관한 고시」(개인정보보호위원회 고시 제2024-8호, 2024-07-24 일부개정·시행) [별표 7]이며, 2026-10-07 국내 망에서 받은 DRF XML(SHA-256 1f791301caf2b1135be1b353bddc98a31a2656e1988cb073bb8cafa64a3b09f1)로 101개 항목 번호·명칭을 대조했다. 주요 확인사항은 KISA 세부점검항목(2023-10-31)·안내서(2023. 11.)에서 읽었고, 2024-07-24 개정 이유에는 [별표 7]이 없어 인증기준은 바뀌지 않은 것으로 보인다(이전 고시 본문과 직접 대조하지는 않았다). 인증 판정이 아니며 `data/requirements.json`·catalog identity와 섞지 않는다.
 
 ## 증거와 평가를 연결하는 방법
 

@@ -45,7 +45,7 @@ flowchart LR
 | 위트니스 | 연결 | C2SP tlog-witness·cosignature, [litewitness](https://github.com/FiloSottile/torchwood), [OmniWitness](https://github.com/transparency-dev/witness) | 제출 클라이언트(pump)와 정책. 위트니스 서버는 만들지 않음(시험용 제외) |
 | 정책 | 연결 | [OPA](https://github.com/open-policy-agent/opa)·[Cedar](https://github.com/cedar-policy/cedar)·[MS AGT](https://github.com/microsoft/agent-governance-toolkit) 결정을 증거로 수집 | 기존 결정적 `evaluate()` 유지, 새 정책 언어는 만들지 않음 |
 | SIEM 전달 | 직렬화만 구현 | OCSF Detection Finding(2004) | OCSF 변환기. 상관분석·UEBA·SOAR는 만들지 않음 |
-| 규제 매핑 | **직접 구현(차별점)** | 인공지능기본법, 금융분야 AI 가이드라인 | 조문 단위 요구사항·기술검사·적용 판단 |
+| 규제 매핑 | **직접 구현(차별점)** | 인공지능기본법·시행령, ISMS-P 인증기준(참고 정렬) | 조문 단위 요구사항·기술검사·적용 판단 |
 
 이번 라운드에서 자체 수집기 위주의 설계를 OTLP 표준 수신으로 바꾸고, 머클 트리·체크포인트·위트니스 형식을 모두 C2SP 표준으로 맞췄습니다.
 실제 OTel Collector(0.140)·OTel JS SDK·litewitness와 상호운용 시험을 통과했습니다.
@@ -76,7 +76,7 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   위트니스나 별도 로그 키로 서명된 Merkle 로그를 씁니다. 이들은 로그 하나의 append-only를 보장합니다. EvidScope가 더하는 것은 셋입니다.
   tenant마다 크기 감소·fork·삭제를 확인해 시작을 거부하거나 격리하는 것(heads 로그와 `witnessTenantLogs`), 접근 로그 해시가 아니라
   승인·권한·정책 버전·사람 검토를 담은 내용 증거(D2), 그리고 로그 키를 데이터와 떨어진 서명 프로세스·HSM·KMS에 두는 것입니다
-  (Traefik 문서는 키 파일만 다룹니다. 서명 프로세스는 2라운드 구현 대상).
+  (Traefik 문서는 키 파일만 다룹니다. 2라운드에 [heads 서명기](signer.md)로 구현).
 - **확인 방법:** `test/transparency-server.test.mjs`(예전 DB 사본으로 enforce 시작 거부), `test/litewitness-interop.test.mjs`(실제 litewitness에서 rollback
   거부, fork 422 → 격리, tenant origin 두 개 공동서명과 tenant rollback 거부), `test/transparency-tenant-witness.test.mjs`(재검토 F1 PoC).
   운영은 [투명성 로그 가이드](transparency-log.md).
@@ -84,9 +84,15 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   정상적으로 늘리면서 tenant 하나만 예전 상태로 되돌릴 수 있습니다(재검토 F1). 검증 결과는 이 경우를 `rollbackCheckedAgainst:"database_tamper"`
   (DB만 조작하는 공격자 S1 기준)로 표시합니다. 선택 기능 `witnessTenantLogs`를 켜면 tenant 로그마다 위트니스가 되돌리기를 거부하고, 고정한 origin
   base에서 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 표시합니다(`--require-tenant-witness`로 요구).
+- **vault 호스트 범위(2라운드):** heads 잎을 vault 밖의 [heads 서명기](signer.md)가 서명하게 하면, 서명기가 루트를 스스로 계산하고 tenant 로그가
+  빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로 고정한 검증자는
+  `rollbackCheckedAgainst:"vault_host"`를 받으며, 이는 vault 호스트 전체를 장악한 공격자도 위트니스가 본 heads 항목보다 tenant를 되돌린 내보내기를
+  보일 수 없다는 뜻입니다. 실제 litewitness 시험에서 시작 커밋은 vault 키로 만든 되돌리기 잎에 공동서명을 받았고(200), 서명기를 쓰면 위트니스가 403,
+  서명기가 422 rollback으로 거부합니다. 서명기는 설정에 `signer`를 넣을 때만 켜집니다.
 - **아직 막지 못한 것:** 마지막 tenant 공동서명 이후 `maxStalenessSeconds` 안의 되돌리기, vault 키만으로 서명되는 복구 epoch(검증자가 새 origin base를
-  다시 고정해야 함), 아직 등록되지 않은 새 tenant, 서명 키 보유자의 tenant 삭제(heads 잎으로만 묶이며 `scripts/transparency.mjs monitor`로 DB의 heads
-  이력을 다시 읽어야 드러남, 정기 실행은 아직 운영 경로에 없음).
+  다시 고정해야 함), 아직 등록되지 않은 새 tenant, 서명기 없이 운영할 때 서명 키 보유자의 tenant 삭제(heads 잎으로만 묶이며
+  `scripts/transparency.mjs monitor`로 DB의 heads 이력을 다시 읽어야 드러남, 정기 실행은 아직 운영 경로에 없음), 서명기를 써도 장악된 vault가 앵커를
+  멈추는 것(`vault_host`는 앵커된 이력만 보장).
 - **모방 위험:** 중상. 암호 기법 자체가 아니라 fail-closed 운영 의미(tenant 삭제 탐지, 복구 epoch)와 고객 자체 위트니스 운영 패키지가 해자입니다.
 
 ### D2. 권한에 묶인 증거 사슬과 결정적 오프라인 정책 재생
@@ -107,17 +113,22 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 
 ### D3. 조문 단위 한국 규제 증거 묶음
 
-- 인공지능기본법(법률 제21311호) 제30~36조·제40조, 금융위원회 금융분야 AI 가이드라인, 금융감독원 AI RMF를 조문 단위로 매핑합니다.
-  요구사항 31개(한국 18개), 기술검사 23종, 적용 판단은 "후보"와 사람의 최종 판단을 분리합니다. 각 통제가 문서 업로드가 아니라
+- 인공지능기본법(법률 제21311호) 제30~36조·제40조와 시행령(대통령령 제36580호)을 조문 단위로 매핑하고 NIST AI RMF·EU AI Act·ISO/IEC 42001을
+  함께 둡니다. 요구사항 31개(한국 18개, NIST 6개, EU 6개, ISO 1개), 기술검사 23종, 적용 판단은 "후보"와 사람의 최종 판단을 분리합니다.
+  이전 문서는 금융위원회 금융분야 AI 가이드라인과 금융감독원 AI RMF도 매핑했다고 적었지만 데이터에 해당 항목이 없어 2라운드에서 바로잡았습니다. 각 통제가 문서 업로드가 아니라
   D1·D2의 검증 가능한 증거를 가리키도록 묶는 것이 다른 GRC 제품과의 차이입니다.
 - **경쟁 제품과의 차이(2026-10-07 재조사):** 한국 매핑 자체는 이제 흔해지고 있습니다. MS AGT의
   [한국 AI 기본법 문서](https://github.com/microsoft/agent-governance-toolkit/blob/main/agent-governance-python/agent-compliance/docs/compliance/south-korea-ai-framework-act.md)는
   "법률 의견이 아닌 구현 안내"이며 조문·시행령·고시를 인용하지 않습니다.
   [DeepInspect](https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence)는 응답 전에 서명된 기록을 남기지만 공개 검증 방법을 밝히지 않습니다.
   EvidScope가 주장하는 범위는 법률 조문과 현행 시행령(대통령령 제36580호) 조문·별표1, NIA 공식 가이드의 쪽 번호까지 고정한 요구사항이
-  외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다([법령 출처](legal-sources.md)). 고시는 행정예고안만 확인했고
-  최종본 대조와 법률 검토는 남아 있습니다(다음 라운드 후보).
-- **모방 위험:** 중상. 매핑표 자체는 복제되므로 법률 검토를 거친 매핑과 국내 확인제·ISMS-P 정렬이 필요합니다(다음 라운드 후보).
+  외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다([법령 출처](legal-sources.md)). 2026-10-07 국내 접속으로
+  국가법령정보센터 행정규칙을 다시 조회한 결과, 과학기술정보통신부 소관 2026년 발령분에서 이 법의 하위 고시는 제2026-50호(인공지능제품ㆍ서비스
+  확인 절차 운영) 하나였고 매핑이 기다리는 여섯 고시의 최종본은 없었습니다. 관보 대조와 법률 검토는 남아 있습니다.
+- **ISMS-P(2라운드):** 고시 [별표 7]의 인증기준 101개 항목 단위로 참고 정렬했습니다(27개 정렬, 74개는 제외 사유). 검증된 내보내기에서 항목별 증거
+  건수를 뽑는 `scripts/isms-p-report.mjs`를 더했습니다. 증거가 있다는 것이 기준 충족 판정은 아니며 사람 검토는 남아 있습니다
+  ([ISMS-P 참고 정렬](isms-p-alignment.md)).
+- **모방 위험:** 중상. 매핑표 자체는 복제되므로 법률 검토를 거친 매핑과 국내 확인제 대응이 필요합니다(3라운드 후보).
 
 ### D4. 검증 가능한 최소화와 파기
 
@@ -154,7 +165,7 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
 | 에이전트가 승인을 주장할 수 없음 | 예 | 서버 대조 | 승인자 ID가 해시 밖 | 아니오 | 아니오 |
 | 오프라인 정책 재생 | 예(이번 라운드) | 아니오 | 온라인 Decision BOM | 아니오 | 범위 밖 |
 | 검증 가능한 파기 순서 | 예 | 불명 | 아니오 | 삭제만 | 아니오 |
-| 한국 인공지능기본법·금융 가이드라인 | 예(조문 단위) | 아니오 | 구현 안내(조문 인용 없음) | 아니오 | 아니오 |
+| 한국 인공지능기본법·시행령 | 예(조문 단위) | 아니오 | 구현 안내(조문 인용 없음) | 아니오 | 아니오 |
 
 2026-10-07 재조사에서 새로 확인한 겹치는 제품입니다. 각 제품의 공개 문서에서 확인한 범위만 적었습니다.
 
