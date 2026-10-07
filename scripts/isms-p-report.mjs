@@ -22,6 +22,7 @@ export const NOTICE = '증거가 있다는 것은 ISMS-P 인증기준을 충족�
 export const LIMITATIONS = [
   '0건(none_recorded)은 통제가 없다는 뜻이 아닙니다. 수집하지 않은 출처와 EvidScope 밖의 기록은 이 내보내기에 보이지 않습니다.',
   '서명은 이 vault가 기록을 받았음을 인증할 뿐 출처 주장의 진실을 보증하지 않습니다. occurredAt은 출처가 주장한 시각입니다.',
+  '신뢰 공개키는 내보내기와 다른 경로로 받은 것이어야 합니다. 서명 키를 가진 사람은 기록 자체를 지어낼 수 있습니다.',
   '외부 체크포인트나 위트니스 없이 검증하면 서명 키를 가진 호스트의 되돌리기(rollback)·잘라내기를 배제하지 못합니다(rollbackChecked).',
   'API 응답, 저장소 파일, 온라인 무결성 검사 결과는 내보내기에 없어 not_in_export로 적습니다. 서명 원장 검사만 이 보고서의 오프라인 검증으로 대신합니다.',
   '발견사항은 행동별 마지막 서명 평가에서 셉니다. --replay 없이 실행하면 평가를 다시 계산하지 않습니다.',
@@ -125,7 +126,7 @@ const STATUS = {present: '있음', none_recorded: '기록 없음(none_recorded)'
   verified_by_this_report: '이 보고서의 오프라인 검증으로 확인'};
 // Bundle-derived text is escaped so a crafted value cannot break the Markdown table or inject links.
 const md = value => String(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_|<>[\]#!]/g, c => '\\' + c);
-const code = value => '`' + String(value).replace(/[`\r\n]/g, '') + '`';
+const code = value => '`' + String(value).replace(/[`\r\n]/g, '').replaceAll('|', '\\|') + '`';
 const span = range => range ? `${md(range.from)} ~ ${md(range.to)}${range.unparsed ? ` (해석 불가 ${range.unparsed}건)` : ''}` : '-';
 const CIRCLED = '①②③④⑤⑥⑦⑧⑨';
 const label = e => e.type === 'api' ? code(`${e.method} ${e.path}`) + (e.field ? `의 ${code(e.field)}` : '') + (e.mode === 'oidc' ? '(OIDC)' : '')

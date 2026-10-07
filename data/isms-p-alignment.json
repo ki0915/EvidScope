@@ -440,7 +440,7 @@
       "supports": [
         {
           "checkItems": [1],
-          "shows": "사람 승인이 필요한 자산의 고위험 행동에 authority 출처 승인 기록을 요구하고, 없거나 맞지 않는 승인과 확인되지 않은 위임을 표시",
+          "shows": "행동 당시 자산 정책이 건별 사람 승인을 요구하면 authority 출처의 승인 기록을 찾고, 없거나 맞지 않는 승인과 확인되지 않은 위임을 표시",
           "evidence": [
             {"type": "eventKind", "name": "human_approval", "source": "authority", "deniedSources": ["agent", "tool", "safety", "telemetry", "otlp"], "what": "사람 승인은 authority 출처만 기록"},
             {"type": "finding", "code": "HUMAN_APPROVAL_MISSING", "what": "승인이 필요한 행동에 사람 승인 기록이 없음"},

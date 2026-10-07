@@ -12,9 +12,9 @@ EvidScope는 ISMS-P 인증을 받는 관리체계가 아니라, 인증 범위에
 
 - **증거가 있다는 것은 기준을 충족했다는 판정이 아닙니다.** 인증 여부, 결함 여부, 기준 충족 여부를 판정하지 않습니다
   (`certificationClaim:false`, `criterionAssessment:"not_performed"`). 심사에서 보는 정책·절차·운영 기록은 조직이 따로 갖춥니다.
-- 엄격하게 정렬했습니다. EvidScope 기록·API·검증 결과가 그 항목의 확인사항 가운데 적어도 하나에 대해 **실제 증거**가 될 때만
-  정렬했고, 입력 자료일 뿐인 경우는 제외하고 이유를 적었습니다. 중심은 AI 에이전트에 고유한 부분입니다. 에이전트 식별과 권한, 도구·모델
-  호출, 사람 승인, 정책 판단, 증거 저장소 자체의 조회 기록, 보존과 파기, 공급사 자료가 여기에 해당합니다.
+- 엄격하게 정렬했습니다. EvidScope 기록·API·검증 결과가 그 항목의 확인사항 가운데 적어도 하나에 대해 실제 기록으로 내놓을 수 있는
+  참고 증거가 될 때만 정렬했고, 입력 자료일 뿐인 경우는 제외하고 이유를 적었습니다. 중심은 AI 에이전트에 고유한 부분입니다.
+  에이전트 식별과 권한, 도구·모델 호출, 사람 승인, 정책 판단, 증거 저장소 자체의 조회 기록, 보존과 파기, 공급사 자료가 여기에 해당합니다.
 - 고시의 상세 내용과 KISA 주요 확인사항 문구를 옮기지 않습니다. 항목 번호·짧은 명칭과 확인사항의 위치(①②…)만 쓰고, 증거가 보여 주는
   것은 짧게 풀어 씁니다. 기준의 내용은 아래 원문을 직접 읽어야 합니다.
 
@@ -78,7 +78,7 @@ EvidScope는 ISMS-P 인증을 받는 관리체계가 아니라, 인증 범위에
 | 2.5.1 사용자 계정 관리 | ①② | ① 에이전트 행동 권한의 부여·회수는 authority 출처만 기록하고, OIDC 계정의 접근 변경은 사유와 함께 서명 기록. 증거: `grant`(authority 출처만), `revoke`(authority 출처만), `identity_access`. ② 권한이 행동·대상 범위로 기록되어 최소 권한 검토의 자료가 되고, 권한 증거가 없거나 범위와 맞지 않는 행동을 표시. 증거: `AUTHORITY_MISSING`, `AUTHORITY_MISMATCH`. | 계정·권한 등록·변경·삭제 절차와 직무별 권한 분류 체계 수립; 부여한 범위가 최소한인지의 판단; ③ 보안책임 인식; IdP와 대상 시스템의 계정 관리 |
 | 2.5.2 사용자 식별 | ① | ① 에이전트 행동을 인증된 수집 출처와 에이전트 식별자에 귀속하고, 식별자에 귀속하지 못한 행동 수를 보고. 증거: `GET /api/agents`, `intent`(agent 출처만). | 에이전트 식별자의 유일한 부여는 배포 조직의 일이다(EvidScope는 받은 식별자를 기록한다); ② 공유 식별자 사용 사유 검토와 승인 |
 | 2.5.3 사용자 인증 | ① | ① 수집 출처는 HMAC 서명·시각·nonce로 인증되고, OIDC 사람 로그인·로그아웃은 세션 기록으로 남음. 증거: `POST /api/ingest`, `identity_session`, [oidc-authentication.md](oidc-authentication.md). | 로그인 횟수 제한·불법 로그인 경고 등은 IdP와 배포 환경의 설정; ② 외부 접속 시 안전한 인증수단; 에이전트가 대상 시스템에 인증하는 방식 |
-| 2.5.5 특수 계정 및 권한 관리 | ①② | ① 사람 승인이 필요한 자산의 고위험 행동에 authority 출처 승인 기록을 요구하고, 없거나 맞지 않는 승인과 확인되지 않은 위임을 표시. 증거: `human_approval`(authority 출처만), `HUMAN_APPROVAL_MISSING`, `APPROVAL_MISMATCH`, `DELEGATION_UNVERIFIED`. ② AI 에이전트를 특수 목적 계정으로 보아 등록 자산 목록(소유자·목적·승인 필요 여부)으로 따로 관리. 증거: `GET /api/assets`, `asset`, `GET /api/agents`. | 관리자 권한 등 특수권한의 신청·승인 절차와 최소 인원 부여; AI 에이전트를 특수 계정으로 볼지의 판단 |
+| 2.5.5 특수 계정 및 권한 관리 | ①② | ① 행동 당시 자산 정책이 건별 사람 승인을 요구하면 authority 출처의 승인 기록을 찾고, 없거나 맞지 않는 승인과 확인되지 않은 위임을 표시. 증거: `human_approval`(authority 출처만), `HUMAN_APPROVAL_MISSING`, `APPROVAL_MISMATCH`, `DELEGATION_UNVERIFIED`. ② AI 에이전트를 특수 목적 계정으로 보아 등록 자산 목록(소유자·목적·승인 필요 여부)으로 따로 관리. 증거: `GET /api/assets`, `asset`, `GET /api/agents`. | 관리자 권한 등 특수권한의 신청·승인 절차와 최소 인원 부여; AI 에이전트를 특수 계정으로 볼지의 판단 |
 | 2.5.6 접근권한 검토 | ① | ① 에이전트 권한의 부여·회수와 도구 실행, OIDC 계정의 접근 변경과 세션 이력이 서명 원장에 남음. 증거: `grant`(authority 출처만), `revoke`(authority 출처만), `execution`(tool 출처만), `identity_access`, `identity_session`. | ② 정기 검토의 기준·주체·방법·주기 수립과 이행; ③ 문제 발견 시 조치 절차; 대상 시스템의 계정·권한 이력 |
 | 2.6.3 응용프로그램 접근 | ① | ① EvidScope 자신의 역할별 API 권한(감사자·검토자·관리자)과 tenant 경계, 조회 기록 열람 제한. 증거: `GET /api/access`(OIDC), `GET /api/audit/reads`, [`test/governance-authorization.test.mjs`](../test/governance-authorization.test.mjs), [`test/store-tenant-binding.test.mjs`](../test/store-tenant-binding.test.mjs). | ②~⑤ 세션 시간·동시 세션 제한, 관리 화면 접근, 표시제한 기준은 배포 설정과 조직 기준; 에이전트가 쓰는 대상 응용프로그램의 접근권한 |
 | 2.6.7 인터넷 접속 통제 | ② | ② 에이전트·도구의 외부 목적지를 등록 허용 목록과 비교해 정책 밖 접속을 발견사항으로 표시(탐지만 하며 차단하지 않음). 증거: `asset`, `DESTINATION_OUTSIDE_POLICY`, `AI_DESTINATION_OUTSIDE_POLICY`, `POLICY_CONTEXT_UNVERIFIED`. | 실제 접속 차단(방화벽·프록시); ① 업무용 PC의 인터넷 접속 통제; ③ 인터넷망 차단 의무 대상 식별과 조치 |
@@ -153,6 +153,8 @@ node scripts/isms-p-report.mjs export.json trust-anchor.pem [external-checkpoint
 - API 응답, 저장소 파일, `/api/integrity`의 검사 결과는 내보내기에 들어 있지 않으므로 `not_in_export`로 적습니다. 서명 원장 검사
   (`signed_ledger`)만 이 보고서의 오프라인 검증으로 대신합니다. 0건은 `none_recorded`이며, 통제가 없다는 뜻이 아닙니다.
 - 파기한 이벤트는 본문이 없어 종류를 알 수 없으므로 건수만 따로 적습니다.
+- 신뢰 공개키와 외부 체크포인트는 내보내기와 다른 경로로 받은 것을 써야 합니다. 같은 호스트에서 함께 받은 공개키로는 그 호스트의
+  위조를 막지 못합니다. 서명 키를 가진 사람은 기록 자체를 지어낼 수 있으므로, 키 보관과 위트니스 운영이 이 목록의 신뢰 범위를 정합니다.
 - JSON(`evidscope-isms-p-evidence-report-v1`)과 한국어 Markdown 모두 첫머리에 **증거가 있다는 것은 기준 충족 판정이 아니다**는
   문구와 `criterionAssessment:"not_performed"`를 담습니다. 외부 체크포인트나 위트니스 없이 검증하면 되돌리기(rollback)를 배제하지
   못했다고 함께 적습니다.

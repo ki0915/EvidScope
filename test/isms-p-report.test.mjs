@@ -169,7 +169,7 @@ test('ISMS-P evidence report verifies a demo export, counts named evidence and n
 });
 
 test('the Markdown rendering escapes bundle-derived text and labels missing kinds without guessing', () => {
-  const bundle = {checkpoint: {head: 'a'.repeat(64)}, records: [
+  const bundle = {checkpoint: {head: 'abc|def'}, records: [
     {seq: 1, type: 'event', recordedAt: '2026-10-07T00:00:00.000Z', payload: {kind: 'intent', sourceKind: 'agent', occurredAt: 'not-a-time'}},
     {seq: 2, type: 'asset', recordedAt: '2026-10-07T00:00:01.000Z', payload: {id: 'a'}},
     {seq: 3, type: 'event', recordedAt: '2026-10-07T00:00:02.000Z', payload: {format: 'evidscope-encrypted-event-v1', keyId: 'erased', kind: 'intent'}},
@@ -185,4 +185,5 @@ test('the Markdown rendering escapes bundle-derived text and labels missing kind
   const page = renderMarkdown(report);
   assert.ok(page.includes('| tenant | alpha\\|\\<b\\>x\\</b\\> \\# injected |'));
   assert.doesNotMatch(page, /\n# injected/);
+  assert.ok(page.includes('| 체크포인트 head | `abc\\|def` |'));
 });
