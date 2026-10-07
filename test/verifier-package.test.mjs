@@ -8,7 +8,8 @@ import {spawnSync} from 'node:child_process';
 import {createHash, generateKeyPairSync} from 'node:crypto';
 import {mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname, join, relative} from 'node:path';
+import {join, posix, relative, sep} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 import {moduleImports, packageVerifier} from '../scripts/package-verifier.mjs';
 import {canonical} from '../src/crypto.mjs';
@@ -19,10 +20,10 @@ import {BASE} from './support/transparency-fixture.mjs';
 import {receiptFixture} from './support/receipt-fixture.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const repo = new URL('..', import.meta.url).pathname;
+const repo = fileURLToPath(new URL('..', import.meta.url));
 const BUILTINS = ['node:crypto', 'node:fs', 'node:path', 'node:util'];
 const walk = (dir, base = dir) => readdirSync(dir, {withFileTypes: true})
-  .flatMap(e => (e.isDirectory() ? walk(join(dir, e.name), base) : [relative(base, join(dir, e.name))])).sort();
+  .flatMap(e => (e.isDirectory() ? walk(join(dir, e.name), base) : [relative(base, join(dir, e.name)).split(sep).join('/')])).sort();
 // A minimal ustar reader written independently of the packager; header checksums are checked.
 function untar(gz) {
   const tar = gunzipSync(gz), entries = new Map();
@@ -58,7 +59,9 @@ const GUARD = 'data:text/javascript,' + encodeURIComponent([
 const sandbox = ({read = [], write = []}) => ['--permission', ...read.map(p => '--allow-fs-read=' + p), ...write.map(p => '--allow-fs-write=' + p),
   '--import', GUARD];
 const node = (args, cwd) => {
-  const r = spawnSync(process.execPath, args, {cwd, env: {}, encoding: 'utf8', windowsHide: true});
+  // An empty environment; Windows keeps SystemRoot, without which some system libraries do not load.
+  const env = process.platform === 'win32' ? {SystemRoot: process.env.SystemRoot} : {};
+  const r = spawnSync(process.execPath, args, {cwd, env, encoding: 'utf8', windowsHide: true});
   return {status: r.status, out: r.stdout.trim().startsWith('{') ? JSON.parse(r.stdout) : r.stdout, err: r.stderr};
 };
 
@@ -99,7 +102,7 @@ test('package-verifier builds a dependency-free, reproducible verifier folder an
     assert.doesNotMatch(text, /\bimport\s*\(|\brequire\s*\(|\bfetch\s*\(|WebSocket|process\.(binding|dlopen)|createRequire/, p);
     for (const [, spec] of text.matchAll(/(?:\bfrom|^import)\s*['"]([^'"]+)['"]/gm)) {
       if (spec.startsWith('node:')) assert.ok(BUILTINS.includes(spec), `${p} imports ${spec}`);
-      else assert.ok(spec.startsWith('./') && files.includes(join(dirname(p), spec)), `${p} imports ${spec}`);
+      else assert.ok(spec.startsWith('./') && files.includes(posix.join(posix.dirname(p), spec)), `${p} imports ${spec}`);
     }
   }
   assert.match(read('evidscope-verify.mjs').toString(), /^#!\/usr\/bin\/env node\n[^\n]*\nimport \{main\} from '\.\/src\/verify-cli\.mjs';\n/);

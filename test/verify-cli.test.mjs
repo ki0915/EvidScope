@@ -6,6 +6,7 @@ import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {unpackResponse} from '../src/receipts.mjs';
 import {BASE} from './support/transparency-fixture.mjs';
 import {receiptFixture} from './support/receipt-fixture.mjs';
@@ -14,7 +15,7 @@ const run = (script, args, cwd) => {
   const r = spawnSync(process.execPath, [script, ...args], {encoding: 'utf8', windowsHide: true, ...(cwd ? {cwd} : {})});
   return {status: r.status, out: r.stdout.trim().startsWith('{') ? JSON.parse(r.stdout) : r.stdout, err: r.stderr};
 };
-const verify = (args, cwd) => run(new URL('../scripts/evidscope-verify.mjs', import.meta.url).pathname, args, cwd);
+const verify = (args, cwd) => run(fileURLToPath(new URL('../scripts/evidscope-verify.mjs', import.meta.url)), args, cwd);
 
 test('evidscope-verify checks unpacked attestations, record receipts and the existing formats', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'evidscope-verify-cli-'));
@@ -73,8 +74,9 @@ test('evidscope-verify checks unpacked attestations, record receipts and the exi
   for (const args of misuse) {
     assert.equal(verify(args).status, 2, args.join(' '));
   }
-  assert.match(verify(['bundle', '/dev/null', x.files.key]).err, /not a regular file/);
-  assert.match(verify(['bundle', path(exportName), x.files.key, '--min-checkpoint', '/dev/null']).err, /must be a regular file/);
+  // Directories stand in for FIFOs and devices, which are refused the same way.
+  assert.match(verify(['bundle', dir, x.files.key]).err, /not a regular file/);
+  assert.match(verify(['bundle', path(exportName), x.files.key, '--min-checkpoint', dir]).err, /must be a regular file/);
 });
 
 test('scripts/receipts.mjs writes the same record receipt from the data directory and prints the tenant policy', async t => {

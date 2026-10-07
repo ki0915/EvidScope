@@ -22,7 +22,7 @@ const GO_ENV = {GOFLAGS: '-mod=mod', GOPROXY: 'off', GOSUMDB: 'off', GOTOOLCHAIN
 
 // Builds one fixture program in a copy under dir; returns the binary, or null with the reason when modules are missing.
 function build(dir, name) {
-  const src = join(dir, 'go', name), bin = join(dir, 'bin', name);
+  const src = join(dir, 'go', name), bin = join(dir, 'bin', name + (process.platform === 'win32' ? '.exe' : ''));
   cpSync(new URL(`./fixtures/interop-go/${name}/`, import.meta.url), src, {recursive: true});
   const r = spawnSync(GO, ['build', '-o', bin, '.'], {cwd: src, encoding: 'utf8', env: {...process.env, ...GO_ENV}, timeout: 240_000});
   if (r.status === 0) return {bin};
