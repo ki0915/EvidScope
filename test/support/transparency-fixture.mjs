@@ -13,15 +13,18 @@ export const BASE = 'vault.test/evidscope';
 const requirements = JSON.parse(readFileSync(new URL('../../data/requirements.json', import.meta.url), 'utf8'));
 export const principals = ['alpha', 'beta'].map(tenant => ({id: `${tenant}-admin`, role: 'admin', tenant, token: tenant.repeat(40)}));
 
-export async function transparencyFixture(t, {witness = true} = {}) {
+// tenantLogs: witnessTenantLogs on, with the alpha and beta tenant origins registered at the witness. witnessNow: the witness clock.
+export async function transparencyFixture(t, {witness = true, tenantLogs = false, witnessNow} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'evidscope-transparency-')), dataDir = join(root, 'data');
   const {privateKey, publicKey} = generateKeyPairSync('ed25519');
   const services = [];
   let w = null, ws = null;
+  const registerTenant = tenant => w.addLog(T.tenantOrigin(BASE, tenant), T.logVkey(T.tenantOrigin(BASE, tenant), publicKey));
   if (witness) {
-    w = createWitness({dir: join(root, 'witness'), name: 'witness.test/w1'});
+    w = createWitness({dir: join(root, 'witness'), name: 'witness.test/w1', ...(witnessNow ? {now: witnessNow} : {})});
     ws = await w.listen();
     w.addLog(T.headsOrigin(BASE), T.logVkey(T.headsOrigin(BASE), publicKey));
+    if (tenantLogs) for (const p of principals) registerTenant(p.tenant);
   }
   t.after(async () => {
     for (const s of services.splice(0)) { await s.transparency.stop(); s.store.close(); }
@@ -29,10 +32,11 @@ export async function transparencyFixture(t, {witness = true} = {}) {
     rmSync(root, {recursive: true, force: true});
   });
   const config = (mode, {dir = dataDir, ...extra} = {}) => normalizeTransparencyConfig(mode === 'off' ? null
-    : {origin: BASE, mode, witnesses: w ? [{vkey: w.vkey, url: ws.url}] : [], intervalMs: 100, timeoutMs: 2000, ...extra}, {dataDir: dir});
-  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir})} = {}) {
-    const probe = cfg.mode !== 'off' && cfg.witnesses.length ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg}) : null;
-    const service = createService({dataDir: dir, key: privateKey, config: {principals}, requirements, transparency: {config: cfg, probe}});
+    : {origin: BASE, mode, witnesses: w ? [{vkey: w.vkey, url: ws.url}] : [], intervalMs: 100, timeoutMs: 2000,
+      ...(tenantLogs ? {witnessTenantLogs: true} : {}), ...extra}, {dataDir: dir});
+  async function open(mode = 'enforce', {dir = dataDir, cfg = config(mode, {dir}), fetchImpl} = {}) {
+    const probe = cfg.mode !== 'off' && cfg.witnesses.length ? await probeTransparency({dataDir: dir, key: privateKey, config: cfg, fetchImpl}) : null;
+    const service = createService({dataDir: dir, key: privateKey, config: {principals}, requirements, transparency: {config: cfg, probe, fetchImpl}});
     services.push(service);
     return service;
   }
@@ -45,7 +49,7 @@ export async function transparencyFixture(t, {witness = true} = {}) {
   const write = (service, tenant, n) => {
     for (let i = 0; i < n; i++) service.store.transaction(() => service.store.append(tenant, 'note', {i}, 'test'));
   };
-  return {root, dataDir, privateKey, publicKey, w, ws, config, open, close, call, write};
+  return {root, dataDir, privateKey, publicKey, w, ws, config, open, close, call, write, registerTenant};
 }
 
 // The S1 attacker: an external connection that drops the append-only triggers and deletes rows.
