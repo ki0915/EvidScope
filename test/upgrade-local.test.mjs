@@ -5,6 +5,8 @@ import {existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, unlinkSync, 
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {execFile} from 'node:child_process';
+import {createServer} from 'node:net';
+import {setTimeout as delay} from 'node:timers/promises';
 import {promisify} from 'node:util';
 import {initialize} from '../scripts/init.mjs';
 import {createLocalRuntime} from '../scripts/local.mjs';
@@ -126,4 +128,68 @@ test('upgrade-local finishes a document migration that failed after the data key
   assert.equal(JSON.parse(readFileSync(file, 'utf8')).kid, kid);
   const again = await upgrade(dir);
   assert.equal(again.code, 0, again.stderr); assert.equal(again.json.steps[1].status, 'already_present'); assert.equal(again.json.upgraded, false);
+});
+
+// The local heads signer (docs/signer.md): upgrade-local sets it up, npm start runs it before the vault and stops it with the rest.
+const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
+const freePort = () => new Promise(done => {
+  const server = createServer().listen(0, '127.0.0.1', () => { const {port} = server.address(); server.close(() => done(port)); });
+});
+async function runLocal(t, dir, check) {
+  const runtime = createLocalRuntime({host, portBase: 0, directory: dir});
+  t.after(() => runtime.stop());
+  const ready = await runtime.start(), config = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
+  const token = id => config.principals.find(p => p.id === id).token;
+  const sent = await fetch(ready.endpoints.ingress + '/v1/traces', {method: 'POST', body: otlpFixture,
+    headers: {'content-type': 'application/json', authorization: 'Bearer ' + token('alpha-otlp')}});
+  assert.equal(sent.status, 200);
+  let integrity = null;
+  for (let i = 0; i < 100 && !check(integrity); i++) {
+    if (i) await delay(200);
+    integrity = await (await fetch(ready.endpoints.audit + '/api/integrity', {headers: {authorization: 'Bearer ' + token('alpha-auditor')}})).json();
+  }
+  assert.ok(check(integrity), JSON.stringify(integrity.transparency?.runtime));
+  const stopped = await runtime.stop();
+  assert.ok(stopped.childPids.every(pid => !alive(pid)));
+  return {ready, integrity, stopped};
+}
+
+test('upgrade-local --heads-signer starts a new heads log at a local heads signer on a Unix socket', {skip: process.platform === 'win32'}, async t => {
+  const {dir} = await legacyInstall(t);
+  const dry = await upgrade(dir, '--transparency', '--heads-signer', '--dry-run');
+  assert.equal(dry.code, 0, dry.stderr);
+  assert.deepEqual(dry.json.steps.at(-1), {step: 'heads_signer', status: 'would_create', authorization: 'genesis'});
+  assert.equal(existsSync(join(dir, 'signer')), false);
+  const run = await upgrade(dir, '--transparency', '--heads-signer');
+  assert.equal(run.code, 0, run.stderr);
+  const step = run.json.steps.at(-1);
+  assert.deepEqual([step.status, step.authorization, step.listen], ['created', 'genesis', join(resolve(dir), 'signer', 'signer.sock')]);
+  const tlog = JSON.parse(readFileSync(join(dir, 'transparency.json'), 'utf8'));
+  assert.deepEqual(Object.keys(tlog.signer).sort(), ['publicKeyFile', 'socket']);
+  const {ready, integrity, stopped} = await runLocal(t, dir, i => i?.transparency?.runtime?.signer?.status === 'consistent');
+  assert.equal(ready.headsSigner, step.listen);
+  assert.equal(stopped.childPids.length, 5);
+  assert.deepEqual([integrity.transparency.runtime.heads.signedBy, integrity.transparency.runtime.signer.size], [step.vkey, 1]);
+  assert.ok(integrity.verificationScope.checks.includes('heads_signer'));
+  assert.equal((await upgrade(dir, '--heads-signer')).json.steps.at(-1).status, 'already_present');
+});
+
+test('upgrade-local --heads-signer hands a vault-key heads log over to a local heads signer on loopback TCP with a token', async t => {
+  const {dir} = await legacyInstall(t);
+  assert.equal((await upgrade(dir, '--transparency')).code, 0);
+  const before = await runLocal(t, dir, i => i?.transparency?.runtime?.heads?.size >= 1);
+  assert.equal(before.ready.headsSigner, undefined);
+  const port = await freePort(), run = await upgrade(dir, '--heads-signer', '--heads-signer-port', String(port));
+  assert.equal(run.code, 0, run.stderr);
+  const step = run.json.steps.at(-1), size = before.integrity.transparency.runtime.heads.size;
+  assert.deepEqual([step.status, step.authorization, step.listen], ['created', 'handover', `http://127.0.0.1:${port}`]);
+  const tlog = JSON.parse(readFileSync(join(dir, 'transparency.json'), 'utf8'));
+  assert.deepEqual(Object.keys(tlog.signer).sort(), ['publicKeyFile', 'tokenFile', 'url']);
+  const serve = JSON.parse(readFileSync(join(dir, 'signer', 'serve.json'), 'utf8'));
+  assert.ok(serve.args.includes('--token-file'));
+  const {ready, integrity} = await runLocal(t, dir, i => i?.transparency?.runtime?.signer?.status === 'consistent');
+  assert.equal(ready.headsSigner, `http://127.0.0.1:${port}`);
+  // The first signer leaf continues the vault-key heads log; the vault key signs no heads checkpoint any more.
+  assert.ok(integrity.transparency.runtime.heads.size > size);
+  assert.equal(integrity.transparency.runtime.heads.signedBy, step.vkey);
 });
