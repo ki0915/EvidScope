@@ -106,7 +106,27 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
   }
   if(requirement?.id?.startsWith('KR-'))return evaluateKrGovernanceEvidence(requirement,assessment,{documentStale,eventStale,system});
   const defaultStatus=assessment?.evidence?.some(e=>e.type==='event')?'event_linked_partial_support':'external_or_missing';
-  return {status:defaultStatus,supportsHumanAssessment:true};
+  // Non-KR requirements have no clause-level technical checks: a human assesses the evidence, and attestations or
+  // references the vault did not fetch stay labelled self_asserted (S11).
+  return {status:defaultStatus,supportsHumanAssessment:true,assurance:evidenceAssurance(assessment).level,
+   limitations:['조항별 기술 검증이 없는 요구사항입니다. self_asserted 증거는 작성자의 주장이며 vault가 내용을 확인하지 않았습니다.']};
+ }
+ // Assurance of one evidence item (S11): only retained documents, signed supplier bundles and authenticated source events
+ // are bound by the vault; every attestation and every reference the vault did not fetch is the author's own claim.
+ const assuranceByVerification={governance_document_verified_at_assessment:'vault_verified_document',
+  supplier_bundle_verified_at_assessment:'supplier_signed_bundle',linked_verified_minimized_record:'authenticated_source_record'};
+ const assuranceOf=e=>e.type==='attestation'?'self_asserted':assuranceByVerification[e.verification]||'self_asserted';
+ function evidenceAssurance(assessment){
+  const items=(assessment?.evidence||[]).map(e=>({type:e.type,ref:e.ref,assurance:assuranceOf(e)})),selfAsserted=items.filter(i=>i.assurance==='self_asserted').length;
+  return {level:!items.length?'no_evidence':selfAsserted===items.length?'self_asserted':selfAsserted?'mixed':'source_bound',selfAssertedItems:selfAsserted,items};
+ }
+ // Legal review is maker-checker (S11): the author's own legalReview field is a claim. The report counts a legal review
+ // only when a principal other than the author confirmed this exact assessment (bound by its hash).
+ function legalReviewState(assessment,reviews){
+  if(!assessment)return {status:'pending',authorClaim:null,independentReviewRequired:true};
+  const hash=digest(assessment),confirmed=reviews.filter(r=>r.assessmentId===assessment.id&&r.assessmentHash===hash&&r.reviewedBy!==assessment.reviewer).at(-1);
+  return {status:confirmed?'reviewed':'pending',authorClaim:assessment.legalReview,author:assessment.reviewer,independentReviewRequired:true,
+   ...(confirmed?{reviewedBy:confirmed.reviewedBy,reviewedAt:confirmed.reviewedAt,reviewId:confirmed.id}:{})};
  }
  function governanceOrderTargets(assessment){
   return [...new Set((assessment?.evidence||[]).filter(e=>e.type==='event'&&e.eventSnapshot?.kind==='governance_check'&&e.eventSnapshot.governanceCheck?.checkType==='authority_order_response').map(e=>e.eventSnapshot.governanceCheck.measurements.orderId))].map(orderId=>({checkType:'authority_order_response',orderId}));
@@ -150,6 +170,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
  function report(p,systemId){
   return store.transaction(()=>{
   const system=policyObject(p,'system',systemId),assessments=[...verifiedPolicyObjects(p,'assessment').values()].filter(a=>a.systemId===systemId),tasks=[...verifiedPolicyObjects(p,'governance_task').values()].filter(t=>t.systemId===systemId);
+  const legalReviews=[...verifiedPolicyObjects(p,'governance_legal_review').values()].filter(r=>r.systemId===systemId);
   const events=assessments.some(a=>a.evidence.some(e=>e.type==='event'))?verifiedEventReferences(p):new Map();
   const items=requirements.map(requirement=>{
    // verifiedPolicyObjects iterates signed ledger order. Millisecond timestamps
@@ -171,7 +192,9 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    const documentStale=assessment&&(finance.staleEvidence(p,assessment)||governanceDocuments.staleEvidence(p,assessment)),technical=technicalEvidenceState(requirement,assessment,{documentStale,eventStale:missingLinkedEvidence,system});
    const stale=assessment&&(assessment.requirementHash!==digest(requirement)||assessment.systemHash!==digest(system)||Date.parse(assessment.nextReviewAt)<=Date.now()||missingLinkedEvidence||documentStale||applicabilityReview.status==='review_required');
    const status=!assessment?'evidence_missing':stale?'review_required':assessment.applicability==='not_applicable'?(technical.supportsHumanAssessment?'human_marked_not_applicable':'evidence_insufficient'):assessment.assessment==='sufficient'&&assessment.evidence.length&&technical.supportsHumanAssessment?'human_evidence_assessed':'evidence_insufficient';
-   return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,legalStatus:stale?'review_required':assessment?.legalReview||'pending'};
+   const legalReview=legalReviewState(assessment,legalReviews);
+   return {requirement,status,applicabilityCandidate:candidate,applicability,applicabilityReview,assessment,technicalStatus:technical.status,technicalEvidence:technical,
+    evidenceAssurance:evidenceAssurance(assessment),legalStatus:stale?'review_required':legalReview.status,legalReview};
    });const catalog=applicabilityCatalogIdentity(requirements);return {system,items,tasks,legalSourceCoverage,applicabilityPolicyVersion,applicabilityPolicyIdentityHash:catalog.hash,limitations:['법적 적용성은 사실관계와 인간 검토를 요구합니다','증거 평가와 법적 준수 판정은 별개이며 자동 준수 통과를 발급하지 않습니다','한국 고영향과 EU 고위험 분류를 공유하지 않습니다','ISO/IEC 42001 본문 미확보: 조항 매핑 미지원']};
   });
  }
@@ -344,6 +367,18 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    store.put(p,'assessment',a.id,a);if(a.assessment!=='sufficient'||a.legalReview==='pending'||technicalEvidenceRequired||a.applicability==='unknown')store.put(p,'governance_task',a.id,{id:a.id,systemId:a.systemId,requirementId:a.requirementId,title:technicalEvidenceRequired?'조항별 검증 가능한 이행 근거 보완':a.applicability==='unknown'?'법률 적용성 미확인 사실 검토':a.assessment!=='sufficient'?'증거 보완 및 인간 재검토':'법률 적용성 검토',owner:a.owner,dueAt:a.nextReviewAt,status:'open',missingChecks:technical.missingChecks||[],technicalStatus:technical.status,orderTargets:governanceOrderTargets(a)});return a;
    });
   }
+  const legalReviewPath=path.match(/^\/api\/governance\/assessments\/([^/]+)\/legal-review$/);
+  if(legalReviewPath&&method==='POST'){
+   reviewer(p);const reason=cleanText(x.reason,2000);if(!reason.trim())fail(400,'법률 검토 근거가 필요합니다');
+   return store.transaction(()=>{
+    const assessments=verifiedPolicyObjects(p,'assessment'),a=assessments.get(identifier(legalReviewPath[1]))||fail(404,'대상을 찾을 수 없습니다');
+    // The report reads the last recorded assessment of a requirement; only that one can be confirmed.
+    if([...assessments.values()].filter(v=>v.systemId===a.systemId&&v.requirementId===a.requirementId).at(-1).id!==a.id)fail(409,'최신 평가에만 법률 검토를 기록할 수 있습니다');
+    if(a.reviewer===p.id)fail(403,'평가 작성자는 자기 평가의 법률 검토를 확인할 수 없습니다(4-eyes)');
+    const review={id:randomUUID(),assessmentId:a.id,assessmentHash:digest(a),systemId:a.systemId,requirementId:a.requirementId,decision:'reviewed',reason,reviewedBy:p.id,reviewedAt:new Date().toISOString()};
+    return store.put(p,'governance_legal_review',review.id,review);
+   });
+  }
   if(path==='/api/governance/report'&&method==='GET')return report(p,url.searchParams.get('systemId'));
   if(path.startsWith('/api/governance/tasks/')&&method==='POST'){reviewer(p);return store.transaction(()=>{const id=path.split('/').pop(),t=policyObject(p,'governance_task',id);if(x.status==='closed'){
    if(!cleanText(x.reason,1000).trim())fail(400,'거버넌스 과제 종결 사유가 필요합니다');
@@ -352,6 +387,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],re
    // check would let stale human conclusions clear an unresolved review task.
    const current=report(p,t.systemId),items=t.requirementId?current.items.filter(i=>i.requirement.id===t.requirementId):current.items.filter(i=>i.requirement.id.startsWith('KR-'));
    if(!items.length||items.some(i=>!['human_evidence_assessed','human_marked_not_applicable'].includes(i.status)||i.legalStatus!=='reviewed'||i.assessment?.applicability==='unknown'))fail(409,'현재 법령·시스템·기한의 인간 재검토와 검증 가능한 조항별 증거가 없어 작업을 종결할 수 없습니다');
+   // Separation of duties (S11): the author of a covered assessment neither confirms its legal review nor closes the task.
+   if(items.some(i=>i.assessment?.reviewer===p.id))fail(403,'자신이 작성한 평가가 포함된 과제는 다른 검토자가 종결해야 합니다(4-eyes)');
    const orderTargets=t.orderTargets||governanceOrderTargets(verifiedPolicyObjects(p,'assessment').get(t.id));
    if(orderTargets.some(target=>!items.some(i=>governanceOrderTargets(i.assessment).some(current=>current.orderId===target.orderId))))fail(409,'다른 명령의 대응 근거로 이 명령 과제를 종결할 수 없습니다');
    if(t.bundleId&&!items.some(i=>i.assessment?.evidence?.some(e=>e.ref===`supplier-bundle:${t.bundleId}`)))fail(409,'변경된 공급사 증빙을 검토한 현재 평가가 필요합니다');

@@ -28,7 +28,7 @@ Node API [SQLite](https://nodejs.org/docs/latest-v24.x/api/sqlite.html)는 동�
 |---|---|---|
 | Source | 인증된 tenant·sourceKind에 맞는 이벤트 제출 | 원본/검색/export/룰/사건/키 조회, tenant 선택, 독립 출처 사칭 |
 | Auditor | 자신의 tenant 조사, 사건 검토, 거버넌스 조회·보고서 발급, 예외 요청 | 거버넌스 시스템·평가·과제 변경, source 승인 발급, 원본 overwrite, 룰 배포 |
-| Reviewer | 인간 기능 + 거버넌스 시스템·평가·과제 변경, 룰 작성·시험·다른 작성자의 룰/예외 승인 | 자기 룰 승인, 자기 소유 예외 단독 승인 |
+| Reviewer | 인간 기능 + 거버넌스 시스템·평가·과제 변경, 룰 작성·시험·다른 작성자의 룰/예외 승인, 다른 작성자 평가의 법률 검토 확인 | 자기 룰 승인, 자기 소유 예외 단독 승인, 자기 평가의 법률 검토 확인·그 평가가 포함된 과제 종결 |
 | Admin | reviewer + 검색 사본 재구축 | HTTP로 원본 덮어쓰기·삭제·서명키 읽기 |
 | Worker | config에 묶인 tenant(`tenants` 목록, 없으면 자기 `tenant`)에 대해 `/internal/claim`으로 배정된 자료만 받아 deterministic 분석, `/internal/complete` 제출. vault는 같은 snapshot·분석 시각으로 직접 재계산한 결과와 같을 때만 서명한다 | 인간 조회 API, 묶이지 않은 tenant 자료 수신, 재계산과 다른 finding·억제 기록(승인 전 예외 포함), 사건/법률 판단, 실행 승인 |
 | Vault 프로세스/운영 관리자 | 원본·키를 운영하는 높은 신뢰 영역 | 별도 통제 없이 침해 내성을 보장할 수 없음 |

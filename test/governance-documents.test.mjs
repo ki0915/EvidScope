@@ -95,7 +95,12 @@ test('assessment binds the signed document system, version, content hash and sna
  item=(await h.call('/api/governance/report?systemId=credit')).items.find(value=>value.requirement.id==='KR-34-DOCUMENT');
  assert.equal(item.status,'human_evidence_assessed');assert.equal(item.technicalStatus,'authenticated_reported_measurement_supported');
  assert.equal(saved.evidence[1].eventSnapshot.governanceCheck.documentHash,document.sha256);assert.equal(item.technicalEvidence.automaticLegalVerdict,false);
- assert.equal((await h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'verified bytes and snapshot'})).status,'closed');
+ assert.equal(item.evidenceAssurance.items[0].assurance,'vault_verified_document');
+ // S11: an admin other than the author confirms the legal review and closes; the author cannot close.
+ await assert.rejects(h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'unconfirmed legal review'},1),error=>error.status===409);
+ await h.call(`/api/governance/assessments/${saved.id}/legal-review`,{reason:'independent legal review'},1);
+ await assert.rejects(h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'author closes'}),error=>error.status===403);
+ assert.equal((await h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'verified bytes and snapshot'},1)).status,'closed');
 });
 
 test('new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot',async t=>{
