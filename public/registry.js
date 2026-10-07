@@ -10,6 +10,9 @@
   const stateLabels = { discovered: '발견됨', draft: '초안', testing: '시험', approved: '승인', production: '운영', suspended: '정지', retired: '폐기' };
   const statusLabels = { pending: '승인 대기', applied: '적용', approved: '승인·적용', refused: '거절', superseded: '무효(이후 변경)' };
   const tierLabels = { low: '낮음', medium: '중간', high: '높음' };
+  const orderLabels = { active: '활성', lifted: '해제됨', superseded: '대체됨' };
+  const propagationLabels = { activated_in_window: '기한 내 활성화', activated_late: '기한 후 활성화', pending: '활성화 대기', overdue: '기한 초과·미활성화',
+    no_enforcement_point: '담당 집행 지점 없음', ended_before_activation: '활성화 전 종료' };
   const evidenceTypes = ['event', 'asset', 'system', 'case', 'governance_document', 'external'];
   const list = value => Array.isArray(value) ? value : [];
   const text = value => String(value ?? '').trim();
@@ -77,6 +80,76 @@
     }
     return node;
   }
+  // Stop orders and their propagation (docs/kill-switch.md): one reviewer stops at once; a lift needs a second reviewer.
+  function propagationTable(order) {
+    return table(['집행 지점', '담당 근거', '상태', '첫 활성화', '지연(초)', '리비전', 'OPA 인스턴스'], list(order.points).map(point => [
+      point.id, point.covering ? list(point.basis).join(', ') : '담당 아님(활성화만 보고)', propagationLabels[point.status] || '미확인',
+      date(point.firstActivation?.activatedAt), point.firstActivation ? String(Math.round(point.firstActivation.latencyMs / 1000)) : '—',
+      point.firstActivation?.revision || '—', list(point.instances).join(', ') || '—']));
+  }
+  function liftForms(order, entry) {
+    const node = el('div');
+    if (order.status !== 'active') {
+      const lift = order.lift;
+      node.append(el('p', 'muted', lift ? `해제: ${lift.via === 'transition' ? 'suspended→production 전이 승인' : '해제 승인'}`
+        + ` · 요청 ${lift.requestedBy} · 승인 ${lift.approvedBy}`
+        : order.supersededBy ? `대체: ${order.supersededBy.orderId} (${order.supersededBy.by})` : ''));
+      return node;
+    }
+    if (order.scope === 'agent' && entry.state === 'suspended') {
+      node.append(el('p', 'muted', '정지 상태 에이전트의 전체 정지는 suspended→production 전이를 다른 검토자가 승인할 때 해제됩니다.'));
+      return node;
+    }
+    const post = async (path, body, message, result) => {
+      await api(path, 'POST', body); result.append(el('div', 'message', message)); await openEntry(entry.id); navigate('registry');
+    };
+    const base = `/api/registry/stops/${encodeURIComponent(order.orderId)}/lift`;
+    if (order.liftRequest) {
+      node.append(el('p', 'wrap', `해제 요청: ${order.liftRequest.by} · ${order.liftRequest.reason}`),
+        el('p', 'muted', '해제를 요청한 사람은 승인할 수 없습니다(4-eyes).'));
+      for (const [operation, title] of [['approve', '해제 승인'], ['refuse', '해제 거절']]) {
+        node.append(form([field(`${title} 사유`, 'reason', { required: true, multiline: true, maxLength: 1000 })], title,
+          (values, result) => post(`${base}/${operation}`, { reason: values.reason }, `${title}을 서명했습니다.`, result)));
+      }
+    } else {
+      node.append(form([field('해제 요청 사유', 'reason', { required: true, multiline: true, maxLength: 1000 })], '해제 요청',
+        (values, result) => post(base, { reason: values.reason }, '해제 요청을 기록했습니다. 다른 검토자가 승인해야 합니다.', result)));
+    }
+    return node;
+  }
+  function stopNode(data) {
+    const entry = data.entry, orders = list(data.stopOrders), node = el('div');
+    const box = card('정지 명령·전파', '검토자 한 명이 바로 정지합니다. 운영 중인 에이전트는 같은 기록에서 정지(suspended)로 전이합니다. 해제는 다른 검토자의 승인이 '
+      + '필요합니다. EvidScope는 차단하지 않으며, 집행 지점이 묶음·거부 목록을 받아 적용하고 활성화를 보고합니다.');
+    for (const order of orders) {
+      const item = el('div', 'registry-stop');
+      item.append(el('strong', '', `${order.orderId} · ${order.scope === 'tools' ? `도구 정지(${list(order.tools).join(', ')})` : '전체 정지'}`),
+        pill(order.status, orderLabels),
+        el('p', 'muted', `발령 ${order.issuedBy} · ${date(order.issuedAt)} · 전파 기한 ${order.windowSeconds}초`
+          + ` · 전파 ${propagationLabels[order.propagation] || '미확인'}`),
+        el('p', 'wrap', `사유: ${order.reason}`), propagationTable(order), liftForms(order, entry));
+      box.append(item);
+    }
+    if (!orders.length) box.append(el('p', 'muted', '이 에이전트에 대한 정지 명령이 없습니다.'));
+    if (entry.state !== 'retired') {
+      box.append(form([
+        field('정지 범위', 'scope', { choices: [{ value: 'agent', label: '에이전트 전체' }, { value: 'tools', label: '지정 도구만' }], value: 'agent' }),
+        field('정지할 도구 (쉼표 구분, 범위가 지정 도구일 때)', 'tools', { maxLength: 4000 }),
+        field('사유', 'reason', { required: true, multiline: true, maxLength: 1000 }),
+        field('증거 참조 (줄마다 유형:참조)', 'evidence', { multiline: true, wide: true, maxLength: 4000 }),
+        field('추가 집행 지점 (enforcement 출처 자격, 쉼표 구분)', 'enforcementPoints', { maxLength: 2000 }),
+      ], '정지 명령 발령', async (values, result) => {
+        const scope = values.scope === 'tools' ? 'tools' : 'agent';
+        const response = await api(`/api/registry/${encodeURIComponent(entry.id)}/stop`, 'POST', { scope,
+          ...(scope === 'tools' ? { tools: words(values.tools) } : {}), reason: values.reason, evidence: evidenceRefs(values.evidence),
+          enforcementPoints: words(values.enforcementPoints) });
+        result.append(el('div', 'message', `정지 명령 ${response.order?.id}을 서명했습니다.${response.transition ? ' 운영 상태를 정지로 전이했습니다.' : ''}`));
+        await openEntry(entry.id); navigate('registry');
+      }));
+    }
+    node.append(box);
+    return node;
+  }
   function historyNode(data) {
     const node = el('div');
     node.append(el('h3', '', '버전 이력'), table(['버전', '상태', '변경', '기록 주체', '효력 시작', '원장 seq'],
@@ -109,7 +182,7 @@
       ['생애주기 검증', data.lifecycle?.valid ? '이상 없음' : `문제 ${list(data.lifecycle?.problems).length}건`],
     ]));
     if (data.lifecycle && !data.lifecycle.valid) node.append(limits(list(data.lifecycle.problems).map(p => `seq ${p.seq}: ${p.message}`)));
-    node.append(transitionForms(data), historyNode(data), jsonDetails('등록 항목 원문', entry));
+    node.append(transitionForms(data), stopNode(data), historyNode(data), jsonDetails('등록 항목 원문', entry));
     return node;
   }
   function createForm(prefill = {}) {
@@ -157,16 +230,18 @@
     node.append(head);
     const items = list(data.items);
     const listCard = card('등록 항목', `${items.length}개 · 상태는 서명된 전이 기록으로만 바뀝니다.`);
-    listCard.append(table(['등록 ID / 이름', '상태', '위험 등급', '책임자', '출처 / 행위자', '승인 대기', '버전', '상세'], items.map(entry => [
+    listCard.append(table(['등록 ID / 이름', '상태', '위험 등급', '책임자', '출처 / 행위자', '승인 대기', '활성 정지 명령', '버전', '상세'], items.map(entry => [
       `${entry.id}${entry.name && entry.name !== entry.id ? ` / ${entry.name}` : ''}`, pill(entry.state, stateLabels), tierLabels[entry.effectiveRisk] || '미확인',
       entry.owner || '—', `${join(entry.sources)} / ${join(entry.actors)}`,
-      entry.pendingTransition ? `${entry.pendingTransition.from} → ${entry.pendingTransition.to}` : '—', String(entry.version),
+      entry.pendingTransition ? `${entry.pendingTransition.from} → ${entry.pendingTransition.to}` : '—',
+      entry.activeStopOrders ? `${entry.activeStopOrders}건` : '—', String(entry.version),
       button('상세', () => openEntry(entry.id), 'ghost'),
     ])));
     node.append(listCard);
     node.append(candidates.error ? empty('후보를 불러오지 못했습니다', candidates.error) : candidatesNode(candidates));
     return node;
   }
-  core.registerView('registry', '에이전트 레지스트리', '에이전트 등록·생애주기·게이트와 승인 이력을 확인합니다. 정지·폐기는 기록이며 실행을 차단하지 않습니다.', registryView);
-  window.EvidScopeRegistry = Object.freeze({ registryView, openEntry, entryNode, createForm, evidenceRefs });
+  core.registerView('registry', '에이전트 레지스트리', '에이전트 등록·생애주기·게이트와 승인 이력, 정지 명령과 집행 지점 전파를 확인합니다. '
+    + '정지·폐기는 기록이며 EvidScope는 실행을 차단하지 않습니다.', registryView);
+  window.EvidScopeRegistry = Object.freeze({ registryView, openEntry, entryNode, createForm, evidenceRefs, stopNode });
 })();
