@@ -87,22 +87,32 @@ export function epochAuthorization({stateDir, fromBase, toBase, acceptLoss, rest
   const from = headsOriginOf(fromBase), to = headsOriginOf(toBase), state = readSignerState(stateDir), p = state.origins[from];
   if (!p || p.status !== 'active') throw Error(`The signer holds no active heads origin ${from}`);
   if (state.origins[to]) throw Error(`The signer already signs ${to}`);
-  const ids = new Set(p.entries.map(e => e.log.slice(fromBase.length + 3)));
-  for (const id of dropLogs) if (!ids.has(id)) throw Error(`--drop-log ${id} is not a tenant log of ${from}`);
+  const signed = new Map(p.entries.map(e => [e.log.slice(fromBase.length + 3), e]));
+  for (const id of dropLogs) if (!signed.has(id)) throw Error(`--drop-log ${id} is not a tenant log of ${from}`);
   let bound = null;
   if (restored !== undefined) {
     bound = {};
-    // A restored log the predecessor never named (it had no anchored records) needs no claim.
-    for (const [id, r] of Object.entries(restored.restored ?? restored)) if (ids.has(id)) bound[id] = {size: r.size, root: r.root};
+    // A restored log the predecessor never named (it had no anchored records) needs no claim. The claims come from the vault: at
+    // the signed size a claim must be the signed entry, and beyond it binds nothing (the leaf must then continue the signed entry).
+    for (const [id, r] of Object.entries(restored.restored ?? restored)) {
+      const e = signed.get(id);
+      if (!e) continue;
+      if (r?.size === e.size && r.root !== e.root) {
+        throw Error(`The restored claim for tenant log ${id} differs from the entry the signer signed at size ${e.size} (fork)`);
+      }
+      if (!(r?.size >= e.size)) bound[id] = {size: r?.size, root: r?.root};
+    }
     if (restored.fromBase !== undefined && (restored.fromBase !== fromBase || restored.toBase !== toBase)) {
       throw Error('The restored file names other origin bases');
     }
   }
   const auth = createAuthorization(stateDir, {kind: 'epoch', origin: to, predecessor: {origin: from, size: p.size, root: p.root},
     acceptLoss: acceptLoss === undefined ? null : {reason: acceptLoss}, dropLogs: [...dropLogs].sort(), restored: bound}, {now});
-  // What the operator just accepted: every log whose restored prefix is shorter than the size the signer signed loses the rest.
-  const losses = p.entries.map(e => ({log: e.log.slice(fromBase.length + 3), signedSize: e.size}))
-    .map(l => ({...l, restoredSize: bound?.[l.log]?.size})).filter(l => l.restoredSize !== undefined && l.restoredSize < l.signedSize);
+  // What the operator just accepted: every log whose restored prefix is shorter than the size the signer signed loses the rest, and
+  // with --accept-loss but no --restored every log may restart from anything (restoredSize null).
+  const unbounded = acceptLoss === undefined ? undefined : null;
+  const losses = [...signed].map(([log, e]) => ({log, signedSize: e.size, restoredSize: bound ? bound[log]?.size : unbounded}))
+    .filter(l => l.restoredSize === null || l.restoredSize !== undefined && l.restoredSize < l.signedSize);
   return {...auth, losses};
 }
 

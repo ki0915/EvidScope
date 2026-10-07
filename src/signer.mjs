@@ -314,6 +314,7 @@ function checkContinuation(previous, next, proofs) {
 }
 // A restore epoch: every log of the retired origin continues under the new base (same tenant log id), from its last signed entry,
 // or from its authorized restored prefix, or (acceptLoss without restored prefixes) at all; dropped logs are named one by one.
+// A restored prefix is a loss, so it counts only below the signed size: at or above it, it could only stand for another history.
 function checkEpoch(auth, predecessor, base, next, proofs) {
   const byLog = new Map(next.map(e => [e.log, e])), from = headsBaseOf(predecessor.origin) + '/t/', lost = [], dropped = [];
   for (const e of predecessor.entries) {
@@ -325,8 +326,8 @@ function checkEpoch(auth, predecessor, base, next, proofs) {
     }
     if (!n) throw refusal('tenant_removal', `the epoch leaf drops tenant log ${id} (signed at size ${e.size} under ${predecessor.origin}) (tenant removal)`);
     if (extendsEntry(e, n, proof)) continue;
-    const restored = auth.restored?.[id];
-    if (restored && extendsEntry(restored, n, proof)) { lost.push({log: id, signedSize: e.size, restoredSize: restored.size}); continue; }
+    const restored = auth.restored?.[id], below = restored && restored.size < e.size;
+    if (below && extendsEntry(restored, n, proof)) { lost.push({log: id, signedSize: e.size, restoredSize: restored.size}); continue; }
     if (auth.acceptLoss && !auth.restored) { lost.push({log: id, signedSize: e.size, restoredSize: null}); continue; }
     throw refusal('rollback', `tenant log ${id} does not continue its signed size ${e.size} under ${predecessor.origin}`
       + (restored ? ` nor its authorized restored size ${restored.size}` : ' and the epoch authorization accepts no loss') + ' (rollback)');

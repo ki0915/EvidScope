@@ -244,6 +244,11 @@ node scripts/signer.mjs init --state-dir /signer/state --backend command --publi
    `node scripts/transparency.mjs epoch-claims --config NEW.json --key signing-private.pem --data-dir RESTORED --out claims.json`
 4. 서명기에서 승인합니다. 출력의 `losses`(서명했던 크기보다 작게 복구된 tenant 로그)를 확인합니다.
    `node scripts/signer.mjs authorize-epoch --state-dir /signer/state --from-base OLD --to-base NEW --restored claims.json [--accept-loss "사유"] [--drop-log LOG_ID]`
+   `claims.json`은 vault가 만든 값입니다. 그래서 `authorize-epoch`는 서명한 크기와 같은 크기에서 루트가 다른 주장을 `fork`로 거부하고,
+   서명한 크기보다 큰 주장은 승인에 넣지 않습니다(그 로그는 서명한 항목에서 일관성 증명으로 이어져야 합니다). 서명기도 서명한 크기보다
+   작은 복구 범위만 손실로 받아들입니다. `--restored` 없이 `--accept-loss`만 주면 모든 tenant 로그가 어떤 이력으로든 다시 시작할 수 있으므로
+   `losses`에 모든 로그가 `restoredSize: null`로 나옵니다. 2라운드에는 두 경우 모두 `losses: []`로 보였습니다(3라운드 재감사,
+   `test/signer-epoch-claims.test.mjs`).
 5. 새 heads origin을 위트니스에 등록하고(서명기 vkey) 복구된 vault를 시작합니다. 승인 전에는 `status().signer.status`가 `unauthorized`이고
    `epochFrom`에 예전 origin base가 나오며, 승인 뒤 다음 시도(`refreshSeconds`)에 이어집니다.
 6. 검증자는 `--origin-base NEW`로 다시 고정합니다. 서명기 키는 origin 이름과 상관없이 인정하므로 `--heads-key`는 그대로 씁니다.
