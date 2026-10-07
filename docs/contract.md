@@ -73,7 +73,7 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | POST /api/governance/systems | 사실관계 및 별도 한국/EU 분류 입력 |
 | POST /api/governance/assessments | 출처 snapshot·통제·증거·인간 평가·기한. 평가마다 과제를 연다(작성자의 `legalReview`와 무관, 2라운드 S11) |
 | POST /api/governance/assessments/:id/legal-review | reason; 평가 작성자가 아닌 reviewer·admin이 최신 평가(해시 결합)의 법률 검토를 확인 |
-| GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제, 항목별 `evidenceAssurance`(`self_asserted` 등)·`legalReview` |
+| GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제, 항목별 `evidenceAssurance`·`legalReview`. 증거별 보증은 `vault_verified_document`·`authenticated_source_record`·`vault_retained_supplier_bundle`·`self_asserted`이고 수준은 `source_bound`·`mixed`·`self_asserted`·`no_evidence`다. vault는 공급사 서명을 검증하지 않는다. 공급사 묶음은 실제 자료로 신고되고 평가 작성자가 아닌 사람이 그 묶음 내용의 출처를 확인했을 때만 `vault_retained_supplier_bundle`이며, 합성 묶음이나 작성자 혼자 확인한 묶음은 `self_asserted`다(2라운드 S11) |
 | POST /api/governance/tasks/:id | status,reason; 조치/재검토 기록. 종결은 작성자 외 법률 검토 확인 뒤, 포함된 평가의 작성자가 아닌 검토자 |
 | GET /api/retention | 보존 정책·대상·hold·파기계획·한계 |
 | POST /api/retention/policy | retentionSeconds,purpose,reason,legalReview; 새 이벤트에만 적용 |
