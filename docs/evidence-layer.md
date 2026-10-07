@@ -114,8 +114,9 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   [한국 AI 기본법 문서](https://github.com/microsoft/agent-governance-toolkit/blob/main/agent-governance-python/agent-compliance/docs/compliance/south-korea-ai-framework-act.md)는
   "법률 의견이 아닌 구현 안내"이며 조문·시행령·고시를 인용하지 않습니다.
   [DeepInspect](https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence)는 응답 전에 서명된 기록을 남기지만 공개 검증 방법을 밝히지 않습니다.
-  EvidScope가 주장하는 범위는 조문 번호까지 고정한 요구사항이 외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다.
-  시행령·고시 단위 정렬은 아직 없습니다(다음 라운드 후보).
+  EvidScope가 주장하는 범위는 법률 조문과 현행 시행령(대통령령 제36580호) 조문·별표1, NIA 공식 가이드의 쪽 번호까지 고정한 요구사항이
+  외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다([법령 출처](legal-sources.md)). 고시는 행정예고안만 확인했고
+  최종본 대조와 법률 검토는 남아 있습니다(다음 라운드 후보).
 - **모방 위험:** 중상. 매핑표 자체는 복제되므로 법률 검토를 거친 매핑과 국내 확인제·ISMS-P 정렬이 필요합니다(다음 라운드 후보).
 
 ### D4. 검증 가능한 최소화와 파기
