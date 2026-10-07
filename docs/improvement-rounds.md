@@ -125,6 +125,29 @@ GET 95회가 만들던 원장 레코드는 95건에서 6건(봉인 배치)으로
 - enforce로 운영하던 배포는 업그레이드 시 pin 부트스트랩과 startupProbe를 확인해야 하며, 바뀐 heads 행은 예전 빌드가 읽지 못합니다.
 - Kubernetes 매니페스트에 pin 전용 볼륨이 없습니다.
 
+## 2라운드 (2026-10-07)
+
+아래 2라운드 후보 10번의 적대적 재감사가 1라운드 수정에서 확인 결함 4건과 가능성 있는 결함 1건을 찾았습니다.
+재감사 PoC는 판정을 뒤집어 회귀 시험으로 남겼습니다. 수정 전 코드에서는 실패하고 수정 후 통과합니다.
+
+### 재감사 결함 처리
+
+| 재감사 항목 | 처리 | 확인 |
+|---|---|---|
+| S6(중간) 같은 ID의 worker 항목이 tenant 범위를 공유. alpha 전용 자격이 beta 복호화 사본을 받고 beta 평가에 서명 | 설정 적재·config rebinding·`scripts/upgrade-local.mjs`에서 principal ID 중복 거부. 분석 범위와 lease를 인증한 자격(토큰 SHA-256 지문)에 묶고 `analysis_leases.credential`에 기록, claim한 자격만 `/internal/complete` 가능 | `test/worker-duplicate-id.test.mjs` |
+| S9(낮음~중간) 익명 login/callback 한 쌍마다 IdP token 요청. 사용한 state 기록이 1만 개를 넘으면 오래된 것부터 버려 재전송 callback이 token endpoint에 도달 | IdP 요청 전에 프로세스 전체 token bucket(`tokenExchangesPerMinute` 기본 60, burst 20)과 동시 교환 4개 제한, 초과 시 `/?auth=failed`. 사용 기록은 흐름 만료까지 유지(용량 burst + 5 × 분당 값), 만료 항목만 삭제, 가득 차면 fail closed | `test/oidc-callback-replay.test.mjs` |
+| S11(낮음) 작성자가 `legalReview:"reviewed"`라고 쓰면 법률 검토 과제가 생기지 않아 작업 목록에서 사라짐 | 충분 평가를 포함한 모든 평가가 과제를 열고, 작성자가 아닌 확인 전에는 종결 불가. 기존 자기 확인 평가는 다음 기동 때 `legal-review-task-migration-v1`이 과제를 한 번 보충 | `test/legal-review-claim-task.test.mjs` |
+| S11(낮음) 작성자가 직접 올린 합성 공급사 묶음이 `supplier_signed_bundle`·`source_bound`로 표시 | 라벨을 `vault_retained_supplier_bundle`로 바꾸고, 합성이 아니며 평가 작성자가 아닌 사람이 출처를 확인한 묶음만 source-bound. 나머지는 `self_asserted` | `test/supplier-bundle-assurance.test.mjs` |
+| 가능성(낮음) 한 worker 자격이 lease를 무제한 보유, 끝난 lease 행이 계속 쌓임 | 자격당 살아 있는 lease 64개 상한. 만료·거부된 lease 행은 claim 후 24시간이 지나면 다음 claim 때 삭제(완료 행은 보존) | `test/worker-duplicate-id.test.mjs` |
+
+#### 운영자가 알아야 할 변경
+
+- **자격 설정:** principal ID는 역할과 관계없이 고유해야 합니다. 중복이 있으면 vault는 DB를 열기 전에 기동을 거부하고, config rebinding과 `scripts/upgrade-local.mjs`도 거부합니다. 배포마다 worker ID를 따로 주세요.
+- **worker lease:** lease는 claim한 토큰에 묶입니다. 업그레이드 때 진행 중이던 lease와 토큰 회전 전에 받은 lease는 다시 claim해야 합니다. 같은 토큰을 쓰는 replica를 합쳐 살아 있는 lease는 64개까지이며, 상한에서는 빈 작업 목록을 받습니다.
+- **법률 검토 과제:** 작성자가 `reviewed`로 입력해도 과제가 열립니다. 업그레이드 후 첫 기동에서 기존 자기 확인 평가에 "법률 적용성 검토(작성자 자기 확인만 있음)" 과제가 생길 수 있습니다.
+- **증거 보증 라벨:** 보고서·API의 `supplier_signed_bundle`은 `vault_retained_supplier_bundle`이 되었고, 작성자 본인이 올리거나 확인한 묶음은 `self_asserted`로 내려갑니다. 이 라벨을 읽는 도구를 확인하세요.
+- **로그인:** IdP token 교환은 기본 분당 60회·동시 4개로 제한됩니다. 폭주 중에는 실제 사용자 로그인도 `/?auth=failed`가 될 수 있으므로 프록시에서 IP별 제한을 함께 두세요. 1라운드에서 없앤 429 한도와 달리 `/auth/login`은 제한하지 않습니다.
+
 ## 2라운드 후보
 
 1. 서명 키 격리: 데이터 볼륨을 마운트하지 않는 서명 전용 프로세스, 이후 KMS·PKCS#11 연동(S2 잔여).
