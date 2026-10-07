@@ -7,7 +7,7 @@
   const { el, button, card, empty, table, field, jsonDetails, limits, api, date, showDetail, navigate } = core;
   const sections = [
     { id: 'status', name: '현황', routes: [['overview', '관측 개요'], ['graphs', '가시성 그래프']] },
-    { id: 'assets', name: 'AI 자산·수집', routes: [['visibility', 'AI 사용 가시성'], ['agents', '에이전트 목록'], ['registry', '에이전트 레지스트리']] },
+    { id: 'assets', name: 'AI 자산·수집', routes: [['visibility', 'AI 사용 가시성'], ['agents', '에이전트 목록'], ['registry', '에이전트 레지스트리'], ['approvals', '승인 대기열']] },
     { id: 'investigate', name: '탐색·조사', routes: [['investigations', '행동 조사함'], ['events', '증거 탐색'], ['alerts', '탐지 경보'], ['cases', '사건·인간 감사']] },
     { id: 'governance', name: '거버넌스', routes: [['governance', '요구사항·증거 검토']] },
     { id: 'review', name: 'AI 검토실', routes: [['assistance', '검토 요청·초안'], ['team', '역할·개발 이력'], ['model-runtime', '모델·학습 상태']] },

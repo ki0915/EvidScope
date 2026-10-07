@@ -4,6 +4,7 @@ import {verifyBundle} from '../src/crypto.mjs';
 import {replayEvaluations} from '../src/policy-replay.mjs';
 import {REGISTRY_TYPES,verifyRegistryHistory} from '../src/agent-registry.mjs';
 import {STOP_ORDER_TYPE,verifyExportStopOrders} from '../src/stop-orders.mjs';
+import {APPROVAL_TYPE,verifyApprovalHistory} from '../src/approvals.mjs';
 import {verifyAttestation} from '../src/receipts.mjs';
 import {transparencyOptions,transparencyFlags} from './transparency-flags.mjs';
 try{
@@ -21,7 +22,8 @@ try{
  // Registry records (docs/agent-registry.md): the signed lifecycle is checked whenever the export holds any.
  const registry=bundle.records.some(row=>REGISTRY_TYPES.includes(row.type))?verifyRegistryHistory(bundle.records):undefined;
  const stopOrders=bundle.records.some(row=>row.type===STOP_ORDER_TYPE)?verifyExportStopOrders(bundle):undefined;
- console.log(JSON.stringify(replay||attestation||registry||stopOrders?{...result,...(registry?{registry}:{}),...(stopOrders?{stopOrders}:{}),...(replay?{replay}:{}),
-  ...(attestation?{attestation}:{})}:result,null,2));
- if(replay&&!replay.valid||registry&&!registry.valid||stopOrders&&!stopOrders.valid)process.exitCode=1;
+ const approvals=bundle.records.some(row=>row.type===APPROVAL_TYPE)?verifyApprovalHistory(bundle.records):undefined;
+ console.log(JSON.stringify(replay||attestation||registry||approvals||stopOrders?{...result,...(registry?{registry}:{}),...(approvals?{approvals}:{}),
+  ...(stopOrders?{stopOrders}:{}),...(replay?{replay}:{}),...(attestation?{attestation}:{})}:result,null,2));
+ if(replay&&!replay.valid||registry&&!registry.valid||approvals&&!approvals.valid||stopOrders&&!stopOrders.valid)process.exitCode=1;
 }catch(e){console.error(e.message);process.exitCode=1;}

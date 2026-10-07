@@ -63,6 +63,7 @@ test('lifted and tool-scoped orders apply only while active and only to their to
   assert.deepEqual(codes([exec('mail', 120)], tools), [], 'another tool');
   assert.deepEqual(codes([exec('shell', 120, {tool: 'shell'})], tools), ['STOP_PROPAGATION_MISSING']);
   assert.equal(evaluationEngine({events: [], stopOrders: input}), EVALUATION_ENGINE_V4);
+  assert.equal(evaluationEngine({events: [], approvals: [], stopOrders: input}), EVALUATION_ENGINE_V4, 'a snapshot with both inputs takes the highest engine');
   assert.equal(evaluationEngine({events: [], registry: {entries: [], policies: []}}), EVALUATION_ENGINE_V2);
   const limits = {findings: 100, resultBytes: 1024 * 1024};
   const job = {events: [exec('shell', 120, {tool: 'shell'})], assets: [], rules: [], exceptions: [], analysisTime: T0};

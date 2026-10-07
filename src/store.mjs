@@ -15,6 +15,7 @@ import {applyGovernanceDocumentRecord,checkGovernanceDocumentRows} from './gover
 import {REGISTRY_INPUT_TYPES,REGISTRY_TYPES,registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
 import {STOP_ORDER_TYPE,stopOrderAnalysisInput} from './stop-orders.mjs';
+import {APPROVAL_TYPE,approvalAnalysisInput} from './approvals.mjs';
 import {evaluationEngine} from './model.mjs';
 import {types} from 'node:util';
 import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,frontierRoot,logVkey,noteVerifier,openNote,parseCheckpoint,peaksToBlob,recordLeaf,rootsAtSizes,signNote,tenantOrigin,validateOriginBase} from './tlog.mjs';
@@ -343,9 +344,12 @@ export class Store {
   this.checkActionProjection(tenant);const state=this.ledgerTransaction?.actionCandidates.get(tenant)||this.actionProjectionCache.get(tenant);if(!state)throw Error('Verified action state is unavailable');
   const events=actionId===null?[]:[...state.eventsBySequence.values()].filter(event=>event.actionId===actionId),assets=[...state.analysisAssets.values()],rules=[...state.analysisRules.values()].flatMap(rule=>(rule.versions||[]).filter(version=>version.status==='active')),exceptions=[...state.analysisExceptions.values()];
   const registry=registryAnalysisInput(state.registryRows.filter(row=>REGISTRY_INPUT_TYPES.includes(row.type))),relatedDecisions=relatedDenyInput(events,state.eventsBySequence.values());
+  // Approval requests of this action (latest versions, in the order they were opened) join only when there are any.
+  const approvals=actionId===null?undefined:approvalAnalysisInput(this._approvalValues(state,actionId).map(value=>value.payload));
   // Stop orders (docs/kill-switch.md) join only when the tenant has one; their activations come from every retained event.
   const stopOrders=stopOrderAnalysisInput(state.registryRows,state.eventsBySequence.values());
-  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(stopOrders?{stopOrders}:{})},extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
+  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{})};
+  const extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
   const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');
   if(reasons.length)return {resourceLimit:{reasons:[...new Set(reasons)],observedEventsComplete:true,snapshotBytesAtLeast:used,engine:evaluationEngine({events,...extra})},observedEvents:events.length};
@@ -359,6 +363,18 @@ export class Store {
   this._assertFacets(state,types.map(type=>'objects:'+type));
   return {oversized:false,rows:state.registryRows.map(row=>structuredClone(row))};
  }
+ // Approval requests of a tenant (one action, or all) as latest signed versions with their ledger seq and record hash, in the
+ // order they were opened, or one request by id (history:true adds every signed version). Only the objects:approval_request facet must hold.
+ cachedApprovals(tenant,{actionId,id,history=false}={}){
+  const state=this._verifiedActionState(tenant);
+  if(state.oversizedTypes.has(APPROVAL_TYPE)||state.oversizedTypes.has('*'))return {oversized:true,values:[]};
+  this._assertFacets(state,['objects:'+APPROVAL_TYPE]);
+  const values=id!==undefined?[state.objects.get(canonical([APPROVAL_TYPE,id]))].filter(Boolean):actionId!==undefined?this._approvalValues(state,actionId)
+   :[...state.objects.values()].filter(value=>value.type===APPROVAL_TYPE).sort((a,b)=>a.firstSeq-b.firstSeq);
+  return {oversized:false,values:values.map(value=>({id:value.id,seq:value.row.seq,hash:value.row.hash,body:structuredClone(value.payload),
+   ...(history?{versions:structuredClone(state.approvalHistory.get(value.id)||[])}:{})}))};
+ }
+ _approvalValues(state,actionId){return (state.approvalActions.get(actionId)||[]).map(id=>state.objects.get(canonical([APPROVAL_TYPE,id]))).filter(Boolean);}
  cachedSignedObjects(tenant,types){
   if(!Array.isArray(types)||types.some(type=>!isSignedObjectType(type)))throw TypeError('Signed object types are required');
   const state=this.verifiedFacets(tenant),selected=new Set(types);
@@ -471,6 +487,7 @@ export class Store {
   if(!touched)return;
   const remember=id=>{if(typeof id==='string'&&id&&!touched.actions.has(id))touched.actions.set(id,state.action.get(id));};
   if(row.type==='event')remember(disclosed?.actionId??row.payload.actionId);
+  else if(row.type===APPROVAL_TYPE)remember(row.payload.actionId);
   else if(['asset','rule','exception',...REGISTRY_INPUT_TYPES,STOP_ORDER_TYPE].includes(row.type)){if(!touched.allActions){for(const value of state.action.rows())remember(value.id);touched.allActions=true;}}
   else if(row.type==='evaluation')remember(row.payload.actionId);
   else if(row.type==='retention_disposition'){
@@ -522,17 +539,23 @@ export class Store {
   if(row.type==='exception'&&row.payload?.id)state.analysisExceptions.set(row.payload.id,row.payload);
   if(REGISTRY_TYPES.includes(row.type)||row.type===STOP_ORDER_TYPE)
    state.registryRows.push({seq:row.seq,type:row.type,principal:row.principal,recordedAt:row.recordedAt,hash:row.hash,payload:row.payload});
+  if(row.type===APPROVAL_TYPE&&typeof row.payload?.id==='string'){
+   const id=row.payload.id,ids=state.approvalActions.get(row.payload.actionId)||[];
+   if(typeof row.payload.actionId==='string'&&!ids.includes(id))state.approvalActions.set(row.payload.actionId,[...ids,id]);
+   state.approvalHistory.set(id,[...(state.approvalHistory.get(id)||[]),{seq:row.seq,hash:row.hash,recordedAt:row.recordedAt,principal:row.principal,payload:row.payload}]);
+  }
  }
  _checkKeyCoverage(state,keyIds,sequences){
   for(const keyId of keyIds)if(state.eventKeys.has(keyId)&&!state.keys.has(keyId)&&!state.disposed.has(keyId))this._fault(state,'keys',Error('Event key missing without authorized disposition'));
   for(const sequence of sequences)if(!state.receiptCovered.has(sequence))this._fault(state,'receipts',Error('Receipt history is missing for disposed legacy event'));
  }
  _emptyActionState(tenant){return {tenant,count:0,head:'0'.repeat(64),action:createActionProjectionReducer(tenant),actionByEventSequence:new Map(),
-  analysisAssets:new Map(),analysisRules:new Map(),analysisExceptions:new Map(),registryRows:[],objects:new Map(),evaluations:[],
+  analysisAssets:new Map(),analysisRules:new Map(),analysisExceptions:new Map(),registryRows:[],approvalActions:new Map(),approvalHistory:new Map(),objects:new Map(),evaluations:[],
   receiptRecords:[],receiptEvents:new Map(),receiptEntries:new Map(),receiptCovered:new Set(),receiptSignedSequences:new Set(),receiptDispositions:new Map(),eventsBySequence:new Map(),eventKeys:new Map(),keys:new Map(),disposed:new Set(),
   faults:new Map(),faultSerial:0,oversizedTypes:new Set(),governanceDocuments:new Map(),developmentEvents:new Map(),verifiedAt:0,updatedAt:0,coldVerifications:0,versions:this._databaseVersions()};}
  _cloneActionState(state){return {...state,action:state.action.fork(),actionByEventSequence:new Map(state.actionByEventSequence),
-  analysisAssets:new Map(state.analysisAssets),analysisRules:new Map(state.analysisRules),analysisExceptions:new Map(state.analysisExceptions),registryRows:state.registryRows.slice(),objects:new Map(state.objects),
+  analysisAssets:new Map(state.analysisAssets),analysisRules:new Map(state.analysisRules),analysisExceptions:new Map(state.analysisExceptions),registryRows:state.registryRows.slice(),
+  approvalActions:new Map(state.approvalActions),approvalHistory:new Map(state.approvalHistory),objects:new Map(state.objects),
   evaluations:state.evaluations.slice(),receiptRecords:state.receiptRecords.slice(),receiptEvents:new Map(state.receiptEvents),receiptEntries:new Map(state.receiptEntries),
   receiptCovered:new Set(state.receiptCovered),receiptSignedSequences:new Set(state.receiptSignedSequences),receiptDispositions:new Map(state.receiptDispositions),eventsBySequence:new Map(state.eventsBySequence),eventKeys:new Map(state.eventKeys),keys:new Map(state.keys),
   disposed:new Set(state.disposed),faults:new Map(state.faults),oversizedTypes:new Set(state.oversizedTypes),governanceDocuments:new Map(state.governanceDocuments),developmentEvents:new Map(state.developmentEvents)};}

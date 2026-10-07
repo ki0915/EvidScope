@@ -32,7 +32,8 @@ export function relatedDenyInput(actionEvents,retained){
  return related.sort((a,b)=>a.seq-b.seq).slice(-REPEATED_DENIES.related);
 }
 
-export function decisionFindings(events,{add,order,validity,approvals,enforcedTools,related}){
+// vaultApproved / requested: approvals answered in the EvidScope queue (src/approvals.mjs); absent, the rule is as before.
+export function decisionFindings(events,{add,order,validity,approvals,enforcedTools,related,vaultApproved=()=>false,requested=()=>false}){
  const decisions=events.filter(isDecision);
  for(const e of events.filter(executed)){
   const matching=decisions.filter(d=>targets(d,e)),denies=matching.filter(d=>d.decision==='deny');
@@ -47,7 +48,7 @@ export function decisionFindings(events,{add,order,validity,approvals,enforcedTo
   if(e.tool&&enforcedTools(e).includes(e.tool)&&!matching.some(d=>order(d,e)!=='after'))
    add('ENFORCEMENT_DECISION_MISSING','high','행동 당시 등록 항목이 정책 결정을 요구한 도구의 실행에 앞선 정책 결정 기록이 없습니다',[e]);
   const required=matching.filter(d=>d.decision==='require_approval'&&order(d,e)!=='after');
-  if(required.length&&!approvals.some(g=>validity(g,e)==='valid')){
+  if(required.length&&!approvals.some(g=>validity(g,e)==='valid')&&!vaultApproved(e)&&!required.every(d=>requested(d,e))){
    const uncertain=required.some(d=>order(d,e)==='unknown')||approvals.some(g=>validity(g,e)==='unknown');
    add(uncertain?'REQUIRED_APPROVAL_TIME_UNCERTAIN':'REQUIRED_APPROVAL_MISSING',uncertain?'medium':'high',uncertain
     ?'승인 요구 결정·사람 승인·실행의 순서나 유효기간을 시계 오차 범위에서 확정할 수 없습니다'

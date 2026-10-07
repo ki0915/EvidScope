@@ -19,6 +19,8 @@ const base=process.env.VAULT_URL||'http://127.0.0.1:8080';
 const runtimeReceiptFile=process.env.MODEL_RUNTIME_RECEIPT_FILE;
 const runtimeReceipt=()=>{if(!runtimeReceiptFile)return undefined;try{const raw=readFileSync(runtimeReceiptFile);if(raw.length>65536)throw Error();return JSON.parse(raw.toString('utf8'));}catch{return undefined;}};
 const ingestPaths=new Set(['/api/ingest','/api/development-runs/events']);
+// Enforcement points open approval requests and poll for answers through the ingestion gateway (docs/approval-queue.md).
+const enforcementPaths=new Set(['/api/approvals/requests','/api/approvals/token']);
 const authPaths=new Set(['/auth/config','/auth/login','/auth/callback','/auth/session','/auth/logout']);
 // Enforcement points pull bundles and deny-lists and post OPA status through the ingress gateway or the vault (docs/kill-switch.md).
 const enforcementRoute=(method,pathname)=>pathname.startsWith(ENFORCEMENT_PREFIX)&&(method==='GET'&&pathname!==ENFORCEMENT_PREFIX||method==='POST'&&STATUS_PATH.test(pathname));
@@ -98,13 +100,13 @@ async function route(req,res){
   if(url.pathname==='/readyz'&&req.method==='GET'){
    const ready=await checkReadiness();res.statusCode=ready&&!stopping?200:503;res.end(JSON.stringify({status:res.statusCode===200?'ready':'not_ready',component:mode}));return;
   }
-  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js'].includes(url.pathname)){
+  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   const enforcementPath=enforcementRoute(req.method,url.pathname);
-  if(mode==='ingress'&&!enforcementPath&&(!ingestPaths.has(url.pathname)||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
+  if(mode==='ingress'&&!enforcementPath&&(!ingestPaths.has(url.pathname)&&!enforcementPaths.has(url.pathname)||req.method!=='POST'))throw new HttpError(403,'수집 게이트웨이는 이벤트 제출만 허용합니다');
   if(mode==='audit'&&url.pathname.startsWith(ENFORCEMENT_PREFIX))throw new HttpError(403,'집행 지점 경로는 수집 게이트웨이에서 제공합니다');
-  if(mode==='audit'&&(!url.pathname.startsWith('/api/')&&!authPaths.has(url.pathname)||ingestPaths.has(url.pathname)||url.pathname==='/api/ingest/otlp'))throw new HttpError(403,'감사 게이트웨이에서 허용하지 않는 경로입니다');
+  if(mode==='audit'&&(!url.pathname.startsWith('/api/')&&!authPaths.has(url.pathname)||ingestPaths.has(url.pathname)||enforcementPaths.has(url.pathname)||url.pathname==='/api/ingest/otlp'))throw new HttpError(403,'감사 게이트웨이에서 허용하지 않는 경로입니다');
   if(mode==='worker')throw new HttpError(403,'worker는 외부 API를 제공하지 않습니다');
   if(!['GET','POST'].includes(req.method))throw new HttpError(405,'허용되지 않은 메서드');
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
@@ -126,7 +128,7 @@ async function route(req,res){
   }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition',`attachment; filename="evidscope-evidence${url.searchParams.has('attest')?'-attested':''}.json"`);res.end(output.body);}
  }catch(caught){
   const error=caught instanceof URIError?new HttpError(400,'경로의 퍼센트 인코딩 형식 오류'):caught;
-  res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다'}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}
+  res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다',...(error.status&&error.details||{})}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}
  finally{active--;}
 }
 const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;

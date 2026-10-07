@@ -40,6 +40,7 @@ import {createReceipts} from './receipt-service.mjs';
 import {createRegistry} from './registry-service.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_PATH,createEnforcement,enforcementPoint} from './enforcement-service.mjs';
 import {bundleSigner} from './enforcement-bundle.mjs';
+import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 
 export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
  bundleSigning}) {
@@ -59,7 +60,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
  const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  // Attestations are signed through one function (src/attestation-signer.mjs) so a separate signer process can take its place.
- const receipts=createReceipts({store,config:tlogConfig,signer:attestationSigner(key)});
+ const signer=attestationSigner(key),receipts=createReceipts({store,config:tlogConfig,signer});
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
  // Event keys wrapped under key-epoch secrets kept in EVENT_KEYSTORE_DIR (src/event-keystore.mjs); raw keys are wrapped here.
  let eventKeystore;try{eventKeystore=attachEventKeystore(store,{dir:eventKeystoreDir,keyring,dataDir});}catch(error){store.close();throw error;}
@@ -113,8 +114,10 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  const registry=createRegistry({store,principals,policyObjects:verifiedPolicyObjects,dirty,reviewer,admin});
  // Pull distribution and activation reports for enforcement points (src/enforcement-service.mjs, docs/kill-switch.md). The
  // optional OPA bundle signing key is RSA or P-256 (OPA verifies no Ed25519), never the vault key.
- let signer;try{signer=bundleSigning?bundleSigner(bundleSigning.key,bundleSigning.keyId):undefined;}catch(error){store.close();throw error;}
- const enforcement=createEnforcement({store,policyObjects:verifiedPolicyObjects,key,signer,verifiedActions});
+ let opaSigner;try{opaSigner=bundleSigning?bundleSigner(bundleSigning.key,bundleSigning.keyId):undefined;}catch(error){store.close();throw error;}
+ const enforcement=createEnforcement({store,policyObjects:verifiedPolicyObjects,key,signer:opaSigner,verifiedActions});
+ // Approval queue for enforcement points (src/approval-service.mjs, docs/approval-queue.md); answers are signed like attestations.
+ const approvals=createApprovals({store,principals,policyObjects:verifiedPolicyObjects,signer});
  function verifiedEvaluations(p,options){
   let result;try{result=store.cachedEvaluations(p.tenant,options);}catch(error){if(error?.status)throw error;fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');}
   if(result.oversized)fail(413,'분석 조회 객체 한도 초과: 부분 검증으로 조회할 수 없습니다');
@@ -299,6 +302,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
    });
   }
   if(path==='/api/ingest/otlp'&&method==='POST')return ingestOtlp(p,body);
+  if(path===APPROVAL_PATHS.request&&method==='POST')return approvals.open(p,headers,body);
+  if(path===APPROVAL_PATHS.token&&method==='POST')return approvals.poll(p,body);
   if(path==='/internal/claim'&&method==='POST')return analysis.claim(p);
   if(path==='/internal/complete'&&method==='POST'){let result;try{result=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}return analysis.commit(p,result);}
   if(path==='/internal/analyze'&&method==='POST'){if(p.role!=='worker')fail(403,'분석 서비스 전용');fail(410,'분산 분석 claim/complete API로 전환되었습니다');}
@@ -315,6 +320,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
   if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
   if(path==='/api/registry'||path.startsWith('/api/registry/')){const result=registry.handle(p,method,url,x);if(result!==undefined)return result;}
+  if(path==='/api/approvals'||path.startsWith('/api/approvals/')){const result=approvals.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/investigations'||path.startsWith('/api/cases/')){
    // ?attest=intoto wraps the signed report and its in-toto attestation (docs/receipts.md); the proofs read this request's snapshot.
    const attest=method==='GET'&&/^\/api\/cases\/[^/]+\/report$/.test(path)&&receipts.requested(url);

@@ -214,7 +214,7 @@ POST /api/registry/policy  {"stopPropagation": {"windowSeconds": 60, "enforcemen
   시각으로 내립니다.
 
 정지 명령이 있는 tenant의 행동은 평가 엔진 `evidscope-evaluate-v4`로 평가합니다. 스냅샷에 `stopOrders` 키(명령과, 명령·담당 집행 지점별 첫
-활성화)가 들어가고, 정지 명령이 없는 tenant의 스냅샷은 이전(v1·v2)과 바이트 단위로 같습니다. 판단은 행동 시점 기준이며 이벤트의 시계 오차를
+활성화)가 들어가고, 정지 명령이 없는 tenant의 스냅샷은 이전(v1~v3)과 바이트 단위로 같습니다. 승인 큐(v3) 입력과 함께 있으면 v4가 둘 다 평가합니다. 판단은 행동 시점 기준이며 이벤트의 시계 오차를
 포함합니다.
 
 | 발견 | 등급 | 조건 |

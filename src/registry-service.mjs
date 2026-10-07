@@ -10,6 +10,7 @@ import {CONFIGURATION_FIELDS,DEFAULT_GATES,DEFAULT_RISK_RULES,ENFORCEMENT_MODES,
 import {isDecision} from './decision-rules.mjs';
 import {createStopOrders} from './stop-order-service.mjs';
 import {STOP_PROPAGATION_DEFAULTS} from './stop-orders.mjs';
+import {normalizeApprovalPolicy} from './approval-service.mjs';
 
 const RESERVED=new Set(['candidates','policy','transitions','stops']);
 const SOURCE_KINDS=['agent','tool','authority','safety','telemetry','otlp','enforcement'];
@@ -294,17 +295,20 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   });
  }
  function setPolicy(p,x){
-  admin(p);only(x,['enforcement','gates','riskRules','stopPropagation'],'레지스트리 정책');
+  admin(p);only(x,['enforcement','gates','riskRules','approvals','stopPropagation'],'레지스트리 정책');
   if(x.enforcement!==undefined&&!ENFORCEMENT_MODES.includes(x.enforcement))fail(400,'enforcement는 off 또는 unregistered_activity입니다');
   const gates=x.gates===undefined?undefined:normalizeGates(x.gates);
   const riskRules=x.riskRules===undefined?undefined:list(x.riskRules,100,normalizeRiskRule,'riskRules');
   if(riskRules&&new Set(riskRules.map(r=>r.id)).size!==riskRules.length)fail(400,'위험 규칙 id가 중복됩니다');
+  // Who may answer approval requests (docs/approval-queue.md); written only once set, so earlier policy records keep their shape.
+  const approvals=x.approvals===undefined?undefined:normalizeApprovalPolicy(x.approvals);
   return store.transaction(()=>{
    const previous=policy(p),at=now();
    // stopPropagation (docs/kill-switch.md) is written only once set, so other policy records keep their earlier shape.
    const stopPropagation=x.stopPropagation===undefined?previous.stopPropagation:normalizeStopPropagation(p,x.stopPropagation,previous.stopPropagation);
    const next={id:'current',version:previous.version+1,enforcement:x.enforcement??previous.enforcement,gates:gates??previous.gates,
-    riskRules:riskRules??previous.riskRules,...(stopPropagation?{stopPropagation}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
+    riskRules:riskRules??previous.riskRules,...(approvals??previous.approvals?{approvals:approvals??previous.approvals}:{}),
+    ...(stopPropagation?{stopPropagation}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
    store.put(p,'agent_registry_policy','current',next);dirty(p.tenant);return next;
   });
  }
