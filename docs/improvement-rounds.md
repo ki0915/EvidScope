@@ -20,11 +20,11 @@
 |---|---|---|
 | S1 키 없이 tenant 삭제·과거 사본 롤백 미탐지 | RFC 6962 tenant 로그 + C2SP 체크포인트 + heads 로그를 독립 위트니스가 공동서명. enforce 모드는 rollback·fork·tenant 삭제 시 시작 거부·격리. `notChecked`를 정직하게 표시 | `test/transparency-server.test.mjs`, `test/litewitness-interop.test.mjs` |
 | S2 서명 키에서 데이터 키 유도 | HKDF 용도별 데이터 키를 별도 비밀로 분리, 키 ID를 AAD에 묶음, 분리된 vault의 예전 방식 백업 거부 | `test/data-key-separation.test.mjs`, `test/data-key-cli.test.mjs` |
-| S2 서명 키 보유자의 tenant 단위 되돌리기(재검토 F1) | tenant 로그도 위트니스에 제출(선택), 검증기가 `rollbackCheckedAgainst`로 보증 수준을 구분 | `test/transparency-tenant-witness.test.mjs` |
+| S2 서명 키 보유자의 tenant 단위 되돌리기(재검토 F1) | 일부만 처리: heads 행마다 tenant 크기가 줄지 않는지 vault가 확인하고 줄어드는 행은 위트니스에 내지 않음. 외부 확인(tenant 로그 위트니스 제출)은 진행 중 | `test/transparency-anchors.test.mjs` |
 | S4 파기 후 SQLite 잔여 페이지 | `secure_delete` + WAL truncate | `test/erasure-remnants.test.mjs` |
 | S5 조회마다 원장 증가·전체 재검증·쓰기 락 | 검증 상태 증분 캐시, 열람 기록을 원장 밖 봉인 로그로 이동, GET은 읽기 전용 스냅샷, 커버링 인덱스 | `test/verified-state-reads.test.mjs`, `test/access-log.test.mjs`, `test/read-transactions.test.mjs` |
 | S7 전역 분석 적체로 tenant 간 수집 차단 | tenant별 적체 계산, OTLP 배치는 남길 적체로 판단 | `test/otlp-ingest.test.mjs`, `test/otlp-http.test.mjs` |
-| S6, S8~S12 | 이번 라운드 후반 작업(아래 "후반 작업") | |
+| S6, S8~S12 | 진행 중(worker tenant 바인딩, 로그인 폭주, 4-eyes, 자기주장 증거 표시, 인증 전 본문 버퍼링, 복구 후 설정 재바인딩) | |
 | S3 이벤트 키를 같은 DB에 평문 보관 | 목적이 파기임을 문서에 명시. KEK 감싸기는 2라운드 후보 | [데이터 키 분리](data-key-separation.md) |
 | 품질: CI·린터 없음, 비공개 산출물 의존 테스트 | GitHub Actions 워크플로, 의존성 없는 소스 검사(`npm run check`, 새 파일 160자·긴 줄 증가 금지), 시험 fixture 정리, 비공개 산출물 시험은 이유와 함께 skip | `.github/workflows/`, `scripts/check-source.mjs` |
 
@@ -58,7 +58,7 @@
 
 | # | 문제 | 처리 |
 |---|---|---|
-| F1 | 서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명 | tenant 로그 위트니스 제출(선택)과 보증 수준 표시 |
+| F1 | 서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명 | 진행 중. tenant 로그 위트니스 제출(선택)과 검증 결과의 보증 수준 표시 |
 | F2 | monitor 모드가 rollback 뒤에도 pin을 덮어써 흔적을 지움 | pin은 일관성이 확인된 방향으로만 이동, 위반 뒤에는 고정 |
 | F3 | pin 파일이 없으면 첫 기동처럼 통과 | 새 vault는 크기 0 pin을 먼저 기록, 기존 로그는 `pin-bootstrap`으로 명시적으로 고정 |
 | F4 | 사례 보고서 이벤트에 순번·해시가 없으면 포함 증명 없이 통과 | 순번·해시 필수, 서명된 tenant 트리에 포함된 것만 허용 |
@@ -89,6 +89,19 @@
 
 GET 95회가 만들던 원장 레코드는 95건에서 6건(봉인 배치)으로 줄었습니다. 대신 전체 재검증(`/api/integrity`)과 시작 시간(657 → 1,687 ms)은
 투명성 상태와 열람 로그 검증이 더해져 늘었습니다.
+
+수집 벤치마크(`scripts/benchmark.mjs`, 감사와 같은 컨테이너, 원본 스냅샷과 개선본을 번갈아 3회씩, 투명성 로그 꺼짐):
+
+| 항목 | 원본(3회 범위) | 개선본(3회 범위) |
+|---|---|---|
+| burst 처리량(동시 20) | 261~294 EPS | 269~318 EPS |
+| burst p95 | 114~192 ms | 88~154 ms |
+| sustained(20 EPS 고정) p95 | 59~77 ms | 11~12 ms |
+| 조사함 조회 p95 | 143~148 ms | 26~37 ms |
+| 단일 사례 보고서 p95 | 186~266 ms | 6~7 ms |
+
+처리량은 쓰기 프로세스가 하나라 그대로입니다. 개선본 2회차의 normal 구간 p95 295 ms 한 번은 다른 회차에서 재현되지 않았습니다.
+투명성 로그를 켠 상태의 처리량 측정은 2라운드에서 합니다.
 
 ### 남은 한계
 
