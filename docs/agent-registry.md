@@ -27,7 +27,7 @@ AI/MCP 게이트웨이와 OPA·Cedar·AGT 같은 정책 엔진이 하고, EvidSc
 
 | 필드 | 의미 |
 |---|---|
-| `id` | 등록 식별자. `candidates`·`policy`·`transitions`는 예약어입니다. |
+| `id` | 등록 식별자. `candidates`·`policy`·`transitions`·`stops`·`import`는 예약어입니다. |
 | `name`, `owner`, `purpose` | 이름, 책임자, 목적 |
 | `sources` | 이 에이전트가 쓰는 **인증된 출처 자격**(설정 파일의 source principal id). 없는 자격이면 400입니다. |
 | `actors` | 출처가 보고하는 행위자 이름. 자기 보고이므로 출처 자격보다 약한 연결입니다. |
@@ -120,6 +120,156 @@ discovered → draft → testing → approved → production ⇄ suspended
 `GET /api/registry/candidates`는 EvidScope가 이미 보는 미등록 에이전트를 나열합니다. 보관 중인 agent·OTLP·tool 활동의 출처와 행위자,
 최신 평가의 `UNREGISTERED_ASSET`·`AI_UNREGISTERED_ASSET` 발견, 활동이 없는 agent 출처 자격이 근거입니다(최대 200개). **자동 등록하지
 않습니다.** 후보에서 등록할 때 `discoveredFrom`을 남기면 출처를 추적할 수 있습니다.
+
+## 카탈로그 가져오기
+
+> 2026-10-08 개선 4라운드(R4-C)에서 추가한 기능입니다.
+
+많은 팀이 에이전트를 이미 다른 곳에 적어 두었습니다. A2A Agent Card를 공개하거나 Backstage 카탈로그에 컴포넌트로 올려 둔 에이전트를 다시
+손으로 입력하지 않도록, 그 문서를 `discovered` 상태의 등록 항목으로 가져옵니다. 가져온 값은 **카탈로그의 자기 보고**이며, 사람이 검토해
+출처 자격·행위자를 넣기 전까지 어떤 활동도 포함하지 않으므로 발견(finding)을 바꾸지 않습니다. 다른 등록 항목처럼 평가 스냅샷의 레지스트리
+요약에는 들어갑니다. 가져오지 않는 tenant는 평가·스냅샷 해시·내보내기·검증이 이전과 같습니다.
+
+### 지원 형식
+
+| 형식(`format`) | 문서 | 참고한 명세 |
+|---|---|---|
+| `a2a` | A2A Agent Card JSON. 1.0의 `supportedInterfaces`와 0.3의 `url`을 모두 읽습니다. | [A2A 명세 1.0.0](https://a2a-protocol.org/v1.0.0/specification) 4.4·8.2·8.4절, `specification/a2a.proto`(`lf.a2a.v1`) |
+| `backstage` | Backstage 엔터티 YAML(여러 문서 `---`)·JSON·JSON 배열·카탈로그 API 응답(`{"items":[...]}`) | [Descriptor Format of Catalog Entities](https://backstage.io/docs/features/software-catalog/descriptor-format)(v1.55.0, `backstage.io/v1alpha1`) |
+
+Backstage에는 에이전트 전용 kind가 없습니다. [AI in the catalog](https://backstage.io/docs/ai/ai-in-the-catalog) 문서도 MCP 서버(`kind: API`,
+`spec.type: mcp-server`)와 `AiResource`(skill·rule)만 정의합니다. 그래서 **`kind: Component`이고 `spec.type`이 에이전트 유형인 엔터티만**
+가져옵니다. 기본 유형은 `ai-agent`·`agent`·`ai_agent`·`llm-agent`이고, 요청의 `agentTypes`(최대 10개)로 바꿉니다. 나머지 엔터티는
+`skipped`(`not_an_agent_entity`)로 보고합니다.
+
+MCP 공식 레지스트리의 `server.json`(스키마 `2025-12-11`)은 가져오지 않습니다. MCP 서버는 에이전트가 **쓰는 도구**이지 에이전트가 아니므로,
+등록 항목이 아니라 항목의 `tools`나 자산에 대응합니다. 같은 가져오기 경로에 넣으면 도구를 에이전트로 등록하게 됩니다.
+
+### 필드 대응
+
+| 등록 필드 | A2A Agent Card | Backstage 엔터티 |
+|---|---|---|
+| `name` | `name`(필수) | `metadata.title`, 없으면 `metadata.name` |
+| `purpose` | `description` | `metadata.description` |
+| `owner` | 없음. `provider.organization`은 공급사이지 책임자가 아닙니다. | `spec.owner`(엔터티 참조 문자열 그대로) |
+| `fingerprint.version` | `version` | 없음 |
+| 카탈로그 키(출처 기록) | 첫 번째 사용 가능한 인터페이스 주소(+`tenant`) | `kind:namespace/name`(소문자) |
+
+그 밖의 필드는 모두 버리고, 가져오기 보고서의 `dropped`에 필드와 이유를 적습니다. 이유는 `vendor_is_not_the_accountable_owner`(provider),
+`offered_skills_are_not_tools_used`(skills: 다른 에이전트에게 **제공하는** 기능이지 쓰는 도구가 아님), `self_reported_security_not_trusted`
+(securitySchemes·securityRequirements), `protocol_detail`, `lifecycle_never_sets_registry_state`(spec.lifecycle),
+`not_a_governance_system_id`(spec.system), `relation_not_mapped`(dependsOn·consumesApis 등), `catalog_computed_not_trusted`(relations·status),
+`no_registry_meaning`, `unknown_field`입니다. 제어 문자·양방향 문자가 있거나 너무 긴 값은 그 필드만 버립니다(`invalid_characters`·`too_long`).
+
+### 문서에서 절대 가져오지 않는 것
+
+- **출처 자격(`sources`)과 행위자 이름(`actors`).** 카드에 `sources`·`actors`가 있어도 버립니다. 가져온 항목은 아무 활동도 포함하지 않으므로
+  미등록 활동 발견을 가리거나, 다른 항목의 행위자 이름을 선점하지 못합니다.
+- **위험 등급.** `riskTier` 같은 값은 버리고, 등급은 등록된 도구·데이터 범주·목적지에 대한 규칙 계산(가져온 항목은 비어 있으므로 low)뿐입니다.
+  재지정은 지금처럼 다른 검토자가 합니다.
+- **상태.** 항상 `discovered`로 만들고, Backstage `spec.lifecycle: production`도 상태를 바꾸지 않습니다. 이후 전이는 사람의 전이 요청과 승인으로만
+  일어납니다.
+- 도구·모델·데이터 범주·목적지·자산·거버넌스 시스템 연결도 가져오지 않습니다.
+
+### 가져오기 API
+
+`POST /api/registry/import`(검토자·관리자, 본문 최대 2MiB, 본문을 받기 전에 자격과 역할을 확인)는 본문에 담긴 문서만 처리합니다. **vault는
+외부로 아무것도 가져오지 않습니다.**
+
+```json
+{"documents": [{"format": "a2a", "content": "<카드 JSON 원문>", "locator": "https://agent.example.com/.well-known/agent-card.json"},
+               {"format": "backstage", "content": "<catalog-info.yaml 원문>", "locator": "file:catalog-info.yaml"}],
+ "keys": {"keys": [{"kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "key-1"}]},
+ "agentTypes": ["ai-agent"], "dryRun": true}
+```
+
+- 문서는 최대 20개, 하나에 256KiB, 요청 전체에서 항목 50개까지입니다. `locator`는 제출자가 적는 위치 기록이며 확인하지 않습니다. URL이면
+  자격 정보·질의·조각을 지우고 scheme·호스트·경로만 남깁니다.
+- `dryRun:true`는 같은 판단을 하되 아무것도 기록하지 않습니다.
+- 응답은 문서별 digest·항목 수·거부 사유와 항목별 결과(`created`·`updated`·`unchanged`·`conflict`·`skipped`·`rejected`), 반영·버린 필드,
+  서명 확인 결과를 담은 보고서입니다. 문서 하나를 읽지 못해도 나머지는 처리합니다.
+
+### 키·멱등성·버전·충돌
+
+- **카탈로그 키**는 A2A면 `a2a:<인터페이스 주소>`(첫 번째 http(s) 또는 gRPC `host:port` 인터페이스, 경로 끝 `/` 제거, 인터페이스에 `tenant`가
+  있으면 `#tenant=<값>`), Backstage면 `backstage:<kind>:<namespace>/<name>`(소문자)입니다. 이름이 바뀌어도 같은 에이전트로 봅니다.
+- 새 키는 `a2a.<이름>.<키 해시 10자리>`, `backstage.<엔터티 이름>.<키 해시>` id로 만듭니다. 그 id를 다른 항목이 이미 쓰면 `conflict`
+  (`id_in_use`)입니다.
+- **멱등성:** 항목별 digest(`entityDigest`, 파싱한 카드·엔터티의 정규화 JSON)가 저장된 값과 같으면 `unchanged`이고 아무것도 쓰지 않습니다.
+  공백·주석·키 순서·같은 파일의 다른 엔터티가 바뀐 것은 변경이 아닙니다. 서명 목록은 카드의 일부이므로 서명이 바뀌면 변경입니다.
+- **버전:** digest가 다르면 같은 항목의 새 버전(`change:"updated"`)을 쓰고 이름·책임자·목적·`fingerprint.version`만 바꿉니다.
+- **충돌:** 항목이 `discovered`를 벗어났거나(`entry_past_discovered`·`entry_retired`), 마지막 가져오기 이후 사람이 내용을 고쳤으면
+  (`edited_since_import`) 덮어쓰지 않고 보고합니다. 위험 등급 재지정은 내용 수정이 아니므로 가져오기를 막지 않습니다. 한 요청에 같은 키가
+  두 번 있으면 두 번째가 `duplicate_key_in_request`입니다.
+
+### 출처 기록(provenance)
+
+가져온 버전은 항목 본문의 `catalog`에 다음을 서명해 남기고, 이후 사람이 고친 버전도 이를 잇습니다.
+
+| 필드 | 내용 |
+|---|---|
+| `format`, `formatVersion` | `a2a-agent-card`(인터페이스의 `protocolVersion`) 또는 `backstage-entity`(`apiVersion`) |
+| `key`, `endpoint`·`endpointTenant` 또는 `entityRef` | 카탈로그 키와 그 근거 |
+| `documentDigest`, `entityDigest`, `entityIndex` | 제출된 문서 바이트의 SHA-256, 항목의 SHA-256, 파일 안 순서 |
+| `locator`, `locatorMatchesEndpoint` | 제출자가 적은 위치, 그 호스트가 카드의 인터페이스 호스트와 같은지(A2A, URL일 때) |
+| `signature` | A2A 서명 확인 결과(아래). Backstage는 `not_applicable` |
+| `importId`, `importedBy`, `importedAt` | 가져오기 요청 id, 가져온 사람, 시각 |
+| `mapped`, `dropped` | 반영한 등록 필드, 버린 문서 필드(최대 50개) |
+| `assurance` | 항상 `self_reported_catalog` |
+
+`POST /api/registry`·`POST /api/registry/:id`로는 `catalog`를 쓸 수 없습니다.
+
+### A2A 카드 서명
+
+A2A 1.0(8.4절)은 카드에 JWS 서명(`signatures[].protected`·`signature`)을 붙일 수 있게 합니다. 서명 대상은 `signatures`를 뺀 카드의
+RFC 8785(JCS) 정규형입니다. 가져오기는 **요청의 `keys`(JWK Set, 최대 10개)로만** 확인하고, `jku`는 기록할 뿐 가져오지 않습니다. 개인 키를
+보내도 공개 부분만 씁니다. 지원 알고리즘은 ES256·ES384·ES512·RS256·RS384·RS512·PS256·PS384·PS512·EdDSA(Ed25519)이며, `none`·HMAC·
+`crit` 헤더는 `unsupported`입니다.
+
+| `signature.status` | 뜻 |
+|---|---|
+| `absent` | 서명 없음 |
+| `verified` | 제출한 키 중 하나로 서명 하나 이상 확인(그 키의 RFC 7638 지문을 `keyThumbprint`로 기록) |
+| `unverified` | 서명은 있으나 `kid`·키 유형이 맞는 키를 받지 못함 |
+| `invalid` | 맞는 키가 있으나 서명이 맞지 않음(카드 변조, 또는 기본값 필드를 지우지 않고 직렬화한 카드) |
+| `unsupported`, `malformed` | 지원하지 않는 알고리즘·헤더, 형식 오류 |
+
+`verified`는 "가져온 검토자가 준 키로 서명됐다"는 뜻이지 카드 내용이 사실이라는 뜻이 아닙니다. A2A는 서명 전에 proto 기본값 필드를 지우라고
+하지만 가져오기는 받은 그대로 정규화합니다. 기본값 필드를 포함해 직렬화한 카드는 `invalid`로 나오므로 그런 필드 없이 다시 내보내야 합니다.
+
+### YAML 부분집합
+
+새 의존성 없이 카탈로그 파일이 쓰는 부분만 읽습니다: 블록 매핑·시퀀스, 일반·따옴표 스칼라, 한 줄 흐름 시퀀스(스칼라만), `|`·`|-`·`>`·`>-`
+블록 스칼라, 주석, `---`·`...` 문서 구분. 다음은 해석하지 않고 거부합니다: 앵커(`&`)·별칭(`*`)·태그(`!`)·지시어(`%`)·병합 키(`<<`)·복합 키(`?`)·
+흐름 매핑(`{a: 1}`)·중첩 흐름 컬렉션·여러 줄 일반 스칼라·탭 들여쓰기·중복 키. JSON과 YAML 모두 중첩 24단계, 값 20,000개, 20,000줄, 파일당
+엔터티 50개를 넘거나 `__proto__`·`constructor`·`prototype` 키가 있으면 문서 전체를 거부합니다(보고서의 `rejected.code`).
+
+### 가져오기 CLI
+
+```powershell
+node scripts/import-agent-catalog.mjs --a2a https://agent.example.com/.well-known/agent-card.json --backstage catalog-info.yaml   # 미리보기(기본)
+node scripts/import-agent-catalog.mjs --a2a card.json --jwks keys.json --write-request request.json                                # 요청 본문 저장
+$env:EVIDSCOPE_TOKEN = '<검토자 토큰>'
+node scripts/import-agent-catalog.mjs --a2a card.json --backstage catalog-info.yaml --send --base https://audit.example.com/ --dry-run
+node scripts/import-agent-catalog.mjs --a2a card.json --backstage catalog-info.yaml --send --base https://audit.example.com/
+```
+
+- 파일과 URL은 **운영자 컴퓨터에서** 읽습니다. URL은 HTTPS(루프백만 HTTP)이고 자격 정보·리디렉션을 받지 않으며 256KiB까지 읽습니다.
+  파일은 `file:<파일 이름>`으로만 기록해 로컬 경로를 보내지 않습니다.
+- 기본은 vault에 연결하지 않는 미리보기입니다. 충돌·멱등성은 vault만 알므로 `--send --dry-run`으로 확인합니다. `--agent-type`은 여러 번 줄 수 있습니다.
+- 토큰은 `EVIDSCOPE_TOKEN` 환경 변수로만 받습니다. OIDC를 켠 배포에서는 사람 역할의 bearer 토큰이 거부되므로 `--write-request`로 만든
+  본문 대신 화면의 **카탈로그 가져오기**를 씁니다.
+- 거부된 문서·항목이나 충돌이 있으면 종료 코드 1입니다.
+
+### 검증과 화면
+
+오프라인 검증기(`registry` 항목)는 새 `catalog`를 가져온 버전마다 상태가 `discovered`인지, `created`·`updated` 변경인지, 기록 주체·
+`editedBy`·`editedAt`이 `catalog.importedBy`·`importedAt`과 같은지, 출처 자격·행위자·구성·위험 재지정을 바꾸지 않았는지, 키가 그대로인지,
+가져오지 않은 항목에 `catalog`가 새로 생기거나 있던 `catalog`가 사라지지 않았는지 확인합니다. 가져온 버전은 기존 변경 종류(`created`·`updated`)만
+쓰므로 이전 검증기도 이 내보내기를 읽을 수 있습니다(새 확인만 하지 않습니다).
+
+화면은 **에이전트 레지스트리 → 카탈로그 가져오기**에서 문서를 붙여 넣고 미리보기 또는 가져오기를 하며, 결과 보고서를 표로 보여 줍니다.
+목록은 가져온 항목에 형식을 표시하고, 상세는 **카탈로그 출처**(형식·키·위치·digest·서명·가져온 사람·반영/버린 필드)를 보여 줍니다.
 
 ## 평가(엔진 v2)
 
@@ -230,9 +380,10 @@ v1·v2 평가를 모두 원장 접두사에서 다시 계산합니다. 레지스
 | `POST /api/registry/:id/transitions` | 검토자·관리자 | 전이 요청 |
 | `POST /api/registry/transitions/:tid/approve`, `/refuse` | 검토자·관리자 | 승인·거절 |
 | `POST /api/registry/policy` | 관리자 | 적용 방식·게이트·위험 규칙 |
+| `POST /api/registry/import` | 검토자·관리자 | A2A Agent Card·Backstage 엔터티를 discovered 항목으로 가져오기(`dryRun` 미리보기) |
 
 화면은 감사 워크스페이스의 **AI 자산·수집 → 에이전트 레지스트리** 탭(`public/registry.js`)입니다. 목록과 미등록 후보, 상세(버전·전이 이력,
-게이트 충족 여부), 등록 초안, 전이 요청과 승인·거절을 제공합니다. 역할·4-eyes·게이트는 서버가 판단하고 화면은 그 응답을 보여 줍니다.
+게이트 충족 여부, 카탈로그 출처), 등록 초안, 카탈로그 가져오기, 전이 요청과 승인·거절을 제공합니다. 역할·4-eyes·게이트는 서버가 판단하고 화면은 그 응답을 보여 줍니다.
 
 ## 현재 한계
 
@@ -247,4 +398,9 @@ v1·v2 평가를 모두 원장 접두사에서 다시 계산합니다. 레지스
   평가 스냅샷에는 모든 등록 항목·정책 버전의 요약이 들어가므로, 버전이 아주 많아지면 스냅샷 한도를 넘어 평가가 `quarantined_resource_limit`로 기록됩니다.
 - 운영(production) 중에도 `owner`·`purpose`·`assetIds`·`systemId`는 고칠 수 있습니다(새 버전으로 기록). 동결되는 것은 구성 필드뿐입니다.
 - 레지스트리 정책은 관리자 한 사람이 바꿉니다(4-eyes 없음). 위험 등급 재지정을 한 검토자도 다른 사람이 요청한 전이는 승인할 수 있습니다.
+- 카탈로그 가져오기는 문서의 자기 보고를 옮길 뿐입니다. 카드가 실제 에이전트를 설명하는지, `locator`가 정말 그 문서의 위치였는지는
+  확인하지 않습니다. 서명 확인은 검토자가 함께 보낸 공개 키에 대한 것이며, 키 신뢰는 그 검토자의 판단입니다. 같은 문서를 다른 키로 다시
+  보내도 내용이 같으면 `unchanged`이므로 기록된 서명 상태는 바뀌지 않습니다.
+- 가져온 항목도 다른 등록 항목처럼 평가 스냅샷의 레지스트리 요약에 들어갑니다. 항목을 많이 가져오면 스냅샷 한도에 빨리 닿습니다.
+- 예약어가 된 `import` id의 기존 등록 항목은 조회할 수 있지만 `POST /api/registry/import`로 수정할 수 없습니다.
 - 에이전트 목록(`/api/agents`)의 준수 상태는 새 발견 코드를 아직 따로 분류하지 않고 "개별 검토 필요(unconfirmed)"로 둡니다.
