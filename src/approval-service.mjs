@@ -180,6 +180,7 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
   const entry=coveringEntry(policyObjects(p,'agent_registry').values(),v.target.actor);
   if(v.eligibility.excluded.includes(p.id)||entry&&[entry.registeredBy,entry.editedBy].includes(p.id))
    return [403,'에이전트 등록자·구성 수정자·책임자 등 정책이 제외한 사람은 답할 수 없습니다'];
+  if(v.eligibility.basis?.overrideBy===p.id)return [403,'위험 등급을 재지정해 이 요청의 등급을 정한 사람은 답할 수 없습니다'];
   if(operation==='approve'&&v.approvals.some(a=>a.by===p.id))return [403,'같은 사람이 두 번 승인할 수 없습니다(서로 다른 승인자 필요)'];
   return null;
  }
