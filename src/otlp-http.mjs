@@ -94,6 +94,17 @@ export function tokenGate(check, {allowMs = 30000, denyMs = 5000, maxEntries = 1
   };
 }
 
+function forwardChunks({events, decisions = []}) {
+  const companions = new Map(decisions.filter(d => d.companion).map(d => [d.id.replace(/^otel-decision:/, 'otel:'), d]));
+  const standalone = decisions.filter(d => !d.companion), chunks = [];
+  for (let i = 0; i < events.length; i += OTLP_FORWARD_CHUNK) {
+    const part = events.slice(i, i + OTLP_FORWARD_CHUNK);
+    chunks.push({events: part, decisions: part.map(e => companions.get(e.id)).filter(Boolean)});
+  }
+  for (let i = 0; i < standalone.length; i += OTLP_FORWARD_CHUNK) chunks.push({events: [], decisions: standalone.slice(i, i + OTLP_FORWARD_CHUNK)});
+  return chunks.length ? chunks : [{events: [], decisions: []}];
+}
+
 const mediaType = value => String(value || '').split(';')[0].trim().toLowerCase();
 
 async function readBody(req, limit) {
@@ -162,10 +173,11 @@ export function createOtlpHttp({forward, authenticate = tokenGate(authorization 
         const body = await decompress(raw, encoding, limits.maxDecodedBytes);
         const mapped = mapTraceRequest(decodeTraceRequest(body, format, {maxSpans: limits.maxSpans}), {now: Date.now()});
         const rejected = {...mapped.rejected};
-        // At least one vault call even for an empty batch: the vault authenticates the token.
-        for (let i = 0; i === 0 || i < mapped.events.length; i += OTLP_FORWARD_CHUNK) {
-          const events = mapped.events.slice(i, i + OTLP_FORWARD_CHUNK);
-          const result = await forward(authorization, JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: OTLP_MAPPING_VERSION, events}));
+        // At least one vault call even for an empty batch: the vault authenticates the token. A companion decision candidate
+        // travels with its span's GenAI event; `decisions` is sent only when there is one, so batches without stay as before.
+        for (const {events, decisions} of forwardChunks(mapped)) {
+          const result = await forward(authorization, JSON.stringify({format: OTLP_BATCH_FORMAT, mapping: OTLP_MAPPING_VERSION, events,
+            ...(decisions.length ? {decisions} : {})}));
           for (const [reason, count] of Object.entries(result?.reasons || {})) {
             if (/^[a-z_]{1,40}$/.test(reason) && Number.isSafeInteger(count) && count > 0) rejected[reason] = (rejected[reason] || 0) + count;
           }
