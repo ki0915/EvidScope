@@ -144,7 +144,8 @@ export function computeIndex({evidence, mapping, period = null, format = INDEX_F
       return reports.length ? {...m, caseReports: reports} : m;
     });
     const human = item.judgement === null ? null : judgements.filter(j => item.judgement.includes(j.requirementId));
-    return {id: item.id, citation: item.citation, title: item.title, sourceStatus: item.sourceStatus, status: itemStatus(found, period, partial), evidence: found,
+    return {id: item.id, citation: item.citation, title: item.title, sourceStatus: item.sourceStatus, status: itemStatus(found, period, partial),
+      evidence: found,
       humanJudgement: human};
   });
   const tally = s => items.filter(i => i.status === s).length;
