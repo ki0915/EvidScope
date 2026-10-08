@@ -334,6 +334,9 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
     await assert.rejects(run(['--export', betaFile, '--key', key, '--checkpoint', alphaCheckpoint, '--tenant', 'beta'], env(h)), /differs/);
     const pinned = await run(['--export', betaFile, '--key', key, '--checkpoint', alphaCheckpoint, '--langfuse', langfuse.url], env(h));
     assert.deepEqual([pinned.code, pinned.output.export.reasons], [1, ['tenant_mismatch']]);
+    const unreadable = join(dir, 'unreadable.json'); writeFileSync(unreadable, 'not json');
+    const garbled = await run(['--export', unreadable, '--key', key, '--tenant', 'alpha'], env(h));
+    assert.deepEqual([garbled.code, garbled.output.export.reasons, garbled.output.verdicts], [1, ['export_unreadable'], []]);
     assert.equal((await run([...base, '--send'], env(h))).code, 0, 'the right tenant still pushes');
   });
 });
