@@ -9,6 +9,7 @@ import {tick} from './worker.mjs';
 import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 import {prepareTransparency} from './transparency.mjs';
+import {ingestBatchOptions} from './ingest-batch.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
@@ -32,7 +33,7 @@ const transparency=mode==='vault'?await prepareTransparency({dataDir:process.env
 // Optional access-log sealing knobs (milliseconds / entry count); defaults live in src/access-log.mjs.
 const accessLogEnv=Object.fromEntries([['sealIntervalMs','ACCESS_LOG_SEAL_INTERVAL_MS'],['sealThreshold','ACCESS_LOG_SEAL_THRESHOLD'],['maxUnsealedAgeMs','ACCESS_LOG_MAX_UNSEALED_AGE_MS']]
  .filter(([,name])=>process.env[name]).map(([option,name])=>{const value=Number(process.env[name]);if(!Number.isSafeInteger(value)||value<1)throw Error('Invalid '+name);return [option,value];}));
-let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,ingestBatch:ingestBatchOptions(),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
 const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
