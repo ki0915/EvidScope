@@ -84,6 +84,11 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | POST /api/retention/plans | reason; 만료·hold·사건 확인한 최대1,000건 구체 계획 |
 | POST /api/retention/plans/:id/approve | reason; 작성자와 다른 검토자 |
 | POST /api/retention/plans/:id/execute | admin, 승인 후 상태 재확인; live key/검색 사본 파기 |
+| GET /api/retention/rotation | 정기 로테이션 정책·스케줄러·분류별 파기 건수·접근 기록 정리 경계([정기 로테이션](retention-rotation.md)) |
+| POST /api/retention/rotation | classes,accessLogRetentionSeconds,maxPerRun,validDays,purpose,reason; 검토자 제안, 중요 분류는 400 |
+| POST /api/retention/rotation/:id/approve | admin, 제안자와 다른 사람; 활성화(이전 활성 정책은 superseded) |
+| POST /api/retention/rotation/:id/reject, /suspend | reason; 검토자 한 명이 반려·즉시 중지 |
+| POST /api/retention/rotation/run | admin; 활성 정책으로 지금 한 번 실행 |
 
 정상 접수는 암호화 `event`와 source/id/fingerprint·event seq/hash를 결합한 `event_receipt`를 같은 transaction에서 서명한 뒤 SQL 영수증 사본을 기록한다. durable duplicate 응답은 SQL 행만으로 발급하지 않고 서명 이력과 정확히 일치해야 한다. 기존 버전에서 보존 중인 이벤트에 영수증이 없으면 파기 transaction이 복호화·검증된 원본으로 `verified_before_retention` 영수증을 먼저 서명하고 그 뒤 키와 검색 사본을 파기한다. 영수증이 파기 기록보다 늦거나, 이미 파기돼 원본과 서명 영수증이 모두 없는 기록은 복구나 정상 상태로 승격하지 않는다. `basis`가 없는 과거 서명 영수증은 event seq/hash와 보존 원본 결합을 확인해 호환하지만 새 principal 의미를 소급해 주장하지 않는다.
 

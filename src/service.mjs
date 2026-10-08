@@ -45,7 +45,7 @@ import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 
-export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
+export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,retentionRotation,
  bundleSigning,ingestBatch:ingestBatchLimits}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
@@ -63,7 +63,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const store=new Store(dataDir,key,{verifiedStateMaxAgeMs,...(tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}})});
  // Reads are recorded in a separate hash-chained access log and sealed into the ledger in batches (src/access-log.mjs).
  let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
- const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
+ const publicKey=createPublicKey(key);const retention=createRetention(store,{rotation:retentionRotation,accessLog}),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
  // Attestations are signed through one function (src/attestation-signer.mjs) so a separate signer process can take its place.
  const signer=attestationSigner(key),receipts=createReceipts({store,config:tlogConfig,signer});
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
@@ -461,5 +461,5 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch,retention};
 }

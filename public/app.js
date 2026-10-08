@@ -29,6 +29,8 @@ const views = {
 };
 const labels = {
   high: '높음', critical: '심각', medium: '중간', low: '낮음', info: '정보',
+  proposed: '제안됨', superseded: '대체됨', suspended: '중지됨', erased: '파기함', nothing_due: '기한 도래 없음', no_active_policy: '활성 정책 없음',
+  access_log_pruned: '접근 기록 정리', policy_expired: '정책 기한 만료',
   unknown: '미확인', pending: '검토 대기', reviewed: '인간 검토됨', sufficient: '충분', insufficient: '부족',
   context_only: '참고 맥락', partial: '일부 관측', contentObserved: '내용 관측', not_run: '미실행', unverified: '검증 전',
   open: '진행 전', in_review: '검토 중', investigating: '조사 중', closed: '종결', resolved: '해결됨',
@@ -1038,7 +1040,7 @@ async function retentionView() {
       if (!Number.isSafeInteger(retentionSeconds) || retentionSeconds < 1 || retentionSeconds > 10 * 365 * 86400) throw new Error('보존기간은 1초부터 10년까지의 정수로 입력하세요.');
       await api('/api/retention/policy', 'POST', { ...values, retentionSeconds }); await retentionSaved('새 보존 정책을 저장했습니다. 이후 접수하는 이벤트부터 적용됩니다.');
     })); showDetail('보존 정책 버전 작성', content);
-  }, 'small')); node.append(policyCard);
+  }, 'small')); node.append(policyCard, await rotationCard());
   const holds = card('보존 보류', '테넌트 전체 또는 특정 행동의 파기를 보류합니다. 등록자와 다른 검토자가 근거를 남겨 해제해야 합니다.');
   holds.querySelector('.card-header').append(button('+ 보존 보류', () => {
     const holdForm = form([field('보류 범위', 'scopeType', { choices: [{ value: 'action', label: '특정 행동' }, { value: 'tenant', label: '현재 테넌트 전체' }] }), field('행동 ID', 'actionId', { required: true, maxLength: 200 }), field('보류 사유·관련 절차', 'reason', { required: true, multiline: true, wide: true, maxLength: 1000 })], '보존 보류 등록', async (values) => {
@@ -1069,6 +1071,52 @@ async function retentionView() {
   const inventory = card('이벤트별 보존 상태', `${data.items?.length ?? 0}건 · 계획 포함 가능 ${(data.items || []).filter((item) => item.eligible).length}건. 현재 조회 결과이며 승인·실행 시 서버가 유효성을 다시 검증합니다.`);
   inventory.append(retentionItems(data.items, true)); node.append(inventory);
   if (data.legacyPlaintextEvents) node.append(el('div', 'message warning', `기존 평문 원장 이벤트 ${data.legacyPlaintextEvents}건은 이 암호키 파기 절차의 대상이 아닙니다. 별도 승인된 이전·보존 절차가 필요합니다.`));
+  node.append(limits(data.limitations)); return node;
+}
+// Scheduled rotation (docs/retention-rotation.md): every role sees the active policy, runs and erased classes; the server decides
+// who may propose (reviewer), activate (another administrator), reject or suspend.
+async function rotationCard() {
+  const data = await api('/api/retention/rotation'); const active = data.active; const scheduler = data.scheduler || {};
+  const node = card('정기 로테이션', '두 사람이 사전 승인한 정책의 일상 이벤트 분류만 기간이 지나면 일정에 따라 내용 키를 파기합니다. 원장 기록·해시는 남습니다.');
+  const days = (seconds) => seconds === null || seconds === undefined ? '사용 안 함' : `${Math.round(seconds / 86400 * 100) / 100}일`;
+  if (data.historyValid === false) node.append(el('p', 'message error', `로테이션 정책·정기 파기 이력이 검증되지 않아 실행을 거부합니다: ${data.historyError}`));
+  if (active) {
+    node.append(el('p', '', `활성 정책 v${active.version} · 제안 ${active.proposedBy} · 승인 ${active.approvedBy} · 유효기한 ${date(active.validUntil)}`),
+      el('p', 'muted', `접근 기록 보관 ${days(active.terms.accessLogRetentionSeconds)} · 1회 최대 ${active.terms.maxPerRun}건 · 목적: ${active.terms.purpose}`),
+      table(['출처 종류', '이벤트 종류', '민감도', '보관 기간'], active.terms.classes.map((c) => [c.sourceKind, c.kind === '*' ? '일상 종류 전체' : c.kind,
+        c.sensitivity === 'any' ? '전체' : c.sensitivity, days(c.retentionSeconds)])));
+  } else node.append(el('p', 'message warning', '활성 로테이션 정책이 없습니다. 정기 파기는 일어나지 않습니다.'));
+  const last = scheduler.lastRun;
+  node.append(el('p', 'muted', `스케줄러 ${scheduler.enabled ? `사용 · 주기 ${Math.round(scheduler.intervalMs / 1000)}초 · 다음 실행 ${date(scheduler.nextRunAt)}` : '꺼짐(RETENTION_ROTATION_INTERVAL_MS 미설정)'}`
+    + ` · 마지막 실행 ${last ? `${date(last.at)} ${label(last.status)} (파기 ${last.erased}건)` : '이 프로세스 기동 후 없음'}`));
+  const erased = Object.entries(data.erasedByClass || {});
+  node.append(el('p', '', `서명된 정기 파기 ${data.scheduledDispositions ?? 0}회 · 이벤트 ${data.rotatedEvents ?? 0}건`
+    + (data.lastDisposition ? ` · 최근 ${date(data.lastDisposition.executedAt)} ${data.lastDisposition.erased}건(정책 v${data.lastDisposition.policyVersion})` : '')));
+  if (erased.length) node.append(table(['분류(출처/종류/민감도)', '파기 건수'], erased.map(([name, count]) => [name, count])));
+  if (data.accessLog) node.append(el('p', 'muted', `접근 기록 보관 ${data.accessLog.entries}건 · 서명된 정리 경계 ${data.accessLog.prunedThrough} · 가장 오래된 기록 ${date(data.accessLog.oldestEntryAt)}`));
+  node.querySelector('.card-header').append(button('+ 로테이션 정책 제안', () => {
+    const content = el('div');
+    content.append(el('p', 'message warning', '결정·승인·중지·안전·수집 공백·조항 검증 기록은 지정할 수 없습니다. 제안자와 다른 관리자가 승인해야 효력이 생깁니다.'));
+    content.append(form([field('대상 분류 JSON', 'classes', { required: true, multiline: true, wide: true,
+      value: '[{"sourceKind":"telemetry","kind":"heartbeat","sensitivity":"any","retentionSeconds":2592000}]' }),
+    field('접근 기록 보관 일수(비우면 정리 안 함, 365일 이상)', 'accessLogDays', { type: 'number' }), field('정책 유효 일수', 'validDays', { type: 'number', value: '365' }),
+    field('목적', 'purpose', { required: true, wide: true, maxLength: 500 }), field('근거', 'reason', { required: true, multiline: true, wide: true, maxLength: 1000 })],
+    '정책 제안 저장', async (values) => {
+      let classes; try { classes = JSON.parse(values.classes); } catch { throw new Error('대상 분류는 JSON 배열로 입력하세요.'); }
+      await api('/api/retention/rotation', 'POST', { classes, purpose: values.purpose, reason: values.reason, validDays: Number(values.validDays),
+        accessLogRetentionSeconds: values.accessLogDays ? Number(values.accessLogDays) * 86400 : null });
+      await retentionSaved('로테이션 정책을 제안했습니다. 다른 관리자의 승인 전에는 아무것도 파기되지 않습니다.');
+    })); showDetail('정기 로테이션 정책 제안', content);
+  }, 'small'));
+  const step = (policy, path, text, message, className = 'small') => button(text, async () => {
+    await api(`/api/retention/rotation/${encodeURIComponent(policy.id)}/${path}`, 'POST', { reason: `${text} (화면)` }); await retentionSaved(message);
+  }, className);
+  node.append(table(['버전', '상태', '제안 / 승인', '검토'], (data.policies || []).map((policy) => {
+    const actions = el('div', 'actions'); actions.append(button('이력', () => inspect('로테이션 정책 기록', policy), 'small'));
+    if (policy.status === 'proposed') actions.append(step(policy, 'approve', '관리자 승인', '정책을 활성화했습니다. 다음 실행부터 적용됩니다.'), step(policy, 'reject', '반려', '정책 제안을 반려했습니다.'));
+    if (policy.status === 'active') actions.append(step(policy, 'suspend', '즉시 중지', '정기 로테이션을 중지했습니다. 다시 켜려면 새 제안과 승인이 필요합니다.', 'small danger'));
+    return [`v${policy.version}`, badge(policy.status), `${policy.proposedBy} / ${policy.approvedBy || '미승인'}`, actions];
+  })));
   node.append(limits(data.limitations)); return node;
 }
 async function retentionPlanDetail(id, execution = false) {

@@ -159,3 +159,5 @@ SQLite vault는 단일 쓰기·저장 병목이자 단일 장애 지점이다. R
 Secret은 Kubernetes API에 저장된다. etcd encryption at rest, Secret RBAC, node 접근 통제, 키 rotation, 원격 불변 archive는 운영자가 별도 구성·검증해야 한다. 제한된 securityContext의 근거는 [Kubernetes Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)이며, 2026-09-08 확인했다. namespace 분리나 해시 체인만으로 완전 격리·법적 증거능력·운영 인증을 주장하지 않는다.
 
 자동 삭제/보존기간 종료 작업은 배포 명령에 포함하지 않는다. PVC 삭제, 서명키 교체, 데이터 파기, 공유 클러스터 변경은 소유자·보존 정책·허가를 확인한 별도 작업이다.
+
+이벤트 내용의 정기 파기는 기본으로 꺼져 있다. `RETENTION_ROTATION_INTERVAL_MS`를 설정하고 tenant마다 두 사람이 활성화한 로테이션 정책이 있을 때만 일상 분류 이벤트의 키와 검색 사본, 1년 이상 지난 봉인 접근 기록을 정리하며 원장은 잘리지 않는다. 프로세스 로그(stdout·stderr)는 컨테이너 로그 드라이버·kubelet·journald·logrotate로 상한을 둔다. 자세한 내용은 [정기 로테이션](retention-rotation.md)을 따른다.

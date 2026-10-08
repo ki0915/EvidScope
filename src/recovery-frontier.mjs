@@ -37,13 +37,14 @@ function access(value){
  if(Object.hasOwn(value,'action'))requireValue(['enable','disable','revoke_sessions'].includes(value.action)&&(!['enable','disable'].includes(value.action)||value.disabled===(value.action==='disable')),'invalid identity action');
 }
 function plan(value){
- const names=['id','author','status','reason','items','selectionHash','createdAt','expiresAt','approvedBy','approvedAt','approvalReason','disposition'];
+ // rotation: a scheduled run under a two-person rotation policy (src/retention-rotation.mjs); its items carry their class.
+ const names=['id','author','status','reason','items','selectionHash','createdAt','expiresAt','approvedBy','approvedAt','approvalReason','disposition','rotation'];
  requireValue(object(value)&&Object.keys(value).every(key=>names.includes(key))&&text(value.id)&&value.status==='executed'&&text(value.author)&&text(value.approvedBy)&&value.author!==value.approvedBy&&Array.isArray(value.items)&&value.items.length>0&&value.items.length<=1000&&value.selectionHash===digest(value.items),'invalid executed retention plan');
- const ids=new Set(),sequences=new Set(),itemNames=['seq','keyId','source','eventId','fingerprint','eventHash','receiptSigned','actionId','retainUntil','policyVersion','expired','blockingHolds','openCases','eligible'];
+ const ids=new Set(),sequences=new Set(),itemNames=['seq','keyId','source','eventId','fingerprint','eventHash','receiptSigned','actionId','retainUntil','policyVersion','expired','blockingHolds','openCases','eligible','class'];
  for(const item of value.items){
   requireValue(object(item)&&Object.keys(item).every(key=>itemNames.includes(key))&&seq(item.seq)&&uuid.test(item.keyId)&&text(item.source)&&text(item.eventId)&&text(item.actionId)&&RECEIPT_FINGERPRINT.test(item.fingerprint)&&hex.test(item.eventHash)&&!ids.has(item.keyId)&&!sequences.has(item.seq),'invalid plan item');ids.add(item.keyId);sequences.add(item.seq);
  }
- const d=value.disposition,dNames=['id','planId','selectionHash','keyIds','sequences','reason','approvedBy','executedBy','executedAt','scope','externalCopies','physicalMediaErasure'];
+ const d=value.disposition,dNames=['id','planId','selectionHash','keyIds','sequences','reason','approvedBy','executedBy','executedAt','scope','externalCopies','physicalMediaErasure','rotation'];
  requireValue(object(d)&&Object.keys(d).every(key=>dNames.includes(key))&&text(d.id)&&d.planId===value.id&&d.selectionHash===value.selectionHash&&d.approvedBy===value.approvedBy&&text(d.executedBy)&&same(d.keyIds,value.items.map(item=>item.keyId))&&same(d.sequences,value.items.map(item=>item.seq)),'invalid plan disposition');
 }
 function recordRef(value,count,validator){requireValue(exact(value,['seq','recordHash','payload'])&&seq(value.seq)&&value.seq<=count&&hex.test(value.recordHash),'invalid safety record reference');validator(value.payload);}

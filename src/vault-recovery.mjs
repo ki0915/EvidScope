@@ -19,19 +19,21 @@ import {sealRestorationState,pinRestorationState,recoveryPinPath} from './recove
 import {frontierTransparency,planTlogEpoch,writeTlogEpochs} from './transparency-epoch.mjs';
 import {signerKeysOf} from './transparency.mjs';
 import {headsOrigin,validateOriginBase} from './tlog.mjs';
-import {ACCESS_BATCH_TYPE,ACCESS_LOG_FILE,verifyAccessLogDatabase} from './access-log.mjs';
+import {ACCESS_BATCH_TYPE,ACCESS_LOG_FILE,ACCESS_PRUNE_TYPE,verifyAccessLogDatabase} from './access-log.mjs';
 
 const FORMAT='evidscope-vault-backup-v1',FORMAT_V2='evidscope-vault-backup-v2';
 const backupAad=(format,keyId)=>Buffer.from(format===FORMAT?FORMAT:canonical({format,keyId}));
 const ACCESS_MEMBER='access-log.db.enc',accessAad=(format,keyId)=>Buffer.from(canonical({format,keyId,member:ACCESS_LOG_FILE}));
 const PLAINTEXT_FILES=['evidence.db','evidence.db-wal','evidence.db-shm','evidence.db-journal',ACCESS_LOG_FILE,ACCESS_LOG_FILE+'-wal',ACCESS_LOG_FILE+'-shm'];
-// Every sealed access range named by the snapshot's signed audit_access_batch records must be present in the access-log
-// snapshot (taken after the evidence snapshot, so it can only be longer). Returns the sealed/unsealed counts per tenant.
+// Every sealed access range named by the snapshot's signed audit_access_batch records, above any signed prune floor, must be
+// present in the access-log snapshot (taken after the evidence snapshot, so it can only be longer). Returns the sealed/unsealed
+// counts per tenant.
 function checkAccessLogSnapshot(evidenceFile,accessFile,tenants){
  const evidence=new DatabaseSync(evidenceFile,{readOnly:true,timeout:5000}),access=accessFile?new DatabaseSync(accessFile,{readOnly:true,timeout:5000}):null,out={};
  try{
   for(const tenant of tenants){
-   const records=evidence.prepare("SELECT seq,body FROM ledger WHERE tenant=? AND json_extract(body,'$.type')=? ORDER BY seq").all(tenant,ACCESS_BATCH_TYPE).map(row=>{const r=JSON.parse(row.body);return {seq:row.seq,type:r.type,payload:r.payload};});
+   // Signed prune records excuse the rows at or below their boundary (docs/retention-rotation.md).
+   const records=evidence.prepare("SELECT seq,body FROM ledger WHERE tenant=? AND json_extract(body,'$.type') IN (?,?) ORDER BY seq").all(tenant,ACCESS_BATCH_TYPE,ACCESS_PRUNE_TYPE).map(row=>{const r=JSON.parse(row.body);return {seq:row.seq,type:r.type,payload:r.payload};});
    if(!access){if(records.length)throw Error('Access log is missing beneath sealed access batches');continue;}
    const checked=verifyAccessLogDatabase(access,tenant,records);out[tenant]={sealedEntries:checked.sealedEntries,batches:checked.batches};
   }
