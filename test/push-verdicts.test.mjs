@@ -120,7 +120,7 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
   t.after(() => h.close());
   const langfuse = await mockLangfuse(), phoenix = await mockPhoenix(); t.after(() => Promise.all([langfuse.close(), phoenix.close()]));
   const {common, when} = await scenario(h), dir = tempDir('evidscope-push-'), key = join(h.dir, 'trust-anchor.pem');
-  const base = ['--evidscope', `${h.audit.url}/`, '--key', key, '--link-base', 'https://audit.example/', '--langfuse', langfuse.url, '--phoenix', phoenix.url];
+  const base = ['--tenant', 'alpha', '--evidscope', `${h.audit.url}/`, '--key', key, '--link-base', 'https://audit.example/', '--langfuse', langfuse.url, '--phoenix', phoenix.url];
   const exportFile = join(dir, 'export.json'), exported = (await h.api('/api/export')).body;
   writeFileSync(exportFile, JSON.stringify(exported));
   for (const canary of CANARIES) assert.ok(readFileSync(exportFile, 'utf8').includes(canary) || canary === CANARIES[8], `export holds ${canary}`);
@@ -202,7 +202,7 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
     const evaluation = tampered.records.filter(r => r.type === 'evaluation' && r.payload.actionId === 'pay-run-1').at(-1);
     evaluation.payload.findings = [];
     writeFileSync(exportFile, JSON.stringify(tampered));
-    const fileArgs = ['--export', exportFile, '--key', key, '--langfuse', langfuse.url, '--phoenix', phoenix.url, '--send'];
+    const fileArgs = ['--export', exportFile, '--key', key, '--tenant', 'alpha', '--langfuse', langfuse.url, '--phoenix', phoenix.url, '--send'];
     const marker = langfuse.requests.length;
     const result = await run(fileArgs, env(h));
     assert.equal(result.code, 1); assert.equal(result.output.export.verdict, 'tampered');
@@ -221,7 +221,7 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
     const other = join(dir, 'other.pem');
     writeFileSync(other, generateKeyPairSync('ed25519').publicKey.export({type: 'spki', format: 'pem'}));
     writeFileSync(exportFile, JSON.stringify(latest));
-    const foreign = await run(['--export', exportFile, '--key', other, '--langfuse', langfuse.url], env(h));
+    const foreign = await run(['--export', exportFile, '--key', other, '--tenant', 'alpha', '--langfuse', langfuse.url], env(h));
     assert.equal(foreign.code, 1); assert.equal(foreign.output.export.verdict, 'unverified');
     assert.deepEqual(foreign.output.export.reasons, ['checkpoint_signature_invalid']);
     assert.ok(foreign.output.langfuse.events.every(e => e.body.value !== 'verified'));
@@ -263,7 +263,7 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
       assert.throws(() => serviceBase(bad, '--langfuse'), UsageError, bad);
     assert.equal(serviceBase('https://phoenix.example/s/team', '--phoenix').href, 'https://phoenix.example/s/team/');
     await assert.rejects(run([...base.slice(0, 6), '--langfuse', 'http://langfuse.example.com/', '--send'], env(h)), UsageError);
-    await assert.rejects(run(['--evidscope', `${h.audit.url}/api/`, '--key', key], env(h)), UsageError);
+    await assert.rejects(run(['--tenant', 'alpha', '--evidscope', `${h.audit.url}/api/`, '--key', key], env(h)), UsageError);
     // A redirect is refused, never followed: the second server sees nothing and no credential travels.
     const target = await mockLangfuse(), hops = [];
     const redirector = createServer((req, res) => {
@@ -306,5 +306,33 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
     const negative = actionVerdicts(forgedAssessment, {linkBase: 'https://a.example/'});
     assert.deepEqual(negative.map(v => [v.actionId, v.tenant, v.verdict, v.reasons[0], v.analysis]),
       [['ok-action', null, 'unverified', 'checkpoint_signature_invalid', 'unknown']]);
+  });
+
+  await t.test('another tenant of the same vault: --tenant pins it and the whole push is refused', async () => {
+    // A beta source reports the alpha action and trace with a clean result; beta's export verifies with the same vault key.
+    const clean = {actionId: 'pay-run-1', traceId: TRACE, actor: 'beta-agent', tool: 'payments-api', action: 'write', occurredAt: when(-300)};
+    assert.equal((await submit(h.ingress.url, h.principal('agent', 'beta'), {...clean, id: 'b1', kind: 'intent'})).status, 202);
+    for (let i = 0; i < 3; i++) await h.analyze();
+    const betaFile = join(dir, 'beta-export.json');
+    writeFileSync(betaFile, JSON.stringify((await h.api('/api/export', {tenant: 'beta'})).body));
+    assert.equal(assessExport(readFileSync(betaFile), {publicKey: readFileSync(key, 'utf8')}).verdict, 'verified', 'same key, other tenant');
+    const marker = langfuse.requests.length + phoenix.requests.length;
+    const args = ['--export', betaFile, '--key', key, '--langfuse', langfuse.url, '--phoenix', phoenix.url, '--send'];
+    await assert.rejects(run(args, env(h)), /--tenant/, 'nothing pins the tenant');
+    const refused = await run([...args, '--tenant', 'alpha'], env(h));
+    assert.deepEqual([refused.code, refused.output.mode, refused.output.export.reasons, refused.output.verdicts], [1, 'refused', ['tenant_mismatch'], []]);
+    assert.deepEqual([refused.output.export.tenant, refused.output.export.expectedTenant], ['beta', 'alpha']);
+    // Through the API with a beta auditor token, as a substituted vault answer would look.
+    const api = await run(['--evidscope', `${h.audit.url}/`, '--key', key, '--tenant', 'alpha', '--langfuse', langfuse.url, '--send'],
+      env(h, {EVIDSCOPE_TOKEN: h.principal('auditor', 'beta').token}));
+    assert.deepEqual([api.code, api.output.export.reasons], [1, ['tenant_mismatch']]);
+    assert.equal(langfuse.requests.length + phoenix.requests.length, marker, 'not even a negative verdict left');
+    // The pinned checkpoint names the tenant; a different --tenant beside it is a usage error.
+    const alphaCheckpoint = join(dir, 'alpha-checkpoint.json');
+    writeFileSync(alphaCheckpoint, JSON.stringify((await h.api('/api/export')).body.checkpoint));
+    await assert.rejects(run(['--export', betaFile, '--key', key, '--checkpoint', alphaCheckpoint, '--tenant', 'beta'], env(h)), /differs/);
+    const pinned = await run(['--export', betaFile, '--key', key, '--checkpoint', alphaCheckpoint, '--langfuse', langfuse.url], env(h));
+    assert.deepEqual([pinned.code, pinned.output.export.reasons], [1, ['tenant_mismatch']]);
+    assert.equal((await run([...base, '--send'], env(h))).code, 0, 'the right tenant still pushes');
   });
 });

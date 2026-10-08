@@ -2,7 +2,7 @@
 // operator's side: the vault makes no outbound calls (docs/observability-integration.md). The export is verified offline with
 // the trusted key first; only then can an action read `verified`. Preview is the default and contacts neither tool.
 //   node scripts/push-verdicts.mjs (--export EXPORT.json | --evidscope https://audit.example/) --key TRUST_ANCHOR.pem
-//     [CHECKPOINT and transparency flags as scripts/verify.mjs] [--no-replay] [--link-base https://audit.example/]
+//     (--tenant TENANT | --checkpoint CHECKPOINT.json) [CHECKPOINT and transparency flags as scripts/verify.mjs] [--no-replay] [--link-base https://audit.example/]
 //     [--langfuse https://cloud.langfuse.com [--langfuse-environment NAME]] [--phoenix https://phoenix.example] [--send]
 // Credentials come from the environment only: EVIDSCOPE_TOKEN (auditor), LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY, PHOENIX_API_KEY.
 import {randomUUID} from 'node:crypto';
@@ -17,7 +17,7 @@ const MiB = 1024 * 1024;
 export const HTTP_LIMITS = Object.freeze({exportBytes: 512 * MiB, responseBytes: MiB, timeoutMs: 15000, attempts: 3, retryAfterCapMs: 5000,
   langfuseBatch: 200, langfuseBatchBytes: 2 * MiB, phoenixBatch: 100});
 export const USAGE = 'Usage: node scripts/push-verdicts.mjs (--export EXPORT.json | --evidscope https://audit.example/) --key TRUST_ANCHOR.pem\n'
-  + '  [--checkpoint CHECKPOINT.json] [--witness VKEY]... [--quorum N] [--origin-base BASE] [--max-staleness S] [--require-transparency]\n'
+  + '  (--tenant TENANT | --checkpoint CHECKPOINT.json) [--witness VKEY]... [--quorum N] [--origin-base BASE] [--max-staleness S] [--require-transparency]\n'
   + '  [--require-tenant-witness] [--heads-key VKEY]... [--require-heads-signer] [--min-checkpoint FILE] [--no-replay]\n'
   + '  [--link-base https://audit.example/] [--langfuse URL [--langfuse-environment NAME]] [--phoenix URL] [--send]\n'
   + 'Env: EVIDSCOPE_TOKEN (auditor bearer), LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY, PHOENIX_API_KEY (optional).';
@@ -157,7 +157,7 @@ export async function pushPhoenix({base, apiKey, annotations}) {
 }
 
 const OPTIONS = {...transparencyFlags, 'min-checkpoint': {type: 'string'}, export: {type: 'string'}, evidscope: {type: 'string'}, key: {type: 'string'},
-  checkpoint: {type: 'string'}, 'no-replay': {type: 'boolean'}, 'link-base': {type: 'string'}, langfuse: {type: 'string'},
+  checkpoint: {type: 'string'}, tenant: {type: 'string'}, 'no-replay': {type: 'boolean'}, 'link-base': {type: 'string'}, langfuse: {type: 'string'},
   'langfuse-environment': {type: 'string'}, phoenix: {type: 'string'}, send: {type: 'boolean'}};
 export function parse(argv) {
   let values;
@@ -165,6 +165,10 @@ export function parse(argv) {
   try { transparencyOptions(values, false); } catch (error) { throw new UsageError(error.message); }
   if (!values.export === !values.evidscope) throw new UsageError('Give exactly one of --export or --evidscope');
   if (!values.key) throw new UsageError('Missing --key TRUST_ANCHOR.pem: the trust anchor comes from the operator, never from the export or the API');
+  // One vault key signs every tenant's checkpoint, so a verified export alone does not say whose traces it describes.
+  if (!values.tenant && !values.checkpoint)
+    throw new UsageError('Give --tenant TENANT (or --checkpoint, whose tenant pins it): another tenant\'s export of the same vault verifies too');
+  if (values.tenant !== undefined && !/^[a-zA-Z0-9._:@/-]{1,120}$/.test(values.tenant)) throw new UsageError('--tenant must be a tenant identifier');
   if (values['langfuse-environment'] !== undefined && !/^(?!langfuse)[a-z0-9_-]{1,40}$/.test(values['langfuse-environment']))
     throw new UsageError('--langfuse-environment must be lowercase letters, digits, - or _ and must not start with langfuse');
   return {values, evidscope: values.evidscope && serviceBase(values.evidscope, '--evidscope', {rootOnly: true}),
@@ -183,10 +187,18 @@ export async function run(argv, env = process.env) {
     throw new UsageError('Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY to push to Langfuse; nothing was sent');
   const publicKey = readBounded(values.key, 64 * 1024, 'Key file').toString('utf8');
   const expectedCheckpoint = values.checkpoint ? JSON.parse(readBounded(values.checkpoint, MiB, 'Checkpoint file').toString('utf8')) : undefined;
+  const tenant = values.tenant ?? expectedCheckpoint?.tenant;
+  if (typeof tenant !== 'string') throw new UsageError('The --checkpoint file names no tenant; give --tenant TENANT');
+  if (expectedCheckpoint && expectedCheckpoint.tenant !== tenant) throw new UsageError('--tenant differs from the tenant of the --checkpoint file');
   const loaded = await loadExport({file: values.export, base: evidscope, token: env.EVIDSCOPE_TOKEN});
   // Transparency is checked when the export carries it or a flag asks for it, as in scripts/verify.mjs.
   const transparency = bundle => transparencyOptions(values, bundle.transparency !== undefined);
   const assessment = assessExport(loaded.bytes, {publicKey, expectedCheckpoint, transparency, replay: !values['no-replay']});
+  // Another tenant's export (signed by the same vault, or naming no valid tenant) is refused whole: not even a negative verdict
+  // leaves, because its scores would land on this tenant's Langfuse or Phoenix project.
+  if (assessment.tenant !== tenant) return {code: 1, output: {mode: 'refused', export: {source: loaded.source, sha256: assessment.exportSha256,
+    tenant: assessment.tenant ?? null, expectedTenant: tenant, verdict: 'unverified', reasons: ['tenant_mismatch'], messages: [REASONS.tenant_mismatch]},
+    verdicts: [], reasonText: REASONS}};
   const verdicts = actionVerdicts(assessment, {linkBase});
   const output = {mode: values.send ? 'sent' : 'preview', export: {source: loaded.source, sha256: assessment.exportSha256, tenant: assessment.tenant ?? null,
     checkpoint: assessment.checkpoint ?? null, verdict: assessment.verdict, reasons: assessment.reasons, messages: assessment.messages ?? [],
