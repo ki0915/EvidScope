@@ -5,6 +5,7 @@
 //     [CHECKPOINT and transparency flags as scripts/verify.mjs] [--no-replay] [--link-base https://audit.example/]
 //     [--langfuse https://cloud.langfuse.com [--langfuse-environment NAME]] [--phoenix https://phoenix.example] [--send]
 // Credentials come from the environment only: EVIDSCOPE_TOKEN (auditor), LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY, PHOENIX_API_KEY.
+import {randomUUID} from 'node:crypto';
 import {readFileSync, statSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -109,7 +110,9 @@ function batches(items, size, maxBytes = Infinity) {
 // (207 with per-event successes and errors); findings scores of actions that are no longer verified are deleted by id.
 export async function pushLangfuse({base, publicKey, secretKey, scores}) {
   const authorization = `Basic ${Buffer.from(`${publicKey}:${secretKey}`).toString('base64')}`, result = {accepted: 0, errors: [], deleted: 0};
-  for (const batch of batches(scores.events, HTTP_LIMITS.langfuseBatch, HTTP_LIMITS.langfuseBatchBytes)) {
+  // A fresh envelope id per delivery: a score that goes back to an earlier value must not be dropped as a repeated event.
+  const events = scores.events.map(event => ({id: randomUUID(), ...event}));
+  for (const batch of batches(events, HTTP_LIMITS.langfuseBatch, HTTP_LIMITS.langfuseBatchBytes)) {
     const url = new URL('api/public/ingestion', base);
     const response = await request(url, {method: 'POST', headers: {authorization, 'content-type': 'application/json'}, body: JSON.stringify({batch})});
     if (![200, 207].includes(response.status)) throw new HttpError(`POST ${where(url)}: HTTP ${response.status}`);

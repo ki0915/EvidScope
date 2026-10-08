@@ -113,7 +113,7 @@ node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-an
 종료 코드는 0(내보내기 검증, 요청한 전송 모두 성공), 1(내보내기 미검증 또는 전송 오류), 2(사용법 오류)입니다. 주기적으로(예: 15분마다)
 실행하면 늦게 도착한 증거로 생긴 새 발견이 같은 점수·주석을 갱신합니다.
 
-- **Langfuse**: `POST /api/public/ingestion`의 `score-create` 이벤트로 보냅니다(Basic 인증, 공개키:비밀키). 응답 207의 이벤트별 오류를
+- **Langfuse**: `POST /api/public/ingestion`의 `score-create` 이벤트로 보냅니다(Basic 인증, 공개키:비밀키). 이벤트 봉투 id는 보낼 때마다 새로 만들고, 응답 207의 이벤트별 오류를
   확인합니다. 검증되지 않은 행동의 발견 점수는 `DELETE /api/public/scores/{id}`로 지웁니다(404는 이미 없음으로 봅니다).
 - **Phoenix**: `POST /v1/trace_annotations?sync=true`, `POST /v1/span_annotations?sync=true`(Bearer 인증). `annotator_kind`는 `CODE`입니다.
   Phoenix에 없는 trace·span은 404가 되며, 그 묶음은 하나씩 다시 보내 없는 항목만 `notFound`로 셉니다(오류가 아닙니다).

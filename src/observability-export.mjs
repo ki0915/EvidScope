@@ -69,7 +69,7 @@ export function assessExport(bytes, {publicKey, expectedCheckpoint, transparency
   if (!plain(bundle) || !Array.isArray(bundle.records)) return {readable: false, exportSha256, verdict: 'unverified', reasons: ['export_unreadable']};
   const cp = plain(bundle.checkpoint) ? bundle.checkpoint : null, keyId = signingKeyId(publicKey);
   const base = {readable: true, bundle, exportSha256, keyId, tenant: isId(cp?.tenant) ? cp.tenant : null,
-    checkpoint: cp && Number.isSafeInteger(cp.count) && typeof cp.head === 'string' ? {count: cp.count, head: cp.head} : null, witness: 'none'};
+    checkpoint: cp && Number.isSafeInteger(cp.count) && /^[a-f0-9]{64}$/.test(cp.head) ? {count: cp.count, head: cp.head} : null, witness: 'none'};
   const fail = (code, message) => ({...base, verdict: TAMPERED.has(code) ? 'tampered' : 'unverified', reasons: [code], messages: [message]});
   try { verifyCheckpoint(cp, publicKey); } catch (error) {
     return fail(error.message === 'Missing checkpoint' ? 'checkpoint_missing' : 'checkpoint_signature_invalid', error.message);
@@ -223,7 +223,8 @@ const findingsComment = (v, text) => `EvidScope findings ${findingsText(v)} · $
 
 // Langfuse: score-create events for POST /api/public/ingestion. A score is replaced only when id, name and the date of its
 // timestamp all match, so the timestamp is the vault's receipt time of the trace's first event in this action (fixed forever).
-// `deletes` lists findings scores to remove when the action is no longer verified (DELETE /api/public/scores/{id}).
+// `deletes` lists findings scores to remove when the action is no longer verified (DELETE /api/public/scores/{id}). The envelope
+// id, which Langfuse uses to drop repeated deliveries, is added per request when sending.
 export function langfuseScores(verdicts, {environment} = {}) {
   const events = [], deletes = [];
   for (const v of verdicts) {
@@ -232,7 +233,7 @@ export function langfuseScores(verdicts, {environment} = {}) {
     const score = (name, value, dataType, extra = {}) => {
       const body = {id: stableId('langfuse', v.tenant, v.actionId, v.traceId, name, extra.observationId ?? ''), traceId: v.traceId, name, value, dataType,
         comment, metadata, ...env, ...extra};
-      events.push({id: stableId('langfuse-event', body.id, JSON.stringify(body)), timestamp: v.timestamp, type: 'score-create', body});
+      events.push({timestamp: v.timestamp, type: 'score-create', body});
     };
     score(NAMES.verified, v.verdict, 'CATEGORICAL');
     score(NAMES.witness, v.witness, 'CATEGORICAL');
