@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,randomUUID} from 'node:crypto';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import http from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -13,6 +13,7 @@ import {canonical,mac,verifyBundle} from '../src/crypto.mjs';
 import {Store} from '../src/store.mjs';
 import {createGroupCommit} from '../src/ingest-batch.mjs';
 import {upstreamRequest} from '../src/upstream-http.mjs';
+import {main as verifyCli} from '../src/verify-cli.mjs';
 
 const event=(id,extra={})=>({id,actionId:'act-'+id,traceId:'trace-s2',occurredAt:new Date().toISOString(),kind:'intent',actor:'s2-agent',tool:'s2-tool',
  action:'read',resource:'kb-1',note:'stage two',...extra});
@@ -118,6 +119,23 @@ test('verified state: an item that fails after appending rolls back alone; the n
  const state=store.actionProjectionCache.get('alpha');assert.equal(state.count,3);assert.equal(state.head,store.checkpoint('alpha').head);
  assert.deepEqual(counts,{opened:0,suffixRows:0,cold:0},'the undone writes do not read as a write outside projectionMutation');
  assert.equal(summary(state),coldSummary(store));
+});
+
+test('exports: an 8b3af6c export still verifies, and a stage-2 export has the same record shapes and verifies with both verifiers',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'evidscope-stage2-export-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const cli=(file,pem)=>{writeFileSync(join(dir,'b.json'),JSON.stringify(file));writeFileSync(join(dir,'k.pem'),pem);
+  return verifyCli(['bundle',join(dir,'b.json'),join(dir,'k.pem')],{stdout:{write(){}},stderr:{write(){}}});};
+ const fixture=JSON.parse(readFileSync(new URL('./fixtures/pre-stage2-export-8b3af6c.json',import.meta.url),'utf8'));
+ assert.equal(fixture.baseCommit,'8b3af6c');
+ assert.equal(verifyBundle(fixture.exportBundle,fixture.publicKeyPem).valid,true);assert.equal(cli(fixture.exportBundle,fixture.publicKeyPem),0);
+ const v=vault(t,{options:{ingestBatch:{maxWaitMs:5,maxEvents:64}}}),send=sender(v),first=event('x-0');
+ assert.ok((await Promise.all([send(first),...Array.from({length:7},(_,i)=>send(event('x-'+(i+1))))])).every(r=>r.status===202));
+ assert.equal((await send(first)).body.duplicate,true);
+ const bundle=v.store.exportBundle('alpha'),pem=v.store.publicKey.export({format:'pem',type:'spki'});
+ assert.equal(verifyBundle(bundle,pem).valid,true);assert.equal(cli(bundle,pem),0);
+ const shapes=b=>{const out={};for(const r of b.records)if(['event','event_receipt'].includes(r.type))out[r.type]=canonical([Object.keys(r).sort(),Object.keys(r.payload).sort()]);
+  out.disclosure=canonical(Object.keys(b.disclosures[0]).sort());out.top=canonical(Object.keys(b).sort());out.checkpoint=canonical(Object.keys(b.checkpoint).sort());return out;};
+ assert.deepEqual(shapes(bundle),shapes(fixture.exportBundle));
 });
 
 function server(t,handler){
