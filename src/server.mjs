@@ -120,7 +120,7 @@ async function route(req,res){
   if(url.pathname==='/readyz'&&req.method==='GET'){
    const ready=await checkReadiness();res.statusCode=ready&&!stopping?200:503;res.end(JSON.stringify({status:res.statusCode===200?'ready':'not_ready',component:mode}));return;
   }
-  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js'].includes(url.pathname)){
+  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   const enforcementPath=enforcementRoute(req.method,url.pathname);

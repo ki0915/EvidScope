@@ -266,5 +266,7 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
   if(parts.length===2&&['approve','refuse'].includes(parts[1]))return answer(p,parts[0],parts[1],x);
   fail(404,'지원하지 않는 승인 경로입니다');
  }
- return {open,poll,handle};
+ // Pending requests as the queue shows them (with mayAnswer for p), for the console home (src/home-service.mjs).
+ const pending=p=>{const at=now();return approvals(p,{}).map(value=>view(p,value,at)).filter(v=>v.state==='pending');};
+ return {open,poll,handle,pending};
 }

@@ -445,6 +445,41 @@ export class Store {
   for(const event of state.eventsBySequence.values())index.set(`${event.source}/${event.id}`,event);
   return {has:ref=>index.has(ref),get:ref=>index.has(ref)?structuredClone(index.get(ref)):undefined};
  }
+ // Read-only walk over the verified signed evaluations, newest first and without copies, for summaries that keep only
+ // counts (src/home-service.mjs); visit returns false to stop. False when an evaluation row is over the read limit.
+ eachEvaluationNewestFirst(tenant,visit){
+  const state=this._verifiedActionState(tenant);
+  if(state.oversizedTypes.has('evaluation')||state.oversizedTypes.has('*'))return false;
+  this._assertFacets(state,['evaluations']);
+  for(let i=state.evaluations.length-1;i>=0;i--)if(visit(state.evaluations[i])===false)break;
+  return true;
+ }
+ // Signed ledger rows recorded at or after `from` (vault clock), with the retained events among them disclosed from the
+ // verified state. The first row is found by binary search on seq; the row before it must be hash-linked and older, else
+ // (a clock that went back, or an edited row) the whole ledger is read. Every returned row is hash-linked to the signed
+ // checkpoint head. maxRows bounds the read: over it, {tooMany:true} and no rows. Disclosed events are shallow copies of the
+ // verified state's own values: callers read them and never mutate nested fields.
+ ledgerSince(tenant,from,{maxRows=250000}={}){
+  const state=this.verifiedFacets(tenant,['keys','events']),count=state.count,at=Date.parse(from);
+  const row=seq=>this.cachedStatement('SELECT seq,body,hash FROM ledger WHERE tenant=? AND seq=?').get(tenant,seq);
+  const recordedAt=r=>Date.parse(JSON.parse(r.body).recordedAt);
+  let lo=1,hi=count+1;
+  while(lo<hi){const mid=Math.floor((lo+hi)/2);if(recordedAt(row(mid))>=at)hi=mid;else lo=mid+1;}
+  let first=lo;
+  if(first>1){const before=row(first-1),linked=first<=count?JSON.parse(row(first).body).previous===before.hash:before.hash===state.head;
+   if(digest(before.body)!==before.hash||!linked||!(recordedAt(before)<at))first=1;}
+  if(count-first+1>maxRows)return {tooMany:true,count,first,rows:[],disclosures:[]};
+  const rows=[],disclosures=[];let previous=first>1?row(first-1).hash:'0'.repeat(64);
+  for(const r of this.db.prepare('SELECT seq,body,hash FROM ledger WHERE tenant=? AND seq>=? AND seq<=? ORDER BY seq').iterate(tenant,first,count)){
+   const record=JSON.parse(r.body);
+   if(digest(r.body)!==r.hash||record.seq!==r.seq||record.tenant!==tenant||record.previous!==previous)throw Error('Ledger range differs from signed evidence');
+   previous=r.hash;rows.push({seq:r.seq,type:record.type,recordedAt:record.recordedAt,principal:record.principal,payload:record.payload});
+   const event=record.type==='event'?state.eventsBySequence.get(r.seq):undefined;
+   if(event&&isEncryptedEvent(record.payload)){const {seq,hash,...disclosed}=event;disclosures.push({seq:r.seq,event:disclosed});}
+  }
+  if(count&&previous!==state.head||rows.length!==count-first+1)throw Error('Ledger range differs from signed evidence');
+  return {tooMany:false,count,first,rows,disclosures};
+ }
  checkProjection(tenant,original=this.ledgerEvents(tenant)){return checkEventProjection(this.db,tenant,original);}
  // Without facets every facet must hold (the action, analysis and ingest gate). Readers name the facets they serve from,
  // which keeps the per-projection blast radius of the former full-scan verifiers.

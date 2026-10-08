@@ -8,13 +8,14 @@ let csrfToken = '';
 let sessionPrincipal = null;
 let sessionExpiresAt = null;
 let authBusy = false;
-let activeView = 'investigations';
+let activeView = 'home';
 let renderEpoch = 0;
 let authEpoch = 0;
 let detailEpoch = 0;
 let disposeView = () => {};
 let workspaceFilters = { q: '', range: '24h' };
 const views = {
+  home: ['지금 확인할 일', '지금 활동 중인 에이전트, 위협, 사람의 검토가 필요한 항목과 거버넌스 증거 현황을 한 화면에서 확인합니다.'],
   agents: ['에이전트 목록', '에이전트별 정책 점검 결과와 평가 범위, 참고자료 및 사람의 검토 현황을 확인합니다.'],
   graphs: ['가시성 그래프', 'AI 행동의 관측 범위를 비교하고, 그래프에서 근거와 실제 검증 결과로 이어갑니다.'],
   investigations: ['행동 조사함', '검토할 행동을 고르고, 실제 근거를 대조한 뒤 사람의 판단과 후속 조치를 남깁니다.'],
@@ -295,24 +296,49 @@ async function investigationsView() {
   panel.append(filters, scope, results, pages); node.append(stats, panel); await search(); return node;
 }
 async function eventsView() {
-  const node = card('이벤트 검색', '수신 시각과 발생 시각은 다를 수 있습니다. 상세에서 원본 참조와 해시를 확인하세요.');
+  const preset = takeListPreset('events');
+  const node = card('이벤트 검색', '최근 수신 기록부터 보여 줍니다. 수신 시각과 발생 시각은 다를 수 있습니다. 상세에서 원본 참조와 해시를 확인하세요.');
   const filter = el('form', 'toolbar');
-  filter.append(field('통합 검색', 'q', { value: workspaceFilters.q, placeholder: '행위자, 도구, 리소스, 목적지…' }), field('Trace ID', 'traceId', { placeholder: '연결된 작업 추적' }), field('이벤트 종류', 'kind', { choices: [{ value: '', label: '모든 종류' }, { value: 'intent', label: '행동 의도' }, { value: 'self_report', label: 'AI 자기보고' }, { value: 'execution', label: '독립 실행 기록' }, { value: 'result', label: '독립 결과 기록' }, { value: 'grant', label: '권한 부여' }, { value: 'revoke', label: '권한 철회' }, { value: 'human_approval', label: '사람 승인' }, { value: 'automated_review', label: '자동 검토' }, { value: 'delegation', label: '위임' }, { value: 'stop_requested', label: '중단 요청' }, { value: 'block_registered', label: '차단 등록' }, { value: 'stop_confirmed', label: '중단 확인' }, { value: 'safety_alert', label: '안전 경보' }, { value: 'heartbeat', label: '수집 하트비트' }, { value: 'gap', label: '수집 공백' }, { value: 'notice', label: '고지 기록' }] }));
+  filter.append(field('통합 검색', 'q', { value: preset.q ?? workspaceFilters.q, placeholder: '행위자, 도구, 리소스, 목적지…' }), field('Trace ID', 'traceId', { placeholder: '연결된 작업 추적' }), field('이벤트 종류', 'kind', { choices: [{ value: '', label: '모든 종류' }, { value: 'intent', label: '행동 의도' }, { value: 'self_report', label: 'AI 자기보고' }, { value: 'execution', label: '독립 실행 기록' }, { value: 'result', label: '독립 결과 기록' }, { value: 'grant', label: '권한 부여' }, { value: 'revoke', label: '권한 철회' }, { value: 'human_approval', label: '사람 승인' }, { value: 'automated_review', label: '자동 검토' }, { value: 'delegation', label: '위임' }, { value: 'stop_requested', label: '중단 요청' }, { value: 'block_registered', label: '차단 등록' }, { value: 'stop_confirmed', label: '중단 확인' }, { value: 'safety_alert', label: '안전 경보' }, { value: 'heartbeat', label: '수집 하트비트' }, { value: 'gap', label: '수집 공백' }, { value: 'notice', label: '고지 기록' }] }), rangeField(preset.range));
   const submit = el('button', 'primary', '검색'); submit.type = 'submit'; filter.append(submit);
-  const count = el('p', 'muted'); const results = el('div'); node.append(filter, count, results);
-  async function search() {
-    submit.disabled = true; results.replaceChildren(el('div', 'loading', '증거 조회 중'));
+  const count = el('p', 'muted'), traceSlot = el('div'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, traceSlot, results, more);
+  const list = windowedList({ path: '/api/events', form: filter, count, results, more, unit: '건', submit, onData: (data) => {
+    const traceRow = traceLinkRow(data.traceLinks); traceSlot.replaceChildren(...(traceRow ? [traceRow] : []));
+  }, render: (items) => table(['수신 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], items.map((event) => [
+    date(event.receivedAt), `${event.kind} / ${event.source}`, event.actor, `${event.tool || '—'} · ${event.action || '—'}`,
+    event.actionId ? button(event.actionId, () => actionDetail(event.actionId), 'small') : '연결 없음', button('상세', () => inspect('수집 증거 · 원본 참조', event), 'small'),
+  ])) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); await list.reload(); return node;
+}
+// Lists open on a recent window, newest first; "load older" follows the server cursor (docs/feature-guide.md). Nothing is deleted.
+const listRanges = { '1h': ['최근 1시간', 3600000], '24h': ['최근 24시간', 86400000], '7d': ['최근 7일', 604800000], '30d': ['최근 30일', 2592000000], all: ['전체 기간', null] };
+const listPresets = {};
+function takeListPreset(view) { const value = listPresets[view] || {}; delete listPresets[view]; return value; }
+function rangeField(value) {
+  return field('기간 (최신순)', 'range', { value: Object.hasOwn(listRanges, value || '') ? value : '24h', choices: Object.entries(listRanges).map(([v, [l]]) => ({ value: v, label: l })) });
+}
+function windowedList({ path, form, count, results, more, unit, submit, render, onData = () => {} }) {
+  let items = [], cursor = null, epoch = 0, query = null;
+  async function page(reset) {
+    const current = reset ? ++epoch : epoch;
+    if (reset) {
+      const values = Object.fromEntries([...new FormData(form).entries()].filter(([, v]) => v !== '')), range = values.range || '24h'; delete values.range;
+      const ms = listRanges[range]?.[1]; query = { ...values, ...(ms ? { since: new Date(Date.now() - ms).toISOString() } : { order: 'desc' }), limit: '100' };
+      items = []; cursor = null; results.replaceChildren(el('div', 'loading', '최근 기록부터 조회하고 있습니다…')); count.dataset.range = range;
+    }
+    if (submit) submit.disabled = true;
     try {
-      const query = new URLSearchParams(new FormData(filter)); query.set('limit', '100');
-      const data = await api(`/api/events?${query}`); count.textContent = `전체 ${data.total ?? data.items.length}건 · 최대 100건 표시`;
-      const traceRow = traceLinkRow(data.traceLinks);
-      results.replaceChildren(...(traceRow ? [traceRow] : []), table(['발생 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], data.items.map((event) => [
-        date(event.occurredAt), `${event.kind} / ${event.source}`, event.actor, `${event.tool || '—'} · ${event.action || '—'}`,
-        event.actionId ? button(event.actionId, () => actionDetail(event.actionId), 'small') : '연결 없음', button('상세', () => inspect('수집 증거 · 원본 참조', event), 'small'),
-      ])));
-    } catch (error) { results.replaceChildren(el('div', 'message error', error.message)); } finally { submit.disabled = false; }
+      const data = await api(`${path}?${new URLSearchParams({ ...query, ...(cursor ? { cursor } : {}) })}`); if (current !== epoch) return;
+      items = [...items, ...data.items]; cursor = data.nextCursor; onData(data);
+      const label = listRanges[count.dataset.range]?.[0] || '선택 기간';
+      count.textContent = `${label} · ${data.windowTotal == null ? '검색어 일치' : `${data.windowTotal.toLocaleString('ko-KR')}${unit} 중`} ${items.length.toLocaleString('ko-KR')}${unit} 표시 · 최신순`;
+      results.replaceChildren(items.length ? render(items) : empty(`${label}에 해당 기록이 없습니다`, '기간을 넓히면 이전 기록을 볼 수 있습니다. 기록은 삭제되지 않습니다.'));
+      const older = button('이전 기록 더 보기', () => page(false), 'small'); older.disabled = !data.hasMore;
+      more.replaceChildren(older, el('span', 'muted', data.hasMore ? '더 오래된 기록이 있습니다' : '이 기간의 마지막 기록입니다'));
+    } catch (error) { if (current === epoch) results.replaceChildren(el('div', 'message error', error.message)); }
+    finally { if (submit) submit.disabled = false; }
   }
-  filter.addEventListener('submit', (event) => { event.preventDefault(); search(); }); await search(); return node;
+  return { reload: () => page(true) };
 }
 function evidenceFacts(entries) {
   const node = el('dl', 'evidence-facts');
@@ -433,13 +459,20 @@ async function actionDetail(actionId) {
   showDetail('행동 · 권한 · 결과 대조', node);
 }
 async function alertsView() {
-  const data = await api('/api/alerts'); const node = card('탐지된 위험 신호', '늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
-  node.append(table(['중요도', '탐지', '내용', '생성 시각', '상태', '조사'], data.items.map((item) => {
+  const preset = takeListPreset('alerts');
+  const node = card('탐지된 위험 신호', '최근 평가부터 보여 줍니다. 늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
+  const filter = el('form', 'toolbar');
+  filter.append(field('중요도', 'severity', { value: preset.severity || '', choices: [{ value: '', label: '모든 중요도' }, ...['critical', 'high', 'medium', 'low', 'info'].map((v) => ({ value: v, label: label(v) }))] }),
+    field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }), rangeField(preset.range));
+  const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
+  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, results, more);
+  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
     return [badge(item.severity), item.code, item.message, date(item.createdAt), badge(item.state || 'open'), actions];
-  }))); return node;
+  })) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }
 function newCase(actionId = '', title = '') {
   const node = form([field('사건 제목', 'title', { required: true, value: title }), field('행동 ID', 'actionId', { required: true, value: actionId }), field('담당자', 'owner', { required: true })], '사건 생성', async (values) => {
@@ -449,9 +482,17 @@ function newCase(actionId = '', title = '') {
   }); showDetail('새 감사 사건', node);
 }
 async function casesView() {
-  const data = await api('/api/cases'); const node = card('사건 목록', '사건의 종결은 원본 삭제나 법적 면제를 의미하지 않습니다.');
+  const preset = takeListPreset('cases');
+  const node = card('사건 목록', '최근 변경된 사건부터 보여 줍니다. 사건의 종결은 원본 삭제나 법적 면제를 의미하지 않습니다.');
   node.querySelector('.card-header').append(button('+ 사건 생성', () => newCase(), 'primary small'));
-  node.append(table(['사건', '행동 ID', '담당자', '상태', '검토'], data.items.map((item) => [item.title, item.actionId, item.owner, badge(item.status), button('검토 열기', () => caseDetail(item), 'small')]))); return node;
+  const filter = el('form', 'toolbar');
+  const statuses = [{ value: 'active', label: '진행 중(종결 제외)' }, ...['open', 'in_review', 'closed'].map((v) => ({ value: v, label: label(v) })), { value: '', label: '전체' }];
+  filter.append(field('상태', 'status', { value: preset.status || 'active', choices: statuses }), rangeField(preset.range || '30d'));
+  const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
+  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, results, more);
+  const list = windowedList({ path: '/api/cases', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['사건', '행동 ID', '담당자', '상태', '마지막 변경', '검토'],
+    items.map((item) => [item.title, item.actionId, item.owner, badge(item.status), date(item.history?.at(-1)?.at), button('검토 열기', () => caseDetail(item), 'small')])) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }
 function decisionHistory(context) {
   const section = card('인간 판단 이력', '이전 판단은 보존됩니다. 새 근거·재검토 기한과 현재 판단 상태를 함께 확인하세요.');
@@ -1228,10 +1269,13 @@ async function agentsView(){
  }catch(error){if(current===epoch&&viewEpoch===renderEpoch){stats.replaceChildren();scope.textContent='조회 실패 · 선택 조건의 집계를 확인할 수 없습니다.';pages.replaceChildren();rows.replaceChildren(empty('집계를 불러오지 못했습니다',error.message));}}finally{if(current===epoch)submit.disabled=false;}}
  filters.addEventListener('submit',event=>{event.preventDefault();offset=0;search();});filters.addEventListener('change',event=>{if(event.target.tagName==='SELECT'){offset=0;search();}});await search();return node;
 }
-const renderers = { agents: agentsView, graphs: graphsView, investigations: investigationsView, overview, events: eventsView, alerts: alertsView, cases: casesView, rules: rulesView, governance: governanceView, retention: retentionView, health: healthView };
+// The home lives in public/home.js; without it (or before it loads) the landing view is the investigation list.
+const renderers = {
+  home: () => window.EvidScopeHome ? window.EvidScopeHome.render() : renderers.investigations(),
+  agents: agentsView, graphs: graphsView, investigations: investigationsView, overview, events: eventsView, alerts: alertsView, cases: casesView, rules: rulesView, governance: governanceView, retention: retentionView, health: healthView };
 async function navigate(view) {
   disposeView(); disposeView = () => {};
-  if (!views[view]) view = 'investigations'; activeView = view; const epoch = ++renderEpoch;
+  if (!views[view]) view = 'home'; activeView = view; const epoch = ++renderEpoch;
   document.querySelectorAll('[data-view]').forEach((node) => { node.classList.toggle('active', node.dataset.view === view); if (node.dataset.view === view) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
   window.EvidScopeConsole?.updateNavigation(view);
   $('#page-title').textContent = views[view][0]; $('#page-description').textContent = views[view][1];
@@ -1251,7 +1295,7 @@ async function navigate(view) {
   finally { if (epoch === renderEpoch) $('#content').removeAttribute('aria-busy'); }
 }
 document.querySelectorAll('[data-view]').forEach((node) => node.addEventListener('click', () => navigate(node.dataset.view)));
-$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('investigations'); });
+$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('home'); });
 $('#refresh').addEventListener('click', () => navigate(activeView));
 $('#auth-close').addEventListener('click', () => $('#auth-dialog').close());
 $('#detail-close').addEventListener('click', () => { detailEpoch++; $('#detail-dialog').close(); });
@@ -1357,6 +1401,8 @@ window.EvidScopeCore = {
   api, el, button, badge, card, notice, empty, limits, jsonDetails, table, field, form,
   label, date, stringify, showDetail, inspect, captureDetailContext, isCurrentDetail, savedNotice,
   downloadArtifact, localDate, navigate, $,
+  // Opens a list view with its filters set (the home's counts link to their filtered lists).
+  openList(view, preset = {}) { listPresets[view] = { ...preset }; return navigate(view); },
   factList: evidenceFacts,
   openAction: actionDetail,
   openCase: caseDetail,
@@ -1369,5 +1415,5 @@ window.EvidScopeCore = {
   registerView(key, title, description, render) { views[key] = [title, description]; renderers[key] = render; },
 };
 
-navigate('investigations');
+navigate(activeView);
 initializeAuth();

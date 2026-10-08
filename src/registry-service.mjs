@@ -400,5 +400,6 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   if(parts.length===2&&parts[1]==='transitions')return request(p,parts[0],x);
   fail(404,'지원하지 않는 레지스트리 경로입니다');
  }
- return {handle};
+ // Read-only view for the console home (src/home-service.mjs): stop-order propagation.
+ return {handle,stopPropagation:p=>stops.propagation(p)};
 }

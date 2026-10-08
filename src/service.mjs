@@ -44,6 +44,8 @@ import {ENFORCEMENT_PREFIX,STATUS_PATH,createEnforcement,enforcementPoint} from 
 import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
+import {createHome} from './home-service.mjs';
+import {encodeCursor,listWindow,pageNewestFirst} from './list-window.mjs';
 
 export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,retentionRotation,
  bundleSigning,ingestBatch:ingestBatchLimits}) {
@@ -105,6 +107,23 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   if(result.oversized)fail(413,'정책 검토 객체 한도 초과: 부분 검증으로 변경할 수 없습니다');
   return new Map(result.values.map(value=>[value.id,value.body]));
  }
+ // Events newest first in [since, until) by receipt time, after `cursor` ([received, source, id]); kind and trace run in SQL, free
+ // text q on the signed body in JS over at most 20000 rows of the window per page (then the page ends early: scanLimited).
+ function windowEvents(p,{since,until,limit,cursor},{q,kind,trace}){
+  const where=['tenant=?'],args=[p.tenant];
+  if(kind){where.push('kind=?');args.push(kind);}if(trace){where.push('trace_id=?');args.push(trace);}
+  if(since){where.push('received>=?');args.push(since);}if(until){where.push('received<?');args.push(until);}
+  const windowTotal=q?null:store.db.prepare(`SELECT COUNT(*) n FROM events WHERE ${where.join(' AND ')}`).get(...args).n;
+  if(cursor){where.push('(received<? OR received=? AND (source<? OR source=? AND id<?))');args.push(cursor[0],cursor[0],cursor[1],cursor[1],cursor[2]);}
+  const items=[];let scanned=0,last=null,more=false;
+  for(const row of store.db.prepare(`SELECT source,id,received,body FROM events WHERE ${where.join(' AND ')} ORDER BY received DESC,source DESC,id DESC`).iterate(...args)){
+   if(items.length===limit){more=true;break;}
+   if(q&&++scanned>20000){more=true;break;}
+   last=[row.received,row.source,row.id];if(!q||canonical(JSON.parse(row.body)).includes(q))items.push(JSON.parse(row.body));
+  }
+  return {items,windowTotal,limit,hasMore:more,nextCursor:more&&last?encodeCursor(last):null,window:{since,until,order:'desc',basis:'receivedAt'},
+   ...(q&&scanned>20000?{scanLimited:true}:{})};
+ }
  function keySeparation(fileKeyIds,eventKeyState){
   const status=keyring.status(),legacyFiles=fileKeyIds['legacy-signing-v1']||0;
   // The plaintext search projection of retained events stays in evidence.db either way, so a database reader sees retained events.
@@ -125,6 +144,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const enforcement=createEnforcement({store,policyObjects:verifiedPolicyObjects,key,signer:opaSigner,verifiedActions});
  // Approval queue for enforcement points (src/approval-service.mjs, docs/approval-queue.md); answers are signed like attestations.
  const approvals=createApprovals({store,principals,policyObjects:verifiedPolicyObjects,signer});
+ // Console home: running agents, needs attention, model status (src/home-service.mjs); read-only.
+ const home=createHome({store,policyObjects:verifiedPolicyObjects,verifiedEvents,approvals,registry,legalReviewState,runtimeStatus});
  function verifiedEvaluations(p,options){
   let result;try{result=store.cachedEvaluations(p.tenant,options);}catch(error){if(error?.status)throw error;fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');}
   if(result.oversized)fail(413,'분석 조회 객체 한도 초과: 부분 검증으로 조회할 수 없습니다');
@@ -321,6 +342,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
   if(path==='/api/registry'||path.startsWith('/api/registry/')){const result=registry.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/approvals'||path.startsWith('/api/approvals/')){const result=approvals.handle(p,method,url,x);if(result!==undefined)return result;}
+  if(path==='/api/home'||path.startsWith('/api/home/')||path==='/api/model-status'){const result=home.handle(p,method,url);if(result!==undefined)return result;}
   if(path==='/api/investigations'||path.startsWith('/api/cases/')){
    // ?attest=intoto wraps the signed report and its in-toto attestation (docs/receipts.md); the proofs read this request's snapshot.
    const attest=method==='GET'&&/^\/api\/cases\/[^/]+\/report$/.test(path)&&receipts.requested(url);
@@ -341,6 +363,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');
    const limit=Math.max(1,Math.min(500,Number(url.searchParams.get('limit'))||100)),offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
    const found=trace?traceLinks(linkTemplates,[trace]):[],links=found.length?{traceLinks:found}:{};
+   const windowed=listWindow(url.searchParams,{parts:3});
+   if(windowed)return store.transaction(()=>{verifiedEvents(p);return {...windowEvents(p,windowed,{q,kind,trace}),...links};});
    return store.transaction(()=>{verifiedEvents(p);
     // The verified events facet binds the kind/trace_id columns to the signed bodies, so those filters and the page run in SQL;
     // free-text q keeps matching the canonical body in JS.
@@ -357,14 +381,24 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
    return {events,references,traceLinks:traceLinks(linkTemplates,eventTraceIds(events)),analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?['참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
   }
   if(path==='/api/alerts'&&method==='GET'){
-   return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);return {items:actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));})};});
+   const windowed=listWindow(url.searchParams),severity=url.searchParams.get('severity'),state=url.searchParams.get('state');
+   if(severity!==null&&!['critical','high','medium','low','info'].includes(severity)||state!==null&&!['open','suppressed'].includes(state))fail(400,'경보 조건 오류');
+   return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);
+    const items=actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));});
+    // Windowed: newest first by evaluation time, then id (docs/feature-guide.md).
+    const chosen=items.filter(a=>(!severity||a.severity===severity)&&(!state||a.state===state));
+    return windowed?pageNewestFirst(chosen,windowed,a=>[String(a.createdAt||''),a.id]):{items:chosen};});
   }
   if(path==='/api/assets'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'asset').values()]}));
   // ledgerRecords is the verified state's signed count (the checkpoint count), not a COUNT over the ledger.
   if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);const verifiedState=store.verifiedStateStatus(p.tenant);return {vaultRssBytes:process.memoryUsage().rss,verifiedState,
    accessLog:accessLog.status(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:verifiedState.count,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
   if(path==='/api/assets'&&method==='POST'){reviewer(p);const a={id:identifier(x.id),actor:cleanText(x.actor,256),tool:cleanText(x.tool,256),owner:cleanText(x.owner,200),purpose:cleanText(x.purpose||'',500),version:cleanText(x.version||'unknown',100),policyVersion:cleanText(x.policyVersion||'unknown',100),approvalRequired:x.approvalRequired===true||x.approvalRequired===false?x.approvalRequired:'unknown',validFrom:date(x.validFrom||new Date().toISOString()),destinations:(x.destinations||[]).slice(0,30).map(s=>cleanText(s,256)),updatedAt:new Date().toISOString()};if(x.validUntil){a.validUntil=date(x.validUntil);if(Date.parse(a.validUntil)<=Date.parse(a.validFrom))fail(400,'자산 정책 유효기간 역전');}return store.transaction(()=>{verifiedPolicyObjects(p,'asset');store.put(p,'asset',a.id,a);dirty(p.tenant);return a;});}
-  if(path==='/api/cases'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'case').values()]}));
+  if(path==='/api/cases'&&method==='GET'){const windowed=listWindow(url.searchParams),status=url.searchParams.get('status');
+   if(status!==null&&!['open','in_review','closed','active'].includes(status))fail(400,'사건 상태 오류');
+   return store.transaction(()=>{const items=[...verifiedPolicyObjects(p,'case').values()].filter(c=>!status||(status==='active'?c.status!=='closed':c.status===status));
+    // Windowed by the case's last recorded change (its last history entry).
+    return windowed?pageNewestFirst(items,windowed,c=>[String(c.history?.at(-1)?.at||''),c.id]):{items};});}
   if(path==='/api/cases'&&method==='POST'){
    const c={id:randomUUID(),title:cleanText(x.title,200),actionId:identifier(x.actionId),owner:cleanText(x.owner,200),status:'open',comments:[],tasks:[],history:[{by:p.id,at:new Date().toISOString(),action:'created'}]};return store.transaction(()=>{verifiedActions(p);if(!store.events(p.tenant,c.actionId).length)fail(400,'사건에 연결할 관측 행동이 없습니다');return store.put(p,'case',c.id,c);});
   }
