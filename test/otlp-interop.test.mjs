@@ -87,7 +87,7 @@ test('real Collector retries EvidScope 503 + Retry-After and delivers once the t
   assert.equal(await collector.post(fixture('sdk-genai.json'), 'application/json'), 200);
   await until(async () => (await traceEvents(h, '4bf92f3577b34da6a3ce929d0e0e4736')).total === 4, 20000, 'first trace');
   assert.equal(await collector.post(fixture('legacy-content.json'), 'application/json'), 200); // 3 pending actions > 1: vault answers 503
-  await until(() => /503|Throttle|retry/i.test(collector.log()), 15000, 'collector retry log');
+  await until(() => /Will retry/.test(collector.log()), 15000, 'collector retry log');
   assert.equal((await traceEvents(h, '5b8efff798038103d269b633813fc60c')).total, 0);
   await h.analyze();
   await until(async () => (await traceEvents(h, '5b8efff798038103d269b633813fc60c')).total === 1, 30000, 'retried delivery');
