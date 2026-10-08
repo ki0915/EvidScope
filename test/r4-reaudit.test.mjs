@@ -147,3 +147,18 @@ test('R4-3 offline: the override author recorded in a request is excluded from a
     return {...v1, eligibility: {...v1.eligibility, basis}};}});
   assert.deepEqual(problems(legacy), []);
 });
+
+test('R4-4: the offline check refuses request histories the vault API never writes', () => {
+  assert.deepEqual(problems(history()), [], 'the first of two approvals, as the API writes it');
+  // The agent's editor at the time of the answer (an edit after the request opened): the API refuses this answer with 403.
+  const edited = {...history()[0].payload, version: 2, change: 'updated', editedBy: 'alpha-reviewer-3'};
+  assert.ok(problems(history({between: [edited]})).some(m => /registrant or editor/.test(m)));
+  // An answer dated before the request was opened.
+  assert.ok(problems(history({answerAt: -60000})).some(m => /answer time/.test(m)));
+  // A lifetime the policy never gives (default 300 s, no requested_expiry) and a poll interval other than the policy's.
+  assert.ok(problems(history({change: v1 => ({...v1, expiresAt: iso(600000)})})).some(m => /lifetime/.test(m)));
+  assert.ok(problems(history({change: v1 => ({...v1, requestedExpiry: 120})})).some(m => /lifetime/.test(m)));
+  assert.deepEqual(problems(history({change: v1 => ({...v1, requestedExpiry: 120, expiresAt: iso(120000)})})), []);
+  assert.deepEqual(problems(history({change: v1 => ({...v1, requestedExpiry: 5000, expiresAt: iso(900000)})})), [], 'capped at maxLifetimeSeconds');
+  assert.ok(problems(history({change: v1 => ({...v1, intervalSeconds: 1})})).some(m => /interval/.test(m)));
+});

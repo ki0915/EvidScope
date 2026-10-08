@@ -167,6 +167,9 @@ export function verifyApprovalHistory(rows){
    if(row.principal!==v.requestedBy)problem(row,'request principal differs from requestedBy');
    const lifetime=time(v.expiresAt)-time(v.requestedAt);
    if(!(lifetime>0&&lifetime<=current.approvals.maxLifetimeSeconds*1000))problem(row,'request lifetime exceeds the policy cap');
+   else if(lifetime!==Math.min(v.requestedExpiry??current.approvals.defaultLifetimeSeconds,current.approvals.maxLifetimeSeconds)*1000)
+    problem(row,'request lifetime differs from the requested or default lifetime');
+   if(v.intervalSeconds!==current.approvals.intervalSeconds)problem(row,'poll interval differs from the policy');
    if(v.executionWindowSeconds!==current.approvals.executionWindowSeconds)problem(row,'execution window differs from the policy');
    const recomputed=approvalEligibility(coveringEntry(entries.values(),v.target?.actor),current),basis=v.eligibility?.basis;
    const overrideBy=plain(basis)&&Object.hasOwn(basis,'overrideBy')?basis.overrideBy:recomputed.basis.overrideBy;
@@ -187,6 +190,10 @@ export function verifyApprovalHistory(rows){
      problem(row,'answered by a principal the policy excluded');
     if(v.status!=='refused'&&before.some(x=>x?.by===answer.by))problem(row,'the same principal approved twice');
     if(!(time(answer.at)<time(v.expiresAt)))problem(row,'answer time is after expiry');
+    // What the API checks at answer time (round 4): the agent's registrant and editor then, and answers in time order.
+    const entry=coveringEntry(entries.values(),v.target?.actor);
+    if(entry&&[entry.registeredBy,entry.editedBy].includes(answer.by))problem(row,'answered by the agent registrant or editor at the time of the answer');
+    if(!(time(answer.at)>=Math.max(time(v.requestedAt),...before.map(x=>time(x?.at)))))problem(row,'answer time precedes the request or an earlier answer');
    }
    const distinct=new Set(after.map(x=>x?.by)).size;
    if(v.status==='approved'){
