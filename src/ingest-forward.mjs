@@ -11,6 +11,7 @@ export const INGEST_FORWARD_MAX_EVENTS = 64, INGEST_FORWARD_MAX_BYTES = 1024 * 1
 export const INGEST_FORWARD_HEADER = 'x-evidscope-ingest-forward';
 const ITEM_HEADERS = ['x-evid-timestamp', 'x-evid-nonce', 'x-evid-signature'];
 const UNAVAILABLE = '저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다';
+const PREDATES = [403, 404, 413];
 
 // Vault side. headers: the envelope's request headers (its bearer is the bearer of every item, checked again per item);
 // ingest(headers, body) is the /api/ingest route; admit(n) may refuse the envelope before any item runs (admission control).
@@ -56,8 +57,10 @@ export function createForwardCoalescer({send, single, maxEvents = INGEST_FORWARD
     const text = `{"format":${JSON.stringify(INGEST_FORWARD_FORMAT)},"items":[${items.join(',')}]}`;
     let response;
     try { response = await send(authorization, text); } catch (error) { for (const item of group) item.reject(error); return; }
-    // A vault that predates envelopes answers 403, 404 or 413; a busy vault (503) or a bad bearer (401) answers every item alike.
-    if (!response.headers[INGEST_FORWARD_HEADER] && ![401, 503].includes(response.status)) {
+    // A vault that predates envelopes answers 403, 404 or 413. Any other answer without the header reaches every item alike: a
+    // busy vault (503), a bad bearer (401), or an HTTP-level refusal the client provoked (431 for an oversized bearer), which must
+    // not switch the gateway to single calls for every source.
+    if (!response.headers[INGEST_FORWARD_HEADER] && PREDATES.includes(response.status)) {
       unsupportedUntil = now() + retryMs; stats.fallbacks++; return alone(group);
     }
     stats.envelopes++; stats.events += group.length;

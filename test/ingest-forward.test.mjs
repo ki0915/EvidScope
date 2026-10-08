@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
+import net from 'node:net';
 import {harness} from './harness.mjs';
 import {submit} from '../src/client.mjs';
 import {mac,verifyBundle} from '../src/crypto.mjs';
@@ -49,6 +50,10 @@ test('gateway coalescer: one envelope per bearer and turn; whole-envelope refusa
  reply=()=>({status:401,headers:{[INGEST_FORWARD_HEADER]:'1'},body:Buffer.from('{"error":"인증이 필요합니다"}')});
  answers=await Promise.all([forward('x','5'),forward('x','6')]);
  assert.deepEqual(answers.map(a=>a.status),[401,401]);assert.equal(answers[0].body,'{"error":"인증이 필요합니다"}');
+ // An HTTP-level refusal without the header (431 for an oversized bearer) reaches every item; envelopes go on.
+ reply=()=>({status:431,headers:{},body:Buffer.from('')});
+ answers=await Promise.all([forward('y','5'),forward('y','6')]);
+ assert.deepEqual(answers.map(a=>a.status),[431,431]);assert.equal(singles.length,1);
  // A vault without the envelope route: each item alone, and no envelope for retryMs.
  reply=()=>({status:403,headers:{},body:Buffer.from('{"error":"인간 감사 계정만 접근할 수 있습니다"}')});
  const before=sent.length;answers=await Promise.all([forward('a','7'),forward('a','8')]);
@@ -101,6 +106,51 @@ test('gateway envelopes end to end: the same answers as the vault gives directly
  const single=await h.start('ingress',{VAULT_URL:h.vault.url,INGRESS_FORWARD_MAX_EVENTS:'1'});
  assert.ok((await Promise.all([1,2,3].map(i=>post(single.url,agent,event('fw-s'+i))))).every(r=>r.status===202));
  await assert.rejects(h.start('ingress',{VAULT_URL:h.vault.url,INGRESS_FORWARD_MAX_EVENTS:'65'}),/Invalid INGRESS_FORWARD_MAX_EVENTS/);
+});
+
+// Raw requests on parallel connections, written in the same turn once all are connected, so the gateway usually reads them in
+// one turn and puts them in one envelope: their status lines.
+async function parallel(url,requests){
+ const target=new URL(url),sockets=await Promise.all(requests.map(()=>new Promise((resolve,reject)=>{
+  const socket=net.connect(Number(target.port),target.hostname,()=>resolve(socket));socket.on('error',reject);})));
+ const answers=sockets.map(socket=>new Promise(resolve=>{let data='';socket.setTimeout(10000,()=>socket.destroy());
+  socket.on('data',chunk=>{data+=chunk;if(data.includes('\r\n\r\n'))socket.destroy();});socket.on('close',()=>resolve(data.match(/^HTTP\/1\.1 \d+/)?.[0]));}));
+ requests.forEach(({token,headers={},body},i)=>sockets[i].write(`POST /api/ingest HTTP/1.1\r\nHost: a\r\nAuthorization: Bearer ${token}\r\n`
+  +`Content-Type: application/json\r\n${Object.entries(headers).map(([k,v])=>`${k}: ${v}\r\n`).join('')}Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`));
+ return Promise.all(answers);
+}
+test('gateway envelopes: an oversized bearer cannot switch the gateway to one vault call per event for every source',async t=>{
+ const h=await harness();t.after(()=>h.close());
+ // Watch the request lines the gateway sends to the vault.
+ const paths=[],proxy=net.createServer(client=>{
+  const vault=net.connect(Number(new URL(h.vault.url).port),'127.0.0.1');
+  client.on('data',chunk=>{const text=chunk.toString('latin1');
+   for(const m of text.matchAll(/(?:^|\n)POST (\S+) HTTP\/1\.1\r/g))paths.push(m[1]+(text.length>16000?' oversized':''));});
+  client.pipe(vault);vault.pipe(client);client.on('error',()=>vault.destroy());vault.on('error',()=>client.destroy());
+ });
+ await new Promise(done=>proxy.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>proxy.close(done)));
+ const ingress=await h.start('ingress',{VAULT_URL:`http://127.0.0.1:${proxy.address().port}`}),agent=h.principal('agent');
+ const oversized=()=>paths.includes('/internal/ingest-forward oversized');
+ const signed=n=>Array.from({length:n},()=>{
+  const body=JSON.stringify(event('big-'+randomUUID())),stamp=String(Date.now()),nonce=randomUUID();
+  return {token:agent.token,body,headers:{'x-evid-timestamp':stamp,'x-evid-nonce':nonce,'x-evid-signature':mac(agent.hmacSecret,stamp,nonce,body)}};
+ });
+ // Up to five tries of eight events each: true once one of them went up in an envelope.
+ const envelopes=async()=>{
+  for(let attempt=0;attempt<5;attempt++){
+   const before=paths.length;assert.deepEqual(await parallel(ingress.url,signed(8)),Array(8).fill('HTTP/1.1 202'));
+   if(paths.slice(before).includes('/internal/ingest-forward'))return true;
+  }
+  return false;
+ };
+ assert.ok(await envelopes(),'precondition: the gateway sends envelopes');
+ // Any client, with any bearer: small enough for the gateway, too large for the vault once the envelope's own headers are added.
+ // The vault's HTTP parser answers 431, without the envelope header.
+ const bearer='b'.repeat(16270);
+ for(let attempt=0;attempt<5&&!oversized();attempt++)
+  assert.deepEqual(await parallel(ingress.url,Array.from({length:8},()=>({token:bearer,body:'{}'}))),Array(8).fill('HTTP/1.1 431'));
+ assert.ok(oversized(),'the oversized bearer reached the vault in an envelope');
+ assert.ok(await envelopes(),'other sources still go up in envelopes (d7413a0: one vault call per event for 60 s)');
 });
 
 test('gateway envelopes: SIGKILL of the vault under load through the gateway loses no 202',async t=>{

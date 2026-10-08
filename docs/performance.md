@@ -176,6 +176,9 @@ OTLP 묶음(요청 하나가 이미 한 트랜잭션)에서도 이벤트당 약 
    때와 같은 상태 코드와 본문을 받고, 202는 여전히 그 이벤트가 든 COMMIT 뒤에만 나갑니다. 줄어드는 것은 이벤트마다의 HTTP 왕복입니다.
    - vault가 이 경로를 모르는 이전 버전이면(응답에 `x-evidscope-ingest-forward`가 없고 403·404·413) ingress는 그 묶음을 한 건씩 보내고 1분 동안
      봉투를 쓰지 않습니다. `INGRESS_FORWARD_MAX_EVENTS`(기본 64, 1-64)를 1로 두면 예전처럼 한 건씩 보냅니다. 외부 API는 바뀌지 않습니다.
+   - 이 대체는 헤더 없는 403·404·413에서만 일어납니다. 6라운드에는 401·503 말고는 헤더 없는 응답이면 모두 대체했는데, 아무 클라이언트나
+     ingress는 받지만 vault의 HTTP 파서는 거절하는 긴 bearer(약 16 KiB)를 두 건 보내면 vault가 헤더 없이 431로 답해, 1분마다 요청 두 건으로
+     모든 출처를 한 건씩 보내기로 되돌릴 수 있었습니다(7라운드 재감사, 처리량만 영향). 이제 그런 응답은 그 묶음의 항목에만 돌아갑니다.
    - 쿠키 세션만으로 `/api/ingest`를 부르는 잘못된 요청은 이제 vault에서 403 대신 401을 받을 수 있습니다(봉투는 서명 헤더 셋과 bearer만 나릅니다).
 4. **이벤트당 작은 정리**: 키·솔트·IV를 CSPRNG 한 번에 뽑기, 요청 서명 HMAC 키(KeyObject) 재사용, 보존 정책 계산 한 번, 에포크 비밀 조회 한 번,
    이벤트 하나를 projectionMutation 범위 하나로, 접수·중복 카운터를 묶음마다 한 번(유지된 savepoint의 이벤트만). 출력은 같습니다.
@@ -226,5 +229,6 @@ ingress·클라이언트·분석 worker가 이미 코어를 나눠 쓰므로 얻
   혼자 되돌아가고 다음 묶음은 cold가 아님; 카운터; 8b3af6c 내보내기(`test/fixtures/pre-stage2-export-8b3af6c.json`)를 두 검증기로 검증하고
   새 내보내기의 레코드 모양이 같음; 게이트웨이 upstream의 리다이렉트·기한·크기 한도·keep-alive.
 - `test/ingest-forward.test.mjs`: 봉투 항목이 각자의 서명 헤더와 봉투 bearer로 처리되고 오류가 항목에 머묾; ingress 묶기(토큰별, 전체 거절,
-  이전 vault로의 대체, 연결 끊김); 실제 프로세스에서 ingress 경유와 vault 직접의 응답이 같음; 부하 중 vault SIGKILL 뒤 ingress가 준 202 무손실.
+  이전 vault로의 대체, 연결 끊김); 실제 프로세스에서 ingress 경유와 vault 직접의 응답이 같음; 부하 중 vault SIGKILL 뒤 ingress가 준 202 무손실;
+  긴 bearer가 일으킨 431이 다른 출처의 봉투를 끄지 못함.
 - 기존 `test/tls.test.mjs`가 게이트웨이 → vault TLS 인증서·호스트 검증을 새 upstream으로 그대로 확인합니다.
