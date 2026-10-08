@@ -123,6 +123,16 @@ test('R4-3: a reviewer who lowered the risk tier cannot then approve the request
   assert.deepEqual([independent.status, independent.body.status], [200, 'approved']);
 });
 
+test('R4-5: names with lone surrogates do not produce duplicate keys in the bundle data OPA hashes', () => {
+  // Registry text may hold lone surrogates; Go (and so OPA) reads each as U+FFFD, so two such names are one key there.
+  const state = enforcementState({tenant: 't', revision: '1-aaaaaaaaaaaaaaaa', orders: [], entries: [{id: 'e', state: 'production',
+    sources: ['s\uD800', 's\uDC00'], actors: ['a\uD800', 'a\uDC00'], tools: [{name: 't\uD800'}, {name: 't\uDC00', enforcement: 'required'}]}]});
+  const text = goCanonical(state);
+  assert.equal(goCanonical(JSON.parse(text)), text, 'data.json is the canonical form of the value it parses to');
+  const parsed = JSON.parse(text);
+  assert.deepEqual([parsed.actors['a\uFFFD'], parsed.agents.e.tools['t\uFFFD'].enforcement], ['e', 'required'], 'a merged tool keeps required');
+});
+
 // A signed-history shape as the vault API writes it (rows without signatures: verifyApprovalHistory is the part under test).
 const T0 = Date.parse('2026-10-07T10:00:00.000Z'), iso = ms => new Date(T0 + ms).toISOString();
 function history({override, answeredBy = 'alpha-reviewer-3', change = v1 => v1, between = [], answerAt = 1000} = {}) {

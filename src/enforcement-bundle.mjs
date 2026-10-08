@@ -14,6 +14,16 @@ export const DENY_LIST_PAYLOAD_TYPE='application/vnd.evidscope.deny-list+json';
 const strings=v=>Array.isArray(v)?v.filter(x=>typeof x==='string'):[];
 const byText=(a,b)=>a<b?-1:a>b?1:0;
 
+// Map keys as OPA reads them: Go decodes a lone surrogate as U+FFFD, so two names that differ only there are one key. Keying by
+// the well-formed form keeps data.json free of duplicate keys (OPA hashes the parsed value); a merged tool keeps `required`.
+const key=name=>name.toWellFormed();
+function toolMap(tools){
+ const out=new Map();
+ for(const t of Array.isArray(tools)?tools:[])if(typeof t?.name==='string'){
+  const k=key(t.name);out.set(k,{enforcement:t.enforcement==='required'||out.get(k)?.enforcement==='required'?'required':'not_required'});
+ }
+ return Object.fromEntries(out);
+}
 // Enforcement view: no names, owners, purposes, reasons or event content; only what a policy needs to allow or deny a call.
 export function enforcementState({tenant,revision,entries,orders}){
  const live=orders.filter(o=>o.status==='active').sort((a,b)=>byText(a.id,b.id));
@@ -28,15 +38,14 @@ export function enforcementState({tenant,revision,entries,orders}){
   agents[e.id]={state:e.state,stopped:stops.some(o=>o.scope==='agent'),
    stopped_tools:[...new Set(stops.filter(o=>o.scope==='tools').flatMap(o=>strings(o.tools)))].sort(byText),
    stop_orders:stops.map(o=>o.id),sources:names(e.sources,stops,'sources'),actors:names(e.actors,stops,'actors'),
-   tools:Object.fromEntries((Array.isArray(e.tools)?e.tools:[]).filter(t=>typeof t?.name==='string')
-    .map(t=>[t.name,{enforcement:t.enforcement==='required'?'required':'not_required'}]))};
+   tools:toolMap(e.tools)};
  }
  for(const o of live)if(Object.hasOwn(agents,o.agentId)){
-  for(const s of strings(o.target?.sources))sources[s]??=o.agentId;for(const a of strings(o.target?.actors))actors[a]??=o.agentId;
+  for(const s of strings(o.target?.sources))sources[key(s)]??=o.agentId;for(const a of strings(o.target?.actors))actors[key(a)]??=o.agentId;
  }
  // One live entry per source and actor (the registry refuses overlaps); a retired entry answers only for names no live entry has.
  for(const retired of [false,true])for(const e of sorted)if((e.state==='retired')===retired){
-  for(const s of strings(e.sources))sources[s]??=e.id;for(const a of strings(e.actors))actors[a]??=e.id;
+  for(const s of strings(e.sources))sources[key(s)]??=e.id;for(const a of strings(e.actors))actors[key(a)]??=e.id;
  }
  for(const o of live)stopOrders[o.id]={agent:o.agentId,scope:o.scope,tools:strings(o.tools),issued_at:o.issuedAt};
  return {format:BUNDLE_FORMAT,tenant,revision,agents,actors,sources,stop_orders:stopOrders};
