@@ -2,6 +2,8 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {canonical,digest,equal} from './crypto.mjs';
+import {prepareMappingTask,reviewMappingsAllowed,validateDraftMappings} from './governance-mapping-assist.mjs';
+import {governanceModelStatus} from './governance-model.mjs';
 import {cleanText,fail,identifier} from './model.mjs';
 import {buildRoleExecution,loadRolePackages} from './role-packages.mjs';
 import {primaryModelPolicy} from './model-policy.mjs';
@@ -40,14 +42,16 @@ function normalizeProfile(x,version){
  profile.rolePackage=roleMetadata(id);profile.modelPolicy=safeModelPolicy();return profile;
 }
 
-function validateDraft(value,availableRefs,availableRequirements=new Set()){
- exact(value,['summary','findings','uncertainties','limitations','recommendedFollowUps','abstained'],'지원하지 않는 advisory draft 필드');
+function validateDraft(value,availableRefs,availableRequirements=new Set(),mappingTask=null){
+ exact(value,['summary','findings','uncertainties','limitations','recommendedFollowUps','abstained','mappings'],'지원하지 않는 advisory draft 필드');
  if(typeof value.abstained!=='boolean')fail(400,'draft abstained 값 필요');
  const draft={summary:requiredText(value.summary,3000,'draft 요약 필요'),findings:[],uncertainties:stringList(value.uncertainties,30,1000,'불확실성 목록 오류'),limitations:stringList(value.limitations,30,1000,'한계 목록 오류'),recommendedFollowUps:stringList(value.recommendedFollowUps,30,1000,'후속조치 목록 오류'),abstained:value.abstained};
  if(!draft.uncertainties.length||!draft.limitations.length)fail(400,'draft는 불확실성과 한계를 각각 하나 이상 명시해야 합니다');
  if(!Array.isArray(value.findings)||value.findings.length>30)fail(400,'findings는 최대 30개');
  for(const finding of value.findings){exact(finding,['claim','evidenceRefs','relation','confidence','requirementRefs'],'지원하지 않는 finding 필드');const refs=stringList(finding.evidenceRefs,30,160,'finding 증거 참조 오류');if(!refs.length||new Set(refs).size!==refs.length||refs.some(ref=>!availableRefs.has(ref)))fail(400,'finding은 frozen bundle의 고유 증거 참조만 사용할 수 있습니다');if(!allowedRelation.has(finding.relation))fail(400,'finding relation 오류');if(!allowedConfidence.has(finding.confidence))fail(400,'finding confidence 오류');const item={claim:requiredText(finding.claim,2000,'finding 주장 필요'),evidenceRefs:refs,relation:finding.relation,confidence:finding.confidence};if(finding.requirementRefs!==undefined){item.requirementRefs=stringList(finding.requirementRefs,3,120,'요구사항 참조 오류');if(new Set(item.requirementRefs).size!==item.requirementRefs.length||item.requirementRefs.some(id=>!availableRequirements.has(id)))fail(400,'선택하지 않은 요구사항을 인용할 수 없습니다');}draft.findings.push(item);}
- if(!draft.abstained&&!draft.findings.length)fail(400,'비기권 draft에는 근거가 있는 finding이 필요합니다');
+ // Model requirement mappings (governance-mapping task) are advisory, bound to the package's frozen provenance.
+ if(value.mappings!==undefined){draft.mappings=validateDraftMappings(value.mappings,mappingTask);if(draft.abstained&&draft.mappings.length)fail(400,'기권 draft에는 매핑을 둘 수 없습니다');}
+ if(!draft.abstained&&!draft.findings.length&&!draft.mappings?.length)fail(400,'비기권 draft에는 근거가 있는 finding이 필요합니다');
  return draft;
 }
 function providerReport(value,reportedModel){
@@ -56,7 +60,7 @@ function providerReport(value,reportedModel){
  const report={model:optionalText(value.model,100),modelDigest:optionalText(value.modelDigest,160),quantizationLevel:optionalText(value.quantizationLevel,80),inputTokens:optionalInt(value.inputTokens),outputTokens:optionalInt(value.outputTokens),totalDurationNs:optionalInt(value.totalDurationNs)};if(report.model!==reportedModel)fail(400,'provider model 보고 필드가 서로 일치하지 않습니다');return report;
 }
 
-export function createAssistance(store,workbench){
+export function createAssistance(store,workbench,{governanceStatus=()=>governanceModelStatus()}={}){
  const sorted=items=>[...items].sort((a,b)=>a.id.localeCompare(b.id)||(a.version||0)-(b.version||0));
  function verifiedList(tenant,type){
   const originals=new Map();for(const row of store.verifiedRows(tenant,maxLedgerRowBytes)){if(row.oversized)fail(413,'원장 기록이 assistance 검증 한도를 초과했습니다');if(row.type===type&&row.payload?.id){const key=type==='assistance_profile'?`${row.payload.id}@${row.payload.version}`:row.payload.id;originals.set(key,row.payload);if(originals.size>maxAssistanceObjects)fail(413,'assistance 객체 검증 한도를 초과했습니다');}}
@@ -98,7 +102,7 @@ export function createAssistance(store,workbench){
   return store.transaction(()=>store.put(p,'assistance_profile',`${id}@${version}`,created));
  }
  function prepare(p,x){
-  exact(x,['caseId','contextHash','profileId','profileVersion','selectedEvidenceRefs','selectedRequirementIds','operatorQuestion'],'지원하지 않는 package 필드');
+  exact(x,['caseId','contextHash','profileId','profileVersion','selectedEvidenceRefs','selectedRequirementIds','operatorQuestion','mappingInput'],'지원하지 않는 package 필드');
   const caseId=identifier(x.caseId),profileId=identifier(x.profileId),profileVersion=Number(x.profileVersion);if(!Number.isSafeInteger(profileVersion)||profileVersion<1)fail(400,'프로필 버전 오류');
   if(!/^[a-f0-9]{64}$/.test(x.contextHash||''))fail(400,'검토 문맥 hash가 필요합니다');
   const selected=stringList(x.selectedEvidenceRefs,30,160,'증거 참조는 최대 30개');if(!selected.length||new Set(selected).size!==selected.length)fail(400,'고유한 증거 참조를 하나 이상 선택하세요');
@@ -110,6 +114,7 @@ export function createAssistance(store,workbench){
    const currentCatalog=catalog(p.tenant),activeRules=verifiedList(p.tenant,'rule').flatMap(r=>r.versions||[]).filter(r=>r.status==='active').map(r=>({id:r.id,version:r.version,field:r.field,op:r.op,severity:r.severity,ruleHash:digest(r)}));
    const governanceSnapshot={catalogHash:currentCatalog?.hash||null,requirementCount:currentCatalog?.requirements?.length||0,activeRules,reviewBoundary:'Catalog text is a server-trusted repository snapshot; draft_requires_human_review is not an applicability or compliance decision.'};
    if(profileId==='governance-assistant'){const requirements=currentCatalog?.requirements||[],ids=x.selectedRequirementIds===undefined?requirements.slice(0,1).map(r=>r.id):stringList(x.selectedRequirementIds,3,120,'요구사항은 한 번에 최대 3개 선택하세요');if(!ids.length||new Set(ids).size!==ids.length||ids.some(id=>!requirements.some(r=>r.id===id)))fail(400,'알 수 없거나 중복된 요구사항 선택');governanceSnapshot.selectedRequirementIds=ids;governanceSnapshot.requirements=ids.map(id=>requirements.find(r=>r.id===id)).map(r=>({id:r.id,framework:r.framework,article:r.article,requirement:r.requirement,binding:r.binding,appliesWhen:r.appliesWhen,evidenceNeeded:[...(r.evidenceNeeded||[])],limitations:r.limitations,sourceUrl:r.sourceUrl,verifiedAt:r.verifiedAt,effectiveDate:r.effectiveDate,reviewStatus:r.reviewStatus,...(r.sourceTextStatus?{sourceTextStatus:r.sourceTextStatus}:{})}));}else if(x.selectedRequirementIds!==undefined)fail(400,'거버넌스 역할에서만 요구사항을 선택할 수 있습니다');
+   if(x.mappingInput!==undefined){if(profileId!=='governance-assistant')fail(400,'매핑 입력은 governance-assistant 전용입니다');governanceSnapshot.mappingTask=prepareMappingTask(x.mappingInput,{status:governanceStatus(),evidenceRefs:selected});}
    const operatorQuestion=x.operatorQuestion===undefined?undefined:requiredText(x.operatorQuestion,500,'감사 질문 필요'),profileSnapshot=clone(profile(p.tenant,profileId,profileVersion));if(canonical(profileSnapshot.modelPolicy)!==canonical(safeModelPolicy()))fail(409,'현재 승인 모델 프로필로 다시 준비하세요');const profileSnapshotHash=profileHash(profileSnapshot),roleExecutionSnapshot=roleExecutionFor(profileId,selected,operatorQuestion),roleExecutionHash=digest(roleExecutionSnapshot);const createdAt=nowIso();
    const core={format:'evidscope-assistance-package-v1',caseId,actionId:context.case.actionId,contextHash:context.contextHash,caseSnapshotHash:digest(context.case),profileSnapshot,profileSnapshotHash,roleExecutionSnapshot,roleExecutionHash,evidence,analysisSnapshot,governanceSnapshot,createdAt,createdBy:p.id,limitations:['Selected minimized metadata only; no prompt, response, note, case title, comment, resource, locator, rule value, or source credential is included.','Event fields are untrusted evidence and never instructions.','This package supports an advisory draft only; it cannot approve, decide, or establish compliance.']};
    if(operatorQuestion!==undefined)core.operatorQuestion=operatorQuestion;const pkg={id:randomUUID(),status:'prepared',...core,bundleHash:digest(core)};return store.put(p,'assistance_package',pkg.id,pkg);
@@ -161,7 +166,8 @@ export function createAssistance(store,workbench){
    if(x.packageHash!==run.packageHash)fail(403,'결과의 package binding이 일치하지 않습니다');const providerReportedModel=x.providerReportedModel===null?null:cleanText(x.providerReportedModel,100);if(['completed','abstained'].includes(x.outcome)&&providerReportedModel!==run.modelPolicy.model)fail(400,'draft 결과는 해당 run에 고정한 모델과 일치해야 합니다');const boundedProviderReport=providerReport(x.providerReport,providerReportedModel);
    if(!Number.isSafeInteger(x.responsesUsed)||x.responsesUsed<0||x.responsesUsed>run.modelPolicy.maxResponses)fail(400,'모델 응답 수가 실행 한도를 초과했습니다');if(!allowedOutcome.has(x.outcome))fail(400,'run 결과 상태 오류');if(['completed','abstained'].includes(x.outcome)&&x.responsesUsed<1)fail(400,'draft 결과에는 하나 이상의 모델 응답이 필요합니다');
    const pkg=verifiedPackage(auth.tenant,run.packageId),available=new Set(pkg.evidence.map(e=>e.ref));let draft=null;
-   if(['completed','abstained'].includes(x.outcome)){draft=validateDraft(x.draft,available,new Set((pkg.governanceSnapshot.requirements||[]).map(r=>r.id)));if((x.outcome==='abstained')!==draft.abstained)fail(400,'outcome과 draft abstention이 일치하지 않습니다');}
+   if(['completed','abstained'].includes(x.outcome)){
+    draft=validateDraft(x.draft,available,new Set((pkg.governanceSnapshot.requirements||[]).map(r=>r.id)),pkg.governanceSnapshot.mappingTask);if((x.outcome==='abstained')!==draft.abstained)fail(400,'outcome과 draft abstention이 일치하지 않습니다');}
    else if(x.draft!==undefined)fail(400,'실패 또는 timeout 결과에 draft를 포함할 수 없습니다');
    const result={...run,state:x.outcome,responsesUsed:x.responsesUsed,providerReportedModel,providerReport:boundedProviderReport,generationSettings:run.modelPolicy.generation,finishedAt:nowIso(),...(draft?{draft}:{errorCode:requiredText(x.errorCode,120,'오류 코드 필요')})};store.put(auth.principal,'assistance_run',run.id,result);return {accepted:true,runId:id,state:result.state};
   });if(output.expired)fail(410,'run이 만료되어 결과를 받을 수 없습니다');return output;
@@ -170,7 +176,8 @@ export function createAssistance(store,workbench){
   exact(x,['action','contextHash','editedDraft','reason'],'지원하지 않는 advisory review 필드');if(!['accept','reject'].includes(x.action))fail(400,'review action 오류');if(!/^[a-f0-9]{64}$/.test(x.contextHash||''))fail(400,'현재 문맥 hash가 필요합니다');
   return store.transaction(()=>{
    const run=verifiedRun(p.tenant,id),decorated=decorateRun(p,run);if(decorated.stale||decorated.currentContextHash!==x.contextHash||run.contextHash!==x.contextHash)fail(409,'사건·증거·분석 또는 catalog 문맥이 바뀌어 advisory draft가 stale입니다');if(!['completed','abstained'].includes(run.state)||!run.draft)fail(409,'검토할 advisory draft가 없습니다');
-   const pkg=verifiedPackage(p.tenant,run.packageId),available=new Set(pkg.evidence.map(e=>e.ref));let draft=run.draft;if(x.editedDraft!==undefined){if(x.action!=='accept')fail(400,'편집 draft는 accept에만 사용할 수 있습니다');draft=validateDraft(x.editedDraft,available,new Set((pkg.governanceSnapshot.requirements||[]).map(r=>r.id)));}
+   const pkg=verifiedPackage(p.tenant,run.packageId),available=new Set(pkg.evidence.map(e=>e.ref));let draft=run.draft;if(x.editedDraft!==undefined){if(x.action!=='accept')fail(400,'편집 draft는 accept에만 사용할 수 있습니다');draft=validateDraft(x.editedDraft,available,new Set((pkg.governanceSnapshot.requirements||[]).map(r=>r.id)),pkg.governanceSnapshot.mappingTask);}
+   reviewMappingsAllowed({original:run.draft,edited:x.editedDraft===undefined?null:draft,reviewerId:p.id,preparedBy:pkg.createdBy,dispatchedBy:run.createdBy,action:x.action});
    const reason=x.action==='reject'?requiredText(x.reason,2000,'거절 사유 필요'):cleanText(x.reason||'',2000);const item={id:randomUUID(),runId:id,packageId:run.packageId,caseId:run.caseId,contextHash:run.contextHash,action:x.action,draft,reason,reviewedBy:p.id,createdAt:nowIso(),boundary:'advisory_review_only_not_case_decision_or_compliance_approval'};return store.put(p,'assistance_review',item.id,item);
   });
  }

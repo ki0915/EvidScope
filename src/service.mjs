@@ -13,6 +13,7 @@ import {createAssistance} from './assistance.mjs';
 import {createDevelopmentRuns} from './development-runs.mjs';
 import {aiVisibility} from './ai-visibility.mjs';
 import {modelRuntimeStatus} from './model-runtime.mjs';
+import {governanceModelStatus} from './governance-model.mjs';
 import {normalizeSystemFacts,applicabilityCandidate,applicabilityPolicyVersion,applicabilityAssessmentSnapshot,applicabilityCatalogIdentity} from './governance-policy.mjs';
 import {createFinanceEvidence} from './finance-evidence.mjs';
 import {createGovernanceDocuments} from './governance-documents.mjs';
@@ -46,7 +47,7 @@ import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 
 export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
- bundleSigning,ingestBatch:ingestBatchLimits}) {
+ bundleSigning,ingestBatch:ingestBatchLimits,governanceModel=()=>governanceModelStatus()}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -63,7 +64,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const store=new Store(dataDir,key,{verifiedStateMaxAgeMs,...(tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}})});
  // Reads are recorded in a separate hash-chained access log and sealed into the ledger in batches (src/access-log.mjs).
  let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
- const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench),developmentRuns=createDevelopmentRuns(store);
+ const publicKey=createPublicKey(key);const retention=createRetention(store),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench,{governanceStatus:governanceModel}),developmentRuns=createDevelopmentRuns(store);
  // Attestations are signed through one function (src/attestation-signer.mjs) so a separate signer process can take its place.
  const signer=attestationSigner(key),receipts=createReceipts({store,config:tlogConfig,signer});
  let keyring;try{ensureDataKeyUsageTable(store.db);keyring=createKeyring({signingKey:key,dataKey,previousDataKeys,onWrite:kid=>recordDataKeyUsage(store.db,kid)});assertDataKeysAvailable(store.db,keyring);}catch(error){store.close();throw error;}
@@ -335,7 +336,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   }
   if(path==='/api/monitoring'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);return monitoring(store,principals,p.tenant,url.searchParams);});
   if(path==='/api/ai-visibility'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);const registrations=[...verifiedPolicyObjects(p,'asset').values()];return aiVisibility(store,p.tenant,url.searchParams,{runtimeStatus:runtimeStatus(),registrations});});
-  if(path==='/api/model-runtime'&&method==='GET')return {...runtimeStatus(),training:{state:'not_evaluated',counts:{tune:null,validation:null,test:null},minimumReviewed:{tune:300,validation:50,test:100},qualityClaimAllowed:false},limitations:['실행 상태는 신뢰된 Kubernetes 관측 영수증이 없거나 30초보다 오래되면 확인 불가로 표시합니다. 기본 비활성 설정은 종료 확인이 아닙니다.','모델 가중치 학습·성능 평가는 별도 실행 보고서로 확인하세요.']};
+  if(path==='/api/model-runtime'&&method==='GET')return {...runtimeStatus(),governanceModel:governanceModel(),training:{state:'not_evaluated',counts:{tune:null,validation:null,test:null},minimumReviewed:{tune:300,validation:50,test:100},qualityClaimAllowed:false},limitations:['실행 상태는 신뢰된 Kubernetes 관측 영수증이 없거나 30초보다 오래되면 확인 불가로 표시합니다. 기본 비활성 설정은 종료 확인이 아닙니다.','모델 가중치 학습·성능 평가는 별도 실행 보고서로 확인하세요.']};
   if(path==='/api/agents'&&method==='GET')return store.transaction(()=>{verifiedActions(p);verifiedEvaluations(p,{values:false});const decisions=[...verifiedPolicyObjects(p,'case_decision').values()];return agentInventory(store,principals,p.tenant,url.searchParams,Date.now(),decisions);});
   if(path==='/api/events'&&method==='GET'){
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');
