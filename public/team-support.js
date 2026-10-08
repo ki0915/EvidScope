@@ -488,7 +488,9 @@
     const tabs = el('div', 'assistance-tabs');
     const requestBtn = button('새 지원 요청 만들기', () => choose('request'));
     const runsBtn = button('지원 실행 목록', () => choose('runs'));
-    tabs.append(requestBtn, runsBtn);
+    // Which model the runs use and whether it was trained (public/home.js): the same facts as the "모델 현황" tab of this section.
+    const modelBtn = button('모델 현황', () => choose('model'));
+    tabs.append(requestBtn, runsBtn, ...(window.EvidScopeHome ? [modelBtn] : []));
     const content = el('div');
     root.append(tabs, content);
     let mode = requestedCaseId ? 'request' : 'runs'; let modeEpoch = 0;
@@ -496,9 +498,11 @@
       mode = next; const requestEpoch = ++modeEpoch;
       requestBtn.setAttribute('aria-pressed', String(mode === 'request'));
       runsBtn.setAttribute('aria-pressed', String(mode === 'runs'));
+      modelBtn.setAttribute('aria-pressed', String(mode === 'model'));
       content.replaceChildren(el('div', 'loading', '불러오는 중…'));
       try {
-        const rendered = mode === 'request' ? await requestBuilder(requestedCaseId, viewEpoch, authAtStart) : await runsList(viewEpoch, authAtStart);
+        const rendered = mode === 'model' ? await window.EvidScopeHome.modelPanel() : mode === 'request' ? await requestBuilder(requestedCaseId, viewEpoch, authAtStart)
+          : await runsList(viewEpoch, authAtStart);
         if (requestEpoch !== modeEpoch || viewEpoch !== getRenderEpoch() || authAtStart !== getAuthEpoch()) return;
         content.replaceChildren(rendered);
       } catch (error) {

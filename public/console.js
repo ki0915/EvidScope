@@ -6,11 +6,11 @@
   if (!core) return;
   const { el, button, card, empty, table, field, jsonDetails, limits, api, date, showDetail, navigate } = core;
   const sections = [
-    { id: 'status', name: '현황', routes: [['overview', '관측 개요'], ['graphs', '가시성 그래프']] },
+    { id: 'status', name: '현황', routes: [['home', '지금 확인할 일'], ['agents-now', '실행 중 에이전트'], ['overview', '관측 개요'], ['graphs', '가시성 그래프']] },
     { id: 'assets', name: 'AI 자산·수집', routes: [['visibility', 'AI 사용 가시성'], ['agents', '에이전트 목록'], ['registry', '에이전트 레지스트리'], ['approvals', '승인 대기열']] },
     { id: 'investigate', name: '탐색·조사', routes: [['investigations', '행동 조사함'], ['events', '증거 탐색'], ['alerts', '탐지 경보'], ['cases', '사건·인간 감사']] },
     { id: 'governance', name: '거버넌스', routes: [['governance', '요구사항·증거 검토']] },
-    { id: 'review', name: 'AI 검토실', routes: [['assistance', '검토 요청·초안'], ['team', '역할·개발 이력'], ['model-runtime', '모델·학습 상태']] },
+    { id: 'review', name: 'AI 검토실', routes: [['assistance', '검토 요청·초안'], ['assistance-model', '모델 현황'], ['team', '역할·개발 이력'], ['model-runtime', '모델·학습 상태']] },
     { id: 'operations', name: '운영·설정', routes: [['health', '수집·증적 건강'], ['rules', '탐지 룰·예외'], ['retention', '보존·파기']] },
   ];
   const runtimeLabels = { off: '비활성', stopped: '실행 Pod 없음', terminated: '컨테이너 종료 보고', unavailable: '실행 상태 확인 불가', observed: 'Kubernetes 관측 수신', unverified: '실행 상태 검증 전', unknown: '실행 상태 미확인', running: '실행 중', unready: '준비되지 않음', starting: '시작 중', stopping: '종료 확인 중', STOP_UNCONFIRMED: '종료 미확인', stop_unconfirmed: '종료 미확인', blocked_review: '데이터 검토 필요', not_evaluated: '평가 미실시', not_run: '미실행', pending: '대기', failed: '실패' };
@@ -173,7 +173,12 @@
     training.append(counts, el('p', 'muted', '대시(—)는 실제 검토 데이터 수가 보고되지 않았다는 뜻입니다. 최소 필요량은 확보된 수와 다릅니다.'));
     if (data.training?.minimumReviewed) training.append(table(['분할', '최소 검토 필요량'], [['학습', count(data.training.minimumReviewed.tune)], ['검증', count(data.training.minimumReviewed.validation)], ['최종 평가', count(data.training.minimumReviewed.test)]]));
     training.append(jsonDetails('학습 준비·차단 사유 원문', data.training ?? { status: 'not_provided' }));
-    node.append(training, jsonDetails('실행 정책과 검증 원문', data)); return node;
+    node.append(training);
+    // Which model the review room uses and whether it was trained (public/home.js, src/model-status.mjs).
+    if (window.EvidScopeHome) {
+      try { node.append(await window.EvidScopeHome.modelPanel()); } catch (error) { node.append(empty('모델 현황을 불러오지 못했습니다', error.message)); }
+    }
+    node.append(jsonDetails('실행 정책과 검증 원문', data)); return node;
   }
   function updateNavigation(view) {
     if (document.body) document.body.dataset.workspaceView = view;
@@ -205,6 +210,6 @@
   core.registerView('visibility', 'AI 사용 가시성', '로컬·사내망의 등록 자산, 관측 경로와 확인하지 못한 내용을 함께 조사합니다.', visibilityView);
   core.registerView('model-runtime', '모델·학습 상태', '격리된 감사 모델의 기본 정책, 실제 실행 확인과 학습 준비 상태를 확인합니다.', modelRuntimeView);
   window.EvidScopeConsole = Object.freeze({ updateNavigation, overviewPulse, observationState, modelStatusCard, languageCard, screeningCard, visibilitySummary, assetDetailNode });
-  document.querySelector('.brand')?.addEventListener('click', event => { event.preventDefault(); navigate('overview'); });
+  document.querySelector('.brand')?.addEventListener('click', event => { event.preventDefault(); navigate('home'); });
   updateNavigation(core.getActiveView());
 })();
