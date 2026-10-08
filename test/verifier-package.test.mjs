@@ -21,7 +21,8 @@ import {receiptFixture} from './support/receipt-fixture.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const repo = fileURLToPath(new URL('..', import.meta.url));
-const BUILTINS = ['node:crypto', 'node:fs', 'node:path', 'node:util'];
+// node:zlib reads .tar.gz evidence packages (docs/evidence-pack.md).
+const BUILTINS = ['node:crypto', 'node:fs', 'node:path', 'node:util', 'node:zlib'];
 const walk = (dir, base = dir) => readdirSync(dir, {withFileTypes: true})
   .flatMap(e => (e.isDirectory() ? walk(join(dir, e.name), base) : [relative(base, join(dir, e.name)).split(sep).join('/')])).sort();
 // A minimal ustar reader written independently of the packager; header checksums are checked.
@@ -97,6 +98,8 @@ test('package-verifier builds a dependency-free, reproducible verifier folder an
   // other files of the package; nothing loads code dynamically or reaches for the network through globals.
   assert.deepEqual(files.filter(p => p.startsWith('src/')), a.files.map(f => f.path).filter(p => p.startsWith('src/')));
   assert.ok(files.includes('src/verify-cli.mjs') && !files.includes('src/service.mjs') && !files.includes('src/store.mjs'));
+  // The mappings of evidence packages read these data files beside src/, as in the repository.
+  assert.deepEqual(files.filter(p => p.startsWith('data/')), ['data/isms-p-alignment.json', 'data/requirements.json']);
   for (const p of files.filter(f => f.endsWith('.mjs'))) {
     const text = read(p).toString();
     assert.doesNotMatch(text, /\bimport\s*\(|\brequire\s*\(|\bfetch\s*\(|WebSocket|process\.(binding|dlopen)|createRequire/, p);
