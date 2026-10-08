@@ -11,8 +11,9 @@ import {isDecision} from './decision-rules.mjs';
 import {createStopOrders} from './stop-order-service.mjs';
 import {STOP_PROPAGATION_DEFAULTS} from './stop-orders.mjs';
 import {normalizeApprovalPolicy} from './approval-service.mjs';
+import {createCatalogImport} from './catalog-import-service.mjs';
 
-const RESERVED=new Set(['candidates','policy','transitions','stops']);
+const RESERVED=new Set(['candidates','policy','transitions','stops','import']);
 const SOURCE_KINDS=['agent','tool','authority','safety','telemetry','otlp','enforcement'];
 const ENTRY_FIELDS=['name','owner','purpose','sources','actors','assetIds','systemId','models','tools','dataCategories','destinations','fingerprint'];
 const GATE_FIELDS=['owner','purpose','systemId','assetIds','fingerprint','models','tools','dataCategories','destinations'];
@@ -365,6 +366,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
  }
  // Stop orders and their propagation (src/stop-order-service.mjs, docs/kill-switch.md) share this storage and four-eyes path.
  const stops=createStopOrders({store,principals,policyObjects,dirty,rows,retained,policy,entryOf,suspend,supersede,evidenceRefs,now});
+ // Catalog import (src/catalog-import-service.mjs): A2A Agent Cards and Backstage entities as discovered entries with provenance.
+ const catalog=createCatalogImport({store,policyObjects,putVersion,riskRecord,supersede,now});
  function handle(p,method,url,x){
   const path=url.pathname;if(path!=='/api/registry'&&!path.startsWith('/api/registry/'))return undefined;
   const parts=path.split('/').slice(3).map(decodeURIComponent);
@@ -388,6 +391,7 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   if(parts.length===1&&parts[0]==='policy')return setPolicy(p,x);
   reviewer(p);
   if(!parts.length)return create(p,x);
+  if(parts.length===1&&parts[0]==='import')return catalog.importCatalog(p,x);
   if(parts.length===3&&parts[0]==='transitions'&&['approve','refuse'].includes(parts[2]))return decide(p,parts[1],parts[2],x);
   if(parts[0]==='stops')return stops.handle(p,'POST',parts,x);
   if(parts.length===2&&parts[1]==='stop')return stops.issue(p,parts[0],x);

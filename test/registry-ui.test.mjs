@@ -124,3 +124,33 @@ test('a draft is created with explicit lists and tools that require an enforceme
   assert.match(create.textContent, /mail-agent v1을 서명했습니다. 위험 등급 계산값: 중간/);
   assert.equal(f.calls[1].path, '/api/registry/mail-agent');
 });
+
+test('catalog import posts the pasted document, renders the report as text and shows provenance on the entry', async () => {
+  const report = {importId: 'i-1', dryRun: false, summary: {created: 1, updated: 0, unchanged: 0, conflict: 1, skipped: 0, rejected: 0, rejectedDocuments: 0},
+    documents: [{index: 0, format: 'a2a-agent-card'}],
+    results: [{documentIndex: 0, entityIndex: 0, outcome: 'created', key: 'a2a:https://geo.example/a2a', entry: {id: 'a2a.geo.0123456789'},
+      signature: {status: 'verified'}, dropped: [{field: 'skills', reason: 'offered_skills_are_not_tools_used'}]},
+    {documentIndex: 0, entityIndex: 1, outcome: 'conflict', reason: 'edited_since_import', key: hostile, entry: {id: 'x'}, dropped: []}],
+    limitations: ['카탈로그 문서의 값은 자기 보고입니다']};
+  const catalog = {format: 'a2a-agent-card', formatVersion: '1.0', key: 'a2a:https://geo.example/a2a', endpoint: 'https://geo.example/a2a',
+    locator: hostile, locatorMatchesEndpoint: false, documentDigest: 'sha256:aa', entityDigest: 'sha256:bb', importedBy: 'alice', importedAt: 't',
+    signature: {status: 'unverified', signatures: [{alg: 'ES256', kid: 'k1', status: 'no_supplied_key'}]}, mapped: ['name', 'purpose'], dropped: ['skills']};
+  const f = fixture((path, method) => method === 'POST' ? report : {...detail, entry: {...entry, state: 'discovered', catalog}});
+  const form = f.ui.importForm(), before = f.calls.length;
+  await form.events.submit({format: 'a2a', content: '{"name":"Geo"}', locator: '', agentTypes: '', keys: '{not json', mode: 'import'});
+  assert.equal(f.calls.length, before, 'invalid key JSON is refused before posting');
+  await form.events.submit({format: 'backstage', content: 'kind: Component', locator: ' https://git.example/catalog-info.yaml ', agentTypes: 'ai-agent, bot',
+    keys: '{"keys":[]}', mode: 'preview'});
+  assert.deepEqual(f.calls.at(-1), {path: '/api/registry/import', method: 'POST', body: {documents: [{format: 'backstage', content: 'kind: Component',
+    locator: 'https://git.example/catalog-info.yaml'}], keys: {keys: []}, agentTypes: ['ai-agent', 'bot'], dryRun: true}});
+  await form.events.submit({format: 'a2a', content: '{"name":"Geo"}', locator: '', agentTypes: '', keys: '', mode: 'import'});
+  assert.deepEqual(f.calls.at(-1).body, {documents: [{format: 'a2a', content: '{"name":"Geo"}'}], dryRun: false});
+  const text = form.textContent;
+  for (const expected of ['가져오기 완료', '새로 1', '충돌 1', '새로 등록(발견됨)', '충돌(덮어쓰지 않음)', 'edited_since_import', '제출한 공개 키로 확인',
+    'skills(offered_skills_are_not_tools_used)', '자기 보고입니다', hostile]) assert.ok(text.includes(expected), expected);
+  assert.ok(f.navigations.includes('registry'), 'the list is refreshed after an import');
+  await f.ui.openEntry('a2a.geo.0123456789');
+  const shown = f.last().textContent;
+  for (const expected of ['카탈로그 출처', 'A2A Agent Card (1.0)', '불일치', 'sha256:bb', '서명 있음·확인할 키 없음', 'ES256 k1', 'alice · t', '버린 필드skills', hostile])
+    assert.ok(shown.includes(expected), expected);
+});

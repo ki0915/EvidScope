@@ -1,0 +1,1456 @@
+{
+ "format": "evidscope-test-fixture-v1",
+ "description": "Export written by commit 503c185 (before catalog import): tenant alpha, a registry entry in production then suspended, a discovered entry promoted to draft with a risk override, a deny decision, tool executions and v1/v2 evaluations.",
+ "baseCommit": "503c185",
+ "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEALnC3/HYgoI9q0v6qo+bT4Q7kdd1etq+yVkpECFjZ/7A=\n-----END PUBLIC KEY-----\n",
+ "exportBundle": {
+  "format": "evidscope-export-v2",
+  "records": [
+   {
+    "payload": {
+     "createdAt": "2026-10-08T00:00:54.501Z",
+     "hash": "c6125a730ea79d6ad47bb17a7be21ea2e9e3a290c4a615a6e38ce39cc1dba91b",
+     "legalSourceCoverage": {
+      "automaticLegalVerdict": false,
+      "checkedAt": null,
+      "hash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+      "jurisdiction": "KR",
+      "limitations": [
+       "법률·시행령 원문 확인과 하위 고시·위원회 결정 확인은 별개입니다. 미확인은 부존재·적용 제외·법 위반 판정이 아닙니다.",
+       "개별 조치의 기술 근거 또는 사람의 충분성 평가가 확인되어도 한국법 전체 지원 완료를 의미하지 않습니다."
+      ],
+      "registeredRequirements": 0,
+      "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schemaVersion": 1,
+      "scope": "selected_ai_operator_and_public_user_governance_requirements",
+      "scopeDescription": "등록된 주요 사업자·공공 이용자의 거버넌스 의무를 검토하며 한국 AI 기본법 전체를 포괄하지 않습니다.",
+      "status": "not_recorded",
+      "unresolvedSources": [],
+      "unverifiedDetailNoticeRequirementIds": [],
+      "version": "evidscope-kr-legal-source-coverage-v1",
+      "wholeLawComplete": false
+     },
+     "legalSourceCoverageHash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+     "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "requirements": [],
+     "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "schemaVersion": 2
+    },
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "principal": "catalog-loader",
+    "recordedAt": "2026-10-08T00:00:54.862Z",
+    "seq": 1,
+    "tenant": "alpha",
+    "type": "catalog",
+    "hash": "adb5b14cec3b0fca81a49262de8b719a8b87f65974008be2f6991dd9f2f47d75"
+   },
+   {
+    "payload": {
+     "actionId": "reg-pre",
+     "ciphertext": "aBfYOhEh/jq7NwdxdtE7/u6YVE9rFLFCmPO1aSQfI2nFBy/pcN3FVHqXQsvvYG6VFccTPATER2xyHaLEViBvLth3ldQfHxumVJTi8qcKAca1YDwWHkIdoFwfZXzw1leM8I0tpdLh+4mLcdXRB0Pb01j+joHJc6KObFxejJjSweGcebXwmqeR8ov0hnTKL7XTh8r/iolWz0K5Nei2RJ28tlAEm4UkL7uTK3t6GpY/1Ql6oRiiFwbcgKBHpym74Z4Pz2cyTHAhAKOAWxynJ36WHsv70RK/kDGoqzRzthiX9PLRY91fsvMX8LTEpvD9ZD/O9HxfpDo+IwzI3JHjZmMWMcsh/BaLn9REZhHzCZSJCYbWMlW+h7YLOHTEwnxIAAnZQ8SPqz1zqItKFkb9dDzCanl61d0O3SFkyhX3I/D9AK+eJmv9ozKuHToUGhY0Fg1GTCPhaoL84N76ZWUk5gSPCEB3lHsjdPa4hElHHzul7gLMLq/OXYBdzkLR+S1txCw8L+yNO+tRguQFyTA/cBU3MObDEC1dAcbiZTIO6G4OttAYxxtvfEvkLAjz6rUG6nZe7F6opyfG171qpD9t5rP2IAoCdnyCYTku52254vyCB554ibCWVt/Z/VCxfPb3BH6pupE/e5KkQjfnrpI6wqYFJayIUgpNetvKMR8iadwhKkg=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "Xi+A7XkHVcv9HydP",
+     "keyEpoch": "2026-11",
+     "keyId": "d1490959-9d86-41a6-b81d-2bfdafcd3f5c",
+     "payloadCommitment": "1be117b0c24759a2a3dc42a48c9d7f06e0cdc0d61d817d07448f9a9a929b2d95",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:00:54.873Z",
+     "seq": 2,
+     "tag": "Vajn4tRfv9AwKI0xSg4vFw==",
+     "tenant": "alpha"
+    },
+    "previous": "adb5b14cec3b0fca81a49262de8b719a8b87f65974008be2f6991dd9f2f47d75",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T00:00:54.883Z",
+    "seq": 2,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "65e7e75cc570eda96cbcc3adf990537f7fdaf0b0964ab0b71f6a49e07bf0f34e"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "65e7e75cc570eda96cbcc3adf990537f7fdaf0b0964ab0b71f6a49e07bf0f34e",
+     "eventSeq": 2,
+     "fingerprint": "fp2:2026-11:1bda5224e4ba412257f5ad43cb94ba7ecd1279135a2198ed430c685868748e31",
+     "format": "evidscope-event-receipt-v1",
+     "id": "reg-pre",
+     "source": "alpha-agent"
+    },
+    "previous": "65e7e75cc570eda96cbcc3adf990537f7fdaf0b0964ab0b71f6a49e07bf0f34e",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T00:00:54.883Z",
+    "seq": 3,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "45d35bc77982c0f62f0d0334b91e5a70f868829be0b7d6b8ba6a85c97e802e85"
+   },
+   {
+    "payload": {
+     "actionId": "reg-pre",
+     "analysisTime": "2026-10-08T00:00:54.900Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:00:54.908Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-agent/reg-pre"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      }
+     ],
+     "id": "a4f6f196-c184-4ac5-9543-464858b9326f",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        2
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "5650714a712bd90c387d24174219bb706104d3533739fe7f9a3dd72401ba9def",
+     "status": "evaluated",
+     "version": 1,
+     "worker": "analysis-worker"
+    },
+    "previous": "45d35bc77982c0f62f0d0334b91e5a70f868829be0b7d6b8ba6a85c97e802e85",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:00:54.909Z",
+    "seq": 4,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "f3e98f9e2f8c2edfc9081fb7d5c32a0d4435d02bd8e62b1c64e2e0f019c0e53b"
+   },
+   {
+    "payload": {
+     "actors": [
+      "lookup-agent"
+     ],
+     "assetIds": [],
+     "change": "created",
+     "dataCategories": [],
+     "destinations": [
+      "kb.internal"
+     ],
+     "editedAt": "2026-10-08T00:00:54.916Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:54.916Z",
+     "fingerprint": {},
+     "id": "lookup-agent",
+     "models": [],
+     "name": "lookup-agent",
+     "owner": "ops",
+     "purpose": "lookups",
+     "registeredAt": "2026-10-08T00:00:54.916Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "88a9a100897b28d13edac54ed71504204fef6a722ae90ff6dc854311ef59ceee",
+      "computed": "low",
+      "override": null,
+      "reasons": [],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "low",
+      "tools": [
+       {
+        "name": "lookup",
+        "tier": "low"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "draft",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "lookup"
+      }
+     ],
+     "version": 1
+    },
+    "previous": "f3e98f9e2f8c2edfc9081fb7d5c32a0d4435d02bd8e62b1c64e2e0f019c0e53b",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:54.918Z",
+    "seq": 5,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "6fe6dc1ec0c19483e20e937dcfef39cbbd33b1ad7d3d8117bb257261588cf4a7"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "draft",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.925Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "testing",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "53b06b38-a61c-46e9-b468-da127de92562",
+     "reason": "pilot",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 1,
+     "requestedAt": "2026-10-08T00:00:54.925Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "to": "testing"
+    },
+    "previous": "6fe6dc1ec0c19483e20e937dcfef39cbbd33b1ad7d3d8117bb257261588cf4a7",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:54.925Z",
+    "seq": 6,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "35c3e2f7902f550025051bedf42ac31aa5b7540625113033c0050c1cf7583cc6"
+   },
+   {
+    "payload": {
+     "actors": [
+      "lookup-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [
+      "kb.internal"
+     ],
+     "editedAt": "2026-10-08T00:00:54.916Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:54.926Z",
+     "fingerprint": {},
+     "id": "lookup-agent",
+     "lastTransition": {
+      "at": "2026-10-08T00:00:54.926Z",
+      "from": "draft",
+      "id": "53b06b38-a61c-46e9-b468-da127de92562",
+      "requestedBy": "alpha-reviewer",
+      "to": "testing"
+     },
+     "models": [],
+     "name": "lookup-agent",
+     "owner": "ops",
+     "purpose": "lookups",
+     "registeredAt": "2026-10-08T00:00:54.916Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "88a9a100897b28d13edac54ed71504204fef6a722ae90ff6dc854311ef59ceee",
+      "computed": "low",
+      "override": null,
+      "reasons": [],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "low",
+      "tools": [
+       {
+        "name": "lookup",
+        "tier": "low"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "testing",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "lookup"
+      }
+     ],
+     "version": 2
+    },
+    "previous": "35c3e2f7902f550025051bedf42ac31aa5b7540625113033c0050c1cf7583cc6",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:54.928Z",
+    "seq": 7,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "147c559e393a831a39f7545ba90fee11157298fd399252369da7636bb82428e0"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.934Z",
+      "conditions": [
+       {
+        "check": "fields_present",
+        "detail": {
+         "missing": []
+        },
+        "id": "owner-purpose",
+        "met": true
+       }
+      ],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "approved",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "a0adc0d9-78bb-4c3a-a68d-895b216942de",
+     "reason": "pilot passed",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T00:00:54.934Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "approved"
+    },
+    "previous": "147c559e393a831a39f7545ba90fee11157298fd399252369da7636bb82428e0",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:54.935Z",
+    "seq": 8,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "6ffbbc808312f1b8e2533fdbd28d5f20ca4144fb5c49764fefc1583333d04a69"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T00:00:54.940Z",
+      "conditions": [
+       {
+        "check": "fields_present",
+        "detail": {
+         "missing": []
+        },
+        "id": "owner-purpose",
+        "met": true
+       }
+      ],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "approved",
+      "tier": "low",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.934Z",
+      "conditions": [
+       {
+        "check": "fields_present",
+        "detail": {
+         "missing": []
+        },
+        "id": "owner-purpose",
+        "met": true
+       }
+      ],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "approved",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "a0adc0d9-78bb-4c3a-a68d-895b216942de",
+     "reason": "pilot passed",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T00:00:54.934Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T00:00:54.939Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "approved"
+    },
+    "previous": "6ffbbc808312f1b8e2533fdbd28d5f20ca4144fb5c49764fefc1583333d04a69",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:00:54.941Z",
+    "seq": 9,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "071ebb44d44af508d47a5921208bcb3d1ddbb3ff169d4e82db0164c4943e0079"
+   },
+   {
+    "payload": {
+     "actors": [
+      "lookup-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [
+      "kb.internal"
+     ],
+     "editedAt": "2026-10-08T00:00:54.916Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:54.942Z",
+     "fingerprint": {},
+     "id": "lookup-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T00:00:54.942Z",
+      "from": "testing",
+      "id": "a0adc0d9-78bb-4c3a-a68d-895b216942de",
+      "requestedBy": "alpha-reviewer",
+      "to": "approved"
+     },
+     "models": [],
+     "name": "lookup-agent",
+     "owner": "ops",
+     "purpose": "lookups",
+     "registeredAt": "2026-10-08T00:00:54.916Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "88a9a100897b28d13edac54ed71504204fef6a722ae90ff6dc854311ef59ceee",
+      "computed": "low",
+      "override": null,
+      "reasons": [],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "low",
+      "tools": [
+       {
+        "name": "lookup",
+        "tier": "low"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "approved",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "lookup"
+      }
+     ],
+     "version": 3
+    },
+    "previous": "071ebb44d44af508d47a5921208bcb3d1ddbb3ff169d4e82db0164c4943e0079",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:00:54.943Z",
+    "seq": 10,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "ad04c83c64d51aee2250c7fa7a520b475a81673e77971a72b91d76ed5c581ac3"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.949Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "production",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "990153de-7ce4-469b-8562-1888bd83958d",
+     "reason": "go live",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T00:00:54.950Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "production"
+    },
+    "previous": "ad04c83c64d51aee2250c7fa7a520b475a81673e77971a72b91d76ed5c581ac3",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:54.950Z",
+    "seq": 11,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "f20a9bf7b4d677e8828cfae097ab36f0cc81a868d0bba1beb2a77c6d7a3d2894"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T00:00:54.956Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "production",
+      "tier": "low",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.949Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "production",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "990153de-7ce4-469b-8562-1888bd83958d",
+     "reason": "go live",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T00:00:54.950Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T00:00:54.954Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "production"
+    },
+    "previous": "f20a9bf7b4d677e8828cfae097ab36f0cc81a868d0bba1beb2a77c6d7a3d2894",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:00:54.956Z",
+    "seq": 12,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "120fd292ddca1f1f22239b50e46e80c5dc66e4f3be72a29f4de74f74d916f155"
+   },
+   {
+    "payload": {
+     "actors": [
+      "lookup-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [
+      "kb.internal"
+     ],
+     "editedAt": "2026-10-08T00:00:54.916Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:54.957Z",
+     "fingerprint": {},
+     "id": "lookup-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T00:00:54.957Z",
+      "from": "approved",
+      "id": "990153de-7ce4-469b-8562-1888bd83958d",
+      "requestedBy": "alpha-reviewer",
+      "to": "production"
+     },
+     "models": [],
+     "name": "lookup-agent",
+     "owner": "ops",
+     "purpose": "lookups",
+     "registeredAt": "2026-10-08T00:00:54.916Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "88a9a100897b28d13edac54ed71504204fef6a722ae90ff6dc854311ef59ceee",
+      "computed": "low",
+      "override": null,
+      "reasons": [],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "low",
+      "tools": [
+       {
+        "name": "lookup",
+        "tier": "low"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "production",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "lookup"
+      }
+     ],
+     "version": 4
+    },
+    "previous": "120fd292ddca1f1f22239b50e46e80c5dc66e4f3be72a29f4de74f74d916f155",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:00:54.960Z",
+    "seq": 13,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "f3367089440a9893453e7d83726b51d689c960a4ae0a15c18dd621fbf5e2bb05"
+   },
+   {
+    "payload": {
+     "actionId": "reg-denied",
+     "ciphertext": "BdwgjDyaNtAqQYzPYc0YPfrsodKGz+3l7lmj/xh6lZUwDIRyLWs2mpR4Fk3AyF5ZYWfUGXpmlmZPy90konyfM3uyfTEWNisSXVjnCcFxQgPc6e8cZZnAahsi3jpYuUDfDMU1veSnjzuTXPiiaotTwGLG8nb0IFXB7CwfC50ISrSr7Uzw8t7Z40crGo1zX54hUbRCkJsUkiEl9RdNdPjoSRoXx1m8Ng6icZduUBkv5zfC1NBBAngnFD3zaynjTy34uZFlN61Jf8krvP8bs8/nWDLxu8RqiV05/Tld7OUOgV7maJyCLxRgd32OFkthvxxm+B4mIjU557I0eZYqd1YZoJzzAvEpMVvdza8Tgt5yvn5SrlGGW9lzW31G8tMrb82vHAExERBbon419H9LmraQjiOeu+t8Czkvl44QyqrDRd72537UAe+Ca/pjzPqpZBJUD1E0mmtZQ2uR16LcN27XR39zFEtbOh3MtyRW24g6JH09dIGp8srDac2xE0EDd4mAPvJImYJlmkp2N1k5VbY7Ofa9gwUsIOds7Iywwk6nTmzwijyQ7RgM8X1HuU8UVRHA4DJ7CNjIHY1nLCKt6LoxE+0fLoyuqdL1+fYuBnZSL7SAadhLGW4WtwzqaMaJi5cA0QQsD0G30a2eDyuBswFuaG10iZUGkZCQEmZYeQ1YeqGOY6XxY/9xXVaKaLP3/1lBfSM9pm/kuaEIpxQD69xZ9T4DNv85pgRoK5fPpjRFKaKmxaqbxdWW5ll9WMCu0bGVk5p3F6lVRQQB1ucQUd+tyyWLj3gsv8KPF4gxuiVUtg8hX6k4o6DJc/yhrpQUScIwAvoCnqDcnheBBXRm8wi/lg==",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "3ufvxvjvJdX9PbJX",
+     "keyEpoch": "2026-11",
+     "keyId": "a72cc014-a94d-4f69-ac35-3807d7677790",
+     "payloadCommitment": "4bcd413c96a25f89da7c41d28d0cf2bd9f1c24cc46da7ed6094867955a80862b",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:00:54.963Z",
+     "seq": 14,
+     "tag": "a3JtRQ4RDRrMDcAiIuvkGA==",
+     "tenant": "alpha"
+    },
+    "previous": "f3367089440a9893453e7d83726b51d689c960a4ae0a15c18dd621fbf5e2bb05",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:00:54.966Z",
+    "seq": 14,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "60487ec1cf085bba9d8b2fef7d50be01254b4c80aaac8727f55d7a9a5a4d0f47"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "60487ec1cf085bba9d8b2fef7d50be01254b4c80aaac8727f55d7a9a5a4d0f47",
+     "eventSeq": 14,
+     "fingerprint": "fp2:2026-11:28071905309453d07d83c3388e92460d11104f4aef58187a4d5f4f7997bc3536",
+     "format": "evidscope-event-receipt-v1",
+     "id": "reg-deny",
+     "source": "alpha-gateway"
+    },
+    "previous": "60487ec1cf085bba9d8b2fef7d50be01254b4c80aaac8727f55d7a9a5a4d0f47",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:00:54.967Z",
+    "seq": 15,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "0bac9b4b6f92c8b3b8bd525a164357d1c81aef753ecfcdece9a954b2e28d039a"
+   },
+   {
+    "payload": {
+     "actionId": "reg-denied",
+     "ciphertext": "/k2aHaN8LdY1ChEozmGdtKk8WkxxP6ApzpKqeRY/XJesU+sQJ5+CpQwmLnVYRB8oTXCJxCCqRhHjhTQvvtVmeFyR2WY7skrHgwm038JUAtdsoYsG3I/GM+zS2JkC3lT/UaoWcxGwC3FdRThNoLlyHfvwPcECenQSGtH60Ts+TVRMT3zgxwptdyN1eqhE3JoVe1UjpucIr4RbQwBN12+vk6d68GxgdnyRgxFDNin8rmlgVsmnuVGVAjmnyfLX6sE3ljj3K4as4WAMDUJ8UL2HEKpXnNIPCHNBwyQ5dNbYt6aamJPOFa+McPxTzqtzUGC+ncHgIjx5d2tKKbtiUYUh/Ag1LNJa01jbvztEkFUzTkasAeh6/t4uHwDRTsKpNetC/ApY7gaUv3CcQ5Ty5iTkAp6XP1N77TU2Xkt3UNPiCicdqWCqu0hXR46fNF6Tw2iMEoqyx/do9MMiQVUZQbk9+Ro4sJtEhp61/rUHSADN47DVYXO39rbIYb123oT4yrZ710mlOI6ne0akrbAZ7gqItblajpUza/XGsqvciEtMXWRKs5QENwaoYVuZ0PVKlzknPN6ya2Vv8X5ng0KyLgipBxRAoYITb7egTkwLeoErrMgolaq6KtN+lDx46hhibM+PFWL6zaiF5BAIIbCrmSDpW84jvUNtMJK8UC+gw37yGes32EwMtWWIifCcMcl63p69TJn0Et4WbUpv9FnzF/183i4pKTbHdRCAEnppPWMMZUFO6jRo3rtYyZlxypSPNGs7",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "+6nL6dt6mpOY6yfW",
+     "keyEpoch": "2026-11",
+     "keyId": "f6ddf6e4-f37b-4e39-9006-c96c6e498eb4",
+     "payloadCommitment": "bd7a9a6fa4148a0f0205e28fc3d25f1ebb4d19ed2945c37f98a737116e2ea29f",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:00:54.976Z",
+     "seq": 16,
+     "tag": "jIc3/Fp0ibCBgwiCC3OABQ==",
+     "tenant": "alpha"
+    },
+    "previous": "0bac9b4b6f92c8b3b8bd525a164357d1c81aef753ecfcdece9a954b2e28d039a",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:00:54.979Z",
+    "seq": 16,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "3bdcc08ade49bb44b94d86ecead599dcc68da733f42284eef1c33b48aa4dc7fb"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "3bdcc08ade49bb44b94d86ecead599dcc68da733f42284eef1c33b48aa4dc7fb",
+     "eventSeq": 16,
+     "fingerprint": "fp2:2026-11:0ed86323745cafb8d2ac58fbec4aba3967c16ce864be6146771494b2ed7dc045",
+     "format": "evidscope-event-receipt-v1",
+     "id": "reg-exec",
+     "source": "alpha-tool"
+    },
+    "previous": "3bdcc08ade49bb44b94d86ecead599dcc68da733f42284eef1c33b48aa4dc7fb",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:00:54.979Z",
+    "seq": 17,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "82019dfd645199c2b42526b86f613eea0e76f71eefbecea0141159e273d91f68"
+   },
+   {
+    "payload": {
+     "agentId": "lookup-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "production",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:54.990Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "suspended",
+      "tier": "low",
+      "unmet": []
+     },
+     "id": "e3b0c8c6-164c-495d-967f-95ee6f75b64a",
+     "reason": "incident",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 4,
+     "requestedAt": "2026-10-08T00:00:54.990Z",
+     "requestedBy": "alpha-admin",
+     "status": "applied",
+     "to": "suspended"
+    },
+    "previous": "82019dfd645199c2b42526b86f613eea0e76f71eefbecea0141159e273d91f68",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T00:00:54.991Z",
+    "seq": 18,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "3e9042f67be3f1d977d3f159c8de6e0ff3751725bd03d57da2571daed937b3dd"
+   },
+   {
+    "payload": {
+     "actors": [
+      "lookup-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [
+      "kb.internal"
+     ],
+     "editedAt": "2026-10-08T00:00:54.916Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:54.991Z",
+     "fingerprint": {},
+     "id": "lookup-agent",
+     "lastTransition": {
+      "at": "2026-10-08T00:00:54.991Z",
+      "from": "production",
+      "id": "e3b0c8c6-164c-495d-967f-95ee6f75b64a",
+      "requestedBy": "alpha-admin",
+      "to": "suspended"
+     },
+     "models": [],
+     "name": "lookup-agent",
+     "owner": "ops",
+     "purpose": "lookups",
+     "registeredAt": "2026-10-08T00:00:54.916Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "88a9a100897b28d13edac54ed71504204fef6a722ae90ff6dc854311ef59ceee",
+      "computed": "low",
+      "override": null,
+      "reasons": [],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "low",
+      "tools": [
+       {
+        "name": "lookup",
+        "tier": "low"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "suspended",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "lookup"
+      }
+     ],
+     "version": 5
+    },
+    "previous": "3e9042f67be3f1d977d3f159c8de6e0ff3751725bd03d57da2571daed937b3dd",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T00:00:54.992Z",
+    "seq": 19,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "cc730674753f1492f19078a8926c96fbcf74e2f8fbbe453357ca9baf9c9ce1ae"
+   },
+   {
+    "payload": {
+     "actionId": "reg-during",
+     "ciphertext": "M2rXtalILFMi0T/15bICvaGTmrmxz8ibvkYnWB4Ew/fYejBw51/1EqR4PvejD//1tamqh8cwij8ioCYmiXa/oKlx6v4nYhY2AYP3W5HqmUznKsF3dyRGD3SOfoc+Fkm7xj117z0oP+2bg3lRNMu6Kb4iY9EbZXDagnFNri9dIYutYnhfunx9CQcsqDxs1VYAr4e9i1JpxX57gkvasDUgpNDkoyLnxGV+naCgPjQmuSgZjRLl0XhoRTeoA58IY57L+nZu1Z8cacfkx/qI8VnAQsXqWvi1vERBeXq8kntsHexRGQaHEtHRtSWH0yan0qHMrxRXjRALuQuuOxSGY8q9REUiZauvEvT2VwgNZNr8u2u87J1htp80H1mnJ8mE2Ala7xT4PaC3TGx+tIVWU8Xq+uEkSQGmnEPJ3fkRWzU9RASMq8Kf6Vw6LpBi404EvrsuX3qvc4srGlKI/oJE37PL8K20OrEkjy3++W2pJkQ9I55EuCVOHEJ7XnL07bF2SObGAixwisgNkKPrgw0MN0bqMHd/PLp2Nq4QDVUZftWODhu7jcrwhNN4sM8qUafdDwqJH+0BRiQOGDSdhSUGbB9jkLv2kAGoXYJQ4mGpM8cIiReaAYJicY2Wlx6BcTDXJKfpG3Dn+yCjo2iPUFRGgx/fDPUkOsMxw26M5DbIxOtv6NWvzV8EuNn0V6NZuJT+5jFlPItfV/tgzXkTKVYtcScBL/iT6CtbFckiInu3SIkIn/9gNv2yLSruQlFroczAB27S",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "mjq/KZ7M4GSNh2cj",
+     "keyEpoch": "2026-11",
+     "keyId": "1b49316b-bddb-4bbe-a289-ded7ed99bbb5",
+     "payloadCommitment": "bd8bde6ff0508dea62ae41dff8dd5e2f58e2f481980f087fe79a4f3ed43d6c79",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:00:54.999Z",
+     "seq": 20,
+     "tag": "ZLxaTpUuUAfBQ30UHfVTVg==",
+     "tenant": "alpha"
+    },
+    "previous": "cc730674753f1492f19078a8926c96fbcf74e2f8fbbe453357ca9baf9c9ce1ae",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:00:55.002Z",
+    "seq": 20,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "df2757e0e4388c67186b3166386ab9d7f737d1ca4f39038b16b22a261758534d"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "df2757e0e4388c67186b3166386ab9d7f737d1ca4f39038b16b22a261758534d",
+     "eventSeq": 20,
+     "fingerprint": "fp2:2026-11:a052afcb7a57eca638a9006ece9d746a2b63b397337428cdacf5e8bdd2def74f",
+     "format": "evidscope-event-receipt-v1",
+     "id": "reg-during",
+     "source": "alpha-tool"
+    },
+    "previous": "df2757e0e4388c67186b3166386ab9d7f737d1ca4f39038b16b22a261758534d",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:00:55.002Z",
+    "seq": 21,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "db5c883a9ac64aec0ae494e54f592b5549de1b41b1d6c85bffda63a3375d2cd5"
+   },
+   {
+    "payload": {
+     "actors": [
+      "shadow-agent"
+     ],
+     "assetIds": [],
+     "change": "created",
+     "dataCategories": [],
+     "destinations": [],
+     "discoveredFrom": {
+      "actor": "shadow-agent",
+      "source": null
+     },
+     "editedAt": "2026-10-08T00:00:55.007Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:55.007Z",
+     "fingerprint": {},
+     "id": "shadow-agent",
+     "models": [],
+     "name": "Shadow agent",
+     "owner": "",
+     "purpose": "",
+     "registeredAt": "2026-10-08T00:00:55.007Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "5016bb2c9405cbb839810ab2a0d25d780f77759dd17d3edad3815f850ba1fa6c",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [],
+     "state": "discovered",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "not_required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 1
+    },
+    "previous": "db5c883a9ac64aec0ae494e54f592b5549de1b41b1d6c85bffda63a3375d2cd5",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:55.008Z",
+    "seq": 22,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "41ea7da07696ab8fa7dc974044beb41eb4fe73e0877640ee8e92aec4eae48af5"
+   },
+   {
+    "payload": {
+     "actors": [
+      "shadow-agent"
+     ],
+     "assetIds": [],
+     "change": "risk_override",
+     "dataCategories": [],
+     "destinations": [],
+     "discoveredFrom": {
+      "actor": "shadow-agent",
+      "source": null
+     },
+     "editedAt": "2026-10-08T00:00:55.007Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:55.011Z",
+     "fingerprint": {},
+     "id": "shadow-agent",
+     "models": [],
+     "name": "Shadow agent",
+     "owner": "",
+     "purpose": "",
+     "registeredAt": "2026-10-08T00:00:55.007Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "5016bb2c9405cbb839810ab2a0d25d780f77759dd17d3edad3815f850ba1fa6c",
+      "computed": "high",
+      "override": {
+       "at": "2026-10-08T00:00:55.011Z",
+       "basisHash": "5016bb2c9405cbb839810ab2a0d25d780f77759dd17d3edad3815f850ba1fa6c",
+       "by": "alpha-reviewer-2",
+       "reason": "sandbox only",
+       "tier": "medium"
+      },
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "medium",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [],
+     "state": "discovered",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "not_required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 2
+    },
+    "previous": "41ea7da07696ab8fa7dc974044beb41eb4fe73e0877640ee8e92aec4eae48af5",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:00:55.012Z",
+    "seq": 23,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "9face3a81e46a057230e4342d66f7d6ae039c58a26f827ba7977b8d80daaaaf8"
+   },
+   {
+    "payload": {
+     "agentId": "shadow-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "discovered",
+     "gate": {
+      "checkedAt": "2026-10-08T00:00:55.015Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "built_in_default",
+      "policyVersion": 0,
+      "target": "draft",
+      "tier": "medium",
+      "unmet": []
+     },
+     "id": "27879baf-e319-49a1-8faf-6eae465e5e8c",
+     "reason": "triaged",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T00:00:55.015Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "to": "draft"
+    },
+    "previous": "9face3a81e46a057230e4342d66f7d6ae039c58a26f827ba7977b8d80daaaaf8",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:55.016Z",
+    "seq": 24,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "b35c1874aa26fc835ebea3a180b6354cde460cf15ebcbdf2068b6556912365c7"
+   },
+   {
+    "payload": {
+     "actors": [
+      "shadow-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "discoveredFrom": {
+      "actor": "shadow-agent",
+      "source": null
+     },
+     "editedAt": "2026-10-08T00:00:55.007Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:00:55.016Z",
+     "fingerprint": {},
+     "id": "shadow-agent",
+     "lastTransition": {
+      "at": "2026-10-08T00:00:55.016Z",
+      "from": "discovered",
+      "id": "27879baf-e319-49a1-8faf-6eae465e5e8c",
+      "requestedBy": "alpha-reviewer",
+      "to": "draft"
+     },
+     "models": [],
+     "name": "Shadow agent",
+     "owner": "",
+     "purpose": "",
+     "registeredAt": "2026-10-08T00:00:55.007Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "5016bb2c9405cbb839810ab2a0d25d780f77759dd17d3edad3815f850ba1fa6c",
+      "computed": "high",
+      "override": {
+       "at": "2026-10-08T00:00:55.011Z",
+       "basisHash": "5016bb2c9405cbb839810ab2a0d25d780f77759dd17d3edad3815f850ba1fa6c",
+       "by": "alpha-reviewer-2",
+       "reason": "sandbox only",
+       "tier": "medium"
+      },
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "medium",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [],
+     "state": "draft",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "not_required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 3
+    },
+    "previous": "b35c1874aa26fc835ebea3a180b6354cde460cf15ebcbdf2068b6556912365c7",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:00:55.017Z",
+    "seq": 25,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "9e380db7c694ca90d8da8947b020bd06a7ecce3ec7952e7310508c464173575d"
+   },
+   {
+    "payload": {
+     "actionId": "reg-denied",
+     "analysisTime": "2026-10-08T00:00:55.020Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 4,
+      "totalFindings": 4,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:00:55.265Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-tool/reg-exec"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/reg-exec"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "APPROVAL_REQUIREMENT_UNKNOWN",
+       "evidence": [
+        "alpha-tool/reg-exec"
+       ],
+       "message": "행동 당시 정책에서 건별 사람 승인 필요 여부를 확인할 수 없습니다",
+       "severity": "medium"
+      },
+      {
+       "code": "EXECUTION_AFTER_DENY",
+       "evidence": [
+        "alpha-tool/reg-exec",
+        "alpha-gateway/reg-deny"
+       ],
+       "message": "정책 결정 지점이 거부한 행동의 실행 기록이 이후에 있습니다. 실제 차단 효력과 우회 경로를 검토하세요",
+       "severity": "high"
+      }
+     ],
+     "id": "03e9ad00-b0eb-407d-b0f1-e3f91bf607fa",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v2",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        14,
+        16
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 8,
+        "policies": 0
+       },
+       "relatedDecisions": [],
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "d201e235caa80262ea3d85afb316a507e1950da9f5fee268fdbcf634b858f973",
+     "status": "evaluated",
+     "version": 6,
+     "worker": "analysis-worker"
+    },
+    "previous": "9e380db7c694ca90d8da8947b020bd06a7ecce3ec7952e7310508c464173575d",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:00:55.266Z",
+    "seq": 26,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "a2f9625d532ee8040490b68214fd43581bce7a72b97675e0f17b7392d1e3458e"
+   },
+   {
+    "payload": {
+     "actionId": "reg-during",
+     "analysisTime": "2026-10-08T00:00:55.020Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 5,
+      "totalFindings": 5,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:00:55.270Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-tool/reg-during"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/reg-during"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "APPROVAL_REQUIREMENT_UNKNOWN",
+       "evidence": [
+        "alpha-tool/reg-during"
+       ],
+       "message": "행동 당시 정책에서 건별 사람 승인 필요 여부를 확인할 수 없습니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AGENT_SUSPENDED_ACTIVITY",
+       "evidence": [
+        "alpha-tool/reg-during"
+       ],
+       "message": "행동 시점에 정지(suspended) 상태로 등록된 에이전트의 활동입니다: lookup-agent",
+       "severity": "high"
+      },
+      {
+       "code": "ENFORCEMENT_DECISION_MISSING",
+       "evidence": [
+        "alpha-tool/reg-during"
+       ],
+       "message": "행동 당시 등록 항목이 정책 결정을 요구한 도구의 실행에 앞선 정책 결정 기록이 없습니다",
+       "severity": "high"
+      }
+     ],
+     "id": "f681f657-e9df-4510-9504-9f764eeb6ce4",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v2",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        20
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 8,
+        "policies": 0
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "12d35d277004992157a0799fbd71812d0d191b197048c6b6c4092aa3e6026d6f",
+     "status": "evaluated",
+     "version": 4,
+     "worker": "analysis-worker"
+    },
+    "previous": "a2f9625d532ee8040490b68214fd43581bce7a72b97675e0f17b7392d1e3458e",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:00:55.270Z",
+    "seq": 27,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "a0f319ed9f1a330bb097df323c3b9e8f89d9c1ad6dbabc4ed62a8723ece95314"
+   },
+   {
+    "payload": {
+     "actionId": "reg-pre",
+     "analysisTime": "2026-10-08T00:00:55.020Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:00:55.275Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-agent/reg-pre"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      }
+     ],
+     "id": "c65e905d-1237-4ef6-9085-853b8c1cda51",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v2",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        2
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 8,
+        "policies": 0
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "106b092ce84ba169a5451f768af0ef2549c24c7b808272be3772c428295bf2e0",
+     "status": "evaluated",
+     "version": 9,
+     "worker": "analysis-worker"
+    },
+    "previous": "a0f319ed9f1a330bb097df323c3b9e8f89d9c1ad6dbabc4ed62a8723ece95314",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:00:55.275Z",
+    "seq": 28,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "d1922e00081766fd0a8569f74bf8907814a1b1664134e5893d94671f87af6449"
+   }
+  ],
+  "checkpoint": {
+   "format": "evidscope-checkpoint-v1",
+   "tenant": "alpha",
+   "count": 28,
+   "head": "d1922e00081766fd0a8569f74bf8907814a1b1664134e5893d94671f87af6449",
+   "signature": "u06qs7YtP9IBgcdCYQS3h/OwYelKe00y1mWhUea+RBXSszQTvvdr9X4r5W7u0oVosQnc8GRMjLacIMb1VkXyCQ=="
+  },
+  "limitations": [
+   "Minimized receipt evidence; no original prompt or response",
+   "Signature authenticates local vault, not truth of source claims",
+   "Pin public key and checkpoint out of band to detect replacement and rollback",
+   "Erasure covers live event keys and query copies; prior exports/backups need separate disposition"
+  ],
+  "disclosures": [
+   {
+    "seq": 2,
+    "event": {
+     "actionId": "reg-pre",
+     "actor": "lookup-agent",
+     "assurance": "authenticated_self_report",
+     "fingerprint": "fp2:2026-11:1bda5224e4ba412257f5ad43cb94ba7ecd1279135a2198ed430c685868748e31",
+     "id": "reg-pre",
+     "kind": "intent",
+     "late": false,
+     "occurredAt": "2026-10-08T00:00:54.868Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:00:54.873Z",
+     "source": "alpha-agent",
+     "sourceKind": "agent",
+     "tenant": "alpha",
+     "tool": "lookup",
+     "traceId": "reg-trace"
+    },
+    "salt": "9fee6ceab0e648bdbbf7c14b13dd0981bdb781bf5f36597015e6df53dff7f9a7"
+   },
+   {
+    "seq": 14,
+    "event": {
+     "action": "read",
+     "actionId": "reg-denied",
+     "actor": "lookup-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "deny",
+     "decisionId": "d-1",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:28071905309453d07d83c3388e92460d11104f4aef58187a4d5f4f7997bc3536",
+     "id": "reg-deny",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T00:00:54.963Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:00:54.963Z",
+     "resource": "kb-1",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "lookup",
+     "traceId": "reg-trace"
+    },
+    "salt": "1fb7c03906f14d1f6bbc239e8469610dabfcd51fc98aedc379b343c4c1582861"
+   },
+   {
+    "seq": 16,
+    "event": {
+     "action": "read",
+     "actionId": "reg-denied",
+     "actor": "lookup-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:0ed86323745cafb8d2ac58fbec4aba3967c16ce864be6146771494b2ed7dc045",
+     "id": "reg-exec",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T00:00:54.975Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:00:54.976Z",
+     "resource": "kb-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "lookup",
+     "traceId": "reg-trace"
+    },
+    "salt": "70a4adbce751207fd735790fe3d2aafe08b3b2e4b5cc9a13370031e1d0da3cb7"
+   },
+   {
+    "seq": 20,
+    "event": {
+     "action": "read",
+     "actionId": "reg-during",
+     "actor": "lookup-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:a052afcb7a57eca638a9006ece9d746a2b63b397337428cdacf5e8bdd2def74f",
+     "id": "reg-during",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T00:00:54.999Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:00:54.999Z",
+     "resource": "kb-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "lookup",
+     "traceId": "reg-trace"
+    },
+    "salt": "f5956856f9a57f4e934ae7aaad7b9f57987d0f6a016afa25fe5e192426905503"
+   }
+  ]
+ }
+}

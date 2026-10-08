@@ -1,8 +1,8 @@
 'use strict';
 
 // Agent registry screen (docs/agent-registry.md): list, detail with version and transition history, transition requests,
-// approvals and refusals. Registry content is untrusted data and is rendered only as text. The server enforces roles,
-// four-eyes and gates; this screen shows what it answered. EvidScope blocks nothing.
+// approvals and refusals, catalog import with its report and per-entry provenance. Registry content is untrusted data and is
+// rendered only as text. The server enforces roles, four-eyes and gates; this screen shows what it answered. EvidScope blocks nothing.
 (() => {
   const core = window.EvidScopeCore;
   if (!core) return;
@@ -14,6 +14,11 @@
   const propagationLabels = { activated_in_window: '기한 내 활성화', activated_late: '기한 후 활성화', pending: '활성화 대기', overdue: '기한 초과·미활성화',
     no_enforcement_point: '담당 집행 지점 없음', ended_before_activation: '활성화 전 종료' };
   const evidenceTypes = ['event', 'asset', 'system', 'case', 'governance_document', 'external'];
+  const outcomeLabels = { created: '새로 등록(발견됨)', updated: '새 버전', unchanged: '변경 없음', conflict: '충돌(덮어쓰지 않음)', skipped: '에이전트 아님',
+    rejected: '거부' };
+  const signatureLabels = { absent: '서명 없음', verified: '제출한 공개 키로 확인', unverified: '서명 있음·확인할 키 없음', invalid: '서명 불일치',
+    unsupported: '지원하지 않는 서명', malformed: '서명 형식 오류', not_applicable: '해당 없음' };
+  const formatLabels = { 'a2a-agent-card': 'A2A Agent Card', 'backstage-entity': 'Backstage 엔터티' };
   const list = value => Array.isArray(value) ? value : [];
   const text = value => String(value ?? '').trim();
   const words = value => String(value || '').split(/[,\n]/).map(item => item.trim()).filter(Boolean);
@@ -169,6 +174,60 @@
       showDetail(`레지스트리 · ${data.entry.name || data.entry.id}`, entryNode(data));
     } catch (error) { if (core.isCurrentDetail(context)) showDetail('레지스트리 조회 실패', empty('등록 항목을 불러오지 못했습니다', error.message)); }
   }
+  // Catalog provenance (docs/agent-registry.md): where an imported entry's self-reported fields came from.
+  function provenanceNode(catalog) {
+    const box = card('카탈로그 출처', '가져온 문서의 자기 보고 값입니다. 인증된 출처 자격·행위자·위험 등급·상태는 문서에서 가져오지 않습니다.');
+    box.append(core.factList([
+      ['형식', `${formatLabels[catalog.format] || '미확인'} (${catalog.formatVersion || '버전 미상'})`], ['카탈로그 키', catalog.key],
+      ['엔드포인트·엔터티', catalog.endpoint || catalog.entityRef || '—'], ['위치(제출자 기록)', catalog.locator || '—'],
+      ['위치와 엔드포인트 호스트 일치', catalog.locatorMatchesEndpoint === true ? '일치' : catalog.locatorMatchesEndpoint === false ? '불일치' : '확인 안 함'],
+      ['문서 digest', catalog.documentDigest], ['항목 digest', catalog.entityDigest],
+      ['서명', signatureLabels[catalog.signature?.status] || '미확인'],
+      ['서명 키', list(catalog.signature?.signatures).map(x => `${x.alg || '?'} ${x.kid || ''} ${x.keyThumbprint || ''}`.trim()).join(', ') || '—'],
+      ['가져온 사람·시각', `${catalog.importedBy} · ${date(catalog.importedAt)}`],
+      ['반영한 필드', list(catalog.mapped).join(', ') || '—'], ['버린 필드', list(catalog.dropped).join(', ') || '—'],
+    ]));
+    return box;
+  }
+  function importReport(report) {
+    const node = el('div');
+    const summary = report.summary || {};
+    node.append(el('p', 'message', `${report.dryRun ? '미리보기(기록하지 않음)' : '가져오기 완료'} · 새로 ${summary.created || 0} · 새 버전 ${summary.updated || 0}`
+      + ` · 변경 없음 ${summary.unchanged || 0} · 충돌 ${summary.conflict || 0} · 에이전트 아님 ${summary.skipped || 0} · 거부 ${summary.rejected || 0}`
+      + ` · 읽지 못한 문서 ${summary.rejectedDocuments || 0}`));
+    for (const document of list(report.documents).filter(d => d.rejected)) {
+      node.append(el('p', 'message error', `문서 ${document.index + 1}: ${document.rejected.code} ${document.rejected.message}`));
+    }
+    node.append(table(['문서', '결과', '등록 ID', '카탈로그 키', '사유', '서명', '버린 필드', '상세'], list(report.results).map(result => [
+      `${result.documentIndex + 1}.${result.entityIndex + 1}`, outcomeLabels[result.outcome] || '미확인', result.entry?.id || '—',
+      result.key || result.entityRef || '—', result.reason || '—', signatureLabels[result.signature?.status] || '—',
+      list(result.dropped).map(d => `${d.field}(${d.reason})`).join(', ') || '—',
+      result.entry?.id && !report.dryRun ? button('상세', () => openEntry(result.entry.id), 'ghost') : '—',
+    ])), limits(report.limitations));
+    return node;
+  }
+  function importForm() {
+    return form([
+      field('형식', 'format', { choices: [{ value: 'a2a', label: 'A2A Agent Card (JSON)' }, { value: 'backstage', label: 'Backstage 엔터티 (YAML·JSON)' }],
+        value: 'a2a' }),
+      field('문서 내용', 'content', { required: true, multiline: true, wide: true, maxLength: 262144 }),
+      field('가져온 위치 (URL 또는 파일 이름, 기록용)', 'locator', { maxLength: 1000 }),
+      field('에이전트로 볼 Backstage spec.type (쉼표 구분, 비우면 기본값)', 'agentTypes', { maxLength: 700 }),
+      field('A2A 서명 확인용 공개 키 (JWK Set JSON, 선택)', 'keys', { multiline: true, wide: true, maxLength: 20000 }),
+      field('방식', 'mode', { choices: [{ value: 'preview', label: '미리보기(기록하지 않음)' }, { value: 'import', label: '가져오기(서명 기록)' }],
+        value: 'preview' }),
+    ], '카탈로그 가져오기', async (values, result) => {
+      let keys;
+      if (text(values.keys)) { try { keys = JSON.parse(values.keys); } catch { throw new Error('공개 키는 JWK Set JSON이어야 합니다'); } }
+      const types = words(values.agentTypes);
+      const body = { documents: [{ format: values.format === 'backstage' ? 'backstage' : 'a2a', content: String(values.content || ''),
+        ...(text(values.locator) ? { locator: text(values.locator) } : {}) }], ...(keys ? { keys } : {}), ...(types.length ? { agentTypes: types } : {}),
+        dryRun: values.mode !== 'import' };
+      const report = await api('/api/registry/import', 'POST', body);
+      result.append(importReport(report));
+      if (!report.dryRun) navigate('registry');
+    });
+  }
   function entryNode(data) {
     const entry = data.entry, risk = data.risk || {}, node = el('div');
     const tools = list(entry.tools).map(t => t.enforcement === 'required' ? `${t.name}(결정 필수)` : t.name).join(', ');
@@ -182,6 +241,7 @@
       ['생애주기 검증', data.lifecycle?.valid ? '이상 없음' : `문제 ${list(data.lifecycle?.problems).length}건`],
     ]));
     if (data.lifecycle && !data.lifecycle.valid) node.append(limits(list(data.lifecycle.problems).map(p => `seq ${p.seq}: ${p.message}`)));
+    if (entry.catalog) node.append(provenanceNode(entry.catalog));
     node.append(transitionForms(data), stopNode(data), historyNode(data), jsonDetails('등록 항목 원문', entry));
     return node;
   }
@@ -226,12 +286,15 @@
     const head = card('에이전트 레지스트리', `정책 v${policy.version}${policy.source === 'built_in_default' ? ' (기본값)' : ''} · 미등록 활동 발견 `
       + (policy.enforcement === 'unregistered_activity' ? '켜짐' : '꺼짐'));
     head.append(limits(data.limitations));
-    head.append(button('새 등록 초안', () => showDetail('에이전트 등록', createForm()), 'primary'));
+    head.append(button('새 등록 초안', () => showDetail('에이전트 등록', createForm()), 'primary'),
+      button('카탈로그 가져오기', () => showDetail('카탈로그 가져오기', importForm()), 'ghost'));
     node.append(head);
     const items = list(data.items);
     const listCard = card('등록 항목', `${items.length}개 · 상태는 서명된 전이 기록으로만 바뀝니다.`);
     listCard.append(table(['등록 ID / 이름', '상태', '위험 등급', '책임자', '출처 / 행위자', '승인 대기', '활성 정지 명령', '버전', '상세'], items.map(entry => [
-      `${entry.id}${entry.name && entry.name !== entry.id ? ` / ${entry.name}` : ''}`, pill(entry.state, stateLabels), tierLabels[entry.effectiveRisk] || '미확인',
+      `${entry.id}${entry.name && entry.name !== entry.id ? ` / ${entry.name}` : ''}`
+        + (entry.catalog ? ` · 카탈로그(${formatLabels[entry.catalog.format] || '미확인'})` : ''),
+      pill(entry.state, stateLabels), tierLabels[entry.effectiveRisk] || '미확인',
       entry.owner || '—', `${join(entry.sources)} / ${join(entry.actors)}`,
       entry.pendingTransition ? `${entry.pendingTransition.from} → ${entry.pendingTransition.to}` : '—',
       entry.activeStopOrders ? `${entry.activeStopOrders}건` : '—', String(entry.version),
@@ -243,5 +306,5 @@
   }
   core.registerView('registry', '에이전트 레지스트리', '에이전트 등록·생애주기·게이트와 승인 이력, 정지 명령과 집행 지점 전파를 확인합니다. '
     + '정지·폐기는 기록이며 EvidScope는 실행을 차단하지 않습니다.', registryView);
-  window.EvidScopeRegistry = Object.freeze({ registryView, openEntry, entryNode, createForm, evidenceRefs, stopNode });
+  window.EvidScopeRegistry = Object.freeze({ registryView, openEntry, entryNode, createForm, evidenceRefs, stopNode, importForm, importReport });
 })();
