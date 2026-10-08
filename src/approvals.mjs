@@ -57,13 +57,22 @@ export function effectiveTier(entry,rules){
  const override=entry.risk?.override;
  return override&&override.basisHash===riskBasis(entry)&&RISK_TIERS.includes(override.tier)?override.tier:computeRisk(entry,rules).computed;
 }
-// Frozen into the request when it is opened, so the offline check can recompute it from the ledger prefix.
+// The reviewer whose risk override set a tier other than the computed one. One person may override alone, so that person must
+// not also answer the requests the tier governs (lower the tier to one approver, then be that approver).
+export function overrideAuthor(entry,rules){
+ const override=entry?.risk?.override;
+ return override&&typeof override.by==='string'&&effectiveTier(entry,rules)===override.tier&&override.tier!==computeRisk(entry,rules).computed
+  ?override.by:null;
+}
+// Frozen into the request when it is opened, so the offline check can recompute it from the ledger prefix. basis.overrideBy
+// (round 4) is outside the recomputed key, so requests opened before it keep verifying.
 export function approvalEligibility(entry,policy){
  const tier=entry?effectiveTier(entry,policy.riskRules):policy.approvals.unregisteredTier,answer=policy.approvals.answer[tier];
- const values={registrant:entry?.registeredBy,editor:entry?.editedBy,owner:entry?.owner};
+ const values={registrant:entry?.registeredBy,editor:entry?.editedBy,owner:entry?.owner},overrideBy=overrideAuthor(entry,policy.riskRules);
  const excluded=[...new Set(answer.exclude.map(k=>values[k]).filter(v=>typeof v==='string'&&v))].sort();
  return {tier,approvers:answer.approvers,roles:[...answer.roles],exclude:[...answer.exclude],excluded,
-  basis:{entryId:entry?.id??null,entryVersion:entry?.version??null,entryState:entry?.state??null,policyVersion:policy.version,policySource:policy.source}};
+  basis:{entryId:entry?.id??null,entryVersion:entry?.version??null,entryState:entry?.state??null,policyVersion:policy.version,policySource:policy.source,
+   ...(overrideBy?{overrideBy}:{})}};
 }
 
 // ---------- evaluation (engine v3) ----------
@@ -159,7 +168,9 @@ export function verifyApprovalHistory(rows){
    const lifetime=time(v.expiresAt)-time(v.requestedAt);
    if(!(lifetime>0&&lifetime<=current.approvals.maxLifetimeSeconds*1000))problem(row,'request lifetime exceeds the policy cap');
    if(v.executionWindowSeconds!==current.approvals.executionWindowSeconds)problem(row,'execution window differs from the policy');
-   if(eligibilityKey(v.eligibility)!==eligibilityKey(approvalEligibility(coveringEntry(entries.values(),v.target?.actor),current)))
+   const recomputed=approvalEligibility(coveringEntry(entries.values(),v.target?.actor),current),basis=v.eligibility?.basis;
+   const overrideBy=plain(basis)&&Object.hasOwn(basis,'overrideBy')?basis.overrideBy:recomputed.basis.overrideBy;
+   if(eligibilityKey(v.eligibility)!==eligibilityKey(recomputed)||overrideBy!==recomputed.basis.overrideBy)
     problem(row,'who may answer differs from the registry policy and entry in force');
   }else{
    if(previous.status!=='pending')problem(row,'request changed after its final answer');
@@ -172,7 +183,7 @@ export function verifyApprovalHistory(rows){
    if(added.length!==(v.status==='refused'?0:1)||!plain(answer))problem(row,'answer does not add exactly one approval or refusal');
    else{
     if(row.principal!==answer.by)problem(row,'answer principal differs from the recorded approver');
-    if(answer.by===v.requestedBy||(el.excluded||[]).includes(answer.by)||!(el.roles||[]).includes(answer.role))
+    if(answer.by===v.requestedBy||(el.excluded||[]).includes(answer.by)||answer.by===el.basis?.overrideBy||!(el.roles||[]).includes(answer.role))
      problem(row,'answered by a principal the policy excluded');
     if(v.status!=='refused'&&before.some(x=>x?.by===answer.by))problem(row,'the same principal approved twice');
     if(!(time(answer.at)<time(v.expiresAt)))problem(row,'answer time is after expiry');

@@ -9,6 +9,9 @@ import {gunzipSync} from 'node:zlib';
 import {harness} from './harness.mjs';
 import {ed25519Verifier, openEnvelope} from '../src/dsse.mjs';
 import {DENY_LIST_PAYLOAD_TYPE, denyList, enforcementState, goCanonical} from '../src/enforcement-bundle.mjs';
+import {requestApproval} from '../src/approval-client.mjs';
+import {approvalEligibility, approvalPolicyOf, approvalRequestId, targetDigest, verifyApprovalHistory} from '../src/approvals.mjs';
+import {riskBasis} from '../src/agent-registry.mjs';
 
 const secret = () => randomBytes(32).toString('base64url');
 const gateway = {id: 'alpha-gateway', tenant: 'alpha', role: 'source', kind: 'enforcement', token: secret(), hmacSecret: secret()};
@@ -90,4 +93,57 @@ test('R4-2: editing a stopped entry does not take its sources and actors out of 
   assert.equal(lifted.status, 200, JSON.stringify(lifted.body));
   const after = await bundle();
   assert.deepEqual([after.sources['alpha-agent'], after.agents['mail-agent'].sources], ['mail-agent-2', []]);
+});
+
+test('R4-3: a reviewer who lowered the risk tier cannot then approve the requests that tier governs alone', async () => {
+  const asSecond = (path, body) => h.api(path, {body, headers: {authorization: `Bearer ${second.token}`}});
+  const created = await call('/api/registry', {id: 'pay-agent', owner: 'payments', purpose: 'refunds', actors: ['pay-agent'], tools: ['payment_transfer']});
+  assert.equal(created.body.risk.computed, 'high');
+  // One reviewer who neither registered nor edited the agent lowers its tier: high needs two approvers, low needs one.
+  const override = await asSecond('/api/registry/pay-agent/risk', {tier: 'low', reason: 'sandbox account'});
+  assert.equal(override.status, 200, JSON.stringify(override.body));
+  const opened = await requestApproval(h.ingress.url, gateway, {decisionId: 'r4-3', actionId: 'r4-3', enforcementPointId: 'gw-1',
+    target: {actor: 'pay-agent', tool: 'payment_transfer', resource: 'acct-991'}, binding_message: 'refund 1,200,000 to 991'});
+  assert.equal(opened.status, 200, JSON.stringify(opened.body));assert.deepEqual(opened.body.eligibility, {tier: 'low', approvers: 1});
+  const id = opened.body.auth_req_id, detail = (await call(`/api/approvals/${id}`, undefined, 'auditor')).body.request;
+  assert.equal(detail.eligibility.basis.overrideBy, 'alpha-reviewer-2', 'the override author is frozen into the request');
+  const alone = await asSecond(`/api/approvals/${id}/approve`, {reason: 'ok', version: 1});
+  assert.equal(alone.status, 403, 'the override author would otherwise approve alone: ' + JSON.stringify(alone.body));
+  assert.equal((await asSecond(`/api/approvals/${id}`)).body.request.mayAnswer.allowed, false);
+  const independent = await call(`/api/approvals/${id}/approve`, {reason: 'checked', version: 1}, 'admin');
+  assert.deepEqual([independent.status, independent.body.status], [200, 'approved']);
+});
+
+// A signed-history shape as the vault API writes it (rows without signatures: verifyApprovalHistory is the part under test).
+const T0 = Date.parse('2026-10-07T10:00:00.000Z'), iso = ms => new Date(T0 + ms).toISOString();
+function history({override, answeredBy = 'alpha-reviewer-3', change = v1 => v1, between = [], answerAt = 1000} = {}) {
+  const entry = {id: 'pay-agent', version: 1, state: 'draft', change: 'created', actors: ['pay-agent'], sources: [], tools: [{name: 'payment_transfer',
+    enforcement: 'not_required'}], dataCategories: [], destinations: [], registeredBy: 'alpha-reviewer', editedBy: 'alpha-reviewer', owner: 'ops'};
+  if (override) entry.risk = {override: {tier: 'low', by: override, reason: 'x', at: iso(0), basisHash: riskBasis(entry)}};
+  const target = {actor: 'pay-agent', tool: 'payment_transfer'};
+  const v1 = change({id: approvalRequestId('alpha', 'alpha-gateway', 'd-1'), version: 1, change: 'requested', status: 'pending', requestedBy: 'alpha-gateway',
+    enforcementPointId: 'gw-1', decisionId: 'd-1', actionId: 'a-1', target, targetDigest: targetDigest(target), bindingMessage: 'x', requestedAt: iso(0),
+    expiresAt: iso(300000), intervalSeconds: 5, executionWindowSeconds: 300, eligibility: approvalEligibility(entry, approvalPolicyOf(null)), approvals: [],
+    refusal: null, decidedAt: null, executionWindow: null});
+  const by = {by: answeredBy, role: 'reviewer', at: iso(answerAt), reason: 'ok'}, done = v1.eligibility.approvers === 1;
+  const v2 = {...v1, version: 2, change: done ? 'approved' : 'approval_added', status: done ? 'approved' : 'pending', approvals: [by],
+    ...(done ? {decidedAt: by.at, executionWindow: {notBefore: by.at, notAfter: iso(answerAt + 300000)}} : {})};
+  const row = (seq, type, principal, payload, at) => ({seq, tenant: 'alpha', type, principal, recordedAt: iso(at), payload});
+  return [row(1, 'agent_registry', 'alpha-reviewer', entry, 0), row(2, 'approval_request', 'alpha-gateway', v1, 0),
+    ...between.map((payload, i) => row(3 + i, 'agent_registry', payload.editedBy, payload, 500)), row(3 + between.length, 'approval_request', answeredBy, v2,
+      answerAt)];
+}
+const problems = rows => verifyApprovalHistory(rows).problems.map(p => p.message);
+
+test('R4-3 offline: the override author recorded in a request is excluded from answering it', () => {
+  assert.deepEqual(problems(history({override: 'alpha-reviewer-2'})), [], 'an independent approver of a low-tier request');
+  assert.deepEqual(history({override: 'alpha-reviewer-2'})[1].payload.eligibility.basis.overrideBy, 'alpha-reviewer-2');
+  assert.ok(problems(history({override: 'alpha-reviewer-2', answeredBy: 'alpha-reviewer-2'})).some(m => /excluded/.test(m)));
+  const renamed = history({override: 'alpha-reviewer-2', change: v1 => ({...v1, eligibility: {...v1.eligibility, basis: {...v1.eligibility.basis,
+    overrideBy: 'someone-else'}}})});
+  assert.ok(problems(renamed).some(m => /who may answer/.test(m)), 'a recorded override author must match the ledger');
+  // A request opened before round 4 has no overrideBy and keeps verifying.
+  const legacy = history({override: 'alpha-reviewer-2', change: v1 => {const {overrideBy, ...basis} = v1.eligibility.basis;
+    return {...v1, eligibility: {...v1.eligibility, basis}};}});
+  assert.deepEqual(problems(legacy), []);
 });
