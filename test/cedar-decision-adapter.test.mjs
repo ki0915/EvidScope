@@ -71,6 +71,9 @@ test('the documented AVP CloudTrail entries become allowlisted policy_decision r
   const [denied] = adaptCedarDecisions([withPolicies], avp()).events;
   assert.deepEqual([denied.decision, denied.policyId, JSON.parse(denied.note).errors], ['deny', 'SPEXAMPLEabcdefg111111', 1]);
   assert.ok(!denied.note.includes(CANARY));
+  // A repeated delivery is skipped; a different decision under the same request id is refused.
+  const repeated = adaptCedarDecisions([isAuthorized(), isAuthorized(), {...isAuthorized(), additionalEventData: {decision: 'DENY'}}], avp());
+  assert.deepEqual([repeated.events.length, repeated.skipped, repeated.rejected.map(r => r.reason)], [1, {duplicate: 1}, ['duplicate decision id']]);
   // Only the configured policy store is read.
   assert.deepEqual(adaptCedarDecisions(log, avp({policyStoreId: 'PSother'})).skipped, {IsAuthorized: 1, BatchIsAuthorized: 1, GetObject: 1, CreatePolicy: 1});
 });

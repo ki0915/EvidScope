@@ -229,6 +229,7 @@ Cedar의 권한 판단 응답은 `decision`(Allow·Deny)과 `diagnostics`(`reaso
 - **대상 행동:** OPA 어댑터와 같이 수집기 설정의 JSON pointer로만 읽습니다. `avp-cloudtrail`에서는 결정 하나의 요청(`principal`·`action`·
   `resource`·`context`) 아래만 가리킬 수 있습니다. `actor`는 필수이고, `actionId`를 주지 않으면 `cedar:<결정 id>`가 됩니다.
 - AVP가 아닌 이벤트, 다른 API 호출, 수집기 설정 `policyStoreId`와 다른 정책 저장소의 이벤트는 `skipped`에 이름별 개수로만 셉니다.
+  CloudTrail이 같은 기록을 두 번 전달하면 `skipped.duplicate`로 세고, 같은 결정 id에 내용이 다르면 거부합니다.
 - 이벤트 id는 수집기 id와 결정 id에서 만들어 같은 로그를 다시 보내도 중복으로 처리됩니다. `engine`은 `amazon-verified-permissions` 또는 `cedar`입니다.
 
 ```json

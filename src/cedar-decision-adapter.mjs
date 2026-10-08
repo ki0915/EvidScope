@@ -164,7 +164,7 @@ const label=raw=>{
  */
 export function adaptCedarDecisions(log,collector){
  const plan=collectorPlan(collector),items=records(log);
- const events=[],rejected=[],skipped={},seen=new Set();
+ const events=[],rejected=[],skipped={},seen=new Map();
  items.forEach((raw,index)=>{
   if(plan.avp){
    const name=isPlain(raw)?raw.eventName:undefined;
@@ -178,9 +178,11 @@ export function adaptCedarDecisions(log,collector){
   try{converted=plan.avp?avpDecisions(raw,collector,plan):[{...attempt(()=>cedarDecision(raw,collector,plan)),id:label(raw)}];}
   catch(e){rejected.push({index,id:label(raw),reason:String(e.message).slice(0,300)});return;}
   for(const {event,reason,id} of converted){
+   // CloudTrail may deliver an event twice: an identical repeat is skipped, a different entry under the same id is refused.
+   if(!reason&&seen.has(event.id)&&seen.get(event.id)===canonical(event)){skipped.duplicate=(skipped.duplicate||0)+1;continue;}
    const refused=reason??(seen.has(event.id)?'duplicate decision id':events.length>=MAX_DECISIONS?`more than ${MAX_DECISIONS} decisions`:undefined);
    if(refused){rejected.push({index,id:typeof id==='string'?id.slice(0,120):null,reason:refused});continue;}
-   seen.add(event.id);events.push(event);
+   seen.set(event.id,canonical(event));events.push(event);
   }
  });
  if(!events.length&&!rejected.length&&!Object.keys(skipped).length)error('no decision entries');
