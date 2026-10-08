@@ -48,23 +48,28 @@ import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 import {createHome} from './home-service.mjs';
 import {FACTSHEETS_PATH,createGovernanceModelService} from './governance-model-service.mjs';
 import {encodeCursor,listWindow,pageNewestFirst} from './list-window.mjs';
+import {assertNotShard,claimTenants,shardConfig} from './vault-tenants.mjs';
 
-export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,retentionRotation,
- bundleSigning,ingestBatch:ingestBatchLimits,governanceModel=()=>governanceModelStatus(),governanceModelConsole:governanceModelOptions={}}) {
+// tenants (VAULT_TENANTS) and tenantRegistryDir (VAULT_TENANT_REGISTRY_DIR): an opt-in tenant shard (src/vault-tenants.mjs).
+export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,retentionRotation,
+ bundleSigning,ingestBatch:ingestBatchLimits,tenants:ownedTenants,tenantRegistryDir,governanceModel=()=>governanceModelStatus(),governanceModelConsole:governanceModelOptions={}}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
- const principals=config.principals||[];
- if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
- const duplicateIds=duplicatePrincipalIds(principals);
+ const config=shardConfig(fullConfig,ownedTenants),principals=config.principals||[],allPrincipals=fullConfig.principals||[];
+ if(allPrincipals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(allPrincipals.map(p=>p.token)).size!==allPrincipals.length)throw Error('Invalid credential configuration');
+ const duplicateIds=duplicatePrincipalIds(allPrincipals);
  if(duplicateIds.length)throw Error(`Invalid credential configuration: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
- workerTenantScopes(principals,config.profile);
+ workerTenantScopes(allPrincipals,config.profile);
  // Operator-configured links to the same trace in Langfuse or Phoenix (TRACE_LINKS_FILE, docs/observability-integration.md), checked first.
  const linkTemplates=traceLinkTemplates(traceLinkConfig);
- const activation=assertRecoveryActivation({dataDir,key,config});
+ const activation=assertRecoveryActivation({dataDir,key,config:fullConfig});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
  const legalSourceCoverage=krLegalSourceCoverage(requirements);
  if(config.profile==='enterprise'&&!dataKey)throw Error('Enterprise profile requires DATA_KEY_FILE (data-encryption key separate from the signing key)');
- const store=new Store(dataDir,key,{verifiedStateMaxAgeMs,...(tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}})});
+ const store=new Store(dataDir,key,{verifiedStateMaxAgeMs,tenants:ownedTenants,...(tlogConfig.mode==='off'?{}:{tlog:{base:tlogConfig.base,quorum:tlogConfig.quorum}})});
+ if(ownedTenants||tenantRegistryDir)try{claimTenants(store.db,{owned:ownedTenants,claimed:new Set(principals.map(p=>p.tenant).filter(t=>t!=='internal')),registryDir:tenantRegistryDir});}
+ catch(error){store.close();throw error;}
+ else try{assertNotShard(store.db);}catch(error){store.close();throw error;}
  // Reads are recorded in a separate hash-chained access log and sealed into the ledger in batches (src/access-log.mjs).
  let accessLog;try{accessLog=store.accessLog=new AccessLog(dataDir,store,accessLogOptions);}catch(error){store.close();throw error;}
  const publicKey=createPublicKey(key);const retention=createRetention(store,{rotation:retentionRotation,accessLog}),workbench=createAuditWorkbench(store,key),assistance=createAssistance(store,workbench,{governanceStatus:governanceModel}),developmentRuns=createDevelopmentRuns(store);
@@ -82,9 +87,11 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
  // Source ingest group commit (src/ingest-batch.mjs, docs/performance.md); ingestBatch: {maxWaitMs, maxEvents}.
- const ingestBatch=createGroupCommit({store,...ingestBatchLimits,begin:sources=>beginIngestBatch(store,sources,verifiedActions),end:(context,results)=>endIngestBatch(store,results)});
+ const ingestBatch=createGroupCommit({store,...ingestBatchLimits,begin:sources=>beginIngestBatch(store,sources,verifiedActions),end:(context,results)=>endIngestBatch(store,results),
+  isolation:'optimistic'});
  const identity=createIdentity({config,store});
- const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
+ // A shard's tenants are the ones it owns; a legacy worker's 'internal' tenant gets no ledger there (two shards would fork it).
+ const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant).filter(tenant=>!ownedTenants||ownedTenants.has(tenant)));
  const human=p=>{if(!['auditor','reviewer','admin'].includes(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');};
  const reviewer=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'검토자 권한이 필요합니다');};
  const admin=p=>{if(p.role!=='admin')fail(403,'관리자 권한이 필요합니다');};

@@ -1,7 +1,18 @@
 import {randomUUID} from 'node:crypto';
 import {mac} from './crypto.mjs';
-export async function submit(url,principal,event,{timeoutMs=2000,nonce=randomUUID(),timestamp=String(Date.now()),signature}={}) {
- const body=JSON.stringify(event);const response=await fetch(new URL('/api/ingest',url),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${principal.token}`,'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,'x-evid-signature':signature??mac(principal.hmacSecret,timestamp,nonce,body)},body,signal:AbortSignal.timeout(timeoutMs),redirect:'error'});
+import {upstreamRequest} from './upstream-http.mjs';
+// agent (round 7, docs/performance.md): an http.Agent or https.Agent, e.g. new http.Agent({keepAlive:true}), sends over node:http on
+// that pool instead of fetch, at less CPU per event for the source. Same contract: redirects are refused, TLS is verified as by
+// fetch (Node's trust store), the deadline covers the response body, and the answer is {status, body}.
+export async function submit(url,principal,event,{timeoutMs=2000,nonce=randomUUID(),timestamp=String(Date.now()),signature,agent}={}) {
+ const body=JSON.stringify(event);
+ if(agent){
+  const response=await upstreamRequest(new URL('/api/ingest',url),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${principal.token}`,'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,
+   'x-evid-signature':signature??mac(principal.hmacSecret,timestamp,nonce,body)},body,timeoutMs,maxBytes:1024*1024,agent});
+  if(response.status>=300&&response.status<400)throw TypeError('Ingest redirect refused');
+  return {status:response.status,body:JSON.parse(response.body.toString('utf8'))};
+ }
+ const response=await fetch(new URL('/api/ingest',url),{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${principal.token}`,'x-evid-timestamp':timestamp,'x-evid-nonce':nonce,'x-evid-signature':signature??mac(principal.hmacSecret,timestamp,nonce,body)},body,signal:AbortSignal.timeout(timeoutMs),redirect:'error'});
  return {status:response.status,body:await response.json()};
 }
 // Call observe() after/outside business execution. It never waits on collector availability.

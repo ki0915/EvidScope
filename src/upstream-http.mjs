@@ -5,7 +5,8 @@ import https from 'node:https';
 // the ingress gateway about 0.4 ms of CPU per forwarded event. Same contract as the fetch call it replaces: redirects are never
 // followed, TLS is verified against Node's default trust store, NODE_USE_ENV_PROXY applies through the global agents, and the
 // deadline (timeoutMs) covers the whole exchange, response body included. Resolves {status, headers, body: Buffer}.
-export function upstreamRequest(url, {method = 'GET', headers = {}, body, timeoutMs, maxBytes = Infinity} = {}) {
+// agent: an http(s).Agent of the caller's own (the SDK client's keep-alive pool); the global agents otherwise.
+export function upstreamRequest(url, {method = 'GET', headers = {}, body, timeoutMs, maxBytes = Infinity, agent} = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
     const settle = (fn, value) => { if (!settled) { settled = true; fn(value); } };
@@ -13,7 +14,8 @@ export function upstreamRequest(url, {method = 'GET', headers = {}, body, timeou
     const transport = target.protocol === 'https:' ? https : target.protocol === 'http:' ? http : null;
     if (!transport) { reject(TypeError('Upstream URL must be http or https')); return; }
     const payload = body === undefined ? undefined : Buffer.from(body);
-    const options = {method, headers: payload ? {...headers, 'content-length': payload.length} : headers, signal: AbortSignal.timeout(timeoutMs)};
+    const options = {method, headers: payload ? {...headers, 'content-length': payload.length} : headers, signal: AbortSignal.timeout(timeoutMs),
+      ...(agent ? {agent} : {})};
     const request = transport.request(target, options, response => {
       const chunks = []; let size = 0;
       response.on('data', chunk => {
