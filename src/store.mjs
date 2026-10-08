@@ -134,6 +134,8 @@ export class Store {
  // compiled, not when it runs, so only statements whose authorization cannot depend on the moment are cached: reads and writes
  // to unprotected tables (cachedStatement), and writes to protected tables that run inside projectionMutation (projectionStatement).
  cachedStatement(sql){const cache=this.statements??=new Map();let statement=cache.get(sql);if(!statement)cache.set(sql,statement=this.db.prepare(sql));return statement;}
+ // Rows changed by this connection so far (SQLite total_changes(), triggers included): src/ingest-batch.mjs optimistic isolation.
+ changeCount(){return this.cachedStatement('SELECT total_changes() AS n').get().n;}
  projectionStatement(sql){if(this.projectionMutationDepth===0)throw Error('Projection write outside Store.projectionMutation');return this.cachedStatement(sql);}
  _mutationClock(){return this.cachedStatement('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;}
  projectionMutation(fn){if(this.projectionMutationDepth===0)this._syncProjectionMutationClock();this.projectionMutationDepth++;try{return fn();}finally{this.projectionMutationDepth--;if(this.projectionMutationDepth===0)this.observedProjectionMutationClock=this._mutationClock();}}
@@ -236,11 +238,12 @@ export class Store {
   return {...record,hash};
  }
  // Retention of a new event under the tenant's current policy; its key epoch is the UTC month of retainUntil.
- eventRetention(tenant,receivedAt){
-  const policy=this.get(tenant,'retention_policy','current')||{version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'};
+ // policy: the tenant's retentionPolicy() when the caller already read it in this transaction (an ingest batch reads it once).
+ eventRetention(tenant,receivedAt,policy=this.retentionPolicy(tenant)){
   const retainUntil=new Date(Date.parse(receivedAt)+policy.retentionSeconds*1000).toISOString();
   return {policy,retainUntil,keyEpoch:epochOfRetainUntil(retainUntil)};
  }
+ retentionPolicy(tenant){return this.get(tenant,'retention_policy','current')||{version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'};}
  // A database whose event keys moved to a keystore never takes another raw key, e.g. from a vault started before the move.
  // Checked once per write transaction: BEGIN IMMEDIATE keeps other connections from moving the keys meanwhile.
  _assertNoEventKeystore(){

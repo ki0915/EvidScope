@@ -78,7 +78,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
  // Source ingest group commit (src/ingest-batch.mjs, docs/performance.md); ingestBatch: {maxWaitMs, maxEvents}.
- const ingestBatch=createGroupCommit({store,...ingestBatchLimits,begin:sources=>beginIngestBatch(store,sources,verifiedActions),end:(context,results)=>endIngestBatch(store,results)});
+ const ingestBatch=createGroupCommit({store,...ingestBatchLimits,begin:sources=>beginIngestBatch(store,sources,verifiedActions),end:(context,results)=>endIngestBatch(store,results),
+  isolation:'optimistic'});
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
  const human=p=>{if(!['auditor','reviewer','admin'].includes(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');};

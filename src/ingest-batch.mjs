@@ -6,6 +6,7 @@
 // that holds its event returned (synchronous=FULL), so 202 still means durable; if the batch fails, no event of it is stored
 // and every request in it gets the error. Store.transaction stays synchronous: batching happens before it.
 export const INGEST_BATCH_DEFAULTS = Object.freeze({maxWaitMs: 0, maxEvents: 256});
+class IsolatedRetry extends Error {}
 
 // INGEST_BATCH_MAX_WAIT_MS (0-1000): how long the first queued event may wait for others; 0 commits at the end of the current
 // event-loop turn, so a batch holds what arrived while the previous commit ran and a lone event waits for nothing.
@@ -25,11 +26,17 @@ export function ingestBatchOptions(env = process.env) {
 // throws, the whole batch fails. end(context, values), when given, runs after the last item, still inside the transaction, with the
 // return values of the items whose savepoints were kept. work runs in a savepoint; its return value resolves that item's promise after COMMIT.
 // onCommit({size, committed, failed, waitedMs}) is called after each batch; stats sums them (process-wide, never served per tenant).
+// isolation 'optimistic' (round 7, docs/performance.md): items run without their own savepoint, which cost about 40 us of SQLite
+// work per event. It is for work that refuses only before its first write: an item that throws without having changed a row
+// (store.changeCount(), SQLite total_changes()) keeps its refusal and the batch goes on. An item that throws after a write, or a
+// transaction SQLite ended by itself, rolls the whole batch back and runs it again with a savepoint per item, so every outcome
+// is the one 'savepoint' isolation gives. Work must not run DDL (total_changes() does not count it) or act outside SQLite.
 export function createGroupCommit({store, begin = () => ({}), end, maxWaitMs = INGEST_BATCH_DEFAULTS.maxWaitMs,
-  maxEvents = INGEST_BATCH_DEFAULTS.maxEvents, onCommit} = {}) {
+  maxEvents = INGEST_BATCH_DEFAULTS.maxEvents, onCommit, isolation = 'savepoint'} = {}) {
   if (!Number.isSafeInteger(maxWaitMs) || maxWaitMs < 0 || !Number.isSafeInteger(maxEvents) || maxEvents < 1) throw TypeError('Invalid group commit bounds');
+  if (!['savepoint', 'optimistic'].includes(isolation)) throw TypeError('Invalid group commit isolation');
   let queue = [], timer = null, immediate = null;
-  const stats = {batches: 0, events: 0, committed: 0, failedBatches: 0, largest: 0, maxWaitedMs: 0};
+  const stats = {batches: 0, events: 0, committed: 0, failedBatches: 0, largest: 0, maxWaitedMs: 0, isolatedRetries: 0};
   const schedule = () => {
     if (immediate || !queue.length) return;
     if (queue.length >= maxEvents || maxWaitMs === 0) { clearTimeout(timer); timer = null; immediate = setImmediate(flush); return; }
@@ -42,14 +49,27 @@ export function createGroupCommit({store, begin = () => ({}), end, maxWaitMs = I
     schedule();
     if (!batch.length) return;
     let failure = null;
-    try {
-      store.transaction(() => {
-        const context = begin(batch.map(item => item.input));
-        for (let i = 0; i < batch.length; i++) {
+    const run = optimistic => store.transaction(() => {
+      const context = begin(batch.map(item => item.input));
+      for (let i = 0; i < batch.length; i++) {
+        if (!optimistic) {
           try { outcomes[i] = {value: store.transaction(() => batch[i].work(context))}; } catch (error) { outcomes[i] = {error}; }
+          continue;
         }
-        if (end) end(context, outcomes.filter(outcome => !outcome.error).map(outcome => outcome.value));
-      });
+        if (!store.db.isTransaction) throw new IsolatedRetry();
+        const changes = store.changeCount();
+        try { outcomes[i] = {value: batch[i].work(context)}; } catch (error) {
+          if (!store.db.isTransaction || store.changeCount() !== changes) throw new IsolatedRetry();
+          outcomes[i] = {error};
+        }
+      }
+      if (end) end(context, outcomes.filter(outcome => !outcome.error).map(outcome => outcome.value));
+    });
+    try {
+      try { run(isolation === 'optimistic'); } catch (error) {
+        if (!(error instanceof IsolatedRetry)) throw error;
+        stats.isolatedRetries++; outcomes.fill(undefined); run(false);
+      }
     } catch (error) { failure = error; }
     let committed = 0;
     for (let i = 0; i < batch.length; i++) {

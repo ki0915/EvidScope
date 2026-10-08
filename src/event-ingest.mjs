@@ -13,8 +13,8 @@ export function tenantBacklog(store, tenant) {
 // current per event (an event adds to it only for an action that was not pending), so each event sees what it saw when every
 // event had its own transaction. Call inside the write transaction, before appending; returns whether the event adds to it.
 function assertBatchedCapacity(store, tenantState, tenant, actionId) {
-  tenantState.backlog ??= tenantBacklog(store, tenant);
-  if (tenantState.backlog > analysisBacklogLimit()) fail(503, '분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
+  tenantState.backlog ??= tenantBacklog(store, tenant);tenantState.backlogLimit ??= analysisBacklogLimit();
+  if (tenantState.backlog > tenantState.backlogLimit) fail(503, '분석 적체: 유한 재시도 후 로컬 손실 지표를 기록하세요');
   return !store.cachedStatement('SELECT analyzed<version AS pending FROM actions WHERE tenant=? AND id=?').get(tenant, actionId)?.pending;
 }
 // Batch variant: counts the actions the batch would newly make pending, so one batch cannot carry a tenant far past the
@@ -29,9 +29,10 @@ export function assertBatchAnalysisCapacity(store, tenant, actionIds) {
 // The four writes every accepted source event needs. Projection checks fail if any is missing. e.fingerprint is the raw-body
 // digest from validateEvent; what is stored and signed is the keyed tag under the event's key epoch (round 2, audit S3).
 // One projectionMutation scope for the whole event (round 6): every write in it already ran in one, and the clock is read once.
-export function appendSourceEvent(store, p, raw) { return store.projectionMutation(() => appendSourceRows(store, p, raw)); }
-function appendSourceRows(store, p, raw) {
-  const retention = store.eventRetention(p.tenant, raw.receivedAt), e = store.sealEventFingerprint(p.tenant, raw, retention);
+// policy: the tenant's retention policy when the caller read it already in this transaction (once per ingest batch and tenant).
+export function appendSourceEvent(store, p, raw, policy) { return store.projectionMutation(() => appendSourceRows(store, p, raw, policy)); }
+function appendSourceRows(store, p, raw, policy) {
+  const retention = store.eventRetention(p.tenant, raw.receivedAt, policy), e = store.sealEventFingerprint(p.tenant, raw, retention);
   const record = store.append(p.tenant, 'event', e, p.id, {retention});
   store.append(p.tenant, 'event_receipt', {format: 'evidscope-event-receipt-v1', basis: 'source_ingest', source: e.source, id: e.id,
     fingerprint: e.fingerprint, eventSeq: record.seq, eventHash: record.hash}, p.id);
@@ -68,16 +69,19 @@ const ACCEPTED = Object.freeze({durability: 'sqlite_full_commit', analysis: 'asy
 export function ingestSourceEvent(store, context, p, nonce, e) {
   const tenantState = context.tenants.get(p.tenant);
   if (tenantState.error) throw tenantState.error;
+  // Every refusal comes before the first write (round 7), so a batch can run its events without a savepoint each
+  // (src/ingest-batch.mjs, optimistic isolation); a refused event leaves no row behind, as its rolled-back savepoint did.
   if (store.cachedStatement('SELECT 1 FROM nonces WHERE source=? AND nonce=?').get(p.id, nonce)) fail(409, '이미 사용한 nonce입니다');
-  store.cachedStatement('INSERT INTO nonces VALUES(?,?,?)').run(p.id, nonce, Date.now() + 600000);
   const prev = receiptMatch(store, p.tenant, p.id, e.id, e.fingerprint);
   if (prev) {
     if (prev === 'unverifiable') fail(409, '동일 출처 이벤트 ID의 이전 접수 지문 키가 파기되어 내용을 비교할 수 없습니다');
     if (prev !== 'same') fail(409, '동일 출처 이벤트 ID의 내용 충돌');
+    store.cachedStatement('INSERT INTO nonces VALUES(?,?,?)').run(p.id, nonce, Date.now() + 600000);
     return {accepted: true, duplicate: true, ...ACCEPTED};
   }
   const adds = assertBatchedCapacity(store, tenantState, p.tenant, e.actionId);
-  appendSourceEvent(store, p, e);
+  store.cachedStatement('INSERT INTO nonces VALUES(?,?,?)').run(p.id, nonce, Date.now() + 600000);
+  appendSourceEvent(store, p, e, tenantState.retentionPolicy ??= store.retentionPolicy(p.tenant));
   if (adds) tenantState.backlog++;
   return {accepted: true, duplicate: false, ...ACCEPTED};
 }
