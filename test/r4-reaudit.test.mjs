@@ -1,10 +1,15 @@
-// Round-4 re-audit regression tests (docs/kill-switch.md, docs/approval-queue.md). Each test is the proof of concept of one
-// finding and failed on 503c185: hostile entry and actor names dropped from the enforcement bundle and deny-list.
+// Round-4 re-audit regression tests (docs/kill-switch.md, docs/approval-queue.md). Each R4-n test is the proof of concept of one
+// finding and failed on 503c185: R4-1 prototype-named entries and actors dropped from the bundle and deny-list, R4-2 a stopped
+// entry's names taken out of distribution by an edit or a re-issued order, R4-3 the risk-override author approving alone, R4-4
+// approval histories the API never writes accepted offline. The E2E tests run engines v3 and v4 in one tenant.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
-import {readFileSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 import {harness} from './harness.mjs';
 import {ed25519Verifier, openEnvelope} from '../src/dsse.mjs';
@@ -12,6 +17,10 @@ import {DENY_LIST_PAYLOAD_TYPE, denyList, enforcementState, goCanonical} from '.
 import {requestApproval} from '../src/approval-client.mjs';
 import {approvalEligibility, approvalPolicyOf, approvalRequestId, targetDigest, verifyApprovalHistory} from '../src/approvals.mjs';
 import {riskBasis} from '../src/agent-registry.mjs';
+import {verifyBundle} from '../src/crypto.mjs';
+import {EVALUATION_ENGINE, EVALUATION_ENGINE_V2, EVALUATION_ENGINE_V3, EVALUATION_ENGINE_V4} from '../src/model.mjs';
+import {replayEvaluations} from '../src/policy-replay.mjs';
+import {buildApprovalsStopsExport} from './fixtures/make-approvals-stops-export-fixture.mjs';
 
 const secret = () => randomBytes(32).toString('base64url');
 const gateway = {id: 'alpha-gateway', tenant: 'alpha', role: 'source', kind: 'enforcement', token: secret(), hmacSecret: secret()};
@@ -161,4 +170,52 @@ test('R4-4: the offline check refuses request histories the vault API never writ
   assert.deepEqual(problems(history({change: v1 => ({...v1, requestedExpiry: 120, expiresAt: iso(120000)})})), []);
   assert.deepEqual(problems(history({change: v1 => ({...v1, requestedExpiry: 5000, expiresAt: iso(900000)})})), [], 'capped at maxLifetimeSeconds');
   assert.ok(problems(history({change: v1 => ({...v1, intervalSeconds: 1})})).some(m => /interval/.test(m)));
+});
+
+// Engines v3 (approval requests) and v4 (stop orders) in one tenant: the current verifiers check and replay everything, and a
+// verifier that knows fewer engines reports the newer evaluations as engine_unavailable, never as a snapshot mismatch.
+const run = (script, args) => {
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL(`../scripts/${script}`, import.meta.url)), ...args], {encoding: 'utf8'});
+  return {status: r.status, out: r.stdout.trim().startsWith('{') ? JSON.parse(r.stdout) : r.stdout, err: r.stderr};
+};
+function verifiesAndReplays(t, exportBundle, publicKeyPem) {
+  assert.equal(verifyBundle(exportBundle, publicKeyPem).valid, true);
+  const evaluations = exportBundle.records.filter(r => r.type === 'evaluation');
+  const engines = new Set(evaluations.map(r => r.payload.replay.engine));
+  assert.deepEqual([...engines].sort(), [EVALUATION_ENGINE_V3, EVALUATION_ENGINE_V4]);
+  const dir = mkdtempSync(join(tmpdir(), 'evidscope-r4-e2e-'));t.after(() => rmSync(dir, {recursive: true, force: true}));
+  const file = join(dir, 'export.json'), key = join(dir, 'key.pem');writeFileSync(file, JSON.stringify(exportBundle));writeFileSync(key, publicKeyPem);
+  for (const [script, args] of [['evidscope-verify.mjs', ['bundle']], ['verify.mjs', []]]) {
+    const r = run(script, [...args, file, key, '--replay']);
+    assert.equal(r.status, 0, r.err || JSON.stringify(r.out).slice(0, 2000));
+    assert.deepEqual([r.out.approvals.valid, r.out.stopOrders.valid, r.out.registry.valid, r.out.replay.valid], [true, true, true, true]);
+    assert.equal(r.out.replay.summary.replayed, evaluations.length);
+    assert.ok(r.out.replay.evaluations.every(e => e.status === 'replayed' && e.inputs.snapshotHash === 'matches_record'));
+  }
+  for (const known of [[EVALUATION_ENGINE, EVALUATION_ENGINE_V2, EVALUATION_ENGINE_V3], [EVALUATION_ENGINE, EVALUATION_ENGINE_V2]]) {
+    const older = replayEvaluations(exportBundle, {engines: known});
+    assert.equal(older.valid, true, JSON.stringify(older.evaluations.filter(e => !['replayed', 'not_replayable'].includes(e.status))));
+    for (const e of older.evaluations)
+      assert.equal(e.status, known.includes(e.engine) ? 'replayed' : 'not_replayable', `${e.engine} with ${known.join(',')}`);
+    assert.equal(older.summary.notReplayableReasons.engine_unavailable, evaluations.filter(r => !known.includes(r.payload.replay.engine)).length);
+  }
+  const latest = new Map(evaluations.map(r => [r.payload.actionId, r.payload]));
+  const codes = id => latest.get(id).findings.map(f => f.code);
+  assert.ok(!codes('ap-1').some(c => /APPROVAL|STOP_/.test(c)), codes('ap-1').join());
+  assert.ok(codes('ap-2').includes('EXECUTION_AFTER_APPROVAL_REFUSED'));
+  assert.ok(codes('st-1').includes('STOP_ORDER_NOT_HELD') && codes('st-1').includes('EXECUTION_BEFORE_APPROVAL'), codes('st-1').join());
+  const both = latest.get('st-1').replay;
+  assert.deepEqual([both.engine, both.inputs.approvals.length, both.inputs.stopOrders.orders, both.inputs.stopOrders.activations.length],
+    [EVALUATION_ENGINE_V4, 1, 1, 1]);
+}
+
+test('E2E: a tenant with approval requests and stop orders exports, verifies offline and replays (current code)', async t => {
+  const {exportBundle, publicKeyPem} = await buildApprovalsStopsExport(fileURLToPath(new URL('..', import.meta.url)));
+  verifiesAndReplays(t, exportBundle, publicKeyPem);
+});
+
+test('E2E: the same scenario exported by 503c185 verifies and replays exactly as before', t => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/approvals-stops-export-503c185.json', import.meta.url), 'utf8'));
+  assert.equal(fixture.baseCommit, '503c185');
+  verifiesAndReplays(t, fixture.exportBundle, fixture.publicKeyPem);
 });

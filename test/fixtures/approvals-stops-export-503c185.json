@@ -1,0 +1,2271 @@
+{
+ "format": "evidscope-test-fixture-v1",
+ "description": "Export written by commit 503c185 (round 3: approval queue and kill switch): tenant alpha with approval requests and a stop order at the same time, an OPA activation, executions and v3/v4 evaluations.",
+ "baseCommit": "503c185",
+ "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAe2u9Ul+T/jPcQRtNBILZf6asLQf7YGNvguy9MneaD50=\n-----END PUBLIC KEY-----\n",
+ "exportBundle": {
+  "format": "evidscope-export-v2",
+  "records": [
+   {
+    "payload": {
+     "createdAt": "2026-10-08T00:10:39.315Z",
+     "hash": "c6125a730ea79d6ad47bb17a7be21ea2e9e3a290c4a615a6e38ce39cc1dba91b",
+     "legalSourceCoverage": {
+      "automaticLegalVerdict": false,
+      "checkedAt": null,
+      "hash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+      "jurisdiction": "KR",
+      "limitations": [
+       "법률·시행령 원문 확인과 하위 고시·위원회 결정 확인은 별개입니다. 미확인은 부존재·적용 제외·법 위반 판정이 아닙니다.",
+       "개별 조치의 기술 근거 또는 사람의 충분성 평가가 확인되어도 한국법 전체 지원 완료를 의미하지 않습니다."
+      ],
+      "registeredRequirements": 0,
+      "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schemaVersion": 1,
+      "scope": "selected_ai_operator_and_public_user_governance_requirements",
+      "scopeDescription": "등록된 주요 사업자·공공 이용자의 거버넌스 의무를 검토하며 한국 AI 기본법 전체를 포괄하지 않습니다.",
+      "status": "not_recorded",
+      "unresolvedSources": [],
+      "unverifiedDetailNoticeRequirementIds": [],
+      "version": "evidscope-kr-legal-source-coverage-v1",
+      "wholeLawComplete": false
+     },
+     "legalSourceCoverageHash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+     "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "requirements": [],
+     "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "schemaVersion": 2
+    },
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "principal": "catalog-loader",
+    "recordedAt": "2026-10-08T00:10:39.316Z",
+    "seq": 1,
+    "tenant": "alpha",
+    "type": "catalog",
+    "hash": "6b9738c90d9e98ba1273d02a3facb334284235dd4bbfbdb085dfd6705e9ee6e5"
+   },
+   {
+    "payload": {
+     "approvals": {
+      "answer": {
+       "high": {
+        "approvers": 2,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       },
+       "low": {
+        "approvers": 1,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       },
+       "medium": {
+        "approvers": 1,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       }
+      },
+      "defaultLifetimeSeconds": 300,
+      "executionWindowSeconds": 300,
+      "intervalSeconds": 1,
+      "maxLifetimeSeconds": 900,
+      "unregisteredTier": "high"
+     },
+     "effectiveFrom": "2026-10-08T00:10:39.328Z",
+     "enforcement": "off",
+     "gates": {
+      "high": {},
+      "low": {},
+      "medium": {}
+     },
+     "id": "current",
+     "riskRules": [
+      {
+       "field": "tool",
+       "id": "tool-payment",
+       "op": "contains",
+       "tier": "high",
+       "values": [
+        "payment",
+        "transfer",
+        "wire",
+        "refund",
+        "payout"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-destructive",
+       "op": "contains",
+       "tier": "high",
+       "values": [
+        "delete",
+        "drop",
+        "truncate",
+        "shell",
+        "exec",
+        "deploy",
+        "sudo",
+        "admin"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-outbound",
+       "op": "contains",
+       "tier": "medium",
+       "values": [
+        "email",
+        "send",
+        "post",
+        "publish",
+        "message",
+        "upload"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-write",
+       "op": "contains",
+       "tier": "medium",
+       "values": [
+        "write",
+        "update",
+        "create",
+        "insert",
+        "modify"
+       ]
+      },
+      {
+       "field": "dataCategory",
+       "id": "data-sensitive",
+       "op": "eq",
+       "tier": "high",
+       "values": [
+        "personal",
+        "sensitive",
+        "health",
+        "biometric",
+        "financial",
+        "credential",
+        "credentials",
+        "resident_registration_number",
+        "unique_identifier",
+        "location",
+        "minor"
+       ]
+      },
+      {
+       "field": "dataCategory",
+       "id": "data-internal",
+       "op": "eq",
+       "tier": "medium",
+       "values": [
+        "confidential",
+        "internal",
+        "customer"
+       ]
+      },
+      {
+       "field": "destination",
+       "id": "destination-external",
+       "op": "not_suffix",
+       "tier": "medium",
+       "values": [
+        ".internal",
+        ".local",
+        ".corp",
+        ".lan",
+        "localhost"
+       ]
+      }
+     ],
+     "stopPropagation": {
+      "enforcementPoints": [
+       "alpha-gateway"
+      ],
+      "windowSeconds": 10
+     },
+     "updatedAt": "2026-10-08T00:10:39.328Z",
+     "updatedBy": "alpha-admin",
+     "version": 1
+    },
+    "previous": "6b9738c90d9e98ba1273d02a3facb334284235dd4bbfbdb085dfd6705e9ee6e5",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T00:10:39.329Z",
+    "seq": 2,
+    "tenant": "alpha",
+    "type": "agent_registry_policy",
+    "hash": "890245a6c95eb169349db31ecb36badc39a3442c708a9cfb6cbf66188cb6ec86"
+   },
+   {
+    "payload": {
+     "actor": "pay-agent",
+     "approvalRequired": true,
+     "destinations": [],
+     "id": "pay-asset",
+     "owner": "payments",
+     "policyVersion": "p1",
+     "purpose": "",
+     "tool": "payment_transfer",
+     "updatedAt": "2026-10-08T00:10:39.331Z",
+     "validFrom": "2026-01-01T00:00:00.000Z",
+     "version": "unknown"
+    },
+    "previous": "890245a6c95eb169349db31ecb36badc39a3442c708a9cfb6cbf66188cb6ec86",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.333Z",
+    "seq": 3,
+    "tenant": "alpha",
+    "type": "asset",
+    "hash": "e122fe6edb7c9cd3baf423868493a9eac93b158cddd4a90c6615c754594f97b5"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "created",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T00:10:39.336Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:10:39.336Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T00:10:39.336Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "draft",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 1
+    },
+    "previous": "e122fe6edb7c9cd3baf423868493a9eac93b158cddd4a90c6615c754594f97b5",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.338Z",
+    "seq": 4,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "949ea4453cc7864f57014f97da8d571892c898cb3d3225707b1f68f3b6f10bcc"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "draft",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.342Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "testing",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "63bc5d1c-7947-4891-9f0f-08e9edbd8171",
+     "reason": "testing",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 1,
+     "requestedAt": "2026-10-08T00:10:39.342Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "to": "testing"
+    },
+    "previous": "949ea4453cc7864f57014f97da8d571892c898cb3d3225707b1f68f3b6f10bcc",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.343Z",
+    "seq": 5,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "0537ff104e9f364c0031824fce7fa6fd34de01edd32d0f7763077c3ad6261510"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T00:10:39.336Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:10:39.344Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "at": "2026-10-08T00:10:39.344Z",
+      "from": "draft",
+      "id": "63bc5d1c-7947-4891-9f0f-08e9edbd8171",
+      "requestedBy": "alpha-reviewer",
+      "to": "testing"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T00:10:39.336Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "testing",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 2
+    },
+    "previous": "0537ff104e9f364c0031824fce7fa6fd34de01edd32d0f7763077c3ad6261510",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.345Z",
+    "seq": 6,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "8787612fb49c4c0caadac2bde0223edcf6fc407baa45d4bb581645b0e1f0b079"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.349Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "2431af2c-bdaf-485d-9794-9b8e6460dcf6",
+     "reason": "approved",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T00:10:39.349Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "approved"
+    },
+    "previous": "8787612fb49c4c0caadac2bde0223edcf6fc407baa45d4bb581645b0e1f0b079",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.349Z",
+    "seq": 7,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "92a8ff715b6125b7c6d5416267733acebbb75720e4ac7a4693a2cfa46fee2580"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T00:10:39.354Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.349Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "2431af2c-bdaf-485d-9794-9b8e6460dcf6",
+     "reason": "approved",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T00:10:39.349Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T00:10:39.353Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "approved"
+    },
+    "previous": "92a8ff715b6125b7c6d5416267733acebbb75720e4ac7a4693a2cfa46fee2580",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.354Z",
+    "seq": 8,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "4bab5e56553bcb7ab9e3d3f706682abcb7340a7dd8e69801fd0d30fa58a2161d"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T00:10:39.336Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:10:39.354Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T00:10:39.354Z",
+      "from": "testing",
+      "id": "2431af2c-bdaf-485d-9794-9b8e6460dcf6",
+      "requestedBy": "alpha-reviewer",
+      "to": "approved"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T00:10:39.336Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "approved",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 3
+    },
+    "previous": "4bab5e56553bcb7ab9e3d3f706682abcb7340a7dd8e69801fd0d30fa58a2161d",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.355Z",
+    "seq": 9,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "1699235185d1a322733fb6f7250fbd91610bfdb07b53d0b72e522becd24235de"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.359Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "1ad249e4-491b-4634-b8d3-3c10732f211e",
+     "reason": "production",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T00:10:39.359Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "production"
+    },
+    "previous": "1699235185d1a322733fb6f7250fbd91610bfdb07b53d0b72e522becd24235de",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.360Z",
+    "seq": 10,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "6237a5c91e031a44a887e1bb2ea21cfa4ede77075a2b180fd53c802237081bb1"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T00:10:39.363Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.359Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "1ad249e4-491b-4634-b8d3-3c10732f211e",
+     "reason": "production",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T00:10:39.359Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T00:10:39.362Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "production"
+    },
+    "previous": "6237a5c91e031a44a887e1bb2ea21cfa4ede77075a2b180fd53c802237081bb1",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.364Z",
+    "seq": 11,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "9815aaa74adf28583c342bf905c26e5e9666ae08b3e3079d3aaf244fc2294130"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T00:10:39.336Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:10:39.364Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T00:10:39.364Z",
+      "from": "approved",
+      "id": "1ad249e4-491b-4634-b8d3-3c10732f211e",
+      "requestedBy": "alpha-reviewer",
+      "to": "production"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T00:10:39.336Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "production",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 4
+    },
+    "previous": "9815aaa74adf28583c342bf905c26e5e9666ae08b3e3079d3aaf244fc2294130",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.365Z",
+    "seq": 12,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "a766ad46d5e2c2cc6abb48d4d81734b0de8356ef26f79b895b31dd6f5e339d7a"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [],
+     "bindingMessage": "refund ap-1",
+     "change": "requested",
+     "decidedAt": null,
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.367Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T00:10:39.367Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 1
+    },
+    "previous": "a766ad46d5e2c2cc6abb48d4d81734b0de8356ef26f79b895b31dd6f5e339d7a",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.371Z",
+    "seq": 13,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "c2bfccb7622015c35a3aa8c0841b255746c00473f336fd31224e1158e911402d"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "approvals": [],
+     "bindingMessage": "refund ap-2",
+     "change": "requested",
+     "decidedAt": null,
+     "decisionId": "ap-2",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.373Z",
+     "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T00:10:39.373Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-2",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "dd1ce0ec6ea1a1d453cf870d8a3a2161f19173860999a1b7af940f889f71134d",
+     "traceId": "t-ap-2",
+     "version": 1
+    },
+    "previous": "c2bfccb7622015c35a3aa8c0841b255746c00473f336fd31224e1158e911402d",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.375Z",
+    "seq": 14,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "33c5c0abcb6747af94967aa978cd0bbbd54a9e9017103be3a55c6cf7ef332f2f"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [
+      {
+       "at": "2026-10-08T00:10:39.378Z",
+       "by": "alpha-reviewer-2",
+       "reason": "checked",
+       "role": "reviewer"
+      }
+     ],
+     "bindingMessage": "refund ap-1",
+     "change": "approval_added",
+     "decidedAt": null,
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.367Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T00:10:39.367Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 2
+    },
+    "previous": "33c5c0abcb6747af94967aa978cd0bbbd54a9e9017103be3a55c6cf7ef332f2f",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.379Z",
+    "seq": 15,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "b963dacbf6f7287700a3ea5140119548a8f2335e32f8bdb1ab5bf8acdf7d4c98"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [
+      {
+       "at": "2026-10-08T00:10:39.378Z",
+       "by": "alpha-reviewer-2",
+       "reason": "checked",
+       "role": "reviewer"
+      },
+      {
+       "at": "2026-10-08T00:10:39.381Z",
+       "by": "alpha-admin",
+       "reason": "second look",
+       "role": "admin"
+      }
+     ],
+     "bindingMessage": "refund ap-1",
+     "change": "approved",
+     "decidedAt": "2026-10-08T00:10:39.381Z",
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": {
+      "notAfter": "2026-10-08T00:15:39.381Z",
+      "notBefore": "2026-10-08T00:10:39.381Z"
+     },
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.367Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T00:10:39.367Z",
+     "requestedBy": "alpha-gateway",
+     "status": "approved",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 3
+    },
+    "previous": "b963dacbf6f7287700a3ea5140119548a8f2335e32f8bdb1ab5bf8acdf7d4c98",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T00:10:39.386Z",
+    "seq": 16,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "1ff2e1ad5d8b833623c7f2d97c1c28837a01b18f0d53a5e8da417b8a53954e72"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "approvals": [],
+     "bindingMessage": "refund ap-2",
+     "change": "refused",
+     "decidedAt": "2026-10-08T00:10:39.388Z",
+     "decisionId": "ap-2",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.373Z",
+     "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": {
+      "at": "2026-10-08T00:10:39.388Z",
+      "by": "alpha-reviewer-2",
+      "reason": "too high",
+      "role": "reviewer"
+     },
+     "requestedAt": "2026-10-08T00:10:39.373Z",
+     "requestedBy": "alpha-gateway",
+     "status": "refused",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-2",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "dd1ce0ec6ea1a1d453cf870d8a3a2161f19173860999a1b7af940f889f71134d",
+     "traceId": "t-ap-2",
+     "version": 2
+    },
+    "previous": "1ff2e1ad5d8b833623c7f2d97c1c28837a01b18f0d53a5e8da417b8a53954e72",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T00:10:39.389Z",
+    "seq": 17,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "5318ce14516fedc1befa1cdd183f2e13e95b16af7bbcdb0ebd33e64c963fd884"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "O4jFSBx+fijtZktFd8caR7tkRScXnw2jP3cWlQ6VsUe3Ixl5/x3CdhgP0ej8BCK8+r/WkuCGwAn2HxsptGh5SxGpZdeR+wrftCztwhiGexFaQME6URld8uBHXEzWDDFWbEHx/j/Pgp5RMymAi83Z3f/ZiSYv30X2y1G1rr0qg6Ew5aGh6TtrlishjXSoBFs4VPpRPmHOLpx3maZjdxo7EwbewKjgDGxfsblO3eAqDNwdSQXp6hdUqxD2hkLoNDdFFybERLUaKHCQK4jyH/SRPWVDit9ysE2jaN/TSGLK2+sZSrme3Ctmrvns90sjuiR9cd28Rnx+75ONvLdvjirxn+/IVjqardipdxCFIrbjghGlTO1CRDQbbpOgU/TRx2HS/+ki6BmJc4VaJltM9PKOMSbBNkTZ+L61Dq8ZPHoAHBh8RHqQLzMLHNz+rcStYevKHJdL7flvma5c1IyBuREHQv25hFKw3MLeyug1wJ7OPH+Ur2LncOSWU+loV/YtpWLgKtbqMpZbRTugtH5SPcuyVBcpoZ/dwa9/6qOQnlz8A7rmK4Rw9L20yC+YGwKPzGUb1d37GI8zJzVINgrP3uW/htILVvjMfcwFNcLZWnS0NVdfZMnVJZgf6jRCjFhrEJNzs+lfQ4WrRiEyDWiMKnxmlBRz0Jh+RACBjgcfGVZrVBoiziqcYZQTe1nYmPIPMz53Vs5n+hJ+9ifgSc4HQrd8Nk2s3HoQAIcDaJVaTAnmiSVZVjuG55x1Ev/Umpk4mYMr3f4gcYZmH7Qfq1RdEb9qg6AGmGifcrgUO6hqwSP/eT0OEOn6GN3Pu6iCV6CgmiLBq4BDkDgrQhTb/G7g6C60ZPWrFHuVaKj2kkRbtTJFYGIifhl7B9YkHRbqOu8+uhIMIAqZxeyj1vRV8RdnZjnGW0iAanm72ZH6Cq4a5r+Kwnw=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "HM3nD9MkhscF4/Rh",
+     "keyEpoch": "2026-11",
+     "keyId": "89857ae1-55a4-4681-a7e8-110f3b135c90",
+     "payloadCommitment": "5b26f108ce97e73e31580e8ed987714334399ecd10838950ed3322261796ec5c",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.392Z",
+     "seq": 18,
+     "tag": "JU32w7Wfrk3/qhgqO7NHAw==",
+     "tenant": "alpha"
+    },
+    "previous": "5318ce14516fedc1befa1cdd183f2e13e95b16af7bbcdb0ebd33e64c963fd884",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.396Z",
+    "seq": 18,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "1e00fa59c5718f6b11a54f7dae8dbe001bda6045b1ce89d69f1dce74f1cae7a8"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "1e00fa59c5718f6b11a54f7dae8dbe001bda6045b1ce89d69f1dce74f1cae7a8",
+     "eventSeq": 18,
+     "fingerprint": "fp2:2026-11:27a14d7fec2b0b2ca416756d2f6c93106e98ce4fce95bb8e1eea2278c5abf50f",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-ap-1",
+     "source": "alpha-gateway"
+    },
+    "previous": "1e00fa59c5718f6b11a54f7dae8dbe001bda6045b1ce89d69f1dce74f1cae7a8",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.396Z",
+    "seq": 19,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "30831c38f330d041cc552d0677b6a6993d8f5570b32e25d601ca48ea6d22fc76"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "nqQIcJ4YFUw4HXlqq292Q934NYC3P/uKb6w5YXr0brL3EEOY6t7c45jZx/2IVR3OxTlAz0bA/prS5R33DmyrYqZmOAaMUBL2mv//55ni3zu/s+go4MGBjdbVR+vgOE+5K7oFwtpPUy+07glqO7wSWRSIlXbmX5sw1VrWRzQFLO62lgOrVWpJJsXr7z60IwgBN3SBmi/iCruv2AWMAVdwRjHop4YPtTm3dvsXZhp+KqW7hyKctPJsUjZUL8M3gwUd08vinXm45n/k8MB2qs14cB1ZHnITTVG0D87UP9vGfEksfNJWMIakwjHdY2JORJVsKWLGPXJz1g/8SdJVWUtizMM3ztRr/1YPbOHaYfumWmwFPi38bUquLVEMBqc+1Chpy24IrRvphNHET1JAkCHnXBt7KVT5Y70ALXKYIJ2mzo8T4kVC7d1wv4eQgmj6nglzqvcrrGKIGfVxQuXf1nyeTpnN4LiNuFopFtVsvN4mKX0m828vwewqJqz6E8NzO/YI7zQ3dxVxHVr8ImuiramgnTn873N9EJgBHgTVVHGukK3X7e7HsAgAo0ZDgTriIllOdvC3ICDILNg1Hvbyu3KHyqqGW0AV9m0H+39WIAGIE8swc7er/iCIV29HBIgGlZTuxGSYMO8K4CGZ+2Ig/0x5QpKoXAbVsQ5yb/8eNinQOw+PiIGKwDY6vySljfGYEQ/ldJSLBaEc3HMttWH7Twn+FJhKbA45ZskyE47hORGQEN/4nD52NRh+8wp6tilxK5qa",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "I84+FuQeuzYgctpe",
+     "keyEpoch": "2026-11",
+     "keyId": "e5bc8c86-74e6-47f3-a7a3-d259c3e1c2bc",
+     "payloadCommitment": "1586f4d1eee1f2b660e635e6b86f13bb2121f0d45611711a58c2a8cdc53fa94b",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.398Z",
+     "seq": 20,
+     "tag": "6dFgWpYOlRjPS2Hvi5pgNA==",
+     "tenant": "alpha"
+    },
+    "previous": "30831c38f330d041cc552d0677b6a6993d8f5570b32e25d601ca48ea6d22fc76",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.403Z",
+    "seq": 20,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "06d92a62a98aaac83029d4e2224e87a1cea75f8f2b615fceb2e447d998a04645"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "06d92a62a98aaac83029d4e2224e87a1cea75f8f2b615fceb2e447d998a04645",
+     "eventSeq": 20,
+     "fingerprint": "fp2:2026-11:b8138528d1359bfef1cee2f97bb3378f1ceb0938002ba099361bbbcd35715f7d",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-ap-1",
+     "source": "alpha-tool"
+    },
+    "previous": "06d92a62a98aaac83029d4e2224e87a1cea75f8f2b615fceb2e447d998a04645",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.403Z",
+    "seq": 21,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "26f73485d405e228e1ad2982227f75c9b390d968e93421b2f2a0e0b85b7e74e7"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "ciphertext": "26XKK/5V0z3YmYE+L3ugiAqQd1FR5dBws/yKKDbuQJiyBh97l2fRikF4ahQWW4GtNQx3iPpbJC5zXQXWAyg0keQ9Cxix/lr+QwtPP9PxbxoOYbGPH4TgXsaRRF6nvUluBy50JJA8m0V+KLuS4h2gcUlgaOplMSJOx8LZ/Ki3Dn7gEKZvNbN/H7AemsPqL7ULDKbhM752trZEP8wbQty26iR9rOQpeLBlQ5NtZOkfi+WCvMiFKiIa+JqcptiYN/YpKqxUQTfxU+RjuIR+gqtQKDAIerzYQv0X9aLQWQlqXujBquY9r178i8za+t1x1+3B+sPJay6I0XNsRdBw++GKIw6/eBeTDgrgqzdVRT023AMDxG2pMUl0tHjRnZdz45g4fPneDoySEm7oLd3Qj0OpfVWGT1HwlIdrVD7pLmi4sBbBvsMNH1Iij/8l0olh0diAmgW/bhF94iktHlIG31b860D0MeIJ6rz1XzWxJskQV2dnjUN5NvDNFeRFZvXB1vs7/QC/TztxuR8q1RjXt0Dwu3vEaBu4tjzo5NOv2ppQS2RmSeR6blVqgIo9gFXDTkkRyYHVKJbC9yXv1vc1QtrYv8ywo3YT8fl/bVskUhwgGgajn2o4KFQTpKOSlI4g7R1l8juJk49vl61lEFyO4C/YRtHlGCkzse1aI7vCzdn3swwjuPSgQlTA+Pqv8Hrndq00PO3nz/malAo5ck92qhZrVk0fPJ6rnd/5hbrWO6fPl4zWfXAat4S1Li7eb9cZAyAoqNIi42AvdGYe61Yhl6+pUQkrPGA2XkDY9rxxSBPZTO+ElJjCh6cDmx/uZJSKox4cX2K2S0FC43zPs8vhavUjw7PHLK0XBBc5PdUCp/0v88EhXi1+NFds5A69TqVpboCmR/zE4AG9Dgz1kGBku8p2PpxCgnUatZF7iVxK9mXT/38=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "w3a1nz3LIEprjMx6",
+     "keyEpoch": "2026-11",
+     "keyId": "70164175-ff2a-4b2b-866c-b357b9484e41",
+     "payloadCommitment": "56a9a0e0d98be5f22f46ee4817e1310f32fdf87c2ba63c1fd140d9e91a176e44",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.406Z",
+     "seq": 22,
+     "tag": "Yu4Mv9/zlMyly3BHq7SqjA==",
+     "tenant": "alpha"
+    },
+    "previous": "26f73485d405e228e1ad2982227f75c9b390d968e93421b2f2a0e0b85b7e74e7",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.410Z",
+    "seq": 22,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "1525c988a723110946b5e44c4af69bf58f738fca51aeba0b043f9974746a6212"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "1525c988a723110946b5e44c4af69bf58f738fca51aeba0b043f9974746a6212",
+     "eventSeq": 22,
+     "fingerprint": "fp2:2026-11:5f8034ebef000fc25427dfa88b5d5b0c9128f09183f8eae7c7c47b06afe09a24",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-ap-2",
+     "source": "alpha-gateway"
+    },
+    "previous": "1525c988a723110946b5e44c4af69bf58f738fca51aeba0b043f9974746a6212",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.410Z",
+    "seq": 23,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "f1a5a077dce8dadc618ab3d3f7af321a3ce6920fe47089549b7774cab14e1179"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "ciphertext": "oNjDyMj9um3rFisrPe85rUzCGxLsH5XTJ/z8zkxHXW1fA/eb98imgWM2gPyDg8o+7+vliLlzKz8sGfkPzeAhP28bcL8ZdUW13Zgzbix3sjpbUCiQNKkBWSjQL6rf5VR0sX8D+9fYMbFV+vnGJuRhmxIpcEv8KF9cdxVTkr6e51lwSj0M20VRJkwAMsdeUimJxXKnrKnm0O/LZJUsR0StEVkLqLY9uofrudRZJJLRCiwEDv3Rparg4Ra5icccG2sbexq3EPUuOQYv21rUrd01JmeMkW0NxOM9JiAm0khmxMfKUlOZzltm6Bs5grAVaA09ZNOjhf6oP98N7nERH3jGG4fj+Ebg5yfEOLXrKy0PWAx3fa8Ieave9K2FwvXHz0H1dqTC0V40y5ahetNerIEbWSlzSKmbkuj0nSPwPd+wnl1tVDh4waq2sf6zyOCT4jrOFvKioq0yCMBZeBrLoAxsxrNvdZ9Q0l7ClAyoCjiTqgEN4d98cNWnwQ5nOx54qbCN0+kdX+uXKrFM3axsYlnrDoBnPFMnD349qd3luVNWOcJotWi+Lz3sH2iDsOBCPHYbJj2pL1ml9NkjIr18Xfxc+vSDj4FXYciDvHLL519wC68kZojmvJ7dy5q5bMlSL0RUsQW98DiwmpFNK/4FkTYUXxXR8adVZ4J200vnhuhArc5XCn6dynTWJd0R6Ud4mWyWbHRrC5vrypgkpQ4i6KB0ZoCSHTR170lK8/S3cmkwOZ9VTLAcYz27gFpAGN6Te4nE",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "XYO95WqaGpPmSGDQ",
+     "keyEpoch": "2026-11",
+     "keyId": "3bc4babf-860e-47f5-8d19-573272531105",
+     "payloadCommitment": "6a6c31da508ff0edb03e4b6ba37f5389c70bf8f073e9aef9122f9d34139e33b8",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.414Z",
+     "seq": 24,
+     "tag": "4ijhfdFWJb4L9cCp7Mn4jg==",
+     "tenant": "alpha"
+    },
+    "previous": "f1a5a077dce8dadc618ab3d3f7af321a3ce6920fe47089549b7774cab14e1179",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.417Z",
+    "seq": 24,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "674a16268d1346225e5fdd9020361e86b544fe4ad17dab8fe3b171d88ef308fd"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "674a16268d1346225e5fdd9020361e86b544fe4ad17dab8fe3b171d88ef308fd",
+     "eventSeq": 24,
+     "fingerprint": "fp2:2026-11:fccff2d03adcb6baff17edef487edebf3be33bae54c4738593bb672e6accb735",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-ap-2",
+     "source": "alpha-tool"
+    },
+    "previous": "674a16268d1346225e5fdd9020361e86b544fe4ad17dab8fe3b171d88ef308fd",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.417Z",
+    "seq": 25,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "d3d19332afc9e154193f4b05e299e8e75abc7ee97ea84350734d227d1a482311"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "analysisTime": "2026-10-08T00:10:39.420Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.443Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      }
+     ],
+     "id": "983302fd-3a5f-453e-87b3-1541cdc38a6a",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v3",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+         "version": 3
+        }
+       ],
+       "assets": 1,
+       "events": [
+        18,
+        20
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 4,
+        "policies": 1
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "ccb0909c6acab52fde8198011abfbc12d0f3a60bce1ab5ef0187cadf85be1780",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "d3d19332afc9e154193f4b05e299e8e75abc7ee97ea84350734d227d1a482311",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.444Z",
+    "seq": 26,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "a3689481b78e1421264439b6f4b096d059ed7b4182dd900d95f7047f9054abb4"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "analysisTime": "2026-10-08T00:10:39.420Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 3,
+      "totalFindings": 3,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.449Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+       "severity": "high"
+      }
+     ],
+     "id": "0346d7cc-ecc2-4e47-bf8d-14ff8a7435d8",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v3",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+         "version": 2
+        }
+       ],
+       "assets": 1,
+       "events": [
+        22,
+        24
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 4,
+        "policies": 1
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "e8c3a879f22ff88bce48c2b8bc4f7f13b612b67be5e48a8a5de23e3c8f6d013b",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "a3689481b78e1421264439b6f4b096d059ed7b4182dd900d95f7047f9054abb4",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.449Z",
+    "seq": 27,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "9613497838eb2b4b9b53b2639592551ff3d9ef8ab6f0074a550d201f391e2dd3"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "change": "issued",
+     "effectiveFrom": "2026-10-08T00:10:39.454Z",
+     "enforcementPoints": [
+      {
+       "basis": [
+        "decisions_seen",
+        "policy"
+       ],
+       "id": "alpha-gateway"
+      }
+     ],
+     "entryState": "production",
+     "evidence": [
+      {
+       "ref": "INC-9",
+       "type": "external",
+       "verification": "self_asserted"
+      }
+     ],
+     "id": "048e3763-1422-4cc6-bac7-295616f1a1fb",
+     "issuedAt": "2026-10-08T00:10:39.454Z",
+     "issuedBy": "alpha-reviewer",
+     "propagation": {
+      "policySource": "signed",
+      "policyVersion": 1,
+      "windowSeconds": 10
+     },
+     "reason": "incident",
+     "registryVersion": 4,
+     "scope": "agent",
+     "status": "active",
+     "suspension": {
+      "transitionId": "54d6ffb1-0b35-472d-8f5c-5fa09c6a3e62"
+     },
+     "target": {
+      "actors": [
+       "pay-agent"
+      ],
+      "sources": [
+       "alpha-agent"
+      ]
+     },
+     "tools": [],
+     "version": 1
+    },
+    "previous": "9613497838eb2b4b9b53b2639592551ff3d9ef8ab6f0074a550d201f391e2dd3",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.455Z",
+    "seq": 28,
+    "tenant": "alpha",
+    "type": "agent_stop_order",
+    "hash": "a3183826ed2e31a9a3929ba6f1a9d0e98e50a991e2519bc4abb89adf403142ba"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [
+      {
+       "ref": "INC-9",
+       "type": "external",
+       "verification": "self_asserted"
+      }
+     ],
+     "from": "production",
+     "gate": {
+      "checkedAt": "2026-10-08T00:10:39.458Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "suspended",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "54d6ffb1-0b35-472d-8f5c-5fa09c6a3e62",
+     "reason": "incident",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 4,
+     "requestedAt": "2026-10-08T00:10:39.457Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "stopOrderId": "048e3763-1422-4cc6-bac7-295616f1a1fb",
+     "to": "suspended"
+    },
+    "previous": "a3183826ed2e31a9a3929ba6f1a9d0e98e50a991e2519bc4abb89adf403142ba",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.458Z",
+    "seq": 29,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "d16cbb704b32287927e2114e973839074878a47d230d7c127305ca373d19692c"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T00:10:39.336Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T00:10:39.459Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "at": "2026-10-08T00:10:39.459Z",
+      "from": "production",
+      "id": "54d6ffb1-0b35-472d-8f5c-5fa09c6a3e62",
+      "requestedBy": "alpha-reviewer",
+      "to": "suspended"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T00:10:39.336Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "suspended",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 5
+    },
+    "previous": "d16cbb704b32287927e2114e973839074878a47d230d7c127305ca373d19692c",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T00:10:39.459Z",
+    "seq": 30,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "aab057d1f5bedd1373db42d88360776cac1004ee2074bffaa6533fd29267fa2d"
+   },
+   {
+    "payload": {
+     "actionId": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719",
+     "ciphertext": "2GH41ZRlUAjzn3H5P7e5Tt1gU4YVsRuGIJXvwhYiKd5i/onJUslgJYv3Y1U5fUvX57rm7zvNegOCZrxHh7KN85Fw664QDBH30Y5uH8VY86p+YYc7e/zD9447ytFvYKO6rS94K//8q7w72xDl3MA5UIeeIWEHkyJNE6ydifVB7GhdS6dPfV6Ky6XY9krwP5PdFZXh9e9QUKC0yQZSAoxRpVkhYAcHI37bExnebboAFGRePHikC5/7sTGp72LrvU3ry5VMF8OOebSIwGoku9K4EDpcAFCfx4OJEj6p4cub+g8Ap9OrPmIodj5EzK8scXRx3feOSjcNi30jNhbeqONhivlLTzpdd6EuF3RHh1qwI7BcRjzk2UEjUF2KciW0fzIN+bG04Its2lJfHxjjjjOBSrT3CAPKcAweQbTLfnRbpgEnEQIDtUYM+bdS8sr8baizH0y8QOGYUX+vE8fp1cxySumKlsu7Z7+k0QQ84SD4c3+VVTxVkh/mroq2s1fQfFaw8OzwgYdYCjPeZK7mMI5BDW0ujMNQ0B9xO/SS8dTR5jrM02FqqhRnFtrSmHCjP2OVXd6SGaL58n5PQ4IhYiMFmMAKKPqn8qcF6Cl3Ila4YejQx9zvDwFpG0KmHUd/sA1VU1uw3kTwH9haGv/FQVtevddyI0OGRqjt5QS0CQrq1qRVD8yjsYRwhs+DJ/zDCeNg3rH+nzNdSdeiyziefJdaEtFSCpUkQAvgTgg2G0w2AZWI0N3ZlqDsy9jdsdcyobqlhXOi1r7wxzprJYvxfs3Xfrt/ySBEWd0SJdLM4+LmAVza9kS7r0F1C4dkY0PasIluwGH3YEtoRRUz3+zYUoV1Rx8Lykwt3MpTr9MEP4kLFDLJd33wjo7CV1p63pBpcGMl6ZLaCLpzTv712DU0+OLuV3Sdl9L90DA9tMK9Fey8T0Dkpk4N2Q7EDXyGjIOR7ALIE22gj8pndAGD5zIX4RMEJmIgQPl5Y1st0N0r0BsmH1Kaljh7fTUJeyonPVKyYpo9",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "spRS4ufe7o89wkhY",
+     "keyEpoch": "2026-11",
+     "keyId": "f77830ce-a9a4-40e8-b8cd-592140d1e2c9",
+     "payloadCommitment": "0f1eaa1919f20babf682c936d8ec4552f218a503781adcf1d93afd2ec426408f",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.467Z",
+     "seq": 31,
+     "tag": "VmCoxM7l4vJQBHLQ9z0mGA==",
+     "tenant": "alpha"
+    },
+    "previous": "aab057d1f5bedd1373db42d88360776cac1004ee2074bffaa6533fd29267fa2d",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.468Z",
+    "seq": 31,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "2ec3eb05c5dd23cc3d03fb13b775b5531972a10159acd21205c6022842fd98ad"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "2ec3eb05c5dd23cc3d03fb13b775b5531972a10159acd21205c6022842fd98ad",
+     "eventSeq": 31,
+     "fingerprint": "fp2:2026-11:1a31ea84705969a4fddb6890057ca98c5e9d82328051210866670e301930fff9",
+     "format": "evidscope-event-receipt-v1",
+     "id": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719",
+     "source": "alpha-gateway"
+    },
+    "previous": "2ec3eb05c5dd23cc3d03fb13b775b5531972a10159acd21205c6022842fd98ad",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.469Z",
+    "seq": 32,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "850a865d6b6c6d02b39184cdb3afbcf0bbbb389ac97419668c64cd1b3790cfdb"
+   },
+   {
+    "payload": {
+     "actionId": "st-1",
+     "approvals": [],
+     "bindingMessage": "refund st-1",
+     "change": "requested",
+     "decidedAt": null,
+     "decisionId": "st-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "suspended",
+       "entryVersion": 5,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T00:15:39.473Z",
+     "id": "apr_t-bCc5OCG-RbdcGHkDcPc4s3Vh0",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T00:10:39.473Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "st-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "35e06b07a483b202ac88837562cc8987273afa146911b2838428139251240d1b",
+     "traceId": "t-st-1",
+     "version": 1
+    },
+    "previous": "850a865d6b6c6d02b39184cdb3afbcf0bbbb389ac97419668c64cd1b3790cfdb",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.476Z",
+    "seq": 33,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "aad3a69340addbc23afbd646ba0c5ad1c3c29f15781a3e07db1543eb485ae50c"
+   },
+   {
+    "payload": {
+     "actionId": "st-1",
+     "ciphertext": "gKNY3KXmUyN0lx7vXar1bUkeizLqC44N8708t5+U0/QrD5AopOjbccFqqOmtxKivWEFczIqrWHsbBUZ9MIN+c6dzPOZfmefm2o8PPArhb8lsJOl0XTDfddsqr3Ika1T4za3fijXrHj4SmSoRfGBvKJ4cN2sp5cWy6g8dbBZSpkgz6Lc8BgRQZOmvDYehF872VPfC7AgxOlUKcQuR8TpGDjdiK0oLFI4I6jtUM71YSTiKFn3maMLVb/5cgAmTVp7Cy52B8zOeuAs/+PaSk5mh+m49sQAgq8arQ2JZB6qACFIuNy27VtrYhriNKxzPGKCPS/oLPXzhOSIQyXmmVVL7AM0k8z0zr5iQY61snMhnjz9NF4yyhWN/3hjxYMDBqi5kw1LEfK0H7w4VagRxcY8arE6Wdlva0rP+uqn9w7suGcxJVix4JgMHsUw4eSMizl8b68wwtYlK55nJVpco8ydyg4/lu3R+YOT8ceD2U9RGh3uUu5rivyN7BW7HthJ4x/DoWhW5Cg2huGZlQ4wHuBbp0ZegLRAbNEt963BV1048CujoepXZxzZyPd/uBRnGSYn9Hiq4LK1jab7f5LGECpEi0wtFIE414EU/NmILaU6zynzNsRIaY6xAG1KULm4zO68BWBUBKIOXqvpGMEtuu9sLnVdgwRMlAUXro4orOEvCx0dev7eSX2aAQVKQX+y3l7HPDj8mYOVgVBzx68X0JXO4gF9Rf2dKv6nvwdt00xa3ajk0S2i47mQ1fl6GO6hnfPV2p4EpBkUkECbjLY2HOVeXmTmU3pI3qF29x2VUNLSGl7wLVul5IfRZrtD8Hz1QTeZc513eDvQki5rShNXOcxOvmw+Cq3mmVaCnOwxwaTfeMe+Mu9T40EJnjxsJHpeXiFa0up25jOC3cqpPny3W4LqSshy8edU/6TdHkIrhSRhq96Q=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "FuBSsTMdaFxl62g9",
+     "keyEpoch": "2026-11",
+     "keyId": "6e2c63f2-0919-4f26-9fb4-b111114980f2",
+     "payloadCommitment": "252868140fa78d2b7a35de65b79a05f912e5954303dd8bc042d52d8a92b0790e",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.485Z",
+     "seq": 34,
+     "tag": "Pu7pURqL2w7URtWe/RbziQ==",
+     "tenant": "alpha"
+    },
+    "previous": "aad3a69340addbc23afbd646ba0c5ad1c3c29f15781a3e07db1543eb485ae50c",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.487Z",
+    "seq": 34,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "035884a0352e8a4efd71eb8145e526838f750bba37934c5637c90c983102465b"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "035884a0352e8a4efd71eb8145e526838f750bba37934c5637c90c983102465b",
+     "eventSeq": 34,
+     "fingerprint": "fp2:2026-11:bba180e764b9b971b543355327e5a0859f2566e9770c780cd9c25e388878d422",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-st-1",
+     "source": "alpha-gateway"
+    },
+    "previous": "035884a0352e8a4efd71eb8145e526838f750bba37934c5637c90c983102465b",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:39.488Z",
+    "seq": 35,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "1d2aeb6d1527704d168fffce84b472561d5a6e7f433bb23d7b8cb5f4fd7592ea"
+   },
+   {
+    "payload": {
+     "actionId": "st-1",
+     "ciphertext": "/P5PmdPLyoO6Qikki4rhS3DaHDgMWv+Nd/wVnbpF40QOEiPYcienYO7gXxXJbbGR6Crr8JTcClOiU0cGlmD4Eu7zQwd/XjBJ3LEuG/a9W9PCpDujKerw0eMIdvrSowzFBqz+eDTbKFM9d7rcgTxmAIdqV3zJXunleYBb13qHaZACF2HOkxwzt33+YNiEz+fzv64g8PNLe7mxPrS9MVuuyEayxG+3d1qiCHxTYouPQgi5lwZ7WBCOkt/1Bin5nuIpTipp9l6skybsjKGKqVdz8BbQL0v2NKADzz3Q3kGiOx+n51ZDKDHwW2z02NMbLSONbM87GbynMP0WD0+Mt7dMS9/UOthCLt94dpVj2JGR3ywvVuA1NPply6w71VFback0H7GW6SWoDqWsYlg5BhJ2ucU0aoDViPj9z7gdSAbGRv4imA5BNl9eK243ppddUu8wm8YkZ2ftoHwQIjHX/0uyYumqiIpMzJB0ey9+s/XqRxJC7Jn60EpyOKrWT0DMyF6EWzDIN/Dn6kvCvsjdpOXTFsHuzBPsMttcw+peUjdtWhU4xe6iiUNYvpBvcxlWrltHGVvvnGhxAHrIjxuHOwW5NUQ50XojNTCqcdalgjFGZWDblkq2xnFdFo0jGhMjQsmECrzRVVMw8al4zZMC4pUoIgQ7xJ/vh+rvzb92EAnD0T9PqovOWwF4H2PCa9byW0KQEUixL1xBYsj/QDtQABgU9M1u7UI5fxcgCnaxMySj/TN1c9Wwz6rIQb5BAnr66k6d",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "igvK+Hp20IW4gj8T",
+     "keyEpoch": "2026-11",
+     "keyId": "f7ff7d99-5e8f-4995-ae0f-3209fa11c76e",
+     "payloadCommitment": "211ad19ee9f85097270a964e77bb862fc19f91e2db42530d24727f270413556f",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:39.490Z",
+     "seq": 36,
+     "tag": "3oLxXiD0RKAz57dz17hB2w==",
+     "tenant": "alpha"
+    },
+    "previous": "1d2aeb6d1527704d168fffce84b472561d5a6e7f433bb23d7b8cb5f4fd7592ea",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.492Z",
+    "seq": 36,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "dbc90092b5caf1cb366f5d857febb43bc31cc216f91f271c3b27c9bb6d9a27ff"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "dbc90092b5caf1cb366f5d857febb43bc31cc216f91f271c3b27c9bb6d9a27ff",
+     "eventSeq": 36,
+     "fingerprint": "fp2:2026-11:0e753b79121900126476192b51272cc778e5d05b7a8387e195ae911e7009bc54",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-st-1",
+     "source": "alpha-tool"
+    },
+    "previous": "dbc90092b5caf1cb366f5d857febb43bc31cc216f91f271c3b27c9bb6d9a27ff",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:39.492Z",
+    "seq": 37,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "1b6003a3e88aafeb212bbd37d86f102c0bed8891148c232c49aea56c0f9be526"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "analysisTime": "2026-10-08T00:10:39.497Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.508Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      }
+     ],
+     "id": "7bdf9b1f-5252-42fa-9e80-4618b5374007",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+         "version": 3
+        }
+       ],
+       "assets": 1,
+       "events": [
+        18,
+        20
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [
+         31
+        ],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "f83d881c135038169291f984a69da283dc3f448edead220d7044a40ee1ddd148",
+     "status": "evaluated",
+     "version": 4,
+     "worker": "analysis-worker"
+    },
+    "previous": "1b6003a3e88aafeb212bbd37d86f102c0bed8891148c232c49aea56c0f9be526",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.508Z",
+    "seq": 38,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "b0e6feaf689d4453b972dbeaf4be54fe57c7f86e7b14338e54a0ef0e9e1f8281"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "analysisTime": "2026-10-08T00:10:39.497Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 3,
+      "totalFindings": 3,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.512Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+       "severity": "high"
+      }
+     ],
+     "id": "202592e8-77d6-4e94-9d48-173b5609ac71",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+         "version": 2
+        }
+       ],
+       "assets": 1,
+       "events": [
+        22,
+        24
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [
+         31
+        ],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "c26013032b6e5a634de13ec754a8b73ba47f0f3673f88e402df02a1ddc228df8",
+     "status": "evaluated",
+     "version": 4,
+     "worker": "analysis-worker"
+    },
+    "previous": "b0e6feaf689d4453b972dbeaf4be54fe57c7f86e7b14338e54a0ef0e9e1f8281",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.513Z",
+    "seq": 39,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "4f57a12bce650956f7b6426a9782a6797f1db06ffcbfa0521e566c0b11445838"
+   },
+   {
+    "payload": {
+     "actionId": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719",
+     "analysisTime": "2026-10-08T00:10:39.497Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 0,
+      "totalFindings": 0,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.522Z",
+     "effect": "unconfirmed",
+     "findings": [],
+     "id": "d0679dfa-1293-4a40-a7d4-0afaa7a3e882",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "assets": 1,
+       "events": [
+        31
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [
+         31
+        ],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "a1cbc976f16cd0b2c4664f75683757c6a319fb45195426ac393a5040677b51bc",
+     "status": "evaluated",
+     "version": 1,
+     "worker": "analysis-worker"
+    },
+    "previous": "4f57a12bce650956f7b6426a9782a6797f1db06ffcbfa0521e566c0b11445838",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.522Z",
+    "seq": 40,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "42334de78b5b744b212fa289d73344199792bac2e19cf7ef9f668c4ff0dd49bf"
+   },
+   {
+    "payload": {
+     "actionId": "st-1",
+     "analysisTime": "2026-10-08T00:10:39.497Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 5,
+      "totalFindings": 5,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:39.532Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-st-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/x-st-1"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AGENT_SUSPENDED_ACTIVITY",
+       "evidence": [
+        "alpha-tool/x-st-1"
+       ],
+       "message": "행동 시점에 정지(suspended) 상태로 등록된 에이전트의 활동입니다: pay-agent",
+       "severity": "high"
+      },
+      {
+       "code": "EXECUTION_BEFORE_APPROVAL",
+       "evidence": [
+        "alpha-tool/x-st-1"
+       ],
+       "message": "승인 요청에 사람의 답이 나기 전에 실행되었습니다 (승인 요청 apr_t-bCc5OCG-RbdcGHkDcPc4s3Vh0)",
+       "severity": "high"
+      },
+      {
+       "code": "STOP_ORDER_NOT_HELD",
+       "evidence": [
+        "alpha-tool/x-st-1"
+       ],
+       "message": "정지 명령 048e3763-1422-4cc6-bac7-295616f1a1fb을 집행 지점(alpha-gateway)이 활성화한 뒤 이 에이전트의 도구 실행 기록이 있습니다. 정지가 집행되지 않았거나 우회 경로가 있는지 검토하세요",
+       "severity": "high"
+      }
+     ],
+     "id": "5bf8134c-ffbd-432a-acb2-ed0aac7286da",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_t-bCc5OCG-RbdcGHkDcPc4s3Vh0",
+         "version": 1
+        }
+       ],
+       "assets": 1,
+       "events": [
+        34,
+        36
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [
+         31
+        ],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "5c1ba7b00f5dc4e3a9dd2375633fcd43620ab29fda3b2905831cc3598a5ed8dd",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "42334de78b5b744b212fa289d73344199792bac2e19cf7ef9f668c4ff0dd49bf",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:39.532Z",
+    "seq": 41,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "35c18793f05b8777dd3dc5d809b8e299962defeb6e00b8fbfbf715cfb4105352"
+   }
+  ],
+  "checkpoint": {
+   "format": "evidscope-checkpoint-v1",
+   "tenant": "alpha",
+   "count": 41,
+   "head": "35c18793f05b8777dd3dc5d809b8e299962defeb6e00b8fbfbf715cfb4105352",
+   "signature": "LZ0Rmr/KA0NpZFQN1V3bCfY6W2W6OOQj2VTT1hEd0BIYAHLfRMgu5ghUZpcotUbl8ZQfJqg4jVOBM04zlJGLDQ=="
+  },
+  "limitations": [
+   "Minimized receipt evidence; no original prompt or response",
+   "Signature authenticates local vault, not truth of source claims",
+   "Pin public key and checkpoint out of band to detect replacement and rollback",
+   "Erasure covers live event keys and query copies; prior exports/backups need separate disposition"
+  ],
+  "disclosures": [
+   {
+    "seq": 18,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "require_approval",
+     "decisionId": "ap-1",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:27a14d7fec2b0b2ca416756d2f6c93106e98ce4fce95bb8e1eea2278c5abf50f",
+     "id": "d-ap-1",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:38.391Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.392Z",
+     "resource": "ap-1",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1"
+    },
+    "salt": "e6e7ecb5cba0117c6244b964cc5fccb76de1b7b9b81539ffde5ec3d4d8c1671a"
+   },
+   {
+    "seq": 20,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:b8138528d1359bfef1cee2f97bb3378f1ceb0938002ba099361bbbcd35715f7d",
+     "id": "x-ap-1",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:39.398Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.398Z",
+     "resource": "ap-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1"
+    },
+    "salt": "2102314b48b38168c03f1b0964e895f5a7a4894e33a1600d754dc3e1d07c41dd"
+   },
+   {
+    "seq": 22,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "require_approval",
+     "decisionId": "ap-2",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:5f8034ebef000fc25427dfa88b5d5b0c9128f09183f8eae7c7c47b06afe09a24",
+     "id": "d-ap-2",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:38.406Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.406Z",
+     "resource": "ap-2",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-2"
+    },
+    "salt": "8f121c26904bf540c92bad4516d840238ec260389a8c9e9371d8adb7c0b19059"
+   },
+   {
+    "seq": 24,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:fccff2d03adcb6baff17edef487edebf3be33bae54c4738593bb672e6accb735",
+     "id": "x-ap-2",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:39.414Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.414Z",
+     "resource": "ap-2",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-2"
+    },
+    "salt": "18b40d3720c8e0b58d035f6d57736916d144c8d7f827f4c4c6e63ebee6b9d2af"
+   },
+   {
+    "seq": 31,
+    "event": {
+     "actionId": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719",
+     "assurance": "authenticated_service_record",
+     "bundleName": "evidscope",
+     "bundleRevision": "30-aab057d1f5bedd13",
+     "enforcementPointId": "opa-1",
+     "engine": "opa",
+     "engineVersion": "1.4.2",
+     "fingerprint": "fp2:2026-11:1a31ea84705969a4fddb6890057ca98c5e9d82328051210866670e301930fff9",
+     "id": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719",
+     "kind": "bundle_activation",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:39.465Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:39.467Z",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "traceId": "opa-activation-93c0bf032eff6c88fc41db9b849ae653494ce719"
+    },
+    "salt": "5d3a373f52504a7d5e42ae3c2c91ea6e4c094b80f5d568866ee2c2b5573ed586"
+   },
+   {
+    "seq": 34,
+    "event": {
+     "action": "refund",
+     "actionId": "st-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "require_approval",
+     "decisionId": "st-1",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:bba180e764b9b971b543355327e5a0859f2566e9770c780cd9c25e388878d422",
+     "id": "d-st-1",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:38.485Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.485Z",
+     "resource": "st-1",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-st-1"
+    },
+    "salt": "cd955b683a6b56ff995550f0c33d87cd72f2d07b932cb1b5dac4640243d5bf3b"
+   },
+   {
+    "seq": 36,
+    "event": {
+     "action": "refund",
+     "actionId": "st-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:0e753b79121900126476192b51272cc778e5d05b7a8387e195ae911e7009bc54",
+     "id": "x-st-1",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T00:10:42.489Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:39.490Z",
+     "resource": "st-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-st-1"
+    },
+    "salt": "2990dc0cc474e4f4dbae4c43a50dd81f7a0babf12487d83c6e05563030d8c4e6"
+   }
+  ]
+ }
+}
