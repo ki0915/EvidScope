@@ -12,6 +12,7 @@ Node.js 24.15 이상만 있으면 됩니다. 외부 패키지 의존성이 없�
 | 레코드 하나의 `c2sp.org/tlog-proof@v1` 영수증과 `c2sp.org/tlog-policy` | `tlog-proof` |
 | 기존 내보내기 묶음(`GET /api/export`)과 사건 보고서(`GET /api/cases/<id>/report`) | `bundle`, `report` |
 | vault API 응답(`?attest=intoto`, `/api/receipts/record`)을 파일로 풀기 | `unpack` |
+| 감사인용 증거 묶음(`scripts/evidence-pack.mjs build`가 만든 폴더나 `.tar.gz`) | `pack` |
 
 형식과 URI, 각 영수증이 증명하는 범위는 [docs/receipts.md](https://github.com/ki0915/EvidScope/blob/main/docs/receipts.md)에 있습니다.
 
@@ -70,6 +71,14 @@ node evidscope-verify.mjs bundle export.json vault-public.pem [CHECKPOINT.json] 
 node evidscope-verify.mjs report report.json vault-public.pem [CHECKPOINT.json] [--attestation report.json.intoto.json]
 ```
 
+감사인용 증거 묶음([docs/evidence-pack.md](https://github.com/ki0915/EvidScope/blob/main/docs/evidence-pack.md)). 묶는 사람의 공개키도
+vault 키처럼 묶음과 다른 경로로 받습니다. 검증기는 검증한 증거에서 색인과 두 요약을 다시 만들어 대조하고, 스스로 확인한 검사만
+인정합니다.
+
+```sh
+node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key builder-public.pem [CHECKPOINT.json] [--tenant T]
+```
+
 투명성 플래그(선택): `--witness VKEY`(반복) `--quorum N` `--origin-base BASE` `--max-staleness 초` `--require-transparency`
 `--require-tenant-witness` `--heads-key VKEY`(반복, [heads 서명기](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md) 키) `--require-heads-signer`(`--origin-base` 필요).
 `vault_host`는 `--origin-base`를 고정했을 때만 나옵니다.
@@ -91,6 +100,9 @@ node --permission --allow-fs-read="$PWD" --allow-fs-read=/path/to/evidence evids
   체크포인트를 공동서명했어야 통과시킵니다.
 - `tlog-proof`: 레코드 파일(원장 레코드 본문 그대로)의 SHA-256이 서명된 tenant 로그 체크포인트에 포함되고, 정책의 정족수만큼
   위트니스가 그 체크포인트를 공동서명했습니다.
+- `pack`: 묶는 사람의 키가 묶음의 모든 파일과 해시를 이름 붙인 in-toto Statement에 서명했고, 안의 내보내기·사건 보고서가 위와 같이
+  검증되며, 색인과 요약이 이 검증기가 그 증거에서 만든 것과 정확히 같습니다. "증거 있음"은 요구사항 충족 판정이 아니고 대응표는
+  사람 검토 전 초안입니다.
 - 증명하지 않는 것: 기록된 일이 실제로 그렇게 일어났는지(기록은 출처가 보고한 내용입니다), 체크포인트 이후의 기록, 내보내기
   predicate의 `issuedAt`(vault 시계로 스스로 적은 값), 법적 판단의 옳고 그름. 정족수가 `none`이면 vault 서명 키를 가진 사람이 갈라진
   이력을 만들어도 이 검사만으로는 알 수 없습니다.
