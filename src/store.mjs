@@ -504,7 +504,7 @@ export class Store {
    const expected=signed.get(type)||new Map(),rows=projected.get(type)||[];
    if(rows.length!==expected.size||rows.some(row=>expected.get(row.id)!==this._canonicalBody(row.body)))throw Error('Object projection differs from signed evidence');
   });
-  this._facet(state,'evaluations',()=>{const {lastId}=checkEvaluationProjection(this.db,tenant,state.evaluations);state.evaluationsCursor={count:state.evaluations.length,id:lastId};});
+  this._facet(state,'evaluations',()=>{const out={};checkEvaluationProjection(this.db,tenant,state.evaluations,out);state.evaluationsCursor={count:state.evaluations.length,id:out.lastId};});
   if(!state.faults.has('actions'))this._facet(state,'actions',()=>checkActionRows(this.db,tenant,state.action.finish()));
   this._facet(state,'governance_documents',()=>checkGovernanceDocumentRows(this.db,tenant,state.governanceDocuments));
   this._facet(state,'development_runs',()=>checkDevelopmentRunProjection(this.db,tenant,[...state.developmentEvents.values()]));
