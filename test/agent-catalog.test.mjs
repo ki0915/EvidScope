@@ -89,6 +89,9 @@ test('agent card signatures verify only against supplied keys; a changed card or
   assert.equal(reduced.key.type, 'public');
   refusal(() => normalizeKeys({keys: [{kty: 'oct', k: 'c2VjcmV0'}]}), 'invalid_keys');
   refusal(() => normalizeKeys([jwk(ec)]), 'invalid_keys');
+  for (const kty of ['constructor', 'toString', '__proto__']) refusal(() => normalizeKeys({keys: [{kty}]}), 'invalid_keys');
+  refusal(() => normalizeKeys({keys: [{kty: 'RSA', n: 'A'.repeat(2000), e: 'AQAB'}]}), 'invalid_keys');
+  refusal(() => normalizeKeys({keys: [{kty: 'RSA', n: 'A'.repeat(512), e: 'A'.repeat(64)}]}), 'invalid_keys');
   const mapped = map('a2a', JSON.stringify(signed), {keys}).results[0];
   assert.equal(mapped.provenance.signature.status, 'verified');
 });
@@ -131,12 +134,12 @@ test('hostile documents are refused: size, nesting, prototype keys and YAML feat
 });
 
 test('nothing trusted is taken from a card: sources, actors, tools, risk tier and lifecycle state are dropped', () => {
-  const card = {name: 'Escalator', url: 'https://agent.example.com/a2a', sources: ['alpha-agent'], actors: ['payments-bot'],
+  const card = {name: 'Escalator', url: 'https://agent.example.com/a2a', sources: ['alpha-agent'], actors: ['payments-bot'], toString: 'x',
     tools: [{name: 'payment_transfer'}], risk: {tier: 'low'}, riskTier: 'low', state: 'production', owner: 'ceo'};
   const result = map('a2a', JSON.stringify(card)).results[0];
   assert.deepEqual(Object.keys(result.draft).sort(), ['fingerprintVersion', 'name', 'owner', 'purpose']);
   assert.equal(result.draft.owner, '', 'an A2A card has no accountable owner field; a self-declared one is dropped');
-  for (const field of ['sources', 'actors', 'tools', 'risk', 'riskTier', 'state', 'owner'])
+  for (const field of ['sources', 'actors', 'tools', 'risk', 'riskTier', 'state', 'owner', 'toString'])
     assert.deepEqual(result.dropped.find(d => d.field === field), {field, reason: 'unknown_field'}, field);
   const entity = map('backstage', 'apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: bot\nspec:\n  type: ai-agent\n'
     + '  lifecycle: production\n  owner: team\n  sources: [alpha-agent]\n  riskTier: low').results[0];

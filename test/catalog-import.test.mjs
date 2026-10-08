@@ -162,6 +162,11 @@ test('the CLI previews locally by default and posts to the audit gateway with --
   assert.deepEqual(preview.out.documents.map(d => d.locator), ['file:agent-card.json', 'file:catalog-info.yaml'], 'no local paths leave the machine');
   assert.equal((await call('/api/registry', undefined, 'auditor')).body.items.some(i => i.name === 'CLI planner'), false, 'a preview writes nothing');
   assert.equal(run('import-agent-catalog.mjs', ['--backstage', badFile]).status, 1, 'a refused document fails the preview');
+  const keyFile = join(dir, 'keys.json'), requestFile = join(dir, 'request.json');
+  writeFileSync(keyFile, JSON.stringify({keys: [{...generateKeyPairSync('ec', {namedCurve: 'P-256'}).privateKey.export({format: 'jwk'}), kid: 'k'}]}));
+  assert.equal(run('import-agent-catalog.mjs', ['--a2a', cardFile, '--jwks', keyFile, '--write-request', requestFile]).status, 0);
+  assert.deepEqual(Object.keys(JSON.parse(readFileSync(requestFile, 'utf8')).keys.keys[0]).sort(), ['crv', 'kid', 'kty', 'x', 'y'],
+    'a private key file never leaves the machine whole');
   const token = h.principal('reviewer').token;
   const sent = run('import-agent-catalog.mjs', ['--a2a', cardFile, '--send', '--base', `${h.audit.url}/`], {EVIDSCOPE_TOKEN: token});
   assert.equal(sent.status, 0, sent.err);assert.deepEqual([sent.out.mode, sent.out.summary.created], ['imported', 1]);

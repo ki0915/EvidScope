@@ -30,7 +30,10 @@ export async function buildImportRequest({a2a=[],backstage=[],jwks,agentTypes,dr
  for(const [format,sources] of [['a2a',a2a],['backstage',backstage]])for(const source of sources)documents.push({format,...await read(source,options)});
  if(!documents.length)throw Error('Give at least one --a2a or --backstage document');
  if(documents.length>CATALOG_LIMITS.documents)throw Error(`At most ${CATALOG_LIMITS.documents} documents per import`);
- const keys=jwks===undefined?undefined:JSON.parse((await read(jwks,options)).content);
+ // Only public JWK members leave this machine, even when the key file holds a private key.
+ const publicJwk=k=>Object.fromEntries(['kty','crv','x','y','n','e','kid'].filter(m=>typeof k?.[m]==='string').map(m=>[m,k[m]]));
+ const set=jwks===undefined?undefined:JSON.parse((await read(jwks,options)).content);
+ const keys=set&&{keys:Array.isArray(set.keys)?set.keys.map(publicJwk):[]};
  return {documents,...(keys?{keys}:{}),...(agentTypes?.length?{agentTypes}:{}),...(dryRun?{dryRun:true}:{})};
 }
 // The same mapping the vault runs, without the registry: conflicts and idempotency are known only to the vault (--dry-run).

@@ -16,6 +16,8 @@ class CatalogError extends Error {constructor(code,message){super(message);this.
 const refuse=(code,message)=>{throw new CatalogError(code,message);};
 export const isCatalogError=error=>error instanceof CatalogError;
 const isObject=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+// Lookups by a document-supplied name never reach Object.prototype ('toString', 'constructor').
+const own=(table,name)=>typeof name==='string'&&Object.hasOwn(table,name)?table[name]:undefined;
 
 // Every parsed value is walked once: depth, node count and prototype-polluting keys.
 function checkTree(value){
@@ -200,16 +202,19 @@ const ALGORITHMS={ES256:{kty:'EC',crv:'P-256',hash:'sha256',dsa:true},ES384:{kty
  EdDSA:{kty:'OKP',crv:'Ed25519',hash:null},Ed25519:{kty:'OKP',crv:'Ed25519',hash:null}};
 const B64URL=/^[A-Za-z0-9_-]*$/;
 const THUMBPRINT_MEMBERS={EC:['crv','kty','x','y'],RSA:['e','kty','n'],OKP:['crv','kty','x']};
+// RSA moduli up to 8192 bits with a small public exponent, so a supplied key cannot make verification expensive.
+const MEMBER_LIMITS={n:1366,e:8};
 // Public members only (a supplied private key is reduced to its public half); the RFC 7638 thumbprint names the key.
 export function normalizeKeys(jwks){
  if(jwks===undefined||jwks===null)return [];
  const keys=Array.isArray(jwks?.keys)?jwks.keys:refuse('invalid_keys','keys must be a JWK set {"keys":[...]}');
  if(keys.length>CATALOG_LIMITS.keys)refuse('invalid_keys',`at most ${CATALOG_LIMITS.keys} keys`);
  return keys.map(k=>{
-  const members=isObject(k)&&THUMBPRINT_MEMBERS[k.kty];if(!members)refuse('invalid_keys','unsupported key type');
+  const members=isObject(k)&&own(THUMBPRINT_MEMBERS,k.kty);if(!members)refuse('invalid_keys','unsupported key type');
   const pub={};
   for(const m of members){
-   if(typeof k[m]!=='string'||k[m].length>2048||(m!=='kty'&&m!=='crv'&&!B64URL.test(k[m])))refuse('invalid_keys','invalid key member');pub[m]=k[m];
+   if(typeof k[m]!=='string'||k[m].length>(MEMBER_LIMITS[m]||100)||(m!=='kty'&&m!=='crv'&&!B64URL.test(k[m])))refuse('invalid_keys','invalid key member');
+   pub[m]=k[m];
   }
   let key;try{key=createPublicKey({key:pub,format:'jwk'});}catch{refuse('invalid_keys','key cannot be imported');}
   const kid=typeof k.kid==='string'&&k.kid.length<=200&&!BAD_TEXT.test(k.kid)?k.kid:null;
@@ -264,7 +269,7 @@ function mapAgentCard(card,{keys,locator}){
  if(!endpoint)return {outcome:'rejected',reason:'missing_endpoint',mapped,dropped:report(dropped)};
  const purpose=mapText(card.description,1000,'purpose','description',mapped,dropped);
  const version=mapText(card.version,100,'fingerprint.version','version',mapped,dropped);
- for(const k of Object.keys(card))if(!['name','description','version'].includes(k))dropped.push({field:k,reason:A2A_DROPPED[k]||'unknown_field'});
+ for(const k of Object.keys(card))if(!['name','description','version'].includes(k))dropped.push({field:k,reason:own(A2A_DROPPED,k)||'unknown_field'});
  const key=`a2a:${endpoint.address}${endpoint.tenant?`#tenant=${endpoint.tenant}`:''}`;
  const locatorHost=hostOf(locator),signature=checkCardSignatures(card,keys);
  const interfaceVersion=Array.isArray(card.supportedInterfaces)?card.supportedInterfaces.find(isObject)?.protocolVersion:card.protocolVersion;
@@ -296,8 +301,8 @@ function mapBackstageEntity(entity,agentTypes){
  for(const k of Object.keys(entity))if(!['apiVersion','kind','metadata','spec'].includes(k))
   dropped.push({field:k,reason:['relations','status'].includes(k)?'catalog_computed_not_trusted':'unknown_field'});
  for(const k of Object.keys(metadata))if(!['name','namespace','title','description'].includes(k))
-  dropped.push({field:`metadata.${k}`,reason:BACKSTAGE_METADATA_DROPPED[k]||'unknown_field'});
- for(const k of Object.keys(spec))if(!['type','owner'].includes(k))dropped.push({field:`spec.${k}`,reason:BACKSTAGE_SPEC_DROPPED[k]||'unknown_field'});
+  dropped.push({field:`metadata.${k}`,reason:own(BACKSTAGE_METADATA_DROPPED,k)||'unknown_field'});
+ for(const k of Object.keys(spec))if(!['type','owner'].includes(k))dropped.push({field:`spec.${k}`,reason:own(BACKSTAGE_SPEC_DROPPED,k)||'unknown_field'});
  const key=`backstage:${ref}`;
  return {outcome:'mapped',key,suggestedId:suggestedId('backstage',entityName,key),entityRef:ref,
   draft:{name,owner:owner??'',purpose:purpose??'',fingerprintVersion:null},
