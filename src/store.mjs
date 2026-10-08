@@ -65,7 +65,7 @@ const OPTIONAL_FACETS=new Set(['governance_documents','development_runs']);
 
 export class Store {
  constructor(dir,key,options={}) {
-  mkdirSync(dir,{recursive:true}); this.key=key; this.publicKey=createPublicKey(key);this.db=new DatabaseSync(join(dir,'evidence.db'));
+  mkdirSync(dir,{recursive:true}); this.key=key;this.tenants=options.tenants||null; this.publicKey=createPublicKey(key);this.db=new DatabaseSync(join(dir,'evidence.db'));
   this.tlog=options.tlog?{base:validateOriginBase(options.tlog.base),quorum:options.tlog.quorum||0,pub:ed25519RawPublic(this.publicKey),verified:new Map(),verifiers:new Map()}:null;this.quarantine=null;
   this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA secure_delete=ON;
    CREATE TABLE IF NOT EXISTS ledger(tenant TEXT, seq INTEGER, body TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY(tenant,seq));
@@ -212,6 +212,8 @@ export class Store {
  append(tenant,type,payload,principal,{retention}={}) {
   if(this.quarantine)throw Object.assign(Error('Transparency quarantine: '+this.quarantine.reason),{status:503});
   if(this.readOnlyRequest)throw Error('Read-only request cannot append to the ledger');
+  // A tenant shard (src/vault-tenants.mjs) never writes the ledger of a tenant it does not own.
+  if(this.tenants&&!this.tenants.has(tenant))throw Object.assign(Error('This vault does not own tenant '+tenant),{status:421});
   // One transaction makes the ledger row, v1 checkpoint and tlog note atomic for direct callers too.
   if(!this.ledgerTransaction)return this.transaction(()=>this.append(tenant,type,payload,principal));
   let head=this.ledgerTransaction.heads.get(tenant);

@@ -13,6 +13,7 @@ import {ingestBatchOptions} from './ingest-batch.mjs';
 import {upstreamRequest} from './upstream-http.mjs';
 import {createForwardCoalescer,forwardedIngest,INGEST_FORWARD_HEADER,INGEST_FORWARD_MAX_BYTES,INGEST_FORWARD_PATH} from './ingest-forward.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
+import {vaultRouter,vaultTenants} from './vault-tenants.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -30,6 +31,11 @@ const enforcementRoute=(method,pathname)=>pathname.startsWith(ENFORCEMENT_PREFIX
 // Optional OPA bundle signing key (RSA or P-256 PEM) and the key id OPA's verification config names.
 const bundleSigning=process.env.OPA_BUNDLE_SIGNING_KEY_FILE?{key:readFileSync(process.env.OPA_BUNDLE_SIGNING_KEY_FILE,'utf8'),keyId:process.env.OPA_BUNDLE_SIGNING_KEY_ID||'evidscope'}:undefined;
 if(mode!=='vault'&&!/^https:/.test(base)&&!['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname))throw Error('Remote vault requires verified TLS');
+// Tenant shards (src/vault-tenants.mjs): gateways send each credential's requests to the vault of its tenant (VAULT_ROUTES_FILE).
+const vaultFor=mode==='vault'?()=>base:vaultRouter(process.env.VAULT_ROUTES_FILE,base,{allowed:url=>url.protocol==='https:'
+ ||url.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(url.hostname)});
+const routedForwarder=()=>{const forwarders=new Map();return (authorization,body)=>{const vault=vaultFor(authorization);
+ if(!forwarders.has(vault))forwarders.set(vault,remoteForwarder(vault,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}));return forwarders.get(vault)(authorization,body);};};
 // Async witness probe before createService, which stays synchronous and re-checks the pin before opening Store.
 const transparency=mode==='vault'?await prepareTransparency({dataDir:process.env.DATA_DIR||join(root,'.local','data'),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8')}):undefined;
 // Optional access-log sealing knobs (milliseconds / entry count); defaults live in src/access-log.mjs.
@@ -38,8 +44,8 @@ const accessLogEnv=Object.fromEntries([['sealIntervalMs','ACCESS_LOG_SEAL_INTERV
 // Optional links to the same trace in Langfuse or Phoenix (src/trace-links.mjs): a JSON array kept outside config.json, so changing
 // it never needs a signed config rebinding after a restoration.
 const traceLinks=mode==='vault'&&process.env.TRACE_LINKS_FILE?JSON.parse(readFileSync(process.env.TRACE_LINKS_FILE,'utf8')):undefined;
-let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,traceLinks,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,ingestBatch:ingestBatchOptions(),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
-const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
+let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,traceLinks,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,ingestBatch:ingestBatchOptions(),tenants:vaultTenants(),tenantRegistryDir:process.env.VAULT_TENANT_REGISTRY_DIR||undefined,requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):routedForwarder(),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.
 const instance=(process.env.POD_NAME||'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,120);
@@ -66,13 +72,13 @@ async function checkReadiness(){
 }
 async function requestBody(req,limit=16384){let size=0;const parts=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw new HttpError(413,`요청 크기 한도 ${limit} bytes 초과`);parts.push(chunk);}return Buffer.concat(parts).toString('utf8');}
 async function upstream(path,method,headers,body){
- const isAuth=authPaths.has(new URL(path,base).pathname);
+ const vault=vaultFor(headers.authorization),isAuth=authPaths.has(new URL(path,vault).pathname);
  const forwarded={'content-type':'application/json',authorization:headers.authorization||'','x-evid-timestamp':headers['x-evid-timestamp']||'','x-evid-nonce':headers['x-evid-nonce']||'','x-evid-signature':headers['x-evid-signature']||'',cookie:headers.cookie||'','x-evid-csrf':headers['x-evid-csrf']||''};
  // Legacy bearer clients are checked at this gateway. Session requests also
  // carry the browser Origin to the vault's configured public-origin check.
  if(headers.origin&&(isAuth||/(?:^|;\s*)(?:__Host-)?evidscope-session=/.test(headers.cookie||'')))forwarded.origin=headers.origin;
  // node:http keep-alive rather than fetch (src/upstream-http.mjs); redirects come back as they are, as with redirect:'manual'.
- const response=await upstreamRequest(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,timeoutMs:isAuth?10000:6000}),cookies=response.headers['set-cookie']||[];
+ const response=await upstreamRequest(new URL(path,vault),{method,headers:forwarded,body:method==='GET'?undefined:body,timeoutMs:isAuth?10000:6000}),cookies=response.headers['set-cookie']||[];
  return {status:response.status,body:response.body.toString('utf8'),headers:isAuth?{...(response.headers.location!==undefined?{location:response.headers.location}:{}),...(cookies.length?{'set-cookie':cookies}:{})}:{}};
 }
 // Source events through the ingress gateway go up in envelopes (src/ingest-forward.mjs); INGRESS_FORWARD_MAX_EVENTS=1 sends each
@@ -80,14 +86,14 @@ async function upstream(path,method,headers,body){
 const forwardMaxEvents=Number(process.env.INGRESS_FORWARD_MAX_EVENTS||64);
 if(!Number.isSafeInteger(forwardMaxEvents)||forwardMaxEvents<1||forwardMaxEvents>64)throw Error('Invalid INGRESS_FORWARD_MAX_EVENTS');
 const forwarder=mode==='ingress'&&forwardMaxEvents>1?createForwardCoalescer({maxEvents:forwardMaxEvents,
- send:(authorization,text)=>upstreamRequest(new URL(INGEST_FORWARD_PATH,base),{method:'POST',headers:{'content-type':'application/json',authorization},body:text,timeoutMs:6000}),
+ send:(authorization,text)=>upstreamRequest(new URL(INGEST_FORWARD_PATH,vaultFor(authorization)),{method:'POST',headers:{'content-type':'application/json',authorization},body:text,timeoutMs:6000}),
  single:(headers,body)=>upstream('/api/ingest','POST',headers,body)}):null;
 // Binary-safe pass-through for enforcement points at the ingress gateway: bearer token, If-None-Match and the JSON body go up;
 // status, ETag, Content-Type and the (bounded) bytes come back, so a bundle's gzip bytes and a 304 arrive unchanged.
 async function enforcementUpstream(path,method,headers,body){
  const forwarded={authorization:headers.authorization||'',...(headers['if-none-match']?{'if-none-match':headers['if-none-match']}:{}),...(method==='POST'?{'content-type':'application/json'}:{})};
  let response;
- try{response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:AbortSignal.timeout(6000),redirect:'manual'});}
+ try{response=await fetch(new URL(path,vaultFor(headers.authorization)),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:AbortSignal.timeout(6000),redirect:'manual'});}
  catch{throw new HttpError(503,'vault 연결 실패');}
  const chunks=[];let size=0;
  for await(const chunk of response.body||[]){if((size+=chunk.length)>16*1024*1024)throw new HttpError(503,'vault 응답 한도 초과');chunks.push(chunk);}
