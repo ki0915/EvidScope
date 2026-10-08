@@ -112,7 +112,9 @@ async function route(req,res){
   if(req.method==='POST'&&!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'application/json 필요');
   const largeBody=url.pathname==='/api/governance/documents'||url.pathname==='/api/ingest/otlp',post=req.method==='POST';
   const vaultResult=mode==='vault'&&(url.pathname==='/internal/complete'||url.pathname.endsWith('/result')&&url.pathname.startsWith('/internal/assistance/'));
+  // Catalog import (docs/agent-registry.md): up to 20 documents of 256 KiB each, bounded again per document by the importer.
   const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024
+   :url.pathname==='/api/registry/import'?2*1024*1024
    :STATUS_PATH.test(url.pathname)?STATUS_MAX_BYTES:16384;
   // Credentials and role are checked before anything above the 16 KiB default is buffered (S12a).
   if(limit>16384){if(mode==='vault')service.preauthorize(req.method,url,req.headers);else await preauthorizeUpstream(url.pathname,req.headers);}

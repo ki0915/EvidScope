@@ -258,7 +258,7 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  }
  // Large-body routes are authenticated before the HTTP layer buffers the body (S12a): the same credential and role
  // checks as the route, so an anonymous or wrong-role client cannot make the vault or gateway hold megabytes.
- const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles']);
+ const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles','/api/registry/import']);
  function preauthorize(method,url,headers){
   const path=url.pathname;if(method!=='POST')fail(405,'허용되지 않은 메서드');
   if(path.startsWith('/internal/assistance/'))return assistance.preauthorize(url,headers);

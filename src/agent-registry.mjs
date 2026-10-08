@@ -127,10 +127,28 @@ export function registryFindings(events,registry,{add,clockBound}){
  }
 }
 
+// A version that brings new catalog provenance (docs/agent-registry.md) was written by a catalog import, which keeps the
+// entry discovered, names its importer, and never fills authenticated sources, actors, other configuration or a risk override.
+const IMPORT_UNTOUCHED=['sources','actors','assetIds','systemId','models','tools','dataCategories','destinations'];
+function catalogProblem(row,v,previous){
+ if(previous?.catalog&&!v.catalog)return 'catalog provenance removed';
+ if(!v.catalog||previous&&canonical(v.catalog)===canonical(previous.catalog))return null;
+ const c=v.catalog&&typeof v.catalog==='object'?v.catalog:{};
+ if(previous&&!previous.catalog)return 'catalog provenance added to an entry that was not imported';
+ if(previous&&previous.catalog.key!==c.key)return 'catalog key changed';
+ if(!['created','updated'].includes(v.change)||v.state!=='discovered')return 'catalog import outside the discovered state';
+ if(row.principal!==c.importedBy||v.editedBy!==c.importedBy||v.editedAt!==c.importedAt)return 'catalog import principal differs from importedBy';
+ const before=k=>previous?previous[k]??null:k==='systemId'?null:[];
+ if(IMPORT_UNTOUCHED.some(k=>canonical(v[k]??null)!==canonical(before(k))))return 'catalog import changed sources, actors or configuration';
+ if(canonical(v.risk?.override??null)!==canonical(previous?.risk?.override??null))return 'catalog import set a risk override';
+ return null;
+}
+
 // Offline check of the signed lifecycle history (any rows; non-registry rows are skipped). It confirms what the vault API
 // always writes: versions in order, a state changed only by an applied or approved transition recorded before it, four-eyes
-// on approvals, no approval of a stale request, configuration frozen in approved/production, and record principals that
-// match the actors the bodies name. A holder of the signing key can still sign a consistent false history.
+// on approvals, no approval of a stale request, configuration frozen in approved/production, catalog imports that stay
+// discovered without configuration, and record principals that match the actors the bodies name. A holder of the signing
+// key can still sign a consistent false history.
 export function verifyRegistryHistory(rows){
  const problems=[],entries=new Map(),transitions=new Map(),applied=new Set();let policyVersion=0,policyRecords=0;
  const problem=(row,message)=>{if(problems.length<100)problems.push({seq:row.seq,type:row.type,message});};
@@ -188,6 +206,7 @@ export function verifyRegistryHistory(rows){
      if(v.editedBy!==previous.editedBy||configuration(v)!==configuration(previous))problem(row,'risk override changed the configuration');
     }else problem(row,'unknown registry change');
    }
+   const imported=catalogProblem(row,v,previous);if(imported)problem(row,imported);
    entries.set(v.id,v);
   }
  }
