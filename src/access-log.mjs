@@ -14,14 +14,27 @@ export const ACCESS_ENTRY_FORMAT='evidscope-access-v1';
 export const ACCESS_BATCH_FORMAT='evidscope-access-batch-v1';
 export const ACCESS_BATCH_TYPE='audit_access_batch';
 export const ACCESS_SEALER='access-log-sealer';
+// Sealed ranges whose last entry is older than a two-person rotation policy allows may be pruned from this file
+// (docs/retention-rotation.md). A signed audit_access_prune record names the batch boundary first; only then are the rows at or
+// below it deleted. The batch records keep count, chain head, Merkle root and time span, so the chain across batches and every
+// later entry still verify; the pruned entries themselves and their inclusion proofs are gone.
+export const ACCESS_PRUNE_TYPE='audit_access_prune';
+export const ACCESS_PRUNE_FORMAT='evidscope-access-prune-v1';
 export const ACCESS_LOG_DEFAULTS=Object.freeze({sealIntervalMs:60000,sealThreshold:1000,maxBatch:10000,maxUnsealedAgeMs:15*60000});
 const ZERO='0'.repeat(64);
 const SEAL_REASONS=new Set(['interval','threshold','export','integrity','checkpoint_publish','shutdown','manual']);
 const SCHEMA=`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;
  CREATE TABLE IF NOT EXISTS access_log(tenant TEXT NOT NULL,seq INTEGER NOT NULL CHECK(seq>0),body TEXT NOT NULL,hash TEXT NOT NULL,PRIMARY KEY(tenant,seq));
  CREATE TRIGGER IF NOT EXISTS access_log_immutable_update BEFORE UPDATE ON access_log BEGIN SELECT RAISE(ABORT,'append only'); END;
- CREATE TRIGGER IF NOT EXISTS access_log_immutable_delete BEFORE DELETE ON access_log BEGIN SELECT RAISE(ABORT,'append only'); END;`;
-const PROTECTED_TRIGGERS=new Set(['access_log_immutable_update','access_log_immutable_delete']);
+ CREATE TABLE IF NOT EXISTS access_log_floor(tenant TEXT PRIMARY KEY,through_seq INTEGER NOT NULL CHECK(through_seq>0),head TEXT NOT NULL);
+ CREATE TRIGGER IF NOT EXISTS access_log_floor_monotonic BEFORE UPDATE ON access_log_floor
+  WHEN NEW.through_seq<OLD.through_seq OR NEW.tenant<>OLD.tenant BEGIN SELECT RAISE(ABORT,'prune floor regression'); END;
+ CREATE TRIGGER IF NOT EXISTS access_log_floor_immutable_delete BEFORE DELETE ON access_log_floor BEGIN SELECT RAISE(ABORT,'append only'); END;`;
+// Rows stay append-only above the tenant's prune floor. Databases from before pruning have an unconditional trigger: replaced once.
+const DELETE_TRIGGER=`CREATE TRIGGER access_log_immutable_delete BEFORE DELETE ON access_log
+ WHEN OLD.seq>COALESCE((SELECT through_seq FROM access_log_floor WHERE tenant=OLD.tenant),0) BEGIN SELECT RAISE(ABORT,'append only'); END;`;
+const PROTECTED_TRIGGERS=new Set(['access_log_immutable_update','access_log_immutable_delete','access_log_floor_monotonic',
+ 'access_log_floor_immutable_delete']);
 
 const sha256Hex=text=>createHash('sha256').update(text).digest('hex');
 // Leaf = SHA-256(0x00 || UTF-8(canonical(entry))); the stored body is that canonical text.
@@ -56,12 +69,31 @@ function checkBatchShape(record,toSeq,head){
  if(b.fromSeq!==toSeq+1||b.previous!==head)throw batchError(record,'is not contiguous with the previous sealed range');
  return b;
 }
-// Offline check of sealed batches against exported entries: [{seq,body,hash}] in order, starting at sequence 1.
+// Highest signed prune boundary in records (ledger order). Each must raise the floor to the end of an earlier sealed batch.
+export function accessPruneFloor(records){
+ let floor=0;const ends=new Map();
+ for(const record of records){
+  if(record.type===ACCESS_BATCH_TYPE&&record.payload)ends.set(record.payload.toSeq,record.payload.head);
+  else if(record.type===ACCESS_PRUNE_TYPE){
+   const p=record.payload;
+   if(!p||p.format!==ACCESS_PRUNE_FORMAT||!Number.isSafeInteger(p.throughSeq)||p.throughSeq<=floor||ends.get(p.throughSeq)!==p.head)
+    throw Error(`Access log prune at ledger sequence ${record.seq} does not end at an earlier sealed batch`);
+   floor=p.throughSeq;
+  }
+ }
+ return floor;
+}
+// Offline check of sealed batches against exported entries: [{seq,body,hash}] in order, starting at sequence 1 or right after
+// the signed prune floor.
 export function verifyAccessBatches(tenant,records,rows){
+ const floor=accessPruneFloor(records),start=rows[0]?.seq??1;
+ if(start!==1&&start!==floor+1)throw Error(`Access log entries start at ${start}, not at 1 or after the prune floor ${floor}`);
  let toSeq=0,head=ZERO,offset=0,batches=0;
  for(const record of records){
   if(record.type!==ACCESS_BATCH_TYPE)continue;
-  const b=checkBatchShape(record,toSeq,head),slice=rows.slice(offset,offset+b.count);
+  const b=checkBatchShape(record,toSeq,head);
+  if(b.toSeq<start){toSeq=b.toSeq;head=b.head;batches++;continue;}
+  const slice=rows.slice(offset,offset+b.count);
   if(slice.length!==b.count)throw batchError(record,'covers entries that are missing');
   const entries=checkAccessChain(tenant,slice,toSeq,head);
   if(slice.at(-1).hash!==b.head||levelsRoot(merkleLevels(slice.map(row=>accessLeafHash(row.body)))).toString('hex')!==b.merkleRoot||
@@ -69,13 +101,13 @@ export function verifyAccessBatches(tenant,records,rows){
   toSeq=b.toSeq;head=b.head;offset+=b.count;batches++;
  }
  checkAccessChain(tenant,rows.slice(offset),toSeq,head);
- return {valid:true,batches,sealedEntries:toSeq,unsealedEntries:rows.length-offset};
+ return {valid:true,batches,sealedEntries:toSeq,unsealedEntries:rows.length-offset,...(floor?{prunedThrough:floor}:{})};
 }
 // Streams one tenant's entries from an access-log database: every sealed range named by the signed batch records (in ledger
 // order) must be present, chained and match its count, head, Merkle root and time span; the unsealed tail must continue the
 // chain and be younger than maxUnsealedAgeMs.
 export function verifyAccessLogDatabase(db,tenant,records,{now=Date.now(),maxUnsealedAgeMs=Infinity}={}){
- let toSeq=0,head=ZERO,batches=0;
+ const floor=accessPruneFloor(records);let toSeq=0,head=ZERO,batches=0,prunedBatches=0;
  const range=db.prepare('SELECT seq,body,hash FROM access_log WHERE tenant=? AND seq>=? AND seq<=? ORDER BY seq');
  for(const record of records){
   if(record.type!==ACCESS_BATCH_TYPE)continue;
@@ -85,6 +117,8 @@ export function verifyAccessLogDatabase(db,tenant,records,{now=Date.now(),maxUns
    const [entry]=checkAccessChain(tenant,[row],seq,previous);seq++;previous=row.hash;first??=entry.at;last=entry.at;
    peaks=frontierAppend(peaks,size++,accessLeafHash(row.body));
   }
+  // A batch at or below the signed prune floor is either complete (deletion not yet applied) or entirely gone.
+  if(size===0&&b.toSeq<=floor){toSeq=b.toSeq;head=b.head;batches++;prunedBatches++;continue;}
   if(size!==b.count)throw batchError(record,`covers entries that are missing from the access log (${size} of ${b.count})`);
   if(previous!==b.head||frontierRoot(peaks).toString('hex')!==b.merkleRoot||first!==b.firstAt||last!==b.lastAt)
    throw batchError(record,'differs from the sealed entries');
@@ -96,7 +130,8 @@ export function verifyAccessLogDatabase(db,tenant,records,{now=Date.now(),maxUns
  }
  if(oldest&&now-Date.parse(oldest)>maxUnsealedAgeMs)
   throw Error(`Access log unsealed tail for tenant ${tenant} is older than ${maxUnsealedAgeMs} ms; sealing has stalled`);
- return {valid:true,batches,sealedEntries:toSeq,unsealedEntries:unsealed,oldestUnsealedAt:oldest,...(Number.isFinite(maxUnsealedAgeMs)?{maxUnsealedAgeMs}:{})};
+ return {valid:true,batches,sealedEntries:toSeq,unsealedEntries:unsealed,oldestUnsealedAt:oldest,...(Number.isFinite(maxUnsealedAgeMs)?{maxUnsealedAgeMs}:{}),
+  ...(floor?{prunedThrough:floor,prunedBatches}:{})};
 }
 // Inclusion of one entry (body) at position seq in a sealed batch payload.
 export function verifyAccessInclusion(body,seq,batch,proof){
@@ -110,9 +145,15 @@ export class AccessLog {
  constructor(dir,store,options={}){
   this.store=store;this.options={...ACCESS_LOG_DEFAULTS,...options};this.file=join(dir,ACCESS_LOG_FILE);
   this.db=new DatabaseSync(this.file);this.db.exec(SCHEMA);
+  const trigger=this.db.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name='access_log_immutable_delete'").get();
+  if(!trigger?.sql.includes('access_log_floor')){
+   this.db.exec('BEGIN IMMEDIATE');
+   try{this.db.exec('DROP TRIGGER IF EXISTS access_log_immutable_delete');this.db.exec(DELETE_TRIGGER);this.db.exec('COMMIT');}
+   catch(error){if(this.db.isTransaction)this.db.exec('ROLLBACK');throw error;}
+  }
   this.db.setAuthorizer((action,table)=>{
    if(action===sqlite.SQLITE_DROP_TRIGGER&&PROTECTED_TRIGGERS.has(table))return sqlite.SQLITE_DENY;
-   if([sqlite.SQLITE_DROP_TABLE,sqlite.SQLITE_ALTER_TABLE].includes(action)&&table==='access_log')return sqlite.SQLITE_DENY;
+   if([sqlite.SQLITE_DROP_TABLE,sqlite.SQLITE_ALTER_TABLE].includes(action)&&['access_log','access_log_floor'].includes(table))return sqlite.SQLITE_DENY;
    return sqlite.SQLITE_OK;
   });
   this.sealed=new Map();this.verifiedCheckpoints=new Map();this.pendingSeals=new Set();this.timer=null;
@@ -146,7 +187,9 @@ export class AccessLog {
   try{
    this.db.exec('BEGIN IMMEDIATE');
    try{
-    const last=this.db.prepare('SELECT seq,hash FROM access_log WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(p.tenant);
+    // After a prune of every row the chain continues from the signed floor.
+    const last=this.db.prepare('SELECT seq,hash FROM access_log WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(p.tenant)
+     ??this.db.prepare('SELECT through_seq seq,head hash FROM access_log_floor WHERE tenant=?').get(p.tenant);
     entry={format:ACCESS_ENTRY_FORMAT,tenant:p.tenant,seq:(last?.seq??0)+1,previous:last?.hash??ZERO,principal:p.id,authentication:p.authentication||'bearer',
      ...(p.sessionId?{sessionId:p.sessionId}:{}),operation,method,target,queryHash:accessQueryHash(query),at:new Date().toISOString(),observed:state,
      ...(fault?{fault}:{})};
@@ -193,7 +236,8 @@ export class AccessLog {
   if(!SEAL_REASONS.has(reason))throw Error('Unknown access log seal reason');
   const record=this.store.transaction(()=>{
    const last=this._lastBatch(tenant);
-   if(last.toSeq&&this.db.prepare('SELECT hash FROM access_log WHERE tenant=? AND seq=?').get(tenant,last.toSeq)?.hash!==last.head)
+   const anchor=last.toSeq?this.db.prepare('SELECT hash FROM access_log WHERE tenant=? AND seq=?').get(tenant,last.toSeq):null;
+   if(last.toSeq&&(anchor?anchor.hash!==last.head:last.toSeq>this.floor(tenant)))
     throw Error(`Access log differs from its last sealed batch for tenant ${tenant}`);
    const rows=this.db.prepare('SELECT seq,body,hash FROM access_log WHERE tenant=? AND seq>? ORDER BY seq LIMIT ?')
     .all(tenant,last.toSeq,this.options.maxBatch);
@@ -221,7 +265,7 @@ export class AccessLog {
   return sealed;
  }
  status(tenant){
-  const last=this._lastBatch(tenant),max=this.db.prepare('SELECT MAX(seq) seq FROM access_log WHERE tenant=?').get(tenant).seq??0;
+  const last=this._lastBatch(tenant),max=this.db.prepare('SELECT MAX(seq) seq FROM access_log WHERE tenant=?').get(tenant).seq??this.floor(tenant);
   const oldest=max>last.toSeq?this.db.prepare('SELECT body FROM access_log WHERE tenant=? AND seq=?').get(tenant,last.toSeq+1):null;
   return {tenant,entries:max,sealedEntries:last.toSeq,unsealedEntries:Math.max(0,max-last.toSeq),oldestUnsealedAt:oldest?JSON.parse(oldest.body).at:null,
    lastSealedLedgerSeq:last.ledgerSeq||null,sealIntervalMs:this.options.sealIntervalMs,sealThreshold:this.options.sealThreshold,
@@ -240,12 +284,49 @@ export class AccessLog {
   if(!record)return null;
   const b=record.payload,
    rows=this.db.prepare('SELECT seq,body,hash FROM access_log WHERE tenant=? AND seq>=? AND seq<=? ORDER BY seq').all(tenant,b.fromSeq,b.toSeq);
+  if(!rows.length&&b.toSeq<=this.floor(tenant))return null;
   if(rows.length!==b.count)throw batchError(record,'covers entries that are missing from the access log');
   const tree=merkleLevels(rows.map(row=>accessLeafHash(row.body)));
   if(levelsRoot(tree).toString('hex')!==b.merkleRoot)throw batchError(record,'differs from the sealed entries');
   const row=rows[seq-b.fromSeq];
   return {seq,body:row.body,hash:row.hash,leafIndex:seq-b.fromSeq,proof:levelsInclusionProof(tree,seq-b.fromSeq).map(b64),
    batch:{seq:record.seq,hash:record.hash,payload:b}};
+ }
+ floor(tenant){return this.db.prepare('SELECT through_seq FROM access_log_floor WHERE tenant=?').get(tenant)?.through_seq??0;}
+ // The newest sealed batch whose last entry is at least retentionSeconds old, above the current signed floor, as the payload of
+ // the audit_access_prune record to sign (the caller appends it inside its evidence transaction, then calls applyPrune).
+ // records: the tenant's verified ledger records. The rows to be pruned must still match their batches.
+ planPrune(tenant,records,{retentionSeconds,now=Date.now()}){
+  if(!Number.isSafeInteger(retentionSeconds)||retentionSeconds<1)throw Error('Invalid access log retention');
+  const floor=accessPruneFloor(records);let target=null;
+  for(const record of records){
+   if(record.type!==ACCESS_BATCH_TYPE)continue;
+   if(Date.parse(record.payload.lastAt)>now-retentionSeconds*1000)break;
+   target=record;
+  }
+  if(!target||target.payload.toSeq<=floor)return null;
+  verifyAccessLogDatabase(this.db,tenant,records);
+  return {format:ACCESS_PRUNE_FORMAT,throughSeq:target.payload.toSeq,head:target.payload.head,batchSeq:target.seq,batchLastAt:target.payload.lastAt,
+   retentionSeconds,previousFloor:floor};
+ }
+ // Deletes the rows at or below a prune boundary that is already signed into the ledger (prune: that record's payload).
+ applyPrune(tenant,prune){
+  this.db.exec('BEGIN IMMEDIATE');
+  try{
+   const row=this.db.prepare('SELECT hash FROM access_log WHERE tenant=? AND seq=?').get(tenant,prune.throughSeq);
+   if(row&&row.hash!==prune.head)throw Error(`Access log differs from the sealed batch ending at ${prune.throughSeq} for tenant ${tenant}`);
+   const floor=this.db.prepare('SELECT through_seq FROM access_log_floor WHERE tenant=?').get(tenant)?.through_seq??0;
+   if(prune.throughSeq>floor)this.db.prepare('INSERT INTO access_log_floor VALUES(?,?,?) '
+    +'ON CONFLICT(tenant) DO UPDATE SET through_seq=excluded.through_seq,head=excluded.head').run(tenant,prune.throughSeq,prune.head);
+   const deleted=this.db.prepare('DELETE FROM access_log WHERE tenant=? AND seq<=?').run(tenant,prune.throughSeq).changes;
+   this.db.exec('COMMIT');return deleted;
+  }catch(error){if(this.db.isTransaction)this.db.exec('ROLLBACK');throw error;}
+ }
+ // For the retention screen: entries kept, the signed floor and the oldest kept entry.
+ retentionStatus(tenant){
+  const row=this.db.prepare('SELECT COUNT(*) n,MIN(seq) first FROM access_log WHERE tenant=?').get(tenant);
+  const oldest=row.first?JSON.parse(this.db.prepare('SELECT body FROM access_log WHERE tenant=? AND seq=?').get(tenant,row.first).body).at:null;
+  return {entries:row.n,prunedThrough:this.floor(tenant),oldestEntryAt:oldest};
  }
  start(){
   if(this.timer)return;

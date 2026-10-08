@@ -11,6 +11,8 @@ import {evaluateJob} from '../src/worker.mjs';
 import {replayEvaluations} from '../src/policy-replay.mjs';
 import {checkRotationHistory,eventRotationClass,rotationClassProblem,verifyRotationHistory} from '../src/retention-rotation.mjs';
 import {signRecoveryFrontier} from '../src/recovery-frontier.mjs';
+import {AccessLog,verifyAccessBatches} from '../src/access-log.mjs';
+import {DatabaseSync} from 'node:sqlite';
 
 const token=s=>s.repeat(40).slice(0,40);
 const principals=[{id:'reviewer',role:'reviewer',tenant:'alpha',token:token('r1')},{id:'reviewer-2',role:'reviewer',tenant:'alpha',token:token('r2')},
@@ -235,4 +237,64 @@ test('exports written before rotation keep verifying, and recovery frontiers acc
  const erased=signed.frontier.tenants[0].erasedEvents;
  assert.equal(erased.length,1);assert.equal(erased[0].sourcePlanId,signed.frontier.tenants[0].executedRetentionPlans[0].payload.id);
  assert.equal(canonical(erased[0].keyId),canonical(backup.records.find(r=>r.type==='event').payload.keyId));
+});
+
+test('sealed access ranges past the policy period are pruned under the signed floor; the chain and later entries still verify',async t=>{
+ const f=fixture(t),log=f.service.accessLog;
+ const reads=async n=>{for(let i=0;i<n;i++)await f.call('/api/retention/rotation',undefined,'auditor');};
+ await reads(3);const first=log.seal('alpha','manual');await reads(2);const second=log.seal('alpha','manual');await reads(2);
+ await f.activate(ROUTINE,{accessLogRetentionSeconds:365*86400,validDays:1000});
+ assert.equal((await f.call('/api/retention/rotation/run',{},'admin')).status,'nothing_due','sealed ranges are younger than a year');
+ t.mock.timers.enable({apis:['Date'],now:Date.now()+366*86400000});
+ // A tenant-wide hold keeps every access record.
+ const hold=await f.call('/api/retention/holds',{scope:'tenant',reason:'litigation hold'});
+ assert.equal((await f.call('/api/retention/rotation/run',{},'admin')).status,'nothing_due');
+ await f.call(`/api/retention/holds/${hold.id}/release`,{reason:'released'},'admin');
+ const run=await f.call('/api/retention/rotation/run',{},'admin');
+ assert.equal(run.status,'access_log_pruned');assert.equal(run.accessLogPruned.throughSeq,second.payload.toSeq);
+ assert.equal(run.accessLogPruned.deleted,second.payload.toSeq);
+ const rows=()=>log.db.prepare('SELECT seq FROM access_log WHERE tenant=? ORDER BY seq').all('alpha').map(r=>r.seq);
+ assert.equal(rows()[0],second.payload.toSeq+1);
+ // Rows above the floor stay append-only, and the floor cannot go back.
+ assert.throws(()=>log.db.prepare('DELETE FROM access_log WHERE tenant=? AND seq=?').run('alpha',second.payload.toSeq+1),/append only/);
+ assert.throws(()=>log.db.prepare('UPDATE access_log_floor SET through_seq=1 WHERE tenant=?').run('alpha'),/prune floor regression/);
+ // The chain continues: the unsealed tail seals onto the pruned batch head.
+ const third=log.seal('alpha','manual');assert.equal(third.payload.previous,second.payload.head);
+ const records=()=>f.store.rawBundle('alpha').records,checked=log.verify('alpha',records());
+ assert.equal(checked.valid,true);assert.equal(checked.prunedThrough,second.payload.toSeq);assert.equal(checked.prunedBatches,2);
+ const history=verifyRotationHistory(records());assert.equal(history.valid,true);assert.equal(history.accessLogPrunes,1);
+ assert.equal(history.accessLogPrunedThrough,second.payload.toSeq);
+ assert.equal(await f.status(`/api/audit/reads/proof?seq=${first.payload.fromSeq}`,undefined,'auditor'),404,'a pruned entry has no proof');
+ assert.equal((await f.call(`/api/audit/reads/proof?seq=${third.payload.fromSeq}`,undefined,'auditor')).leafIndex,0);
+ // Exported rows after the floor verify offline.
+ assert.equal((await f.call('/api/integrity',undefined,'auditor')).valid,true);
+ const entries=log.db.prepare('SELECT seq,body,hash FROM access_log WHERE tenant=? ORDER BY seq').all('alpha');
+ assert.equal(verifyAccessBatches('alpha',records(),entries).valid,true);
+ assert.throws(()=>verifyAccessBatches('alpha',records(),entries.slice(1)),/start at/);
+ const altered=entries.map((r,i)=>i===1?{...r,hash:'0'.repeat(64)}:r);
+ assert.throws(()=>verifyAccessBatches('alpha',records(),altered),/chain mismatch/,'kept rows stay tamper-evident');
+ assert.throws(()=>verifyAccessBatches('alpha',records(),entries.filter((r,i)=>i!==1)),/missing|chain mismatch/,'and complete above the floor');
+ // A second year: everything sealed goes, and new reads continue the chain from the signed floor.
+ t.mock.timers.setTime(Date.now()+366*86400000);
+ log.seal('alpha','manual');
+ const again=await f.call('/api/retention/rotation/run',{},'admin');assert.equal(again.status,'access_log_pruned');
+ assert.deepEqual(rows(),[]);
+ await reads(1);const last=log.seal('alpha','manual');assert.equal(last.payload.fromSeq,again.accessLogPruned.throughSeq+1);
+ assert.equal(log.verify('alpha',records()).valid,true);assert.equal(verifyRotationHistory(records()).valid,true);
+ // A prune record that no two-person policy allows, or that does not end at a batch, is refused.
+ const forged=records().map(r=>r.type==='audit_access_prune'?{...r,payload:{...r.payload,rotation:{...r.payload.rotation,policyRecordHash:'0'.repeat(64)}}}:r);
+ assert.match(verifyRotationHistory(forged).error,/no active policy/);
+ const offBoundary=records().map(r=>r.type==='audit_access_prune'?{...r,payload:{...r.payload,throughSeq:r.payload.throughSeq-1}}:r);
+ assert.throws(()=>verifyAccessBatches('alpha',offBoundary,[]),/does not end at an earlier sealed batch/);
+});
+
+test('an access log from before pruning gets the floor-aware delete trigger and stays append-only',t=>{
+ const dir=tempDir('evidscope-access-migrate-'),db=new DatabaseSync(join(dir,'access-log.db'));
+ db.exec(`CREATE TABLE access_log(tenant TEXT NOT NULL,seq INTEGER NOT NULL CHECK(seq>0),body TEXT NOT NULL,hash TEXT NOT NULL,PRIMARY KEY(tenant,seq));
+  CREATE TRIGGER access_log_immutable_delete BEFORE DELETE ON access_log BEGIN SELECT RAISE(ABORT,'append only'); END;
+  INSERT INTO access_log VALUES('alpha',1,'{}','x');`);db.close();
+ const log=new AccessLog(dir,{db:{isOpen:true}});t.after(()=>log.close());
+ assert.match(log.db.prepare("SELECT sql FROM sqlite_schema WHERE name='access_log_immutable_delete'").get().sql,/access_log_floor/);
+ assert.throws(()=>log.db.prepare('DELETE FROM access_log WHERE tenant=?').run('alpha'),/append only/);
+ assert.throws(()=>log.db.exec('DROP TRIGGER access_log_immutable_delete'),/not authorized/);
 });

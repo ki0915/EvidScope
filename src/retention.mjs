@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {cleanText,date,identifier,fail} from './model.mjs';
 import {canonical,digest,isEncryptedEvent,verifyBundle} from './crypto.mjs';
 import {ROTATION_PRINCIPAL,ROTATION_TYPE,checkRotationHistory,eventRotationClass,requiredRotationSeconds,rotationTermsProblem} from './retention-rotation.mjs';
+import {ACCESS_PRUNE_TYPE} from './access-log.mjs';
 
 // Destruction is an explicit two-person operation: a plan per erasure, or a rotation policy two people activated beforehand
 // (src/retention-rotation.mjs). Changing policy is never retroactive.
@@ -133,19 +134,31 @@ export function createRetention(store,{rotation:{intervalMs=0}={},accessLog}={})
     if(required===null||now-Date.parse(row.recordedAt)<required*1000)continue;
     selected.push({...item,class:c});if(selected.length>=policy.terms.maxPerRun)break;
    }
-   if(!selected.length)return {tenant,status:'nothing_due',erased:0,at,policyVersion:policy.version};
+   const authority={policyId:policy.id,policyVersion:policy.version,policyRecordHash:policy.recordHash};
+   // Sealed access ranges past the policy's access log period, unless a tenant-wide hold stands.
+   const tenantHold=store.list(tenant,'retention_hold').some(h=>h.status==='active'&&h.scope==='tenant');
+   const planned=accessLog&&policy.terms.accessLogRetentionSeconds!==null&&!tenantHold
+    ?accessLog.planPrune(tenant,bundle.records,{retentionSeconds:policy.terms.accessLogRetentionSeconds,now:now.getTime()}):null;
+   const prune=planned&&{...planned,prunedAt:at,rotation:authority};
+   if(prune)store.append(tenant,ACCESS_PRUNE_TYPE,prune,ROTATION_PRINCIPAL);
+   if(!selected.length){
+    if(prune)checkRotationHistory(store.rawBundle(tenant).records);
+    return {tenant,status:prune?'access_log_pruned':'nothing_due',erased:0,at,policyVersion:policy.version,...(prune?{prune}:{})};
+   }
    const plan={id:randomUUID(),author:policy.proposedBy,status:'approved',reason:`정기 로테이션: 사전 승인 정책 v${policy.version}`,items:selected,
     selectionHash:digest(selected),createdAt:at,expiresAt:at,approvedBy:policy.approvedBy,approvedAt:policy.approvedAt,
     approvalReason:`두 사람(${policy.proposedBy}, ${policy.approvedBy})이 사전 승인한 로테이션 정책 v${policy.version}`,
-    rotation:{policyId:policy.id,policyVersion:policy.version,policyRecordHash:policy.recordHash,selectedBy:ROTATION_PRINCIPAL}};
-   const disposition=erase(p,plan,new Map(selected.map(i=>[i.keyId,i])),{executedAt:at,
-    rotation:{policyId:policy.id,policyVersion:policy.version,policyRecordHash:policy.recordHash,classes:selected.map(i=>i.class)}});
+    rotation:{...authority,selectedBy:ROTATION_PRINCIPAL}};
+   const disposition=erase(p,plan,new Map(selected.map(i=>[i.keyId,i])),{executedAt:at,rotation:{...authority,classes:selected.map(i=>i.class)}});
    // What was just written must pass the offline verifier, or the whole erasure rolls back.
    checkRotationHistory(store.rawBundle(tenant).records);
-   return {tenant,status:'erased',erased:selected.length,at,policyVersion:policy.version,dispositionId:disposition.id};
+   return {tenant,status:'erased',erased:selected.length,at,policyVersion:policy.version,dispositionId:disposition.id,...(prune?{prune}:{})};
   });
-  runs.set(tenant,result);if(result.erased)store.checkpointAfterErasure();
-  return result;
+  // The rows go only after the signed prune boundary committed; a crash in between leaves them for the next run.
+  const {prune,...out}=result;
+  if(prune)out.accessLogPruned={throughSeq:prune.throughSeq,deleted:accessLog.applyPrune(tenant,prune)};
+  runs.set(tenant,out);if(out.erased)store.checkpointAfterErasure();
+  return out;
  }
  const runs=new Map();let timer=null,nextRunAt=null;
  function runAll(){

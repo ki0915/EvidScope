@@ -78,8 +78,8 @@ const invalid=detail=>{throw Error(`Retention rotation history invalid: ${detail
 // One pass over signed records (in ledger order). Throws on the first violation. A transition record may only change status
 // fields; the terms are those the proposer wrote and the administrator activated. Reports the policy active after the records.
 export function checkRotationHistory(records){
- const policies=new Map(),holds=new Map(),cases=new Map(),events=new Map(),erasedByClass={};
- let maxVersion=0,dispositions=0,rotatedEvents=0,prunes=0;
+ const policies=new Map(),holds=new Map(),cases=new Map(),events=new Map(),batches=new Map(),erasedByClass={};
+ let maxVersion=0,dispositions=0,rotatedEvents=0,prunes=0,prunedThrough=0;
  for(const row of records){
   const payload=row.payload;
   if(row.type===ROTATION_TYPE){
@@ -105,6 +105,7 @@ export function checkRotationHistory(records){
   }else if(row.type==='retention_hold'&&object(payload)&&typeof payload.id==='string')holds.set(payload.id,payload);
   else if(row.type==='case'&&object(payload)&&typeof payload.id==='string')cases.set(payload.id,payload);
   else if(row.type==='event'&&object(payload)&&typeof payload.keyId==='string')events.set(row.seq,row);
+  else if(row.type==='audit_access_batch'&&object(payload))batches.set(row.seq,payload);
   else if(row.type==='retention_disposition'&&object(payload)&&Object.hasOwn(payload,'rotation')){
    const r=payload.rotation,policy=object(r)?policies.get(r.policyId)?.current:undefined;
    if(!policy||policy.payload.status!=='active'||policy.hash!==r.policyRecordHash||policy.payload.version!==r.policyVersion)
@@ -131,15 +132,22 @@ export function checkRotationHistory(records){
    }
    dispositions++;
   }else if(row.type==='audit_access_prune'){
+   // Sealed access ranges leave the side store only under the same two-person policy, past its access log period.
    const r=object(payload)?payload.rotation:undefined,policy=object(r)?policies.get(r.policyId)?.current:undefined;
-   if(!policy||policy.payload.status!=='active'||policy.hash!==r.policyRecordHash||policy.payload.terms.accessLogRetentionSeconds===null
-    ||!(time(payload.prunedAt)<=time(policy.payload.validUntil)))invalid(`access log prune at ${row.seq} names no active policy that allows it`);
-   prunes++;
+   const retention=policy?.payload.terms.accessLogRetentionSeconds;
+   if(!policy||policy.payload.status!=='active'||policy.hash!==r.policyRecordHash||policy.payload.version!==r.policyVersion||retention===null
+    ||payload.retentionSeconds!==retention||row.principal!==ROTATION_PRINCIPAL)invalid(`access log prune at ${row.seq} names no active policy that allows it`);
+   const at=time(payload.prunedAt),batch=batches.get(payload.batchSeq);
+   if(!(at<=time(row.recordedAt))||!(at<=time(policy.payload.validUntil))||!batch||batch.toSeq!==payload.throughSeq||batch.head!==payload.head
+    ||batch.lastAt!==payload.batchLastAt||!(time(batch.lastAt)<=at-retention*1000)||!(payload.throughSeq>prunedThrough))
+    invalid(`access log prune at ${row.seq} is not an old enough sealed range`);
+   if([...holds.values()].some(h=>h.status==='active'&&h.scope==='tenant'))invalid(`access log prune at ${row.seq} ignores a tenant-wide hold`);
+   prunedThrough=payload.throughSeq;prunes++;
   }
  }
  const active=[...policies.values()].map(entry=>entry.current).filter(entry=>entry.payload.status==='active').sort((a,b)=>a.seq-b.seq).at(-1);
  return {valid:true,policies:policies.size,active:active?{...active.payload,recordSeq:active.seq,recordHash:active.hash}:null,
-  scheduledDispositions:dispositions,rotatedEvents,erasedByClass,accessLogPrunes:prunes};
+  scheduledDispositions:dispositions,rotatedEvents,erasedByClass,accessLogPrunes:prunes,accessLogPrunedThrough:prunedThrough};
 }
 export function verifyRotationHistory(records){
  try{return checkRotationHistory(records);}catch(error){return {valid:false,error:error.message};}
