@@ -256,7 +256,7 @@ test('whole-ledger packages bundle the receipt of every cited record, regenerate
 test('packages built by d7413a0 verify unchanged against the mapping version they name; unknown versions stay refused', async () => {
   const dir = new URL('./fixtures/pack-d7413a0/', import.meta.url).pathname, key = name => readFileSync(join(dir, name), 'utf8');
   for (const name of ['eu-whole.tar.gz', 'kr-period.tar.gz']) {
-    const files = P.readPack(join(dir, name)), r = P.verifyPack(files, {publicKey: key('vault-public.pem'), packKey: key('builder-public.pem')});
+    const files = P.readPack(join(dir, name)), r = P.verifyPack(files, {publicKey: key('vault-public.spki.txt'), packKey: key('builder-public.spki.txt')});
     assert.deepEqual([r.valid, r.packageScope, r.mapping.version, r.mapping.source, json(files, P.FILES.index).format], [true, 'ledger', 1, 'verifier',
       P.INDEX_FORMAT]);
     assert.equal(r.receipts, null);

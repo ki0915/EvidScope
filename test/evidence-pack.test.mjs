@@ -231,6 +231,31 @@ test('the period filter counts only records signed inside it, and the verifier h
   assert.throws(() => P.checkPeriod({from: '2026-01-01', to: '2026-02-01'}), /ISO 8601 UTC/);
 });
 
+test('with a period, the whole-ledger check alone is no evidence of that period: no log-keeping claim without a record in it', async () => {
+  const records = fixture.exportBundle.records, at = type => records.find(r => r.type === type).recordedAt;
+  // Nothing signed in the period; then only the registration of a system (no event, receipt or retention record).
+  for (const period of [{from: '2001-01-01T00:00:00Z', to: '2001-02-01T00:00:00Z'}, {from: at('system'), to: at('assessment')}]) {
+    for (const framework of FRAMEWORKS) {
+      const files = await pack(framework, period), index = json(files, P.FILES.index);
+      for (const item of index.items) {
+        const others = item.evidence.filter(e => e.type !== 'integrityCheck' && e.status === 'present');
+        assert.equal(item.status === 'evidence_present', others.length > 0, `${framework} ${item.id} in ${period.from}`);
+      }
+      assert.ok(!files.get(P.FILES.en).toString('utf8').includes('signed\\_ledger'), 'the ledger check is not listed as evidence of the period');
+      check(files);
+    }
+  }
+  // d7413a0 claimed evidence for Article 12(1), 19(1) and 26(6) here on the strength of records outside the period; such an index is refused.
+  const period = {from: at('system'), to: at('assessment')}, files = await pack('eu-ai-act-logging', period), index = json(files, P.FILES.index);
+  assert.deepEqual(index.items.filter(i => i.status === 'evidence_present').map(i => i.id), []);
+  const claimed = copy(files);
+  put(claimed, P.FILES.index, {...index, items: index.items.map(i => (i.id === 'EU-AIA-12-1' ? {...i, status: 'evidence_present'} : i))});
+  await assert.rejects(async () => check(await resign(claimed)), /Index differs/);
+  assert.throws(() => P.assertIndexBacked(json(claimed, P.FILES.index), evidence()), /claims evidence_present without matching evidence/);
+  // Without a period nothing changes: the verified ledger is evidence of the log-keeping items.
+  assert.equal(json(await pack('eu-ai-act-logging'), P.FILES.index).items.find(i => i.id === 'EU-AIA-19-1').status, 'evidence_present');
+});
+
 test('a package built from the vault API with witnesses carries the attestation and needs the same trust inputs to verify', async t => {
   const f = await transparencyFixture(t, {tenantLogs: true}), s = await f.open('enforce'), caseId = await caseFor(s);
   const betaCase = await caseFor(s, 'beta');

@@ -28,6 +28,7 @@ export const REASONS = Object.freeze({
   replay_mismatch: 'Recomputing the signed evaluation from earlier records gives a different result',
   not_evaluated: 'No signed evaluation of this action yet',
   analysis_incomplete: 'The evaluation stopped at a resource limit; no findings is not a clean result',
+  tenant_mismatch: 'The export is for another tenant than --tenant or the --checkpoint file names; nothing is pushed',
 });
 const TAMPERED = new Set(['ledger_altered', 'rollback_detected', 'replay_mismatch']);
 const HEX32 = /^[a-f0-9]{32}$/, HEX16 = /^[a-f0-9]{16}$/, ZERO = /^0+$/, CODE = /^[A-Za-z0-9_.:-]{1,100}$/;

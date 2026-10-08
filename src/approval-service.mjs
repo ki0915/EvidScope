@@ -48,7 +48,7 @@ export function normalizeApprovalPolicy(x){
  return out;
 }
 
-export function createApprovals({store,principals,policyObjects,signer,now=()=>Date.now()}){
+export function createApprovals({store,principals,policyObjects,signer,now=()=>Date.now(),paceEntries=10000}){
  const sources=p=>{if(p.role!=='source'||p.kind!=='enforcement')fail(403,'enforcement 출처 자격이 필요합니다');};
  const answerer=p=>{if(!ANSWER_ROLES.includes(p.role))fail(403,'검토자 또는 관리자만 승인 요청에 답할 수 있습니다');};
  const iso=t=>new Date(t).toISOString();
@@ -126,20 +126,45 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
  }
 
  // Poll pacing per request (memory only; a restart forgets it). An early poll gets slow_down and a longer interval (CIBA). It is
- // checked before the request is read, so polling too fast costs no database work.
- const pace=new Map(),PACE_ENTRIES=10000,paceKey=(p,id)=>canonical([p.tenant,p.id,id]);
+ // checked before the request is read, so polling too fast costs no database work. Entries are held per source and shared fairly:
+ // when the table is full, a source already holding its share (capacity / sources) gets slow_down for a new request, and otherwise
+ // the largest holder loses its oldest entry. That holder's `floor` keeps the evicted time, so it cannot escape pacing by eviction:
+ // until then a request of that source without an entry is early as well.
+ const pace=new Map(),holderKey=p=>canonical([p.tenant,p.id]);let paced=0;
  function early(p,id,at){
-  const key=paceKey(p,id),entry=pace.get(key);
+  const holder=pace.get(holderKey(p)),entry=holder?.entries.get(id);
+  if(!entry){
+   if(holder&&at+500<holder.floor){const wait=Math.min(APPROVAL_LIMITS.maxIntervalSeconds,Math.ceil((holder.floor-at)/1000));
+    ciba(400,'slow_down',`폴링 간격 ${wait}초 이상을 지키세요`,{interval:wait});}
+   return;
+  }
   // Up to half a second early still counts as on time (network jitter).
-  if(!entry||at+500>=entry.next)return;
-  const longer=Math.min(entry.interval+APPROVAL_LIMITS.slowDownSeconds,APPROVAL_LIMITS.maxIntervalSeconds);pace.set(key,{next:at+longer*1000,interval:longer});
+  if(at+500>=entry.next)return;
+  const longer=Math.min(entry.interval+APPROVAL_LIMITS.slowDownSeconds,APPROVAL_LIMITS.maxIntervalSeconds);
+  holder.entries.set(id,{next:at+longer*1000,interval:longer});
   ciba(400,'slow_down',`폴링 간격 ${longer}초 이상을 지키세요`,{interval:longer});
  }
+ function prune(at){
+  for(const [key,holder] of pace){
+   for(const [id,v] of holder.entries)if(v.next+v.interval*1000<at){holder.entries.delete(id);paced--;}
+   if(!holder.entries.size&&holder.floor<=at)pace.delete(key);
+  }
+ }
  function schedule(p,id,interval,at){
-  const key=paceKey(p,id),step=Math.max(pace.get(key)?.interval??interval,interval);
-  if(!pace.has(key)&&pace.size>=PACE_ENTRIES){for(const [k,v] of pace)if(v.next+v.interval*1000<at)pace.delete(k);
-   if(pace.size>=PACE_ENTRIES)ciba(400,'slow_down','폴링 상태 한도에 도달했습니다. 간격을 늘려 다시 요청하세요');}
-  pace.set(key,{next:at+step*1000,interval:step});
+  const key=holderKey(p);let holder=pace.get(key);
+  const entry=holder?.entries.get(id),step=Math.max(entry?.interval??interval,interval);
+  if(!entry&&paced>=paceEntries){
+   prune(at);holder=pace.get(key);
+   if(paced>=paceEntries){
+    if((holder?.entries.size??0)>=Math.floor(paceEntries/(pace.size+(holder?0:1))))
+     ciba(400,'slow_down','이 출처의 폴링 상태가 몫을 넘었습니다. 간격을 늘려 다시 요청하세요',{interval:APPROVAL_LIMITS.maxIntervalSeconds});
+    let largest=null;for(const h of pace.values())if(!largest||h.entries.size>largest.entries.size)largest=h;
+    const [oldest,v]=largest.entries.entries().next().value;largest.entries.delete(oldest);paced--;largest.floor=Math.max(largest.floor,v.next);
+   }
+  }
+  if(!holder)pace.set(key,holder={entries:new Map(),floor:0});
+  if(entry)holder.entries.delete(id);else paced++;
+  holder.entries.set(id,{next:at+step*1000,interval:step});
  }
  const envelopes=new Map();
  async function sign(statement){

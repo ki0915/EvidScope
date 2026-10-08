@@ -23,8 +23,8 @@ export async function buildOldPackages(out, root = process.cwd()) {
     const now = new Date('2026-10-08T12:00:00.000Z');
     await build(['--framework', 'eu-ai-act-logging', ...common, '--case-report', report, '--out', join(out, 'eu-whole.tar.gz')], {now});
     await build(['--framework', 'kr-ai-basic-act', ...common, '--from', records[0].recordedAt, '--to', cut, '--out', join(out, 'kr-period.tar.gz')], {now});
-    writeFileSync(join(out, 'builder-public.pem'), builder.publicKey.export({format: 'pem', type: 'spki'}));
-    writeFileSync(join(out, 'vault-public.pem'), fixture.publicKeyPem);
+    writeFileSync(join(out, 'builder-public.spki.txt'), builder.publicKey.export({format: 'pem', type: 'spki'}));
+    writeFileSync(join(out, 'vault-public.spki.txt'), fixture.publicKeyPem);
   } finally { rmSync(tmp, {recursive: true, force: true}); }
 }
 

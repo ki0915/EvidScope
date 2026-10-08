@@ -85,6 +85,12 @@ Slack, 메일)도 보내지 않습니다. 사람은 대기열 화면을 보고, 
 | 승인 | 200 | `{"auth_req_id", "decision": "approved", "answer": {DSSE}, "executionWindow": {"notBefore", "notAfter"}, "ledger": {"seq", "recordHash"}}` |
 | 모르는 id·다른 자격의 요청 | 400 | `{"error": "invalid_grant"}` — 둘을 구분하지 않습니다 |
 
+폴링 간격은 vault 메모리의 표(최대 10,000개, 재시작하면 잊음)로 지킵니다. 이 표는 출처마다 공평하게 나눕니다. 표가 차면 만료된 항목을
+먼저 지우고, 그래도 차 있으면 이미 몫(10,000 ÷ 표에 있는 출처 수) 이상을 가진 출처의 새 요청만 `slow_down`(간격 60초)을 받습니다. 몫보다
+적게 가진 출처가 오면 가장 많이 가진 출처의 가장 오래된 항목을 비우고, 그 출처는 비워진 항목의 다음 폴링 시각까지 표에 없는 요청도 이르게
+폴링한 것으로 봅니다. 그래서 출처 하나가 표를 채워 모두가 `slow_down`을 받는 일이 없고, 밀려난 출처도 간격을 건너뛰지 못합니다
+(6라운드 재감사에서 남긴 낮음 항목, 7라운드에 고침).
+
 서명된 답은 `predicateType`이 `…/approval-queue.md#approval-answer-v1`인 in-toto Statement v1을 담은 DSSE 봉투입니다. 주체(subject)는
 `approval/<auth_req_id>`와 대상 digest이고, predicate에 tenant, `auth_req_id`, 요청 버전, `decision`, 결정 id, 행동 id, 대상과 digest,
 승인자(주체·역할·시각) 또는 거절자, 결정 시각, 실행 창, `singleUse: true`, 그 답이 기록된 원장 `seq`·레코드 해시가 들어갑니다.

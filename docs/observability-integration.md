@@ -91,12 +91,17 @@ EvidScope verified · signed evaluation at ledger #12 of 40 (head c39efda311c464
 
 ```bash
 export EVIDSCOPE_TOKEN=...   # auditor
-node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-anchor.pem \
+node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-anchor.pem --tenant alpha \
   --link-base https://audit.example/ --langfuse https://cloud.langfuse.com --phoenix https://phoenix.example
 ```
 
 `--send`가 없으면 Langfuse·Phoenix에 연결하지 않습니다. 출력에는 내보내기 판정, 행동별 판정, **나갈 요청 본문 전체**가 들어 있으니
 보내기 전에 무엇이 나가는지 확인하세요. 내보내기를 파일로 받았다면 `--evidscope` 대신 `--export EXPORT.json`을 씁니다.
+
+`--tenant`는 필수입니다(`--checkpoint`를 주면 그 체크포인트의 tenant가 고정값이 되고, 둘 다 주면 같아야 합니다). vault 하나의 키가 모든
+tenant의 체크포인트에 서명하므로, 검증된 내보내기라도 다른 tenant 것일 수 있습니다. vault 호스트나 경로를 쥔 공격자가 다른 tenant 내보내기로
+바꿔치기하면 그 tenant의 출처가 같은 trace id로 만든 "정상" 판정이 이 프로젝트에 올라갑니다. 내보내기의 tenant가 고정값과 다르면
+(서명이 맞든 아니든) 판정을 하나도 만들지 않고 `mode: refused`, 이유 `tenant_mismatch`, 종료 코드 1로 끝납니다. 부정 판정도 보내지 않습니다.
 
 [`scripts/verify.mjs`](receipts.md)와 같은 검증 옵션을 그대로 받습니다. `--checkpoint`(외부 체크포인트), `--witness`, `--quorum`,
 `--origin-base`, `--max-staleness`, `--require-transparency`, `--require-tenant-witness`, `--heads-key`, `--require-heads-signer`,
@@ -106,7 +111,7 @@ node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-an
 
 ```bash
 export LANGFUSE_PUBLIC_KEY=pk-lf-... LANGFUSE_SECRET_KEY=sk-lf-... PHOENIX_API_KEY=...
-node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-anchor.pem --link-base https://audit.example/ \
+node scripts/push-verdicts.mjs --evidscope https://audit.example/ --key trust-anchor.pem --tenant alpha --link-base https://audit.example/ \
   --langfuse https://cloud.langfuse.com --phoenix https://phoenix.example --send
 ```
 
