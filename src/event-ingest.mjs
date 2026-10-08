@@ -28,8 +28,11 @@ export function assertBatchAnalysisCapacity(store, tenant, actionIds) {
 
 // The four writes every accepted source event needs. Projection checks fail if any is missing. e.fingerprint is the raw-body
 // digest from validateEvent; what is stored and signed is the keyed tag under the event's key epoch (round 2, audit S3).
-export function appendSourceEvent(store, p, raw) {
-  const e = store.sealEventFingerprint(p.tenant, raw), record = store.append(p.tenant, 'event', e, p.id);
+// One projectionMutation scope for the whole event (round 6): every write in it already ran in one, and the clock is read once.
+export function appendSourceEvent(store, p, raw) { return store.projectionMutation(() => appendSourceRows(store, p, raw)); }
+function appendSourceRows(store, p, raw) {
+  const retention = store.eventRetention(p.tenant, raw.receivedAt), e = store.sealEventFingerprint(p.tenant, raw, retention);
+  const record = store.append(p.tenant, 'event', e, p.id, {retention});
   store.append(p.tenant, 'event_receipt', {format: 'evidscope-event-receipt-v1', basis: 'source_ingest', source: e.source, id: e.id,
     fingerprint: e.fingerprint, eventSeq: record.seq, eventHash: record.hash}, p.id);
   store.project({...e, seq: record.seq, hash: record.hash});
@@ -55,6 +58,11 @@ export function beginIngestBatch(store, sources, verify) {
   }
   return {tenants};
 }
+// End of one ingest batch, inside its transaction: the counters go up once for the events whose savepoints were kept.
+export function endIngestBatch(store, results) {
+  let duplicates = 0;for (const result of results) if (result.duplicate) duplicates++;
+  store.count('accepted', results.length - duplicates); store.count('duplicates', duplicates);
+}
 const ACCEPTED = Object.freeze({durability: 'sqlite_full_commit', analysis: 'asynchronous', externalSeal: false});
 // One authenticated, validated source event inside its batch savepoint (POST /api/ingest).
 export function ingestSourceEvent(store, context, p, nonce, e) {
@@ -66,10 +74,10 @@ export function ingestSourceEvent(store, context, p, nonce, e) {
   if (prev) {
     if (prev === 'unverifiable') fail(409, '동일 출처 이벤트 ID의 이전 접수 지문 키가 파기되어 내용을 비교할 수 없습니다');
     if (prev !== 'same') fail(409, '동일 출처 이벤트 ID의 내용 충돌');
-    store.count('duplicates'); return {accepted: true, duplicate: true, ...ACCEPTED};
+    return {accepted: true, duplicate: true, ...ACCEPTED};
   }
   const adds = assertBatchedCapacity(store, tenantState, p.tenant, e.actionId);
-  appendSourceEvent(store, p, e); store.count('accepted');
+  appendSourceEvent(store, p, e);
   if (adds) tenantState.backlog++;
   return {accepted: true, duplicate: false, ...ACCEPTED};
 }

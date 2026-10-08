@@ -10,6 +10,8 @@ import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 import {prepareTransparency} from './transparency.mjs';
 import {ingestBatchOptions} from './ingest-batch.mjs';
+import {upstreamRequest} from './upstream-http.mjs';
+import {createForwardCoalescer,forwardedIngest,INGEST_FORWARD_HEADER,INGEST_FORWARD_MAX_BYTES,INGEST_FORWARD_PATH} from './ingest-forward.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
@@ -64,13 +66,22 @@ async function checkReadiness(){
 }
 async function requestBody(req,limit=16384){let size=0;const parts=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw new HttpError(413,`요청 크기 한도 ${limit} bytes 초과`);parts.push(chunk);}return Buffer.concat(parts).toString('utf8');}
 async function upstream(path,method,headers,body){
- const isAuth=authPaths.has(new URL(path,base).pathname),controller=new AbortController();const timer=setTimeout(()=>controller.abort(),isAuth?10000:6000);
+ const isAuth=authPaths.has(new URL(path,base).pathname);
  const forwarded={'content-type':'application/json',authorization:headers.authorization||'','x-evid-timestamp':headers['x-evid-timestamp']||'','x-evid-nonce':headers['x-evid-nonce']||'','x-evid-signature':headers['x-evid-signature']||'',cookie:headers.cookie||'','x-evid-csrf':headers['x-evid-csrf']||''};
  // Legacy bearer clients are checked at this gateway. Session requests also
  // carry the browser Origin to the vault's configured public-origin check.
  if(headers.origin&&(isAuth||/(?:^|;\s*)(?:__Host-)?evidscope-session=/.test(headers.cookie||'')))forwarded.origin=headers.origin;
- try{const response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:controller.signal,redirect:'manual'});return {status:response.status,body:await response.text(),headers:isAuth?{...(response.headers.has('location')?{location:response.headers.get('location')}:{}),...(response.headers.getSetCookie().length?{'set-cookie':response.headers.getSetCookie()}:{})}:{}};}finally{clearTimeout(timer);}
+ // node:http keep-alive rather than fetch (src/upstream-http.mjs); redirects come back as they are, as with redirect:'manual'.
+ const response=await upstreamRequest(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,timeoutMs:isAuth?10000:6000}),cookies=response.headers['set-cookie']||[];
+ return {status:response.status,body:response.body.toString('utf8'),headers:isAuth?{...(response.headers.location!==undefined?{location:response.headers.location}:{}),...(cookies.length?{'set-cookie':cookies}:{})}:{}};
 }
+// Source events through the ingress gateway go up in envelopes (src/ingest-forward.mjs); INGRESS_FORWARD_MAX_EVENTS=1 sends each
+// event in its own call as before.
+const forwardMaxEvents=Number(process.env.INGRESS_FORWARD_MAX_EVENTS||64);
+if(!Number.isSafeInteger(forwardMaxEvents)||forwardMaxEvents<1||forwardMaxEvents>64)throw Error('Invalid INGRESS_FORWARD_MAX_EVENTS');
+const forwarder=mode==='ingress'&&forwardMaxEvents>1?createForwardCoalescer({maxEvents:forwardMaxEvents,
+ send:(authorization,text)=>upstreamRequest(new URL(INGEST_FORWARD_PATH,base),{method:'POST',headers:{'content-type':'application/json',authorization},body:text,timeoutMs:6000}),
+ single:(headers,body)=>upstream('/api/ingest','POST',headers,body)}):null;
 // Binary-safe pass-through for enforcement points at the ingress gateway: bearer token, If-None-Match and the JSON body go up;
 // status, ETag, Content-Type and the (bounded) bytes come back, so a bundle's gzip bytes and a 304 arrive unchanged.
 async function enforcementUpstream(path,method,headers,body){
@@ -95,6 +106,7 @@ async function route(req,res){
  active++;
  try{
   const url=new URL(req.url,'http://localhost');
+  if(mode==='vault'&&url.pathname===INGEST_FORWARD_PATH)res.setHeader(INGEST_FORWARD_HEADER,'1');
   if(otlp&&url.pathname===OTLP_TRACES_PATH){await otlp.handle(req,res,{originAllowed:origin=>origin===(mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host)});return;}
   if(req.headers.origin){const expected=mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host;if(req.headers.origin!==expected)throw new HttpError(403,'교차 출처 요청이 금지됩니다');}
   if(url.pathname==='/healthz'&&req.method==='GET'){
@@ -119,19 +131,30 @@ async function route(req,res){
   // Catalog import (docs/agent-registry.md): up to 20 documents of 256 KiB each, bounded again per document by the importer.
   const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024
    :url.pathname==='/api/registry/import'?2*1024*1024
+   :mode==='vault'&&url.pathname===INGEST_FORWARD_PATH?INGEST_FORWARD_MAX_BYTES
    :STATUS_PATH.test(url.pathname)?STATUS_MAX_BYTES:16384;
   // Credentials and role are checked before anything above the 16 KiB default is buffered (S12a).
   if(limit>16384){if(mode==='vault')service.preauthorize(req.method,url,req.headers);else await preauthorizeUpstream(url.pathname,req.headers);}
   const body=await requestBody(req,limit);
   if(mode==='vault'){
    if(authPaths.has(url.pathname)){const output=await service.identity.http(req.method,url,req.headers);if(!output)throw new HttpError(404,'인증 경로 또는 메서드 없음');res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);res.end(JSON.stringify(output.body));return;}
+   if(url.pathname===INGEST_FORWARD_PATH&&req.method==='POST'){
+    // Each item counts toward the concurrency bound, as the requests it replaces did.
+    let admitted=0;
+    try{
+     const output=await forwardedIngest((headers,text)=>service.handle('POST',new URL('/api/ingest','http://localhost'),headers,text),req.headers,body,{
+      admit:n=>{if(active-1+n>100)throw new HttpError(503,'서비스가 혼잡하거나 종료 중입니다');admitted=n-1;active+=admitted;},
+      log:error=>process.stderr.write(JSON.stringify({component:mode,error:error?.code||error?.name})+'\n')});
+     res.statusCode=200;res.end(JSON.stringify(output));return;
+    }finally{active-=admitted;}
+   }
    const output=await service.handle(req.method,url,req.headers,body);
    if(isRawResponse(output)){res.statusCode=output.status;for(const [name,value] of Object.entries(output.headers))res.setHeader(name,value);res.end(output.body);return;}
    res.statusCode=ingestPaths.has(url.pathname)?202:200;res.end(JSON.stringify(output));
   }else if(mode==='ingress'&&enforcementPath){
    const output=await enforcementUpstream(url.pathname,req.method,req.headers,body);res.statusCode=output.status;
    for(const [name,value] of Object.entries(output.headers))res.setHeader(name,value);res.end(output.body);
-  }else{const output=await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition',`attachment; filename="evidscope-evidence${url.searchParams.has('attest')?'-attested':''}.json"`);res.end(output.body);}
+  }else{const output=forwarder&&url.pathname==='/api/ingest'?await forwarder.forward(req.headers,body):await upstream(url.pathname+url.search,req.method,req.headers,body);res.statusCode=output.status;for(const [name,value]of Object.entries(output.headers||{}))res.setHeader(name,value);if(url.pathname==='/api/export')res.setHeader('Content-Disposition',`attachment; filename="evidscope-evidence${url.searchParams.has('attest')?'-attested':''}.json"`);res.end(output.body);}
  }catch(caught){
   const error=caught instanceof URIError?new HttpError(400,'경로의 퍼센트 인코딩 형식 오류'):caught;
   res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다',...(error.status&&error.details||{})}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}

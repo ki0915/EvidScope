@@ -80,7 +80,8 @@ export function createOtlpIngest({store, principals, verifiedActions}) {
         seen.set(e.id, e.fingerprint); fresh.push(e);
       }
       assertBatchAnalysisCapacity(store, p.tenant, fresh.map(e => e.actionId));
-      for (const e of fresh) { appendSourceEvent(store, p, e); accepted++; store.count('accepted'); }
+      for (const e of fresh) { appendSourceEvent(store, p, e); accepted++; }
+      store.count('accepted', fresh.length);
       return result(accepted, duplicates);
     });
   };

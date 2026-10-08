@@ -152,13 +152,14 @@ export class Store {
   // error (a group-commit batch does, per event) must not go on writing in autocommit mode, or sign a checkpoint outside it.
   if(this.ledgerTransaction&&!this.ledgerTransaction.readOnly&&!this.db.isTransaction)throw Error('Store transaction ended early; refusing to write outside it');
   const nested=this.db.isTransaction,name=`evidscope_transaction_${++transactionSequence}`,ownsLedgerContext=!this.ledgerTransaction;
-  const snapshot=!ownsLedgerContext?{heads:new Map([...this.ledgerTransaction.heads].map(([tenant,head])=>[tenant,{...head}])),dirty:new Set(this.ledgerTransaction.dirty),actionCandidates:new Map(this.ledgerTransaction.actionCandidates)}:null;
-  this.db.exec(nested?`SAVEPOINT ${name}`:'BEGIN IMMEDIATE');const rollbackMark=this.rollbackActions.length;
-  if(ownsLedgerContext)this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),external:nested};
+  const snapshot=!ownsLedgerContext?{heads:new Map([...this.ledgerTransaction.heads].map(([tenant,head])=>[tenant,{...head}])),dirty:new Set(this.ledgerTransaction.dirty),actionCandidates:new Map(this.ledgerTransaction.actionCandidates),appended:this.ledgerTransaction.appended.length}:null;
+  const observedClock=this.observedProjectionMutationClock;this.db.exec(nested?`SAVEPOINT ${name}`:'BEGIN IMMEDIATE');const rollbackMark=this.rollbackActions.length;
+  if(ownsLedgerContext)this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),appended:[],advanced:new Set(),external:nested};
   try{
    const out=fn();
    if(out&&typeof out.then==='function'){if(types.isPromise(out))out.catch(()=>{});throw TypeError('Store.transaction requires a synchronous callback');}
    if(!this.db.isTransaction)throw Error('Store transaction ended early; refusing to write outside it');
+   if(ownsLedgerContext&&!nested)this._advanceVerifiedStates();
    if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.projectionStatement('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
    this.db.exec(nested?`RELEASE ${name}`:'COMMIT');
    // Committed: undo actions registered at this level are dropped; a nested RELEASE keeps them for the outer level.
@@ -166,11 +167,17 @@ export class Store {
    if(ownsLedgerContext&&!this.ledgerTransaction.external)for(const [tenant,candidate] of this.ledgerTransaction.actionCandidates)this.actionProjectionCache.set(tenant,candidate);
    return out;
   }catch(error){
+   // A verified state advanced over rows of this transaction describes rows that are gone now (see _advanceVerifiedStates).
+   if(ownsLedgerContext)for(const tenant of this.ledgerTransaction.advanced)this.actionProjectionCache.delete(tenant);
    try{if(nested){this.db.exec(`ROLLBACK TO ${name}`);this.db.exec(`RELEASE ${name}`);}else if(this.db.isTransaction)this.db.exec('ROLLBACK');}
    catch(rollbackError){throw new AggregateError([error,rollbackError],'Store transaction rollback failed');}
+   // The rollback also reverted the projection mutation clock: observe it as it was here, so the undone writes of this
+   // transaction do not read as a write outside projectionMutation (which made the next check cold). A change this process
+   // had not observed when the transaction began is still a mismatch.
+   this.observedProjectionMutationClock=observedClock;
    // After a completed rollback, undo side effects outside SQLite (new document files) in reverse order (S12d).
    for(const action of this.rollbackActions.splice(rollbackMark).reverse())try{action();}catch{}
-   if(snapshot){this.ledgerTransaction.heads=snapshot.heads;this.ledgerTransaction.dirty=snapshot.dirty;this.ledgerTransaction.actionCandidates=snapshot.actionCandidates;}
+   if(snapshot){this.ledgerTransaction.heads=snapshot.heads;this.ledgerTransaction.dirty=snapshot.dirty;this.ledgerTransaction.actionCandidates=snapshot.actionCandidates;this.ledgerTransaction.appended.length=snapshot.appended;}
    throw error;
   }finally{if(ownsLedgerContext)this.ledgerTransaction=null;}
  }
@@ -182,7 +189,8 @@ export class Store {
   const saved=this.cachedStatement('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
   return saved?JSON.parse(saved.body):makeCheckpoint(tenant,0,'0'.repeat(64),this.key);
  }
- append(tenant,type,payload,principal) {
+ // retention: the event's Store.eventRetention when the caller already has it (it must be for payload.receivedAt).
+ append(tenant,type,payload,principal,{retention}={}) {
   if(this.quarantine)throw Object.assign(Error('Transparency quarantine: '+this.quarantine.reason),{status:503});
   if(this.readOnlyRequest)throw Error('Read-only request cannot append to the ledger');
   // One transaction makes the ledger row, v1 checkpoint and tlog note atomic for direct callers too.
@@ -196,16 +204,18 @@ export class Store {
    head=head||{seq:0,hash:'0'.repeat(64)};if(this.tlog)head={...head,peaks:this._tlogHeadPeaks(tenant,head)};
    this.ledgerTransaction.heads.set(tenant,head);
   }
-  const seq=(head?.seq||0)+1;
+  const seq=(head?.seq||0)+1;let known=null;
   if(type==='event'){
-   const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
+   const encrypted=encryptEvent(payload,tenant,seq,retention||this.eventRetention(tenant,payload.receivedAt));
    if(!this.eventKeyEpochs().wrapsEventKeys)this._assertNoEventKeystore();
    const stored=storedEventKey(this.eventKeyEpochs(),encrypted.payload,encrypted.material);
    this.projectionMutation(()=>this.projectionStatement('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
+   known={text:encrypted.text,stored};
   }
   const record={tenant,seq,previous:head?.hash||'0'.repeat(64),type,recordedAt:new Date().toISOString(),principal,payload};
   const body=canonical(record),hash=digest(body);this.projectionMutation(()=>this.projectionStatement('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,body,hash));
   this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash,...(head.peaks?{peaks:frontierAppend(head.peaks,head.seq,recordLeaf(hash))}:{})});this.ledgerTransaction.dirty.add(tenant);
+  this.ledgerTransaction.appended.push({tenant,seq,previous:record.previous,body,hash,known});
   return {...record,hash};
  }
  // Retention of a new event under the tenant's current policy; its key epoch is the UTC month of retainUntil.
@@ -230,7 +240,7 @@ export class Store {
   this.eventKeyProvider=epochs;
  }
  // Source ingest replaces the raw-body digest by a tag keyed by the event's epoch (call inside the ingest transaction).
- sealEventFingerprint(tenant,event){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,this.eventRetention(tenant,event.receivedAt).keyEpoch,event.fingerprint)};}
+ sealEventFingerprint(tenant,event,retention=this.eventRetention(tenant,event.receivedAt)){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,retention.keyEpoch,event.fingerprint)};}
  compareEventFingerprint(tenant,stored,rawDigest){return compareFingerprint(this.eventKeyEpochs(),tenant,stored,rawDigest);}
  // {event, salt} of one encrypted ledger event from its stored key (raw, or wrapped under its epoch with a keystore).
  _openEvent(payload,stored){return openEvent(payload,eventKeyMaterial(this.eventKeyEpochs(),payload,stored));}
@@ -242,7 +252,7 @@ export class Store {
   if(this.db.isTransaction||this.ledgerTransaction)throw Error('Read-only scope must begin outside a transaction');
   this.db.exec('PRAGMA query_only=ON');
   try{this.db.exec('BEGIN DEFERRED');}catch(error){this.db.exec('PRAGMA query_only=OFF');throw error;}
-  this.readOnlyRequest=true;this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),external:false,readOnly:true};
+  this.readOnlyRequest=true;this.ledgerTransaction={heads:new Map(),dirty:new Set(),actionCandidates:new Map(),appended:[],advanced:new Set(),external:false,readOnly:true};
  }
  endReadOnly(){
   if(!this.readOnlyRequest)return;
@@ -512,7 +522,8 @@ export class Store {
  }
  // Replays one authenticated row. Signed-history problems that concern one projection fault that facet and the replay goes on,
  // so the remaining facets stay servable; chain and checkpoint failures are raised by the caller and fail everything.
- _applyActionStateRow(tenant,state,row,touched){
+ // known ({text, stored}): an event row this transaction wrote, with the plaintext and stored key bytes it sealed.
+ _applyActionStateRow(tenant,state,row,touched,known){
   if(row.recordBytes>VERIFIED_READ_ROW_BYTES)state.oversizedTypes.add(typeof row.type==='string'?row.type:'*');
   this._facet(state,'objects:'+row.type,()=>{
    const objectValue=signedObjectProjection(row);if(!objectValue)return;
@@ -526,8 +537,9 @@ export class Store {
     if(isEncryptedEvent(row.payload)){
      state.receiptRecords.push({tenant:row.tenant,seq:row.seq,type:row.type,payload:{keyId:row.payload.keyId},hash:row.hash,principal:row.principal});
      state.eventKeys.set(row.payload.keyId,row.seq);touched?.keys.add(row.payload.keyId);
-     const stored=this.cachedStatement('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,row.payload.keyId);
-     if(stored){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});try{disclosed=this._openEvent(row.payload,stored.key).event;}catch(error){this._fault(state,'keys',error);throw error;}}
+     const stored=known?{key:known.stored}:this.cachedStatement('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,row.payload.keyId);
+     if(known){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});disclosed=JSON.parse(known.text);}
+     else if(stored){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});try{disclosed=this._openEvent(row.payload,stored.key).event;}catch(error){this._fault(state,'keys',error);throw error;}}
     }else {
      disclosed=row.payload;
      state.receiptRecords.push({tenant:row.tenant,seq:row.seq,type:row.type,payload:{},hash:row.hash,principal:row.principal});
@@ -640,6 +652,32 @@ export class Store {
   if(sequence!==checkpoint.count||previous!==checkpoint.head)throw Error('Truncated or inconsistent export');
   return rows;
  }
+ // Round 6 (docs/performance.md): a write transaction that began on a current verified state carries it over the rows it
+ // appended, before COMMIT and under its write lock, instead of the next transaction reading them back. The replay and the
+ // projection delta check are the same as for a suffix read from SQL; only re-deriving what this transaction produced is
+ // skipped: the record text and hash it inserted, and the plaintext and key bytes of each event it sealed (decryption).
+ // Rows of another writer change data_version, writes of this connection outside projectionMutation change the mutation
+ // serial, and either makes the next check cold, as before. Not carried (left to the next check): external or faulted states,
+ // rows this transaction did not append, oversized rows. Any error drops the state; a rollback drops it from the cache.
+ _advanceVerifiedStates(){
+  const context=this.ledgerTransaction;if(!context.appended.length||context.external||context.readOnly)return;
+  this._syncProjectionMutationClock();const versions=this._databaseVersions();
+  for(const tenant of context.dirty){
+   const state=context.actionCandidates.get(tenant)||this.actionProjectionCache.get(tenant),head=context.heads.get(tenant);
+   const rows=context.appended.filter(row=>row.tenant===tenant);
+   if(!state||!rows.length||state.faults.size||state.versions.data!==versions.data||state.versions.schema!==versions.schema
+    ||state.mutationSerial!==this.projectionMutationSerial||state.count!==rows[0].seq-1||state.head!==rows[0].previous||head.seq!==rows.at(-1).seq||head.hash!==rows.at(-1).hash
+    ||rows.some((row,index)=>row.seq!==state.count+index+1||index&&row.previous!==rows[index-1].hash||Buffer.byteLength(row.body)>16*1024*1024))continue;
+   context.advanced.add(tenant);
+   const touched={actions:new Map(),allActions:false,events:new Map(),receipts:new Map(),keys:new Set(),receiptEvents:new Set(),objects:new Set(),governanceDocuments:new Set(),developmentEvents:new Set(),evaluationsStart:state.evaluations.length};
+   try{
+    for(const row of rows)this._applyActionStateRow(tenant,state,{...JSON.parse(row.body),hash:row.hash,recordBytes:Buffer.byteLength(row.body)},touched,row.known);
+    this._checkKeyCoverage(state,touched.keys,touched.receiptEvents);
+    state.count=head.seq;state.head=head.hash;this._verifyActionDelta(tenant,state,touched);
+   }catch{this.actionProjectionCache.delete(tenant);context.actionCandidates.delete(tenant);continue;}
+   this._stageActionState(tenant,state);
+  }
+ }
  // Incremental verified state of a tenant's signed history and its projections (see _verifyActionState for the facets).
  // Cold: replay the whole signed ledger; warm: verify only the signed suffix and the projection rows it touched. A state
  // older than verifiedStateMaxAgeMs, or cold:true, is rebuilt cold so edits that bypass SQLite are found within that bound.
@@ -748,6 +786,6 @@ export class Store {
  }
  rebuild(p) {return this.transaction(()=>{const bundle=this.rawBundle(p.tenant);verifyBundle(bundle,this.publicKey,undefined,{chainOnly:true});const original=this.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),receipts=expectedReceiptProjection(p.tenant,bundle.records,original);this.db.prepare('DELETE FROM events WHERE tenant=?').run(p.tenant);this.db.prepare('DELETE FROM receipts WHERE tenant=?').run(p.tenant);for(const e of original)this.project(e);for(const value of receipts.entries.values())this.db.prepare('INSERT OR REPLACE INTO receipts VALUES(?,?,?,?)').run(p.tenant,value.source,value.id,value.fingerprint);this.db.prepare('DELETE FROM development_run_events WHERE tenant=?').run(p.tenant);for(const e of development)this.db.prepare('INSERT INTO development_run_events VALUES(?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.eventId,e.runId,e.occurredAt,e.receivedAt,e.fingerprint,JSON.stringify(e));this.append(p.tenant,'projection_rebuild',{projections:['events','receipts','development_run_events']},p.id);return {rebuilt:original.length,receipts:receipts.entries.size,developmentEvents:development.length};});}
  project(e) {this.projectionMutation(()=>{this.projectionStatement('INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint,e.actionId,e.traceId,e.kind,e.receivedAt,JSON.stringify(e));this.projectionStatement('INSERT OR IGNORE INTO receipts VALUES(?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint);});}
- count(name) {this.cachedStatement('INSERT INTO counters VALUES(?,1) ON CONFLICT(name) DO UPDATE SET value=value+1').run(name);}
+ count(name,n=1) {if(n)this.cachedStatement('INSERT INTO counters VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+excluded.value').run(name,n);}
  close(){this.accessLog?.close();this.statements?.clear();this.db.close();}
 }

@@ -22,9 +22,10 @@ export function ingestBatchOptions(env = process.env) {
 }
 
 // begin(items) runs first inside the batch transaction and returns the context handed to every item's work(context); if it
-// throws, the whole batch fails. work runs in a savepoint; its return value resolves that item's promise after COMMIT.
+// throws, the whole batch fails. end(context, values), when given, runs after the last item, still inside the transaction, with the
+// return values of the items whose savepoints were kept. work runs in a savepoint; its return value resolves that item's promise after COMMIT.
 // onCommit({size, committed, failed, waitedMs}) is called after each batch; stats sums them (process-wide, never served per tenant).
-export function createGroupCommit({store, begin = () => ({}), maxWaitMs = INGEST_BATCH_DEFAULTS.maxWaitMs,
+export function createGroupCommit({store, begin = () => ({}), end, maxWaitMs = INGEST_BATCH_DEFAULTS.maxWaitMs,
   maxEvents = INGEST_BATCH_DEFAULTS.maxEvents, onCommit} = {}) {
   if (!Number.isSafeInteger(maxWaitMs) || maxWaitMs < 0 || !Number.isSafeInteger(maxEvents) || maxEvents < 1) throw TypeError('Invalid group commit bounds');
   let queue = [], timer = null, immediate = null;
@@ -47,6 +48,7 @@ export function createGroupCommit({store, begin = () => ({}), maxWaitMs = INGEST
         for (let i = 0; i < batch.length; i++) {
           try { outcomes[i] = {value: store.transaction(() => batch[i].work(context))}; } catch (error) { outcomes[i] = {error}; }
         }
+        if (end) end(context, outcomes.filter(outcome => !outcome.error).map(outcome => outcome.value));
       });
     } catch (error) { failure = error; }
     let committed = 0;

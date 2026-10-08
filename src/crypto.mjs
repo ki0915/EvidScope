@@ -17,7 +17,15 @@ export function canonical(v) {
 // HMAC and cipher keys as KeyObjects: Node 24 takes a slow path for raw Buffer keys (about 15 us per call, round 5).
 export const secretKey = key => createSecretKey(typeof key === 'string' ? Buffer.from(key, 'utf8') : key);
 export const digest = v => createHash('sha256').update(typeof v === 'string' ? v : canonical(v)).digest('hex');
-export const mac = (key, timestamp, nonce, body) => createHmac('sha256',key?.length?secretKey(key):key).update(`${timestamp}.${nonce}.${body}`).digest('hex');
+// Request signatures: KeyObjects of string secrets (principal HMAC secrets) are kept, bounded, instead of made per request.
+const macKeys = new Map();
+const macKey = key => {
+  if (typeof key !== 'string') return key?.length ? secretKey(key) : key;
+  let value = macKeys.get(key);
+  if (!value) { if (macKeys.size >= 256) macKeys.delete(macKeys.keys().next().value); macKeys.set(key, value = secretKey(key)); }
+  return value;
+};
+export const mac = (key, timestamp, nonce, body) => createHmac('sha256',key?.length?macKey(key):key).update(`${timestamp}.${nonce}.${body}`).digest('hex');
 // Event envelopes. v1 commits to sha256(canonical(event)), which anyone holding the ledger can test against guesses even after
 // erasure. v2 (round 2, audit S3) commits with HMAC-SHA256 keyed by a random 32-byte salt kept only with the event key, so the
 // commitment hides the event once the key and salt are erased. Exports disclose the salt of every retained v2 event.
