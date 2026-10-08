@@ -142,7 +142,7 @@ export function openEventKeystore({dir,sealer,dataDir}){
   destroy(tenant,epoch,{at=new Date().toISOString()}={}){
    const tombstone=tombstoneFile(tenant,epoch);mkdirSync(dirname(tombstone),{recursive:true,mode:0o700});
    if(!existsSync(tombstone))createExclusive(tombstone,JSON.stringify({format:TOMBSTONE_FORMAT,keystoreId:meta.id,tenant,epoch,destroyedAt:at})+'\n');
-   const id=cacheKey(tenant,epoch);cache.get(id)?.fill(0);cache.delete(id);
+   const id=cacheKey(tenant,epoch);cache.get(id)?.fill(0);cache.delete(id);epochs.forget(tenant,epoch);
    const file=epochFile(tenant,epoch);if(existsSync(file))scrub(file);
   },
   list:tenant=>entries('epochs',tenant).filter(epoch=>!destroyed(tenant,epoch)).map(epoch=>{

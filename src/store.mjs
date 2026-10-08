@@ -77,6 +77,8 @@ export class Store {
    DROP INDEX IF EXISTS event_action;
    CREATE TABLE IF NOT EXISTS nonces(source TEXT, nonce TEXT, expires INTEGER, PRIMARY KEY(source,nonce));
    CREATE TABLE IF NOT EXISTS actions(tenant TEXT, id TEXT, version INTEGER NOT NULL, analyzed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(tenant,id));
+   CREATE INDEX IF NOT EXISTS actions_pending ON actions(tenant) WHERE analyzed<version;
+   CREATE INDEX IF NOT EXISTS nonces_expires ON nonces(expires);
    CREATE TABLE IF NOT EXISTS evaluations(id INTEGER PRIMARY KEY AUTOINCREMENT, tenant TEXT, action_id TEXT, version INTEGER, body TEXT);
    CREATE TABLE IF NOT EXISTS objects(tenant TEXT, type TEXT, id TEXT, body TEXT, PRIMARY KEY(tenant,type,id));
    CREATE TABLE IF NOT EXISTS counters(name TEXT PRIMARY KEY,value INTEGER NOT NULL);
@@ -116,7 +118,7 @@ export class Store {
    ${epochSchema}`);
   this.eventKeyProvider=options.eventKeys||undefined;
   this.actionProjectionCache=new Map();this.rollbackActions=[];this.projectionMutationDepth=0;this.projectionMutationSerial=0;this.verifiedStateMaxAgeMs=options.verifiedStateMaxAgeMs??600000;
-  this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;
+  this.observedProjectionMutationClock=this._mutationClock();
    const protectedTables=new Set(['events','receipts','actions','event_keys','ledger','checkpoints','objects','evaluations',...tlogTables,...facetTables,...epochTables]);
    const protectedTriggers=new Set(['events_mutation_insert','events_mutation_update','events_mutation_delete','receipts_mutation_insert','receipts_mutation_update','receipts_mutation_delete','actions_mutation_insert','actions_mutation_update','actions_mutation_delete','event_keys_mutation_insert','event_keys_mutation_update','event_keys_mutation_delete','ledger_mutation_insert','ledger_mutation_update','ledger_mutation_delete','checkpoints_mutation_insert','checkpoints_mutation_update','checkpoints_mutation_delete','objects_mutation_insert','objects_mutation_update','objects_mutation_delete','evaluations_mutation_insert','evaluations_mutation_update','evaluations_mutation_delete',...[...tlogTables,...facetTables,...epochTables].flatMap(table=>['insert','update','delete'].map(op=>`${table}_mutation_${op}`))]);
   this.db.setAuthorizer((action,table,_column,_database,source)=>{
@@ -127,8 +129,14 @@ export class Store {
    return sqlite.SQLITE_OK;
   });
  }
- projectionMutation(fn){if(this.projectionMutationDepth===0)this._syncProjectionMutationClock();this.projectionMutationDepth++;try{return fn();}finally{this.projectionMutationDepth--;if(this.projectionMutationDepth===0)this.observedProjectionMutationClock=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;}}
- _syncProjectionMutationClock(){const actual=this.db.prepare('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;if(actual!==this.observedProjectionMutationClock){this.projectionMutationSerial++;this.observedProjectionMutationClock=actual;}}
+ // Prepared statements reused on hot paths (round 5, docs/performance.md). SQLite runs the authorizer above when a statement is
+ // compiled, not when it runs, so only statements whose authorization cannot depend on the moment are cached: reads and writes
+ // to unprotected tables (cachedStatement), and writes to protected tables that run inside projectionMutation (projectionStatement).
+ cachedStatement(sql){const cache=this.statements??=new Map();let statement=cache.get(sql);if(!statement)cache.set(sql,statement=this.db.prepare(sql));return statement;}
+ projectionStatement(sql){if(this.projectionMutationDepth===0)throw Error('Projection write outside Store.projectionMutation');return this.cachedStatement(sql);}
+ _mutationClock(){return this.cachedStatement('SELECT serial FROM projection_mutation_clock WHERE id=1').get().serial;}
+ projectionMutation(fn){if(this.projectionMutationDepth===0)this._syncProjectionMutationClock();this.projectionMutationDepth++;try{return fn();}finally{this.projectionMutationDepth--;if(this.projectionMutationDepth===0)this.observedProjectionMutationClock=this._mutationClock();}}
+ _syncProjectionMutationClock(){const actual=this._mutationClock();if(actual!==this.observedProjectionMutationClock){this.projectionMutationSerial++;this.observedProjectionMutationClock=actual;}}
  // secure_delete zeroes freed cells and pages, but older page images survive in the WAL until it is reset.
  // Called after an erasure commits; never waits for readers (an online backup) and retries in the background.
  checkpointAfterErasure(attempt=0){
@@ -147,7 +155,7 @@ export class Store {
   try{
    const out=fn();
    if(out&&typeof out.then==='function'){if(types.isPromise(out))out.catch(()=>{});throw TypeError('Store.transaction requires a synchronous callback');}
-   if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.db.prepare('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
+   if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.projectionStatement('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
    this.db.exec(nested?`RELEASE ${name}`:'COMMIT');
    // Committed: undo actions registered at this level are dropped; a nested RELEASE keeps them for the outer level.
    if(ownsLedgerContext)this.rollbackActions.length=rollbackMark;
@@ -167,7 +175,7 @@ export class Store {
  checkpoint(tenant){
   const pending=this.ledgerTransaction?.dirty.has(tenant)&&this.ledgerTransaction.heads.get(tenant);
   if(pending)return makeCheckpoint(tenant,pending.seq,pending.hash,this.key);
-  const saved=this.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
+  const saved=this.cachedStatement('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
   return saved?JSON.parse(saved.body):makeCheckpoint(tenant,0,'0'.repeat(64),this.key);
  }
  append(tenant,type,payload,principal) {
@@ -177,8 +185,8 @@ export class Store {
   if(!this.ledgerTransaction)return this.transaction(()=>this.append(tenant,type,payload,principal));
   let head=this.ledgerTransaction.heads.get(tenant);
   if(!head){
-   head=this.db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
-   const saved=this.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
+   head=this.cachedStatement('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
+   const saved=this.cachedStatement('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
    if(head){const checkpoint=saved&&JSON.parse(saved.body);verifyCheckpoint(checkpoint,this.publicKey);if(checkpoint.tenant!==tenant||checkpoint.count!==head.seq||checkpoint.head!==head.hash)throw Error('Ledger head differs from previously signed checkpoint; refusing to re-seal');}
    else if(saved)throw Error('Ledger is missing beneath an existing checkpoint');
    head=head||{seq:0,hash:'0'.repeat(64)};if(this.tlog)head={...head,peaks:this._tlogHeadPeaks(tenant,head)};
@@ -189,10 +197,10 @@ export class Store {
    const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
    if(!this.eventKeyEpochs().wrapsEventKeys)this._assertNoEventKeystore();
    const stored=storedEventKey(this.eventKeyEpochs(),encrypted.payload,encrypted.material);
-   this.projectionMutation(()=>this.db.prepare('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
+   this.projectionMutation(()=>this.projectionStatement('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
   }
   const record={tenant,seq,previous:head?.hash||'0'.repeat(64),type,recordedAt:new Date().toISOString(),principal,payload};
-  const hash=digest(record);this.projectionMutation(()=>this.db.prepare('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,canonical(record),hash));
+  const body=canonical(record),hash=digest(body);this.projectionMutation(()=>this.projectionStatement('INSERT INTO ledger VALUES(?,?,?,?)').run(tenant,record.seq,body,hash));
   this.ledgerTransaction.heads.set(tenant,{seq:record.seq,hash,...(head.peaks?{peaks:frontierAppend(head.peaks,head.seq,recordLeaf(hash))}:{})});this.ledgerTransaction.dirty.add(tenant);
   return {...record,hash};
  }
@@ -203,12 +211,15 @@ export class Store {
   return {policy,retainUntil,keyEpoch:epochOfRetainUntil(retainUntil)};
  }
  // A database whose event keys moved to a keystore never takes another raw key, e.g. from a vault started before the move.
+ // Checked once per write transaction: BEGIN IMMEDIATE keeps other connections from moving the keys meanwhile.
  _assertNoEventKeystore(){
-  if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_keystore_usage'").get()
+  if(this.ledgerTransaction?.keystoreAbsent)return;
+  if(this.cachedStatement("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_keystore_usage'").get()
    &&this.db.prepare('SELECT 1 FROM event_keystore_usage LIMIT 1').get())throw Error('This vault moved its event keys to an event keystore; restart it with EVENT_KEYSTORE_DIR and DATA_KEY_FILE');
+  if(this.ledgerTransaction)this.ledgerTransaction.keystoreAbsent=true;
  }
  // Epoch secrets: the configured keystore, else the tables in this database (event-keys.mjs).
- eventKeyEpochs(){return this.eventKeyProvider??=databaseEpochStore(this.db,{mutate:fn=>this.projectionMutation(fn)});}
+ eventKeyEpochs(){return this.eventKeyProvider??=databaseEpochStore(this.db,{mutate:fn=>this.projectionMutation(fn),read:sql=>this.cachedStatement(sql)});}
  // Attach the keystore before the first event is read or written (event-keystore.mjs attachEventKeystore).
  useEventKeys(epochs){
   if(this.eventKeyProvider&&this.eventKeyProvider!==epochs&&this.eventKeyProvider.kind!=='database')throw Error('Another event-key store is attached');
@@ -239,7 +250,7 @@ export class Store {
  // One read snapshot outside a request scope (long verifications that must not hold the write lock).
  read(fn){if(this.readOnlyRequest||this.db.isTransaction)return this.transaction(fn);this.beginReadOnly();try{return this.transaction(fn);}finally{this.endReadOnly();}}
  audit(p,operation,target='') {return this.transaction(()=>this.append(p.tenant,'audit_access',{operation,target},p.id));}
- get(tenant,type,id) {const r=this.db.prepare('SELECT body FROM objects WHERE tenant=? AND type=? AND id=?').get(tenant,type,id);return r?JSON.parse(r.body):null;}
+ get(tenant,type,id) {const r=this.cachedStatement('SELECT body FROM objects WHERE tenant=? AND type=? AND id=?').get(tenant,type,id);return r?JSON.parse(r.body):null;}
  list(tenant,type) {return this.db.prepare('SELECT body FROM objects WHERE tenant=? AND type=? ORDER BY id').all(tenant,type).map(r=>JSON.parse(r.body));}
  put(p,type,id,body) {this.append(p.tenant,type,body,p.id);this.projectionMutation(()=>this.db.prepare('INSERT INTO objects VALUES(?,?,?,?) ON CONFLICT(tenant,type,id) DO UPDATE SET body=excluded.body').run(p.tenant,type,id,JSON.stringify(body)));return body;}
  events(tenant,actionId) {const sql=actionId?'SELECT body FROM events WHERE tenant=? AND action_id=? ORDER BY received,source,id':'SELECT body FROM events WHERE tenant=? ORDER BY received,source,id';return this.db.prepare(sql).all(...(actionId?[tenant,actionId]:[tenant])).map(r=>JSON.parse(r.body));}
@@ -437,7 +448,7 @@ export class Store {
  }
  _fault(state,facet,error){if(!state.faults.has(facet))state.faults.set(facet,{error,order:++state.faultSerial});}
  _facet(state,facet,check){try{check();}catch(error){this._fault(state,facet,error);}}
- _databaseVersions(){return {data:this.db.prepare('PRAGMA data_version').get().data_version,schema:this.db.prepare('PRAGMA schema_version').get().schema_version};}
+ _databaseVersions(){return {data:this.cachedStatement('PRAGMA data_version').get().data_version,schema:this.cachedStatement('PRAGMA schema_version').get().schema_version};}
  _keyDigest(value){return createHash('sha256').update(value).digest('hex');}
  _verifyEventKeys(tenant,expected){
   const rows=this.db.prepare('SELECT key_id,seq,key FROM event_keys WHERE tenant=? ORDER BY key_id').all(tenant);
@@ -511,7 +522,7 @@ export class Store {
     if(isEncryptedEvent(row.payload)){
      state.receiptRecords.push({tenant:row.tenant,seq:row.seq,type:row.type,payload:{keyId:row.payload.keyId},hash:row.hash,principal:row.principal});
      state.eventKeys.set(row.payload.keyId,row.seq);touched?.keys.add(row.payload.keyId);
-     const stored=this.db.prepare('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,row.payload.keyId);
+     const stored=this.cachedStatement('SELECT key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,row.payload.keyId);
      if(stored){state.keys.set(row.payload.keyId,{seq:row.seq,digest:this._keyDigest(stored.key)});try{disclosed=this._openEvent(row.payload,stored.key).event;}catch(error){this._fault(state,'keys',error);throw error;}}
     }else {
      disclosed=row.payload;
@@ -569,23 +580,23 @@ export class Store {
  // Delta check of the rows a verified suffix touched; a mismatch faults only its facet.
  _verifyActionDelta(tenant,state,touched){
   if(!state.faults.has('actions'))this._facet(state,'actions',()=>{
-   for(const [id,prior] of touched.actions){const expected=state.action.get(id);if(canonical(prior)===canonical(expected))continue;const row=this.db.prepare('SELECT tenant,id,version,analyzed FROM actions WHERE tenant=? AND id=?').get(tenant,id);if(canonical(row)===canonical(expected))continue;throw Error('Action projection differs from signed evidence');}
+   for(const [id,prior] of touched.actions){const expected=state.action.get(id);if(canonical(prior)===canonical(expected))continue;const row=this.cachedStatement('SELECT tenant,id,version,analyzed FROM actions WHERE tenant=? AND id=?').get(tenant,id);if(canonical(row)===canonical(expected))continue;throw Error('Action projection differs from signed evidence');}
   });
   this._facet(state,'events',()=>{
    for(const [identity,expected] of touched.events){
-    const [source,id]=JSON.parse(identity),row=this.db.prepare('SELECT tenant,source,id,fingerprint,action_id,trace_id,kind,received,body FROM events WHERE tenant=? AND source=? AND id=?').get(tenant,source,id);
+    const [source,id]=JSON.parse(identity),row=this.cachedStatement('SELECT tenant,source,id,fingerprint,action_id,trace_id,kind,received,body FROM events WHERE tenant=? AND source=? AND id=?').get(tenant,source,id);
     if(expected===null){if(row)throw Error('Event projection differs from signed evidence: retained disposed row');continue;}
     let body;try{body=JSON.parse(row?.body);}catch{throw Error('Event projection differs from signed evidence: invalid body JSON');}
     if(!row||canonical(body)!==canonical(expected)||canonical([row.tenant,row.source,row.id,row.fingerprint,row.action_id,row.trace_id,row.kind,row.received])!==canonical([expected.tenant,expected.source,expected.id,expected.fingerprint,expected.actionId,expected.traceId,expected.kind,expected.receivedAt]))throw Error('Event projection differs from signed evidence');
    }
   });
   this._facet(state,'receipts',()=>{
-   for(const [identity,expected] of touched.receipts){const [source,id]=JSON.parse(identity),row=this.db.prepare('SELECT source,id,fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?').get(tenant,source,id);if(!row||canonical(row)!==canonical(expected))throw Error('Receipt projection differs from signed history');}
+   for(const [identity,expected] of touched.receipts){const [source,id]=JSON.parse(identity),row=this.cachedStatement('SELECT source,id,fingerprint FROM receipts WHERE tenant=? AND source=? AND id=?').get(tenant,source,id);if(!row||canonical(row)!==canonical(expected))throw Error('Receipt projection differs from signed history');}
   });
   this._facet(state,'keys',()=>{
-   for(const keyId of touched.keys){const expected=state.keys.get(keyId),row=this.db.prepare('SELECT seq,key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,keyId);if(!expected){if(row)throw Error('Event key projection differs from signed evidence');continue;}if(!row||row.seq!==expected.seq||this._keyDigest(row.key)!==expected.digest)throw Error('Event key projection differs from signed evidence');}
+   for(const keyId of touched.keys){const expected=state.keys.get(keyId),row=this.cachedStatement('SELECT seq,key FROM event_keys WHERE tenant=? AND key_id=?').get(tenant,keyId);if(!expected){if(row)throw Error('Event key projection differs from signed evidence');continue;}if(!row||row.seq!==expected.seq||this._keyDigest(row.key)!==expected.digest)throw Error('Event key projection differs from signed evidence');}
   });
-  for(const key of touched.objects){const expected=state.objects.get(key);if(!expected)continue;this._facet(state,'objects:'+expected.type,()=>{const row=this.db.prepare('SELECT body FROM objects WHERE tenant=? AND type=? AND id=?').get(tenant,expected.type,expected.id);if(!row||this._canonicalBody(row.body)!==canonical(expected.payload))throw Error('Object projection differs from signed evidence');});}
+  for(const key of touched.objects){const expected=state.objects.get(key);if(!expected)continue;this._facet(state,'objects:'+expected.type,()=>{const row=this.cachedStatement('SELECT body FROM objects WHERE tenant=? AND type=? AND id=?').get(tenant,expected.type,expected.id);if(!row||this._canonicalBody(row.body)!==canonical(expected.payload))throw Error('Object projection differs from signed evidence');});}
   if(touched.governanceDocuments.size)this._facet(state,'governance_documents',()=>checkGovernanceDocumentRows(this.db,tenant,state.governanceDocuments,touched.governanceDocuments));
   if(touched.developmentEvents.size)this._facet(state,'development_runs',()=>{for(const identity of touched.developmentEvents)this._verifyDevelopmentRow(tenant,state.developmentEvents.get(identity));});
   this._facet(state,'evaluations',()=>{
@@ -593,7 +604,7 @@ export class Store {
   });
  }
  _assertCheckpointHead(tenant,checkpoint){
-  const head=this.db.prepare('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
+  const head=this.cachedStatement('SELECT seq,hash FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get(tenant);
   if(checkpoint.count===0){if(head||checkpoint.head!=='0'.repeat(64))throw Error('Truncated or inconsistent export');}
   else if(!head||head.seq!==checkpoint.count||head.hash!==checkpoint.head)throw Error('Truncated or inconsistent export');
  }
@@ -732,7 +743,7 @@ export class Store {
   return {tenants:tenants.length,rebuilt};
  }
  rebuild(p) {return this.transaction(()=>{const bundle=this.rawBundle(p.tenant);verifyBundle(bundle,this.publicKey,undefined,{chainOnly:true});const original=this.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),receipts=expectedReceiptProjection(p.tenant,bundle.records,original);this.db.prepare('DELETE FROM events WHERE tenant=?').run(p.tenant);this.db.prepare('DELETE FROM receipts WHERE tenant=?').run(p.tenant);for(const e of original)this.project(e);for(const value of receipts.entries.values())this.db.prepare('INSERT OR REPLACE INTO receipts VALUES(?,?,?,?)').run(p.tenant,value.source,value.id,value.fingerprint);this.db.prepare('DELETE FROM development_run_events WHERE tenant=?').run(p.tenant);for(const e of development)this.db.prepare('INSERT INTO development_run_events VALUES(?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.eventId,e.runId,e.occurredAt,e.receivedAt,e.fingerprint,JSON.stringify(e));this.append(p.tenant,'projection_rebuild',{projections:['events','receipts','development_run_events']},p.id);return {rebuilt:original.length,receipts:receipts.entries.size,developmentEvents:development.length};});}
- project(e) {this.projectionMutation(()=>{this.db.prepare('INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint,e.actionId,e.traceId,e.kind,e.receivedAt,JSON.stringify(e));this.db.prepare('INSERT OR IGNORE INTO receipts VALUES(?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint);});}
- count(name) {this.db.prepare('INSERT INTO counters VALUES(?,1) ON CONFLICT(name) DO UPDATE SET value=value+1').run(name);}
- close(){this.accessLog?.close();this.db.close();}
+ project(e) {this.projectionMutation(()=>{this.projectionStatement('INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint,e.actionId,e.traceId,e.kind,e.receivedAt,JSON.stringify(e));this.projectionStatement('INSERT OR IGNORE INTO receipts VALUES(?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint);});}
+ count(name) {this.cachedStatement('INSERT INTO counters VALUES(?,1) ON CONFLICT(name) DO UPDATE SET value=value+1').run(name);}
+ close(){this.accessLog?.close();this.statements?.clear();this.db.close();}
 }
