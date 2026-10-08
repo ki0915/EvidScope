@@ -133,6 +133,18 @@ test('hostile documents are refused: size, nesting, prototype keys and YAML feat
   refusal(() => map('yaml', '{}'), 'unknown_format');
 });
 
+// Round-6 re-audit F1: an unterminated quote in a one-line flow sequence made the item pattern rescan the rest of the line from
+// every later quote, so one 256 KiB catalog line held the vault's event loop for tens of seconds.
+test('flow sequences parse in one pass: unterminated quotes stay linear and quoted items keep their commas', () => {
+  const started = Date.now();
+  for (const line of [`tags: ["${'\\"'.repeat(100000)}]`, `tags: [${'"a" '.repeat(60000)}]`, `tags: [${"'".repeat(200001)}]`])
+    refusal(() => parseYamlSubset(line), 'yaml_unsupported');
+  assert.ok(Date.now() - started < 1000, `adversarial flow sequences parse in linear time (${Date.now() - started} ms)`);
+  assert.deepEqual(parseYamlSubset(`tags: ["x, y", 'it''s', plain , 3, "q\\"q", ]`), [{tags: ['x, y', "it's", 'plain', 3, 'q"q']}]);
+  assert.deepEqual(parseYamlSubset('tags: [ ]\nempty: []'), [{tags: [], empty: []}]);
+  for (const document of ['a: ["x"y]', 'a: [x, {b: 1}]', 'a: ["open, x]', "a: ['open]"]) refusal(() => parseYamlSubset(document), 'yaml_unsupported');
+});
+
 test('nothing trusted is taken from a card: sources, actors, tools, risk tier and lifecycle state are dropped', () => {
   const card = {name: 'Escalator', url: 'https://agent.example.com/a2a', sources: ['alpha-agent'], actors: ['payments-bot'], toString: 'x',
     tools: [{name: 'payment_transfer'}], risk: {tier: 'low'}, riskTier: 'low', state: 'production', owner: 'ceo'};
