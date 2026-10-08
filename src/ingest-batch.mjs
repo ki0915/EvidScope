@@ -30,7 +30,8 @@ export function ingestBatchOptions(env = process.env) {
 // work per event. It is for work that refuses only before its first write: an item that throws without having changed a row
 // (store.changeCount(), SQLite total_changes()) keeps its refusal and the batch goes on. An item that throws after a write, or a
 // transaction SQLite ended by itself, rolls the whole batch back and runs it again with a savepoint per item, so every outcome
-// is the one 'savepoint' isolation gives. Work must not run DDL (total_changes() does not count it) or act outside SQLite.
+// is the one 'savepoint' isolation gives. Work must not run DDL (total_changes() does not count it) or act outside SQLite,
+// nor use FAIL conflict resolution or RAISE(FAIL), which keep the uncounted rows of a statement stopped part-way.
 export function createGroupCommit({store, begin = () => ({}), end, maxWaitMs = INGEST_BATCH_DEFAULTS.maxWaitMs,
   maxEvents = INGEST_BATCH_DEFAULTS.maxEvents, onCommit, isolation = 'savepoint'} = {}) {
   if (!Number.isSafeInteger(maxWaitMs) || maxWaitMs < 0 || !Number.isSafeInteger(maxEvents) || maxEvents < 1) throw TypeError('Invalid group commit bounds');
