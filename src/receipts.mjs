@@ -22,7 +22,7 @@ export const recordFileBase = (tenant, seq) => `evidscope-record-${T.tenantLogId
 
 // ---------- predicates: everything but issuedAt (exports) and the proofs is recomputed from the subject by verifiers ----------
 // Latest signed human assessment per system and requirement, with the legal review recorded for it. Facts, not a verdict.
-function requirementResults(records) {
+export function requirementResults(records) {
   const latest = new Map(), reviews = new Map();
   for (const r of records) {
     const p = r.payload;

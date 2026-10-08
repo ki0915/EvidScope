@@ -13,6 +13,7 @@ What it checks:
 | A `c2sp.org/tlog-proof@v1` receipt of one ledger record, under a `c2sp.org/tlog-policy` | `tlog-proof` |
 | The existing export bundle (`GET /api/export`) and case report (`GET /api/cases/<id>/report`) | `bundle`, `report` |
 | Vault API responses (`?attest=intoto`, `/api/receipts/record`) saved as JSON, split into files | `unpack` |
+| An auditor evidence package (a folder or `.tar.gz` from `scripts/evidence-pack.mjs build`) | `pack` |
 
 Formats, URIs and what each receipt proves are described (in Korean) in
 [docs/receipts.md](https://github.com/ki0915/EvidScope/blob/main/docs/receipts.md).
@@ -74,6 +75,14 @@ node evidscope-verify.mjs bundle export.json vault-public.pem [CHECKPOINT.json] 
 node evidscope-verify.mjs report report.json vault-public.pem [CHECKPOINT.json] [--attestation report.json.intoto.json]
 ```
 
+An auditor evidence package ([docs/evidence-pack.md](https://github.com/ki0915/EvidScope/blob/main/docs/evidence-pack.md)): the builder's
+public key comes separately from the package, like the vault key. The verifier recomputes the index and both summaries from the
+verified evidence and accepts only checks it establishes itself:
+
+```sh
+node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key builder-public.pem [CHECKPOINT.json] [--tenant T]
+```
+
 Transparency flags (optional): `--witness VKEY` (repeatable) `--quorum N` `--origin-base BASE` `--max-staleness SECONDS`
 `--require-transparency` `--require-tenant-witness` `--heads-key VKEY` (repeatable, the [heads signer](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md)'s key)
 `--require-heads-signer` (needs `--origin-base`; `vault_host` is reported only under a pinned origin base).
@@ -96,6 +105,9 @@ node --permission --allow-fs-read="$PWD" --allow-fs-read=/path/to/evidence evids
   `--require-witnessed` passes only when a witness quorum cosigned that checkpoint.
 - `tlog-proof`: the SHA-256 of the record file (the ledger record body as signed) is included in a signed tenant log checkpoint
   that the policy's witness quorum cosigned.
+- `pack`: the builder key signed an in-toto Statement naming every file of the package with its digest; the export and case
+  reports inside verify as above; the index and summaries are exactly what this verifier generates from them. "Evidence present"
+  is not a finding that a requirement is met, and the mapping is a draft for human review.
 - Not proven: that what a record states actually happened (records are what their sources reported), records after the
   checkpoint, the export predicate's `issuedAt` (the vault's own clock), or whether a legal assessment is right. With quorum
   `none`, someone holding the vault signing key could build a diverging history that these checks alone do not reveal.

@@ -15,6 +15,7 @@ import {parseArgs} from 'node:util';
 import {verifyBundle} from '../src/crypto.mjs';
 import {replayEvaluations} from '../src/policy-replay.mjs';
 import {transparencyFlags, transparencyOptions} from './transparency-flags.mjs';
+import {evidenceName, inventory, measure, timeRange} from '../src/evidence-inventory.mjs';
 
 export const REPORT_FORMAT = 'evidscope-isms-p-evidence-report-v1';
 export const NOTICE = '증거가 있다는 것은 ISMS-P 인증기준을 충족했다는 판정이 아닙니다. 이 보고서는 정렬표가 이름 붙인 증거 종류가 '
@@ -29,78 +30,12 @@ export const LIMITATIONS = [
   '파기한 이벤트는 본문이 없어 종류별로 세지 못하고 verification.erasedEvents로만 셉니다.',
   '정렬표 자체가 사람 검토 전 초안(draft_requires_human_review)입니다.',
 ];
-const NOT_CARRIED = {api: 'api_response_not_carried_by_exports', file: 'repository_file_not_carried_by_exports',
-  integrityCheck: 'online_check_result_not_carried_by_exports'};
-
-function timeRange(values) {
-  const times = values.filter(v => typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) && Number.isFinite(Date.parse(v)))
-    .sort((a, b) => Date.parse(a) - Date.parse(b));
-  if (!times.length) return null;
-  return {from: times[0], to: times.at(-1), ...(times.length < values.length ? {unparsed: values.length - times.length} : {})};
-}
-const counted = (count, extra = {}) => count ? {status: 'present', count, ...extra} : {status: 'none_recorded', count: 0};
-
-// Reads only a bundle that verifyBundle has accepted: every retained encrypted event then has a disclosure whose digest
-// matches the signed payloadHash, and erased events have none.
-function inventory(bundle, replay) {
-  const records = new Map(), disclosures = new Map((bundle.disclosures || []).map(d => [d.seq, d.event])), events = [], latest = new Map();
-  for (const row of bundle.records) {
-    if (!records.has(row.type)) records.set(row.type, []);
-    records.get(row.type).push(row.recordedAt);
-    if (row.type === 'event') {
-      // A sealed event is read only from its verified disclosure; an erased one has none and is not classified.
-      const disclosed = disclosures.get(row.seq), sealed = String(row.payload?.format).startsWith('evidscope-encrypted-event');
-      const event = disclosed ?? (sealed ? null : row.payload);
-      if (event && typeof event === 'object') events.push({event, recordedAt: row.recordedAt, encrypted: disclosed !== undefined});
-    }
-    if (row.type === 'evaluation' && typeof row.payload?.actionId === 'string') latest.set(row.payload.actionId, row);
-  }
-  const replayed = replay ? new Map(replay.evaluations.map(e => [e.seq, e.status])) : null;
-  return {records, events, latest, replayed};
-}
-
-function measure(e, data, verification) {
-  if (e.type === 'integrityCheck' && e.name === 'signed_ledger') {
-    return {status: 'verified_by_this_report', count: verification.count, basis: 'offline_signature_and_hash_chain_verification',
-      rollbackChecked: verification.rollbackChecked};
-  }
-  if (NOT_CARRIED[e.type]) return {status: 'not_in_export', reason: NOT_CARRIED[e.type]};
-  if (e.type === 'record') {
-    const times = data.records.get(e.name) || [];
-    return counted(times.length, {recordedAt: timeRange(times), verification: 'signed_hash_chain'});
-  }
-  if (e.type === 'eventKind' || e.type === 'checkType') {
-    const allowed = e.type === 'eventKind' ? new Set([e.source, ...(e.alsoAllowed || [])]) : null;
-    const hits = data.events.filter(({event}) => e.type === 'eventKind' ? event.kind === e.name && allowed.has(event.sourceKind)
-      : event.kind === 'governance_check' && event.governanceCheck?.checkType === e.name);
-    const bySource = Object.create(null);
-    for (const {event} of hits) bySource[event.sourceKind] = (bySource[event.sourceKind] || 0) + 1;
-    return counted(hits.length, {sourceKinds: bySource, recordedAt: timeRange(hits.map(h => h.recordedAt)),
-      sourceClaimedOccurredAt: timeRange(hits.map(h => h.event.occurredAt)), disclosureVerified: hits.filter(h => h.encrypted).length,
-      verification: 'signed_hash_chain_and_disclosure_digest'});
-  }
-  if (e.type === 'finding') {
-    let actions = 0, occurrences = 0, suppressed = 0;
-    const times = [], replay = data.replayed ? {replayed: 0, notReplayable: 0} : 'not_requested';
-    for (const row of data.latest.values()) {
-      const hits = (Array.isArray(row.payload.findings) ? row.payload.findings : []).filter(f => f?.code === e.code);
-      if (!hits.length) continue;
-      actions++; occurrences += hits.length; suppressed += hits.filter(f => f.suppressedBy !== undefined).length; times.push(row.recordedAt);
-      if (data.replayed) replay[data.replayed.get(row.seq) === 'replayed' ? 'replayed' : 'notReplayable']++;
-    }
-    return counted(occurrences, {actions, suppressed, recordedAt: timeRange(times), replay, verification: 'signed_evaluation'});
-  }
-  throw Error('Unknown evidence type in alignment: ' + e.type);
-}
 
 export function buildReport(bundle, alignment, verification, replay) {
   const data = inventory(bundle, replay), titles = new Map(alignment.officialItems.map(i => [i.number, i.title]));
-  const name = e => e.type === 'api' ? {method: e.method, path: e.path, ...(e.mode ? {mode: e.mode} : {}), ...(e.field ? {field: e.field} : {})}
-    : e.type === 'finding' ? {code: e.code} : e.type === 'file' ? {path: e.path}
-      : {name: e.name, ...(e.source ? {source: e.source} : {}), ...(e.alsoAllowed ? {alsoAllowed: e.alsoAllowed} : {})};
   const items = alignment.alignments.map(a => {
     const supports = a.supports.map(s => ({checkItems: s.checkItems, shows: s.shows,
-      evidence: s.evidence.map(e => ({type: e.type, ...name(e), what: e.what, ...measure(e, data, verification)}))}));
+      evidence: s.evidence.map(e => ({type: e.type, ...evidenceName(e), what: e.what, ...measure(e, data, verification)}))}));
     const all = supports.flatMap(s => s.evidence), tally = status => all.filter(e => e.status === status).length;
     return {item: a.item, title: titles.get(a.item), criterionAssessment: 'not_performed', supports, manual: a.manual,
       summary: {present: tally('present'), noneRecorded: tally('none_recorded'), notInExport: tally('not_in_export'),

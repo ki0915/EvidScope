@@ -11,6 +11,7 @@ import {replayEvaluations} from './policy-replay.mjs';
 import {unpackResponse, verifyAttestation, verifyRecordReceipt} from './receipts.mjs';
 import {verifyCaseReport} from './report-verifier.mjs';
 import {sha256Hex} from './dsse.mjs';
+import {readPack, verifyPack} from './evidence-pack.mjs';
 import {transparencyFlags, transparencyOptions, transparencyUsage} from './verify-options.mjs';
 
 const MiB = 1024 * 1024;
@@ -22,6 +23,8 @@ export const USAGE = `Usage:
                    [--quorum N] [--origin-base BASE]
   evidscope-verify unpack RESPONSE.json [--out DIR]
   evidscope-verify approval ANSWER.json KEY.pem --action-id ID --target TARGET.json [--auth-req-id ID] [--tenant T] [--at ISO-TIME]
+  evidscope-verify pack PACK_DIR|PACK.tar.gz KEY.pem [CHECKPOINT.json] [--pack-key BUILDER_KEY.pem] [--tenant T] [--mapping-from-pack]
+                   [--min-checkpoint FILE] [FLAGS]
 FLAGS (transparency, opt-in): --witness VKEY (repeatable) --quorum N --origin-base BASE --max-staleness SECONDS
   --require-transparency --require-tenant-witness --heads-key VKEY (repeatable, the heads signer's key) --require-heads-signer (needs --origin-base)
 Exit status: 0 verified, 1 not verified, 2 usage error.`;
@@ -132,8 +135,18 @@ function approvalCommand(args) {
     target: readJson(values.target, 64 * 1024, 'Target'), auth_req_id: values['auth-req-id'], tenant: values.tenant}});
   return {ok: result.approved, output: result};
 }
+// An auditor evidence package (docs/evidence-pack.md): the statement signature (builder key, default the vault key), every file
+// digest, the export and case reports inside, and the index and summaries regenerated from them.
+function packCommand(args) {
+  const {values, positionals: [packPath, keyPath, checkpointPath]} = parse(args, {...transparencyFlags, 'min-checkpoint': {type: 'string'},
+    'pack-key': {type: 'string'}, tenant: {type: 'string'}, 'mapping-from-pack': {type: 'boolean'}}, 3);
+  need([packPath, keyPath], ['PACK_DIR or PACK.tar.gz', 'KEY.pem']);
+  const key = readKey(keyPath), packKey = values['pack-key'] ? readKey(values['pack-key']) : undefined;
+  return {ok: true, output: verifyPack(readPack(packPath), {publicKey: key, packKey, checkpoint: checkpointFile(checkpointPath), flags: values,
+    expectedTenant: values.tenant, mappingFromPack: !!values['mapping-from-pack']})};
+}
 const COMMANDS = {bundle: bundleCommand, approval: approvalCommand, report: reportCommand, dsse: dsseCommand, 'tlog-proof': tlogProofCommand,
- unpack: unpackCommand};
+ unpack: unpackCommand, pack: packCommand};
 
 // Returns the exit status: 0 verified, 1 not verified, 2 usage error.
 export function main(argv, {stdout = process.stdout, stderr = process.stderr} = {}) {

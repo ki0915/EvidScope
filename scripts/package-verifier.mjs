@@ -1,6 +1,6 @@
 // Builds the separately published offline verifier (docs/receipts.md): a folder and a reproducible .tar.gz holding
-// evidscope-verify.mjs, only the src modules it imports, a package.json without dependencies, README.md (Korean),
-// README.en.md (English) and SHA256SUMS (sha256sum -c format).
+// evidscope-verify.mjs, only the src modules it imports, the data files they read (DATA_FILES), a package.json without
+// dependencies, README.md (Korean), README.en.md (English) and SHA256SUMS (sha256sum -c format).
 //   node scripts/package-verifier.mjs [--out DIR] [--allow-dirty]   default releases/; existing outputs are never overwritten
 // The CLI refuses uncommitted changes in src/, deploy/verifier/ or package.json unless --allow-dirty is given.
 // The import closure is computed from src/verify-cli.mjs: only node: built-ins without network or process access and
@@ -15,6 +15,8 @@ import {gzipSync} from 'node:zlib';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = 'src/verify-cli.mjs', NAME = 'evidscope-verify';
+// Read at run time by src/evidence-pack-frameworks.mjs (evidence package mappings), relative to src/ as in the repository.
+export const DATA_FILES = ['data/isms-p-alignment.json', 'data/requirements.json'];
 export const FORBIDDEN_BUILTINS = ['child_process', 'cluster', 'dgram', 'dns', 'http', 'http2', 'https', 'inspector', 'net', 'tls', 'worker_threads'];
 const IMPORTS = /^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*(['"])([^'"]+)\1|^\s*import\s*(['"])([^'"]+)\3/gm;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -84,6 +86,7 @@ export function packageVerifier({out = join(root, 'releases'), mtime = Number(pr
       description: 'Offline verifier for EvidScope evidence: exports, case reports, DSSE in-toto attestations and c2sp.org/tlog-proof record receipts',
       type: 'module', bin: {[NAME]: `${NAME}.mjs`}, engines: {node: '>=24.15.0'}, license: 'UNLICENSED'}, null, 2) + '\n')],
     ['README.md', readme('README.md')], ['README.en.md', readme('README.en.md')], ...moduleClosure(),
+    ...DATA_FILES.map(p => [p, readFileSync(join(root, p))]),
   ]);
   const paths = [...files.keys()].sort();
   files.set('SHA256SUMS', Buffer.from(paths.map(p => `${sha256(files.get(p))}  ${p}\n`).join('')));
@@ -105,9 +108,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     const {values} = parseArgs({options: {out: {type: 'string'}, 'allow-dirty': {type: 'boolean'}}});
     if (!values['allow-dirty']) {
-      const git = spawnSync('git', ['status', '--porcelain', '--', 'src', 'deploy/verifier', 'package.json'], {cwd: root, encoding: 'utf8'});
+      const git = spawnSync('git', ['status', '--porcelain', '--', 'src', 'deploy/verifier', 'package.json', ...DATA_FILES], {cwd: root, encoding: 'utf8'});
       if (git.status !== 0) throw Error('Cannot check the sources with git status; pass --allow-dirty to package the working tree as it is');
-      if (git.stdout.trim()) throw Error('Uncommitted changes in src/, deploy/verifier/ or package.json; commit them or pass --allow-dirty');
+      if (git.stdout.trim()) throw Error('Uncommitted changes in src/, data/, deploy/verifier/ or package.json; commit them or pass --allow-dirty');
     }
     console.log(JSON.stringify(packageVerifier(values.out ? {out: values.out} : {}), null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }

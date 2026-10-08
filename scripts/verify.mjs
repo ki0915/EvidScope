@@ -7,7 +7,10 @@ import {STOP_ORDER_TYPE,verifyExportStopOrders} from '../src/stop-orders.mjs';
 import {APPROVAL_TYPE,verifyApprovalHistory} from '../src/approvals.mjs';
 import {verifyAttestation} from '../src/receipts.mjs';
 import {transparencyOptions,transparencyFlags} from './transparency-flags.mjs';
-try{
+import {main} from '../src/verify-cli.mjs';
+// `pack` verifies an auditor evidence package (docs/evidence-pack.md) exactly as evidscope-verify pack does.
+if(process.argv[2]==='pack')process.exitCode=main(process.argv.slice(2));
+else try{
  const {values,positionals}=parseArgs({allowPositionals:true,options:{...transparencyFlags,'min-checkpoint':{type:'string'},replay:{type:'boolean'},attestation:{type:'string'}}});
  const [bundlePath,keyPath,checkpointPath]=positionals;
  if(!bundlePath||!keyPath||positionals.length>3)throw Error('Usage: node scripts/verify.mjs EXPORT.json TRUSTED_PUBLIC_KEY.pem [EXTERNAL_CHECKPOINT.json] [--witness VKEY]... [--quorum N] [--origin-base BASE]'
