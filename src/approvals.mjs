@@ -19,7 +19,7 @@ export const EXCLUSIONS=Object.freeze(['registrant','editor','owner']);
 export const ANSWER_ROLES=Object.freeze(['reviewer','admin']);
 const DOC='https://github.com/ki0915/EvidScope/blob/main/docs/approval-queue.md';
 export const ANSWER_PREDICATE=`${DOC}#approval-answer-v1`,ANSWER_FORMAT='evidscope-approval-answer-v1';
-// requestsPerAction bounds the analysis input of one action; the poll interval grows by slowDownSeconds per early poll (CIBA).
+// requestsPerAction bounds the analysis input of one action per enforcement source; the poll interval grows by slowDownSeconds per early poll (CIBA).
 // pendingPerSource caps unanswered requests one enforcement credential may hold open (policy `maxPendingPerSource`, up to maxPendingPerSource).
 export const APPROVAL_LIMITS=Object.freeze({requestsPerAction:10,bindingMessage:200,reason:1000,slowDownSeconds:5,maxIntervalSeconds:60,pendingPerSource:100,
  maxPendingPerSource:1000});

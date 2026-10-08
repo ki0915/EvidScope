@@ -41,3 +41,19 @@ test('pending approval requests are capped per enforcement source, and answering
   assert.equal(refused.body.status, 'refused', JSON.stringify(refused.body));
   assert.equal((await ask('cap-3')).status, 200, 'an answered request no longer counts');
 });
+
+// Round-6 re-audit F2: the 10-requests-per-action bound counted every source's requests, and requests are never removed, so one
+// compromised enforcement credential could open ten requests on another gateway's action id and that gateway could never ask
+// for (and so never get) an approval for it again. The bound is now per source and action.
+test('one enforcement source cannot use up another source\'s approval requests for an action', async () => {
+  const policy = await h.api('/api/registry/policy', {role: 'admin', body: {approvals: {maxPendingPerSource: 50}}});
+  assert.equal(policy.status, 200, JSON.stringify(policy.body));
+  const on = (principal, decisionId) => requestApproval(h.ingress.url, principal, {decisionId, actionId: 'shared-action', enforcementPointId: 'gw-1',
+    policyId: 'payments.refund', policyVersion: 'p1', target: {actor: 'unregistered-agent', tool: 'payment_transfer', resource: decisionId},
+    binding_message: `refund ${decisionId}`});
+  for (let i = 0; i < 10; i++) assert.equal((await on(gateway, `squat-${i}`)).status, 200);
+  const extra = await on(gateway, 'squat-10');
+  assert.equal(extra.status, 409, 'one source still opens at most ten requests per action');
+  const victim = await on(gateway2, 'legit-1');
+  assert.equal(victim.status, 200, `another source can still ask for its action: ${JSON.stringify(victim.body)}`);
+});
