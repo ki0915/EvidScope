@@ -148,6 +148,9 @@ export class Store {
  }
  transaction(fn) {
   if(typeof fn!=='function'||types.isAsyncFunction(fn))throw TypeError('Store.transaction requires a synchronous callback');
+  // SQLite rolls a whole transaction back by itself on some errors (SQLITE_FULL, SQLITE_IOERR, ...). A caller that caught such an
+  // error (a group-commit batch does, per event) must not go on writing in autocommit mode, or sign a checkpoint outside it.
+  if(this.ledgerTransaction&&!this.ledgerTransaction.readOnly&&!this.db.isTransaction)throw Error('Store transaction ended early; refusing to write outside it');
   const nested=this.db.isTransaction,name=`evidscope_transaction_${++transactionSequence}`,ownsLedgerContext=!this.ledgerTransaction;
   const snapshot=!ownsLedgerContext?{heads:new Map([...this.ledgerTransaction.heads].map(([tenant,head])=>[tenant,{...head}])),dirty:new Set(this.ledgerTransaction.dirty),actionCandidates:new Map(this.ledgerTransaction.actionCandidates)}:null;
   this.db.exec(nested?`SAVEPOINT ${name}`:'BEGIN IMMEDIATE');const rollbackMark=this.rollbackActions.length;
@@ -155,6 +158,7 @@ export class Store {
   try{
    const out=fn();
    if(out&&typeof out.then==='function'){if(types.isPromise(out))out.catch(()=>{});throw TypeError('Store.transaction requires a synchronous callback');}
+   if(!this.db.isTransaction)throw Error('Store transaction ended early; refusing to write outside it');
    if(ownsLedgerContext)this.projectionMutation(()=>{for(const tenant of this.ledgerTransaction.dirty){const head=this.ledgerTransaction.heads.get(tenant);this.projectionStatement('INSERT INTO checkpoints VALUES(?,?) ON CONFLICT(tenant) DO UPDATE SET body=excluded.body').run(tenant,JSON.stringify(makeCheckpoint(tenant,head.seq,head.hash,this.key)));if(head.peaks)this._writeTlog(tenant,head.seq,head.peaks);}});
    this.db.exec(nested?`RELEASE ${name}`:'COMMIT');
    // Committed: undo actions registered at this level are dropped; a nested RELEASE keeps them for the outer level.

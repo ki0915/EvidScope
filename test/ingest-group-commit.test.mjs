@@ -190,6 +190,25 @@ test('group commit: the wait for others is bounded by the oldest queued event; a
  verifyBundle(store.bundle('alpha'),store.publicKey);
 });
 
+test('group commit: an event that fails after writing rolls back alone; a transaction SQLite ended early fails the whole batch',async t=>{
+ const dir=scratch(t),store=new Store(dir,generateKeyPairSync('ed25519').privateKey);t.after(()=>store.close());
+ const batch=createGroupCommit({store,maxWaitMs:20});
+ const append=i=>()=>store.append('alpha','note',{i},'unit');
+ const settled=await Promise.allSettled([batch.submit(null,append(1)),batch.submit(null,()=>{append(2)();throw Error('refused after writing');}),
+  batch.submit(null,append(3))]);
+ assert.deepEqual(settled.map(r=>r.status),['fulfilled','rejected','fulfilled']);
+ let bundle=store.bundle('alpha');verifyBundle(bundle,store.publicKey);assert.deepEqual(bundle.records.map(r=>r.payload.i),[1,3]);
+ // As after SQLITE_FULL or SQLITE_IOERR: SQLite has rolled the transaction back while the batch goes on with the next event.
+ const early=await Promise.allSettled([batch.submit(null,append(4)),batch.submit(null,()=>{append(5)();store.db.exec('ROLLBACK');}),
+  batch.submit(null,append(6))]);
+ assert.deepEqual(early.map(r=>r.status),['rejected','rejected','rejected']);
+ assert.match(early[2].reason.message,/ended early/);
+ bundle=store.bundle('alpha');verifyBundle(bundle,store.publicKey);assert.deepEqual(bundle.records.map(r=>r.payload.i),[1,3]);
+ assert.equal(store.checkpoint('alpha').count,2);
+ await batch.submit(null,append(7));
+ bundle=store.bundle('alpha');verifyBundle(bundle,store.publicKey);assert.deepEqual(bundle.records.map(r=>r.payload.i),[1,3,7]);
+});
+
 test('group commit options: defaults, bounds and refusal of invalid values',()=>{
  assert.deepEqual(ingestBatchOptions({}),{maxWaitMs:INGEST_BATCH_DEFAULTS.maxWaitMs,maxEvents:INGEST_BATCH_DEFAULTS.maxEvents});
  assert.deepEqual(ingestBatchOptions({INGEST_BATCH_MAX_WAIT_MS:'10',INGEST_BATCH_MAX_EVENTS:'1'}),{maxWaitMs:10,maxEvents:1});
