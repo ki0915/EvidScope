@@ -120,7 +120,8 @@ async function route(req,res){
   if(url.pathname==='/readyz'&&req.method==='GET'){
    const ready=await checkReadiness();res.statusCode=ready&&!stopping?200:503;res.end(JSON.stringify({status:res.statusCode===200?'ready':'not_ready',component:mode}));return;
   }
-  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js','/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js'].includes(url.pathname)){
+  if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js',
+   '/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   const enforcementPath=enforcementRoute(req.method,url.pathname);
@@ -165,7 +166,8 @@ async function route(req,res){
  finally{active--;}
 }
 const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
-server.listen(port,host,()=>{service?.transparency.start();service?.accessLog.start();service?.retention.rotation.start();const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
+server.listen(port,host,()=>{service?.transparency.start();service?.accessLog.start();service?.retention.rotation.start();
+ const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
 const workerTimer=mode==='worker'?setInterval(async()=>{if(workerBusy||stopping)return;workerBusy=true;
  try{const result=await tick(base,process.env.WORKER_TOKEN);lastWorkerSuccess=Date.now();
   // Results the vault's own recomputation rejected (S6), e.g. a worker on another engine version.
