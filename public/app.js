@@ -303,7 +303,8 @@ async function eventsView() {
     try {
       const query = new URLSearchParams(new FormData(filter)); query.set('limit', '100');
       const data = await api(`/api/events?${query}`); count.textContent = `전체 ${data.total ?? data.items.length}건 · 최대 100건 표시`;
-      results.replaceChildren(table(['발생 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], data.items.map((event) => [
+      const traceRow = traceLinkRow(data.traceLinks);
+      results.replaceChildren(...(traceRow ? [traceRow] : []), table(['발생 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], data.items.map((event) => [
         date(event.occurredAt), `${event.kind} / ${event.source}`, event.actor, `${event.tool || '—'} · ${event.action || '—'}`,
         event.actionId ? button(event.actionId, () => actionDetail(event.actionId), 'small') : '연결 없음', button('상세', () => inspect('수집 증거 · 원본 참조', event), 'small'),
       ])));
@@ -365,6 +366,27 @@ function actionEvidenceSummary(data) {
   }
   node.append(referenceCard); return node;
 }
+// Operator-configured links to the same OTel trace in Langfuse or Phoenix (TRACE_LINKS_FILE); https only, new tab, no referrer.
+function traceLinkRow(links) {
+  const safe = (Array.isArray(links) ? links : []).filter((link) => { try { return new URL(link.url).protocol === 'https:'; } catch { return false; } });
+  if (!safe.length) return null;
+  const row = el('div', 'case-links trace-links'); row.append(el('strong', '', '같은 trace를 관측 도구에서 열기'));
+  for (const link of safe) {
+    const anchor = el('a', 'source-link', `${link.name} · ${String(link.traceId).slice(0, 12)}… ↗`);
+    anchor.href = link.url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; row.append(anchor);
+  }
+  row.append(el('span', 'muted', '외부 도구의 화면은 EvidScope 검증 결과가 아닙니다. 판정은 이 화면과 서명된 내보내기로 확인하세요.'));
+  return row;
+}
+// Deep links back from Langfuse or Phoenix (docs/observability-integration.md): #action=<id> opens that action once signed in.
+function openLinkedAction() {
+  const match = /^#action=([^&#]{1,400})$/.exec(window.location.hash);
+  if (!match || !token) return;
+  let actionId; try { actionId = decodeURIComponent(match[1]); } catch { return; }
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  if (/^[a-zA-Z0-9._:@/-]{1,120}$/.test(actionId)) actionDetail(actionId);
+}
+window.addEventListener('hashchange', openLinkedAction);
 async function actionDetail(actionId) {
   showDetail('행동 조사', el('div', 'loading', '행동의 원본 근거와 연결 사건을 조회합니다…')); const epoch = detailEpoch;
   let data; let caseData;
@@ -373,6 +395,7 @@ async function actionDetail(actionId) {
   if (epoch !== detailEpoch) return;
   const node = el('div');
   node.append(el('p', 'selection-note', `행동 ID · ${actionId}`));
+  const traceRow = traceLinkRow(data.traceLinks); if (traceRow) node.append(traceRow);
   const linkedCases = (caseData.items || []).filter((item) => item.actionId === actionId); const caseLinks = el('div', 'case-links');
   caseLinks.append(el('strong', '', '사람의 판단으로 연결'));
   if (linkedCases.length) linkedCases.forEach((item) => caseLinks.append(button(`${item.title} · 사건 검토`, () => caseDetail(item), 'primary small')));
@@ -1226,7 +1249,7 @@ async function initializeAuth() {
       } else if (sessionResponse.status === 401) clearAuth(false);
       else throw new Error('조직 접속 상태를 조회하지 못했습니다. 다시 접속하세요.');
     } else if (!token) $('#connection').textContent = '인증 필요';
-    await navigate(activeView);
+    await navigate(activeView); openLinkedAction();
     const query = new URLSearchParams(window.location.search);
     if (query.get('auth') === 'failed') { window.history.replaceState(null, '', '/'); notice('조직 계정 접속을 완료하지 못했습니다. 등록된 계정인지 확인하고 다시 시도하세요.', true); }
   } catch (error) {
@@ -1262,7 +1285,7 @@ $('#auth-form').addEventListener('submit', async (event) => {
   authEpoch++; token = $('#auth-token').value.trim(); $('#auth-token').value = '';
   const attemptEpoch = authEpoch;
   try {
-    await api('/api/overview'); $('#auth-dialog').close(); $('#auth-toggle').textContent = '접속 종료'; $('#connection').textContent = '감사 API 연결됨'; $('#connection-dot').classList.add('connected'); await navigate(activeView);
+    await api('/api/overview'); $('#auth-dialog').close(); $('#auth-toggle').textContent = '접속 종료'; $('#connection').textContent = '감사 API 연결됨'; $('#connection-dot').classList.add('connected'); await navigate(activeView); openLinkedAction();
   } catch (error) {
     if (authEpoch === attemptEpoch || error.status === 401 && authEpoch === attemptEpoch + 1 && !token) {
       if (token) clearAuth();

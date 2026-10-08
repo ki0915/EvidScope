@@ -41,8 +41,9 @@ import {createRegistry} from './registry-service.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_PATH,createEnforcement,enforcementPoint} from './enforcement-service.mjs';
 import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
+import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 
-export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
+export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
  bundleSigning}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
@@ -50,6 +51,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  const duplicateIds=duplicatePrincipalIds(principals);
  if(duplicateIds.length)throw Error(`Invalid credential configuration: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
  workerTenantScopes(principals,config.profile);
+ // Operator-configured links to the same trace in Langfuse or Phoenix (TRACE_LINKS_FILE, docs/observability-integration.md), checked first.
+ const linkTemplates=traceLinkTemplates(traceLinkConfig);
  const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});
@@ -340,20 +343,21 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
   if(path==='/api/events'&&method==='GET'){
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');
    const limit=Math.max(1,Math.min(500,Number(url.searchParams.get('limit'))||100)),offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
+   const found=trace?traceLinks(linkTemplates,[trace]):[],links=found.length?{traceLinks:found}:{};
    return store.transaction(()=>{verifiedEvents(p);
     // The verified events facet binds the kind/trace_id columns to the signed bodies, so those filters and the page run in SQL;
     // free-text q keeps matching the canonical body in JS.
     if(!q){const where='tenant=?'+(kind?' AND kind=?':'')+(trace?' AND trace_id=?':''),args=[p.tenant,...(kind?[kind]:[]),...(trace?[trace]:[])];
      const total=store.db.prepare(`SELECT COUNT(*) n FROM events WHERE ${where}`).get(...args).n;
      const items=store.db.prepare(`SELECT body FROM events WHERE ${where} ORDER BY received,source,id LIMIT ? OFFSET ?`).all(...args,limit,offset).map(row=>JSON.parse(row.body));
-     return {items,total,offset,limit};}
-    const items=store.events(p.tenant).filter(e=>canonical(e).includes(q)&&(!kind||e.kind===kind)&&(!trace||e.traceId===trace));return {items:items.slice(offset,offset+limit),total:items.length,offset,limit};});
+     return {items,total,offset,limit,...links};}
+    const items=store.events(p.tenant).filter(e=>canonical(e).includes(q)&&(!kind||e.kind===kind)&&(!trace||e.traceId===trace));return {items:items.slice(offset,offset+limit),total:items.length,offset,limit,...links};});
   }
   if(path.startsWith('/api/actions/')&&method==='GET'){
    return store.transaction(()=>{verifiedActions(p);const actionId=decodeURIComponent(path.slice(13)),evaluations=verifiedEvaluations(p,{actionId}).reverse(),events=store.events(p.tenant,actionId);
    const references=events.flatMap(e=>(e.dataRefs||[]).map(ref=>({...ref,source:e.source,eventId:e.id,assurance:e.assurance,observedAt:e.occurredAt,verification:e.sourceKind==='agent'?'self_reported_reference':'service_reported_reference'})));
    const business=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind)),v=store.db.prepare('SELECT version,analyzed FROM actions WHERE tenant=? AND id=?').get(p.tenant,actionId);
-   return {events,references,analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?['참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
+   return {events,references,traceLinks:traceLinks(linkTemplates,eventTraceIds(events)),analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?['참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
   }
   if(path==='/api/alerts'&&method==='GET'){
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);return {items:actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));})};});
