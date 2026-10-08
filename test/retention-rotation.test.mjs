@@ -186,6 +186,7 @@ test('the verifier refuses a critical class, a one-person activation or an early
  const disposition=b=>b.records.find(r=>r.type==='retention_disposition');
  const activation=b=>b.records.find(r=>r.type==='retention_rotation'&&r.payload.status==='active');
  const reasons={critical:/critical class/,criticalPolicy:/critical class/,onePerson:/second person/,early:/before its period/,unnamedClass:/does not name/,
+  undatedApproval:/outlives/,longApproval:/outlives/,
   heldAction:/hold or an open case/};
  const cases={
   critical:b=>{disposition(b).payload.rotation.classes[0]={sourceKind:'safety',kind:'safety_alert',sensitivity:'none'};},
@@ -198,6 +199,8 @@ test('the verifier refuses a critical class, a one-person activation or an early
    row.payload.approvedBy=person;row.principal=person;disposition(b).payload.approvedBy=person;
   },
   early:b=>{const d=disposition(b);d.payload.executedAt=b.records.find(r=>r.type==='event').recordedAt;},
+  undatedApproval:b=>{delete activation(b).payload.approvedAt;},
+  longApproval:b=>{const row=activation(b);row.payload.validUntil=new Date(Date.parse(row.payload.approvedAt)+2000*86400000).toISOString();},
   unnamedClass:b=>{disposition(b).payload.rotation.classes[0]={sourceKind:'tool',kind:'result',sensitivity:'none'};},
   heldAction:b=>{
    const at=b.records.indexOf(disposition(b)),hold={...b.records[at],type:'retention_hold',payload:{id:'forced',scope:'a-1',status:'active',reason:'x'}};

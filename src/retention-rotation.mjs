@@ -96,8 +96,8 @@ export function checkRotationHistory(records){
      // Two people: the activating record is signed for an approver who is not the proposer.
      if(from!=='proposed'||typeof payload.approvedBy!=='string'||!payload.approvedBy||payload.approvedBy===payload.proposedBy
       ||row.principal!==payload.approvedBy||!Number.isFinite(time(payload.validUntil)))invalid(`activation at ${row.seq} lacks a second person`);
-     if(time(payload.validUntil)-time(payload.approvedAt)>payload.terms.validDays*86400000||!(time(row.recordedAt)<=time(prior.proposal.payload.expiresAt)))
-      invalid(`activation at ${row.seq} outlives its terms or its proposal`);
+     if(!(time(payload.approvedAt)<=time(row.recordedAt))||!(time(payload.validUntil)-time(payload.approvedAt)<=payload.terms.validDays*86400000)
+      ||!(time(row.recordedAt)<=time(prior.proposal.payload.expiresAt)))invalid(`activation at ${row.seq} outlives its terms or its proposal`);
     }else if(payload.status==='rejected'){if(from!=='proposed')invalid(`rejection at ${row.seq}`);}
     else if(from!=='active')invalid(`${payload.status} at ${row.seq} of a policy that is not active`);
    }
