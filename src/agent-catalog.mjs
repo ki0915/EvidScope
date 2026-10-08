@@ -74,15 +74,37 @@ function unquote(s){
  return s.slice(1,-1).replace(/\\(u[0-9a-fA-F]{4}|.)/g,(_,e)=>e.length===5?String.fromCharCode(parseInt(e.slice(1),16))
   :Object.hasOwn(escapes,e)?escapes[e]:refuse('yaml_unsupported','unsupported escape in double-quoted scalar'));
 }
+// Items of a one-line flow sequence in one pass. A quote opens a quoted item only where an item starts, as in YAML, and only a
+// comma may follow its closing quote. (A pattern retried at every unterminated quote was quadratic: round-6 re-audit F1.)
+function flowItems(inner){
+ const items=[];let i=0;
+ const blank=()=>{while(inner[i]===' '||inner[i]==='\t')i++;};
+ while(i<inner.length){
+  blank();const start=i,quote=inner[i];
+  if(quote==='"'||quote==="'"){
+   for(i++;i<inner.length;i++){
+    if(quote==='"'&&inner[i]==='\\'){i++;continue;}
+    if(inner[i]===quote){if(quote==="'"&&inner[i+1]==="'"){i++;continue;}break;}
+   }
+   if(i>=inner.length)refuse('yaml_unsupported','unterminated quoted scalar in a flow sequence');
+   items.push(inner.slice(start,++i));blank();
+   if(i<inner.length&&inner[i]!==',')refuse('yaml_unsupported','text after a quoted scalar in a flow sequence');
+  }else{
+   for(;i<inner.length&&inner[i]!==',';i++)if('[]{}'.includes(inner[i]))refuse('yaml_unsupported','nested flow collection');
+   const item=inner.slice(start,i).trim();if(item)items.push(item);
+  }
+  i++;
+ }
+ return items;
+}
 function scalar(raw){
  const s=raw.trim();
  if(s.startsWith('"')||s.startsWith("'"))return unquote(s);
  if(/^[&*!%@`|>{]/.test(s)||s.startsWith('<<'))refuse('yaml_unsupported',`YAML feature outside the safe subset: ${s.slice(0,20)}`);
  if(s==='{}')return {};
  if(s.startsWith('[')){
-  if(!s.endsWith(']'))refuse('yaml_unsupported','multi-line flow sequence');const inner=s.slice(1,-1).trim();if(!inner)return [];
-  if(/[[\]{}]/.test(inner.replace(/"(?:[^"\\]|\\.)*"|'(?:[^']|'')*'/g,'')))refuse('yaml_unsupported','nested flow collection');
-  return (inner.match(/"(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^,]+/g)||[]).map(x=>x.trim()).filter(x=>x&&x!==',').map(scalar);
+  if(!s.endsWith(']'))refuse('yaml_unsupported','multi-line flow sequence');
+  return flowItems(s.slice(1,-1)).map(scalar);
  }
  if(s===''||s==='~'||s==='null'||s==='Null'||s==='NULL')return null;
  if(/^(?:true|True|TRUE)$/.test(s))return true;if(/^(?:false|False|FALSE)$/.test(s))return false;

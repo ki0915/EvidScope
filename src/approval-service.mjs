@@ -108,7 +108,9 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
     if(same(existing)!==same(request))fail(409,'같은 결정 id로 다른 대상의 승인 요청이 이미 있습니다');
     return ack(existing,at,{duplicate:true});
    }
-   if(approvals(p,{actionId:request.actionId}).length>=APPROVAL_LIMITS.requestsPerAction)fail(409,`한 행동에 승인 요청은 최대 ${APPROVAL_LIMITS.requestsPerAction}개입니다`);
+   // Per source and action: requests are never removed, so a tenant-wide count let one credential use up another gateway's action.
+   if(approvals(p,{actionId:request.actionId}).filter(({body:v})=>v.requestedBy===p.id).length>=APPROVAL_LIMITS.requestsPerAction)
+    fail(409,`한 출처가 한 행동에 여는 승인 요청은 최대 ${APPROVAL_LIMITS.requestsPerAction}개입니다`);
    const policy=current(p),limits=policy.approvals;
    // One enforcement credential cannot flood the queue people read: unanswered, unexpired requests per source are capped.
    const cap=limits.maxPendingPerSource??APPROVAL_LIMITS.pendingPerSource;
