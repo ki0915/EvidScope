@@ -125,7 +125,9 @@ export function eventKeyMaterial(epochs,payload,stored){
 // the epoch secret exists, so retries stay duplicates; the epoch in the value lets a retry in a later month compare correctly.
 export function sealFingerprint(epochs,tenant,epoch,rawDigest){
  if(!RAW_FINGERPRINT.test(rawDigest||''))throw Error('Raw event fingerprint must be a SHA-256 hex digest');
- epochs.ensure(tenant,epoch);return `fp2:${epoch}:${epochs.mac(tenant,epoch,FINGERPRINT_TAG+rawDigest)}`;
+ // The epoch secret is looked up once when it exists (round 6); otherwise ensure creates it or throws why it cannot.
+ let tag;try{tag=epochs.mac(tenant,epoch,FINGERPRINT_TAG+rawDigest);}catch{epochs.ensure(tenant,epoch);tag=epochs.mac(tenant,epoch,FINGERPRINT_TAG+rawDigest);}
+ return `fp2:${epoch}:${tag}`;
 }
 // 'same' | 'different' | 'unverifiable' (the epoch secret was destroyed, so the stored tag can no longer be compared).
 export function compareFingerprint(epochs,tenant,stored,rawDigest){

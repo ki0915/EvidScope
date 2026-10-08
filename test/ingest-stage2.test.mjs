@@ -55,6 +55,8 @@ test('verified state: a write transaction carries it over its own rows, so the n
  assert.deepEqual(counts,{opened:0,suffixRows:0,cold:0},'no event of an earlier batch is decrypted or read back to start the next one');
  const status=v.store.verifiedStateStatus('alpha');assert.equal(status.cached,true);assert.equal(status.count,ledgerCount(v.store));
  assert.equal(summary(v.store.actionProjectionCache.get('alpha')),coldSummary(v.store));
+ const counter=name=>v.store.db.prepare('SELECT value FROM counters WHERE name=?').get(name)?.value;
+ assert.deepEqual([counter('accepted'),counter('duplicates')],[5+1+48+1,1],'counted once per batch for the events whose savepoints were kept');
  const integrity=await v.call('/api/integrity','alpha-admin');assert.equal(integrity.body.valid,true);
  assert.equal((await v.call('/api/events?limit=100','alpha-admin')).body.items.length,5+1+48+1);
 });

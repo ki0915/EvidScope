@@ -8,12 +8,14 @@ export const eventKeyMaterialBytes=payload=>payload?.format===ENCRYPTED_EVENT_V2
 const PADDING_BYTES=64,padded=text=>text+' '.repeat((PADDING_BYTES-Buffer.byteLength(text)%PADDING_BYTES)%PADDING_BYTES);
 // retention: {policy, retainUntil, keyEpoch} from Store.eventRetention. Writes v2 only; v1 stays readable.
 export function encryptEvent(event,tenant,seq,{policy,retainUntil,keyEpoch}) {
- const key=randomBytes(EVENT_KEY_BYTES),salt=randomBytes(COMMITMENT_SALT_BYTES),iv=randomBytes(12),keyId=randomUUID();
+ // One CSPRNG draw for key, salt and IV (round 6: each randomBytes call costs about 10 us); the bytes are as independent as three draws.
+ const random=randomBytes(EVENT_KEY_BYTES+COMMITMENT_SALT_BYTES+12),key=random.subarray(0,EVENT_KEY_BYTES),salt=random.subarray(EVENT_KEY_BYTES,EVENT_KEY_BYTES+COMMITMENT_SALT_BYTES);
+ const iv=random.subarray(EVENT_KEY_BYTES+COMMITMENT_SALT_BYTES),keyId=randomUUID();
  const header={format:ENCRYPTED_EVENT_V2,keyId,tenant,seq,actionId:event.actionId,policyVersion:policy.version,retainUntil,keyEpoch,commitmentAlg:PAYLOAD_COMMITMENT_V2};
  const cipher=createCipheriv('aes-256-gcm',secretKey(key),iv);cipher.setAAD(Buffer.from(canonical(header)));
  const text=canonical(event),plaintext=padded(text),ciphertext=Buffer.concat([cipher.update(plaintext,'utf8'),cipher.final()]);
 // text: the canonical plaintext, for a writer that keeps what it just sealed (Store._advanceVerifiedStates); not stored.
- return {material:Buffer.concat([key,salt]),keyId,text,payload:{...header,iv:iv.toString('base64'),ciphertext:ciphertext.toString('base64'),
+ return {material:Buffer.from(random.subarray(0,EVENT_KEY_BYTES+COMMITMENT_SALT_BYTES)),keyId,text,payload:{...header,iv:iv.toString('base64'),ciphertext:ciphertext.toString('base64'),
   tag:cipher.getAuthTag().toString('base64'),payloadCommitment:payloadCommitment(salt,event,text)}};
 }
 // Returns {event, salt}; salt is null for v1. Throws unless the plaintext matches the ledger commitment.

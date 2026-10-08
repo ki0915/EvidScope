@@ -189,7 +189,8 @@ export class Store {
   const saved=this.cachedStatement('SELECT body FROM checkpoints WHERE tenant=?').get(tenant);
   return saved?JSON.parse(saved.body):makeCheckpoint(tenant,0,'0'.repeat(64),this.key);
  }
- append(tenant,type,payload,principal) {
+ // retention: the event's Store.eventRetention when the caller already has it (it must be for payload.receivedAt).
+ append(tenant,type,payload,principal,{retention}={}) {
   if(this.quarantine)throw Object.assign(Error('Transparency quarantine: '+this.quarantine.reason),{status:503});
   if(this.readOnlyRequest)throw Error('Read-only request cannot append to the ledger');
   // One transaction makes the ledger row, v1 checkpoint and tlog note atomic for direct callers too.
@@ -205,7 +206,7 @@ export class Store {
   }
   const seq=(head?.seq||0)+1;let known=null;
   if(type==='event'){
-   const encrypted=encryptEvent(payload,tenant,seq,this.eventRetention(tenant,payload.receivedAt));
+   const encrypted=encryptEvent(payload,tenant,seq,retention||this.eventRetention(tenant,payload.receivedAt));
    if(!this.eventKeyEpochs().wrapsEventKeys)this._assertNoEventKeystore();
    const stored=storedEventKey(this.eventKeyEpochs(),encrypted.payload,encrypted.material);
    this.projectionMutation(()=>this.projectionStatement('INSERT INTO event_keys VALUES(?,?,?,?)').run(tenant,encrypted.keyId,seq,stored));payload=encrypted.payload;
@@ -239,7 +240,7 @@ export class Store {
   this.eventKeyProvider=epochs;
  }
  // Source ingest replaces the raw-body digest by a tag keyed by the event's epoch (call inside the ingest transaction).
- sealEventFingerprint(tenant,event){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,this.eventRetention(tenant,event.receivedAt).keyEpoch,event.fingerprint)};}
+ sealEventFingerprint(tenant,event,retention=this.eventRetention(tenant,event.receivedAt)){return {...event,fingerprint:sealFingerprint(this.eventKeyEpochs(),tenant,retention.keyEpoch,event.fingerprint)};}
  compareEventFingerprint(tenant,stored,rawDigest){return compareFingerprint(this.eventKeyEpochs(),tenant,stored,rawDigest);}
  // {event, salt} of one encrypted ledger event from its stored key (raw, or wrapped under its epoch with a keystore).
  _openEvent(payload,stored){return openEvent(payload,eventKeyMaterial(this.eventKeyEpochs(),payload,stored));}
@@ -785,6 +786,6 @@ export class Store {
  }
  rebuild(p) {return this.transaction(()=>{const bundle=this.rawBundle(p.tenant);verifyBundle(bundle,this.publicKey,undefined,{chainOnly:true});const original=this.decodeRecords(bundle),development=bundle.records.filter(row=>row.type==='development_run_event').map(row=>row.payload),receipts=expectedReceiptProjection(p.tenant,bundle.records,original);this.db.prepare('DELETE FROM events WHERE tenant=?').run(p.tenant);this.db.prepare('DELETE FROM receipts WHERE tenant=?').run(p.tenant);for(const e of original)this.project(e);for(const value of receipts.entries.values())this.db.prepare('INSERT OR REPLACE INTO receipts VALUES(?,?,?,?)').run(p.tenant,value.source,value.id,value.fingerprint);this.db.prepare('DELETE FROM development_run_events WHERE tenant=?').run(p.tenant);for(const e of development)this.db.prepare('INSERT INTO development_run_events VALUES(?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.eventId,e.runId,e.occurredAt,e.receivedAt,e.fingerprint,JSON.stringify(e));this.append(p.tenant,'projection_rebuild',{projections:['events','receipts','development_run_events']},p.id);return {rebuilt:original.length,receipts:receipts.entries.size,developmentEvents:development.length};});}
  project(e) {this.projectionMutation(()=>{this.projectionStatement('INSERT INTO events VALUES(?,?,?,?,?,?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint,e.actionId,e.traceId,e.kind,e.receivedAt,JSON.stringify(e));this.projectionStatement('INSERT OR IGNORE INTO receipts VALUES(?,?,?,?)').run(e.tenant,e.source,e.id,e.fingerprint);});}
- count(name) {this.cachedStatement('INSERT INTO counters VALUES(?,1) ON CONFLICT(name) DO UPDATE SET value=value+1').run(name);}
+ count(name,n=1) {if(n)this.cachedStatement('INSERT INTO counters VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+excluded.value').run(name,n);}
  close(){this.accessLog?.close();this.statements?.clear();this.db.close();}
 }
