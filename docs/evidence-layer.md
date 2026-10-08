@@ -47,6 +47,7 @@ flowchart LR
 | 차단·정지 배포 | 연결 | OPA Bundle Service API·Status API, AI·MCP 게이트웨이 | 레지스트리 상태와 정지 명령을 묶음·DSSE 거부 목록으로 내주고 활성화 보고를 기록. 차단은 집행 지점이 함([킬 스위치](kill-switch.md)) |
 | 에이전트 목록 | 연결 | [A2A Agent Card](https://github.com/a2aproject/A2A), [Backstage 카탈로그](https://backstage.io/docs/features/software-catalog/descriptor-format) | 신뢰 필드를 옮기지 않는 가져오기와 서명된 출처 기록([에이전트 레지스트리](agent-registry.md)) |
 | 사람 승인 | 형식 차용 | OpenID CIBA Core 1.0 poll 모드 | 승인 대기열과 DSSE 서명 답([사람 승인 대기열](approval-queue.md)). OAuth 토큰은 발급하지 않음 |
+| 감사인 제출 | 형식 차용 | DSSE, in-toto Statement v1, in-toto Simple Verification Result v0.2 | 항목별 증거 색인과 요약을 검증기가 다시 만들어 대조하는 묶음([감사인용 증거 묶음](evidence-pack.md)) |
 | SIEM 전달 | 직렬화만 구현 | OCSF Detection Finding(2004) | OCSF 변환기. 상관분석·UEBA·SOAR는 만들지 않음 |
 | 규제 매핑 | **직접 구현(차별점)** | 인공지능기본법·시행령, ISMS-P 인증기준(참고 정렬) | 조문 단위 요구사항·기술검사·적용 판단 |
 
@@ -113,6 +114,8 @@ Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니�
   `approvalRecordedAfterExecution`으로 드러납니다. 입력 이벤트가 정당하게 파기된 기록은 `not_replayable`로 이유와 함께 보고합니다.
 - **3라운드:** 에이전트를 서명된 [레지스트리](agent-registry.md)에 올리고 상태 전이를 4-eyes로 남기며, 집행 지점의 정책 결정·정지 명령의 전파·사람 승인의
   답을 같은 원장에 둡니다. 재생은 행동 시점의 등록 상태, 정지 명령과 활성화, 승인 요청과 답까지 다시 계산합니다(평가 엔진 v2~v4).
+- **6라운드:** 감사인용 [증거 묶음](evidence-pack.md)의 검증기는 재생에 더해 요구사항별 색인과 요약까지 다시 만들어 바이트 단위로 대조하므로,
+  운영자가 묶음을 다시 서명해도 증거보다 많은 주장은 통과하지 못합니다.
 - **확인 방법:** `node scripts/verify.mjs export.json trust-anchor.pem --replay` 또는 `node scripts/replay-findings.mjs export.json trust-anchor.pem`
   (위트니스 옵션을 함께 주면 순서를 공동서명된 체크포인트에 고정). 시험은 `test/policy-replay.test.mjs`.
 
