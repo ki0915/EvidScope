@@ -27,8 +27,9 @@ export function trainingRuns(file = RUNS_FILE) {
 const modelFacts = m => ({id: m.id, model: m.model, provider: m.provider, artifactRepository: m.artifactRepository ?? null, revision: m.revision,
   quantization: m.quantization});
 
-// signedProfiles: the verified assistance_profile values of the tenant; runtime: modelRuntimeStatus().
-export function modelStatus({signedProfiles, runtime, runs = trainingRuns()}) {
+// signedProfiles: the verified assistance_profile values of the tenant; runtime: modelRuntimeStatus(); factsheets: the signed
+// governance-model factsheets of the tenant ({status, items}, src/governance-model-service.mjs).
+export function modelStatus({signedProfiles, runtime, runs = trainingRuns(), factsheets = {status: 'unavailable', reason: 'not_configured', items: []}}) {
   const roles = latestRoleProfiles(signedProfiles).map(r => ({id: r.id, profileVersion: r.version, model: r.modelPolicy?.model ?? null,
     provider: r.modelPolicy?.provider ?? null, upgradePending: r.upgradePending, upgradeTo: r.upgradePending ? r.approvedPolicy.model : null,
     adapter: r.rolePackage?.adapter ?? 'none', evalStatus: r.rolePackage?.evalStatus ?? 'UNREVIEWED', modelVersion: r.rolePackage?.modelVersion ?? null,
@@ -43,11 +44,12 @@ export function modelStatus({signedProfiles, runtime, runs = trainingRuns()}) {
       summary: adapters.length ? 'adapter_attached' : 'none_base_model_as_published'},
     roles,
     training: {enabledByDefault: modelPolicy.training.enabledByDefault === true, promotionAutomatic: false,
-      vaultRecords: 'none_signed_by_this_vault', repository: runs,
+      vaultRecords: factsheets.items?.length ? 'governance_model_factsheets' : 'none_signed_by_this_vault', repository: runs,
       howTo: 'node scripts/training-run.mjs --data reviewed.jsonl --runtime-config runtime.json --check-only',
       promotion: 'node scripts/model-promote.mjs promote (사람의 승인 파일과 비교 평가 보고서가 필요합니다)'},
+    factsheets,
     limitations: ['검토실은 공개된 기본 모델을 그대로 씁니다. 역할 패키지에 미세조정 adapter가 연결돼 있지 않습니다.',
-      '학습은 CLI로만 실행하며 이 볼트는 학습 기록을 서명하지 않습니다. 아래 학습 기록은 저장소 문서의 요약입니다.',
+      '학습은 CLI로만 실행합니다. 아래 학습 기록은 저장소 문서의 요약이고, 거버넌스 매핑 모델의 학습·평가·승격은 운영자가 기록한 팩트시트로 서명됩니다.',
       '승격은 자동으로 일어나지 않습니다. 사람의 승인과 비교 평가 없이 런타임 모델이 바뀌지 않습니다.',
       '실행 상태는 Kubernetes 관측 영수증이 있을 때만 확인됩니다. 기본값은 비활성입니다.']};
 }

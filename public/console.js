@@ -10,7 +10,8 @@
     { id: 'assets', name: 'AI 자산·수집', routes: [['visibility', 'AI 사용 가시성'], ['agents', '에이전트 목록'], ['registry', '에이전트 레지스트리'], ['approvals', '승인 대기열']] },
     { id: 'investigate', name: '탐색·조사', routes: [['investigations', '행동 조사함'], ['events', '증거 탐색'], ['alerts', '탐지 경보'], ['cases', '사건·인간 감사']] },
     { id: 'governance', name: '거버넌스', routes: [['governance', '요구사항·증거 검토']] },
-    { id: 'review', name: 'AI 검토실', routes: [['assistance', '검토 요청·초안'], ['assistance-model', '모델 현황'], ['team', '역할·개발 이력'], ['model-runtime', '모델·학습 상태']] },
+    { id: 'review', name: 'AI 검토실', routes: [['assistance', '검토 요청·초안'], ['assistance-model', '모델 현황'], ['team', '역할·개발 이력'], ['model-runtime', '모델·학습 상태'],
+      ['model-review', '학습 데이터 검토'], ['model-experiments', '실험 비교']] },
     { id: 'operations', name: '운영·설정', routes: [['health', '수집·증적 건강'], ['rules', '탐지 룰·예외'], ['retention', '보존·파기']] },
   ];
   const runtimeLabels = { off: '비활성', stopped: '실행 Pod 없음', terminated: '컨테이너 종료 보고', unavailable: '실행 상태 확인 불가', observed: 'Kubernetes 관측 수신', unverified: '실행 상태 검증 전', unknown: '실행 상태 미확인', running: '실행 중', unready: '준비되지 않음', starting: '시작 중', stopping: '종료 확인 중', STOP_UNCONFIRMED: '종료 미확인', stop_unconfirmed: '종료 미확인', blocked_review: '데이터 검토 필요', not_evaluated: '평가 미실시', not_run: '미실행', pending: '대기', failed: '실패' };

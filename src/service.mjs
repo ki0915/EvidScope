@@ -46,10 +46,11 @@ import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 import {createHome} from './home-service.mjs';
+import {FACTSHEETS_PATH,createGovernanceModelService} from './governance-model-service.mjs';
 import {encodeCursor,listWindow,pageNewestFirst} from './list-window.mjs';
 
 export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,retentionRotation,
- bundleSigning,ingestBatch:ingestBatchLimits,governanceModel=()=>governanceModelStatus()}) {
+ bundleSigning,ingestBatch:ingestBatchLimits,governanceModel=()=>governanceModelStatus(),governanceModelConsole:governanceModelOptions={}}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -146,7 +147,9 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  // Approval queue for enforcement points (src/approval-service.mjs, docs/approval-queue.md); answers are signed like attestations.
  const approvals=createApprovals({store,principals,policyObjects:verifiedPolicyObjects,signer});
  // Console home: running agents, needs attention, model status (src/home-service.mjs); read-only.
- const home=createHome({store,policyObjects:verifiedPolicyObjects,verifiedEvents,approvals,registry,legalReviewState,runtimeStatus});
+ // Governance-mapping model console: review queue, experiment comparison, signed factsheets (src/governance-model-service.mjs).
+ const governanceModelConsole=createGovernanceModelService({store,policyObjects:verifiedPolicyObjects,human,reviewer,...governanceModelOptions});
+ const home=createHome({store,policyObjects:verifiedPolicyObjects,verifiedEvents,approvals,registry,legalReviewState,runtimeStatus,factsheets:governanceModelConsole.factsheets});
  function verifiedEvaluations(p,options){
   let result;try{result=store.cachedEvaluations(p.tenant,options);}catch(error){if(error?.status)throw error;fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');}
   if(result.oversized)fail(413,'분석 조회 객체 한도 초과: 부분 검증으로 조회할 수 없습니다');
@@ -287,7 +290,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  }
  // Large-body routes are authenticated before the HTTP layer buffers the body (S12a): the same credential and role
  // checks as the route, so an anonymous or wrong-role client cannot make the vault or gateway hold megabytes.
- const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles','/api/registry/import']);
+ const preauthorizedPaths=new Set(['/api/governance/documents','/api/governance/bundles','/api/registry/import',FACTSHEETS_PATH]);
  function preauthorize(method,url,headers){
   const path=url.pathname;if(method!=='POST')fail(405,'허용되지 않은 메서드');
   if(path.startsWith('/internal/assistance/'))return assistance.preauthorize(url,headers);
@@ -358,7 +361,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   }
   if(path==='/api/monitoring'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);return monitoring(store,principals,p.tenant,url.searchParams);});
   if(path==='/api/ai-visibility'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);const registrations=[...verifiedPolicyObjects(p,'asset').values()];return aiVisibility(store,p.tenant,url.searchParams,{runtimeStatus:runtimeStatus(),registrations});});
-  if(path==='/api/model-runtime'&&method==='GET')return {...runtimeStatus(),governanceModel:governanceModel(),training:{state:'not_evaluated',counts:{tune:null,validation:null,test:null},minimumReviewed:{tune:300,validation:50,test:100},qualityClaimAllowed:false},limitations:['실행 상태는 신뢰된 Kubernetes 관측 영수증이 없거나 30초보다 오래되면 확인 불가로 표시합니다. 기본 비활성 설정은 종료 확인이 아닙니다.','모델 가중치 학습·성능 평가는 별도 실행 보고서로 확인하세요.']};
+  if(path.startsWith('/api/governance-model/')){const result=governanceModelConsole.handle(p,method,url,x);if(result!==undefined)return result;}
+  if(path==='/api/model-runtime'&&method==='GET')return {...runtimeStatus(),governanceModel:governanceModel(),factsheets:governanceModelConsole.factsheets(p),training:{state:'not_evaluated',counts:{tune:null,validation:null,test:null},minimumReviewed:{tune:300,validation:50,test:100},qualityClaimAllowed:false},limitations:['실행 상태는 신뢰된 Kubernetes 관측 영수증이 없거나 30초보다 오래되면 확인 불가로 표시합니다. 기본 비활성 설정은 종료 확인이 아닙니다.','모델 가중치 학습·성능 평가는 별도 실행 보고서로 확인하세요.']};
   if(path==='/api/agents'&&method==='GET')return store.transaction(()=>{verifiedActions(p);verifiedEvaluations(p,{values:false});const decisions=[...verifiedPolicyObjects(p,'case_decision').values()];return agentInventory(store,principals,p.tenant,url.searchParams,Date.now(),decisions);});
   if(path==='/api/events'&&method==='GET'){
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');

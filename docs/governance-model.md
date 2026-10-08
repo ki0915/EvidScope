@@ -64,7 +64,40 @@ Claude 초안 219행(기권 45, 주입 시도 16)은 실제 증거 문장이 아
 기권 행은 `sha256("governance-mapping-v1:" + familyId)`로 나눕니다. 입학 검사는 세 수준의 누수를 거부합니다:
 같은 family가 두 분할에 있음, 같은 정규화 텍스트가 두 분할에 있음, tune 행이 test·validation 요구사항을 정답으로 가짐.
 
-### 사람 검토 (일괄 승인·거절)
+### 사람 검토 1: 콘솔 검토 대기열 (기본)
+
+AI 검토실 > `학습 데이터 검토` 화면(`#model-review`)이 Claude 초안 행을 한 번에 하나씩 보여 줍니다. Langfuse의 annotation queue와 같은
+방식입니다. 화면에는 텍스트, 증거 위치, 초안 정답(요구사항 제목·프레임워크·관계 포함), 주입 시도 행이면 답에 나오면 안 되는 ID가
+나옵니다. 검토자는 **승인 또는 거절만** 합니다. 답을 고치는 기능은 없습니다. 답이 틀리면 거절합니다.
+
+- 단축키: `A` 승인, `R` 거절, `N` 건너뛰기, `P` 이 세션에서 마지막으로 결정한 행 다시 열기. 메모 입력 중에는 동작하지 않습니다.
+- 결정 전에 "개인정보 없음 확인"과 "출처·학습 사용 동의 확인"을 체크해야 합니다. 체크는 결정마다 `piiReviewed`·`sourceConsent`로 남습니다.
+- 결정할 수 있는 사람은 `reviewer`·`admin` 역할의 사람 계정뿐입니다(OIDC를 켜면 사람 역할은 세션으로만 들어옵니다). `auditor`는 조회만 하고,
+  수집 출처·worker 같은 서비스 자격은 화면 자체가 거부(403)합니다.
+- 결정 하나는 서명된 원장 객체(`governance_mapping_review`, id = 행 id) 하나입니다. 행의 `reviewedPayloadHash`(초안 답을 그대로 승인했을 때
+  붙을 값)와 `recordHash`, 결정자(`reviewerId` = 인증된 principal, 요청 본문으로 바꿀 수 없음), 역할, 볼트 시각이 묶입니다. 화면이 보낸 해시가
+  지금 데이터셋의 행과 다르면 409로 거부합니다.
+- 같은 행을 다시 결정하려면 이전 결정의 해시를 `supersedes`로 보내야 합니다. 이전 결정은 원장에 그대로 남습니다.
+- 진행 표는 분할별 초안·승인·거절·대기 수와 적격 행(파생 + 승인) 대비 최소치(tune 300 / validation 50 / test 100), 추가로 필요한 승인 수,
+  승격 게이트의 test 사람 검토 자유 텍스트(30행) 진행을 보여 줍니다. 이 수치는 아래 `export-reviewed`와 같은 함수로 계산합니다.
+- 결정한 뒤 데이터셋의 행 내용이 바뀌면 그 결정은 적용되지 않고(`row_changed_since_decision`) 행이 다시 대기열에 나옵니다.
+
+학습 파일은 볼트의 서명된 내보내기에서 만듭니다. 상단의 `감사 내보내기`(`GET /api/export`)로 받은 파일과 볼트 공개 키(`trust-anchor.pem`)를 씁니다.
+
+```bash
+node scripts/governance-mapping.mjs export-reviewed --data data/governance-mapping/v1/dataset.jsonl --bundle export.json \
+  --trust-anchor trust-anchor.pem --out reviewed.jsonl
+node scripts/governance-mapping.mjs admission --data reviewed.jsonl
+```
+
+`export-reviewed`는 내보내기의 체크포인트 서명과 해시 사슬을 확인한 뒤 결정 기록만 꺼내고, 기록의 서명 principal과 결정자 ID가 같은지,
+역할이 `reviewer`·`admin`인지 확인합니다. 행마다 마지막 결정을 쓰고, 승인은 `importHumanReviews`를 그대로 거칩니다(결정자와 시각은 결정마다
+따로). 그래서 `recordHash`·`reviewedPayloadHash`·`reviewBinding`과 입학 검사는 시트 방식과 같습니다. 거절한 행은 빠지고, 결정이 없는 행은
+`UNREVIEWED`로 남습니다. 결정을 바꾼 기록이 있으면 마지막 결정이 적용됩니다.
+
+### 사람 검토 2: 일괄 승인·거절 시트 (TSV)
+
+시트 방식도 그대로 씁니다.
 
 ```bash
 node scripts/governance-mapping.mjs review-sheet --data data/governance-mapping/v1/dataset.jsonl --out review.tsv
@@ -106,6 +139,39 @@ max_tokens 512), 요청 바이트 해시와 출력 해시, 실패 0건을 묶습
 검색 후보 재현율(정답 요구사항이 후보 12개 안에 있는 비율)은 tune 0.707, validation 0.698, test 0.779입니다.
 후보 수 12는 tune·validation으로 골랐습니다. 후보 밖 정답도 스키마상 고를 수는 있지만, 검색이 놓친 항목이 재현율의 주된 한계입니다.
 
+## 실험 비교 (콘솔)
+
+AI 검토실 > `실험 비교` 화면(`#model-experiments`, `GET /api/governance-model/experiments`)은 저장소 `reports/governance-mapping/`의 비교 보고서를
+나란히 보여 줍니다. Langfuse·Phoenix의 experiment 비교와 같은 방식입니다. 화면의 수치는 보고서에 적힌 값이 아니라 볼트가 출력과 정답 행에서
+다시 계산한 값입니다(`verifyGovernanceReport`). 다시 계산이 맞지 않는 파일은 `unverified`와 사유만 보여 주고 수치를 쓰지 않습니다.
+
+- 열: `always_abstain`, `rules_only`, `zero_shot`, `retrieval`, `retrieval_constrained`(기본 모델), `candidate`(어댑터).
+- 행: 정밀도, 재현율(coverage), 답한 비율, 기권율, exact match, 기권 정답률, ECE, 안전 점검 다섯 가지, 측정 영수증 상태.
+- 사람이 검토한 행과 표에서 파생한 행을 나눈 정밀도·재현율, 프레임워크별 정밀도·재현율, 게이트 밖 행(미검토 초안) 수를 따로 보여 줍니다.
+- 판정: 후보가 있으면 승격 게이트, 없으면 기본 모드 판정과 기준선별 비교(아래 4번 규칙의 항목 수와 정밀도)를 보여 줍니다.
+- 실행 이력: 보고서와 서명된 팩트시트를 시간순으로 보여 줍니다. 셰이크다운 어댑터를 평가한 보고서는 후보 수치를 숨기고 판정을 불통과로 둡니다.
+
+## 팩트시트 (서명된 실행 기록)
+
+학습·평가·승격 실행마다 볼트 원장에 서명된 객체(`governance_model_factsheet`)를 하나 남깁니다. watsonx.governance의 factsheet와 같은
+역할입니다. 운영자가 PC에서 요청 파일을 만들고, `실험 비교` 화면의 `팩트시트 기록`에서 올립니다(`POST /api/governance-model/factsheets`,
+`reviewer`·`admin`, 2 MiB 이하). 기록자는 로그인한 principal이며 요청으로 바꿀 수 없습니다.
+
+```bash
+node scripts/governance-mapping.mjs factsheet --kind training --receipt training-receipt.json --training-set train.jsonl [--adapter-gguf lora.gguf] --out fs.json
+node scripts/governance-mapping.mjs factsheet --kind evaluation --report report.json --out fs.json
+node scripts/governance-mapping.mjs factsheet --kind promotion --receipt promotion.dsse.json --report report.json --out fs.json
+```
+
+| 종류 | 묶는 값 | 볼트가 직접 확인하는 것 |
+| --- | --- | --- |
+| `training` | 기본 모델(고정 GGUF 해시)과 학습 기반 잠금(`artifact-lock.json` 해시·revision), 데이터셋 해시와 분할·출처별 행 수, 사람 검토 행 수, 레시피, 자원·학습 수치, 실행 모드 | 영수증의 데이터셋 해시와 학습 파일 해시 일치, 사람 검토 행의 `reviewedPayloadHash`가 서명된 대기열 승인과 몇 개 맞는지, 학습 파일을 저장소(셰이크다운) 또는 서명된 결정(후보)에서 다시 만들어 바이트가 같은지(`verification`) |
+| `evaluation` | 보고서 해시, 데이터셋, 게이트 행(파생·사람 검토 수), 변형별 수치와 안전 점검, 측정 영수증 상태, 판정 | 보고서 전체를 다시 계산(조작된 수치는 400) |
+| `promotion` | 어댑터 해시, 보고서 해시, 승인자(`reviewerId`, 키 id), 승격 시각 | `promotion-trust.json`의 키로 서명 확인, 보고서를 주면 게이트 재판정 |
+
+학습 자원 수치(GPU 최대 메모리, 시간)와 학습 손실은 운영자 보고 값이고 그렇게 표시합니다. 학습 손실은 품질 지표가 아닙니다.
+`GET /api/model-runtime`와 `GET /api/model-status` 응답에 `factsheets: {status, items}`가 추가됐고, `모델 현황` 화면이 목록을 보여 줍니다.
+
 ## 승격 게이트
 
 후보는 아래를 모두 만족해야 합니다(`assessGovernanceReport`, `scripts/model-evaluate.mjs`에서도 같은 함수).
@@ -113,17 +179,26 @@ max_tokens 512), 요청 바이트 해시와 출력 해시, 실패 0건을 묶습
 1. 게이트 행 100개 이상, 그중 사람이 검토한 자유 텍스트 30개 이상, 기권해야 할 행 20개 이상, 주입 행 5개 이상.
 2. 다섯 모델 변형 모두 격리 측정 영수증이 맞고, 후보만 어댑터 해시가 있으며 기본 모델 해시가 같음.
 3. 후보 정밀도 0.9 이상.
-4. 모든 기준선을 **같거나 높은 coverage에서 더 높은 정밀도**로 이김. 기준선 정밀도가 1이면 후보도 1이어야 하고 coverage가 더
-   높아야 합니다. 매핑이 없는 기준선(항상 기권)은 coverage만 비교합니다.
+4. 기준선마다 정밀도 비교를 통과함. 기본 규칙은 **같은 항목 비교(`matched_coverage`)**입니다(`compareWithBaseline`).
+   - 그 기준선이 답한(매핑을 하나 이상 낸) 게이트 행에서, 후보의 정밀도가 기준선의 정밀도 이상이어야 합니다. 그 행들에서 후보가 매핑을 하나도
+     내지 않으면 불통과입니다(`no_candidate_mappings_where_baseline_answered`).
+   - 기준선의 전체 coverage가 후보보다 높으면, 후보의 전체 정밀도가 기준선보다 **높아야** 합니다(`lower_coverage_without_higher_precision`).
+   - 매핑을 내지 않는 기준선(항상 기권)은 정밀도 비교 대상이 없습니다.
+   - 이전 규칙(전체 행에서 같거나 높은 coverage와 더 높은 정밀도, 기준선 정밀도가 1이면 후보도 1)은 `comparison: 'strict'`로 남아 있습니다.
+     판정 결과의 `thresholds.comparison`에 쓴 규칙이 기록됩니다.
 5. 안전 점검 다섯 가지 모두 어떤 기준선보다 낮지 않음. 항상 기권 기준선이 기권·주입 점검을 100% 통과하므로 후보도 100%여야 합니다.
 6. 사람의 독립 승인: 보고서 준비자도 후보 실행자도 아닌 검토자가 의미 근거, 한국어 품질, 개인정보, 주입, 매핑 표본 검토를
    확인하고, 자기 Ed25519 키로 승격 영수증(DSSE in-toto)에 서명합니다(`scripts/governance-mapping.mjs promote`,
    `scripts/model-promote.mjs`의 `promoteGovernanceCandidate`). 키의 공개 부분은
    `roles/governance-assistant/v1/promotion-trust.json`에 있어야 합니다. 지금은 비어 있어 어떤 승격도 검증되지 않습니다.
 
-현재 test 게이트 행(파생 73행)에서 `rules_only`는 매핑 7건을 모두 맞혀 정밀도 1.0, coverage 0.115입니다. 그래서 4번은
-문자 그대로 **후보가 게이트 행에서 오답 매핑을 하나도 내지 않아야** 통과합니다. 정밀도 우선 원칙을 그대로 지킨 결과이며
-게이트를 느슨하게 바꾸지 않았습니다. 완화 여부(예: 규칙이 답한 매핑은 규칙에 맡기고 나머지에서 비교)는 사람의 결정 사항입니다.
+**왜 기본 규칙을 바꿨나.** test 게이트 행(파생 73행)에서 `rules_only`는 매핑 7건을 모두 맞혀 정밀도 1.0, coverage 0.115입니다.
+이전 규칙을 문자 그대로 적용하면 후보는 게이트 행 전체에서 오답 매핑을 하나도 내지 않아야 했습니다. 이제는 규칙이 답한 7개 항목에서는
+규칙만큼 정확해야 하고(정밀도 1.0), 그 밖의 항목을 포함한 전체 정밀도는 3번의 0.9 이상이면 됩니다. 정밀도 우선 원칙은 3번과 4번의 같은 항목
+비교로 지킵니다. 같은 coverage에서 기준선과 정밀도가 같으면 4번은 통과입니다. 그런 후보가 쓸모 있는지는 6번의 사람 승인에서 판단합니다.
+
+기본 모드(`base_retrieval_constrained`)도 같은 규칙을 씁니다. `retrieval_constrained`가 정밀도 0.9 이상이고, `rules_only`와의 같은 항목 비교를
+통과하며, 안전 점검에서 지지 않아야 켜집니다(이전에는 0.9 조건이 없었고 엄격 비교였습니다).
 
 ## 학습 레시피
 
@@ -138,6 +213,11 @@ QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 �
   메모리 12 GiB·swap 없음, pids 256, CPU 2, GPU 0번만, 입력 읽기 전용 마운트와 체크포인트 하나만 쓰기 가능함을 확인한 뒤에만
   시작합니다(`src/governance-training.mjs`). 기존 `createIdleTrainingGuard`가 PC 유휴 여부를 보고 시작하며, PC 사용이 감지되거나
   1시간이 지나면 체크포인트를 남기고 멈춥니다. 다시 실행하면 `--resume`으로 이어갑니다.
+- 셰이크다운(`training-set --shakedown`, `governance-mapping-train.mjs --shakedown`): 사람 검토가 끝나기 전에 PC의 VRAM·시간을 재려고 파생 행
+  (tune 168, validation 47)만으로 같은 레시피를 돌립니다. 모든 행과 영수증에 `runMode: "shakedown"`이 붙고, 어댑터는
+  `governance-mapping/shakedown/shakedown-adapter`에 `shakedown_not_promotable` 상태로 남습니다. 학습기의 후보 검증(`verify_candidate`)은
+  이 상태를 거부하고, 후보 학습은 셰이크다운 행을, 셰이크다운 학습은 초안 행을 받지 않습니다. 셰이크다운 팩트시트는 자원 수치만 보여 주며
+  그 어댑터 해시로는 후보 학습 기록·승격 기록을 남길 수 없고, 그 어댑터의 평가 보고서는 품질 결과로 보여 주지 않습니다.
 - 결과는 `trained_candidate` 영수증이 붙은 어댑터입니다. llama.cpp `convert_lora_to_gguf.py`로 f16 GGUF 어댑터를 만들고
   위 평가와 게이트를 거쳐야만 쓸 수 있습니다.
 
@@ -171,6 +251,7 @@ QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 �
 ## 상태 JSON (콘솔 모델 상태 패널)
 
 `GET /api/model-runtime` 응답의 `governanceModel` 필드이며 `node scripts/governance-mapping.mjs status`도 같은 값을 냅니다.
+서명된 팩트시트 목록은 같은 응답의 최상위 `factsheets`(`{status: "ok" | "unavailable", items, reason?}`, 최신순 50개)에 있습니다.
 
 ```json
 {
@@ -202,6 +283,10 @@ reviewedAt, promotedAt, keyid}`. `evaluation`: `{reportSha256, fileSha256, split
   실제 조직 문서에서의 성능은 아직 아무것도 측정하지 않았습니다.
 - 이 컨테이너에서는 모델을 내려받거나 실행하지 않았습니다. VRAM·시간 값은 이전 실측(같은 8B NF4, rank 8, 길이 1024에서
   6.28 GiB)에 기댄 추정이며 첫 실행에서 다시 잽니다.
-- 검색 후보 밖 정답이 많아 재현율 상한이 낮습니다. 게이트는 정밀도를 우선하므로 재현율이 낮아도 통과할 수 있지만,
-  위 `rules_only` 조건 때문에 오답 0건이 요구됩니다.
+- 검색 후보 밖 정답이 많아 재현율 상한이 낮습니다. 게이트는 정밀도를 우선하므로 재현율이 낮아도 통과할 수 있습니다.
+- 팩트시트의 학습 자원 수치와 학습 손실은 운영자가 보고한 값입니다. 볼트가 다시 계산하는 것은 평가 수치, 검토 결정 대조, 학습 파일 재현뿐입니다.
+- 셰이크다운 어댑터를 알아보는 근거는 학습 영수증 상태와 서명된 셰이크다운 팩트시트의 어댑터 해시입니다. 운영자가 셰이크다운 팩트시트를
+  기록하지 않고 그 어댑터를 손으로 GGUF로 바꿔 평가하면 볼트는 구별하지 못합니다. 이때도 승격은 사람의 서명 승인을 거쳐야 하고,
+  후보 학습 팩트시트는 서명된 검토 결정으로 학습 파일을 다시 만들 수 있어야 `reproduced_from_signed_decisions`가 됩니다.
+- 검토 결정의 시각은 볼트 시각입니다. `export-reviewed`를 시계가 크게 늦은 다른 PC에서 실행하면 "미래 시각" 검사에 걸릴 수 있습니다.
 - 모델의 매핑은 적용성·준수 판단이 아닙니다. 사람이 확인한 뒤에도 법률 검토를 대신하지 않습니다.

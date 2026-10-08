@@ -13,6 +13,7 @@ import {ingestBatchOptions} from './ingest-batch.mjs';
 import {upstreamRequest} from './upstream-http.mjs';
 import {createForwardCoalescer,forwardedIngest,INGEST_FORWARD_HEADER,INGEST_FORWARD_MAX_BYTES,INGEST_FORWARD_PATH} from './ingest-forward.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
+import {FACTSHEETS_PATH,FACTSHEET_MAX_BYTES} from './governance-model-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
 if(!['vault','ingress','audit','worker'].includes(mode))throw Error('Unknown service mode');
@@ -121,7 +122,8 @@ async function route(req,res){
    const ready=await checkReadiness();res.statusCode=ready&&!stopping?200:503;res.end(JSON.stringify({status:res.statusCode===200?'ready':'not_ready',component:mode}));return;
   }
   if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js',
-   '/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js'].includes(url.pathname)){
+   '/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js',
+   '/governance-model.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   const enforcementPath=enforcementRoute(req.method,url.pathname);
@@ -136,6 +138,7 @@ async function route(req,res){
   // Catalog import (docs/agent-registry.md): up to 20 documents of 256 KiB each, bounded again per document by the importer.
   const limit=!post?16384:vaultResult?1024*1024:largeBody?6*1024*1024:url.pathname==='/api/governance/bundles'?128*1024
    :url.pathname==='/api/registry/import'?2*1024*1024
+   :url.pathname===FACTSHEETS_PATH?FACTSHEET_MAX_BYTES
    :mode==='vault'&&url.pathname===INGEST_FORWARD_PATH?INGEST_FORWARD_MAX_BYTES
    :STATUS_PATH.test(url.pathname)?STATUS_MAX_BYTES:16384;
   // Credentials and role are checked before anything above the 16 KiB default is buffered (S12a).

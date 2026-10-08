@@ -162,11 +162,13 @@ test('gate: a measured candidate that beats every baseline passes; worse precisi
   assert.equal(verdict.eligible, true);
   assert.ok(verdict.gateItems >= GATE.minItems && verdict.reviewedFreeText >= GATE.minReviewedFreeText);
   assert.equal(fromModelEvaluate, assessGovernanceReport);
-  const wrongOnce = report(testRows, r => (r.truth.abstain || r.id !== testRows.find(x => !x.truth.abstain).id ? gold(r)
+  // One wrong mapping on an item rules-only answered loses the matched comparison (docs/governance-model.md, gate rule 4).
+  const rulesAnswered = testRows.find(r => JSON.parse(baselineOutput('rules_only', r)).mappings.length > 0 && rowEligibility(r).eligible);
+  const wrongOnce = report(testRows, r => (r.id !== rulesAnswered.id ? gold(r)
     : JSON.stringify({abstain: false, mappings: [{requirementId: 'KR-33', relation: 'supports', evidenceLocator: r.evidence[0].id, confidence: 'high'}]})));
-  assert.ok(assessGovernanceReport(wrongOnce).reasons.includes('does not beat rules_only on precision at equal or better coverage'));
-  const lowCoverage = report(testRows, r => baselineOutput('rules_only', r));
-  assert.equal(assessGovernanceReport(lowCoverage).eligible, false);
+  assert.ok(assessGovernanceReport(wrongOnce).reasons.includes('does not beat rules_only on precision (matched_coverage: matched_precision_lower)'));
+  const silent = report(testRows, () => JSON.stringify({abstain: true, mappings: []}));
+  assert.equal(assessGovernanceReport(silent).eligible, false);
   assert.ok(assessGovernanceReport(report(testRows, gold, {receiptExtra: {isolation: {networkInterfaces: ['lo', 'eth0'], verified: false}}}))
     .reasons.includes('candidate: isolation_not_verified'));
   const tampered = structuredClone(passing);
@@ -187,7 +189,7 @@ test('promotion: independent signed human approval; the receipt sets the role fi
   await assert.rejects(promote(approval({reviewerId: 'operator-a'})), /approval_not_independent/);
   await assert.rejects(promote(approval({privacyReviewed: false})), /independent_human_approval_required/);
   await assert.rejects(promote(approval({reportSha256: 'e'.repeat(64)})), /independent_human_approval_required/);
-  await assert.rejects(promoteGovernanceCandidate({report: report(testRows, r => baselineOutput('rules_only', r)), approval: approval(), signer,
+  await assert.rejects(promoteGovernanceCandidate({report: report(testRows, () => JSON.stringify({abstain: true, mappings: []})), approval: approval(), signer,
     adapterFile: 'models/governance-mapping-lora.gguf'}), /candidate_evaluation_failed/);
   const envelope = await promote(approval());
   const adapterSha = 'c'.repeat(64);

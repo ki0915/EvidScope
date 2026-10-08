@@ -14,9 +14,11 @@
 ## 학습 시작까지 최단 경로
 
 1. Instruct 학습 기반을 받아 고정한다(1절, 16 GB).
-2. 사람이 Claude 초안 행을 승인·거절한다(2절). 학습 입학에는 tune 147행 중 132행 이상, validation 15행 중 3행 이상의
-   승인이 필요하다. 이 단계는 건너뛸 수 없다. 초안을 검토됨으로 표시하는 자동 경로는 없다.
-3. `training-set`으로 학습 파일을 만들고, 토큰 길이 확인 후 학습한다(3절, 약 35~50분).
+2. (선택, 검토와 병행) 셰이크다운으로 이 PC의 VRAM·시간을 잰다(2-1절). 승격할 수 없고 품질 결과가 아니다.
+3. 사람이 콘솔의 `학습 데이터 검토` 화면에서 Claude 초안 행을 승인·거절한다(2절). 학습 입학에는 tune 147행 중 132행 이상,
+   validation 15행 중 3행 이상의 승인이 필요하다. 이 단계는 건너뛸 수 없다. 초안을 검토됨으로 표시하는 자동 경로는 없다.
+4. `export-reviewed`와 `training-set`으로 학습 파일을 만들고, 토큰 길이 확인 후 학습한다(3절, 약 35~50분).
+5. 학습·평가·승격마다 팩트시트를 기록한다(7절).
 
 평가(5절)용 test 승인(57행 중 30행 이상)은 학습과 병행해도 된다.
 
@@ -61,8 +63,20 @@ Hugging Face 페이지에 표시된 각 파일의 SHA-256과 `artifact-lock.json
 
 ## 2. 사람 검토와 입학
 
-[거버넌스 매핑 로컬 모델](governance-model.md)의 "사람 검토" 절차로 `reviewed.jsonl`을 만듭니다. 219행을 한 사람이 보면
-행당 30초~1분, 약 2~3시간입니다. 승격 승인자는 이 검토자와 달라도 되지만 보고서 준비자·후보 실행자와는 달라야 합니다.
+콘솔에 `reviewer` 또는 `admin` 계정으로 들어가 AI 검토실 > `학습 데이터 검토`를 엽니다. 두 확인란(개인정보 없음, 출처·사용 동의)을 체크하고,
+행마다 `A`(승인) 또는 `R`(거절)을 누릅니다. 답이 틀리면 거절합니다(수정 기능 없음). 분할 버튼으로 `학습(tune)`부터 보면 학습 입학이 가장 빨리
+채워집니다. 진행 표의 "추가 승인 필요"가 모두 "충족"이 되면 학습할 수 있습니다. 219행을 한 사람이 보면 행당 30초~1분, 약 2~3시간입니다.
+승격 승인자는 이 검토자와 달라도 되지만 보고서 준비자·후보 실행자와는 달라야 합니다.
+
+검토가 끝나면 상단의 `감사 내보내기`로 내보내기 파일을 받고, 볼트 공개 키(`.local/trust-anchor.pem`)로 학습용 데이터를 만듭니다.
+
+```powershell
+node scripts/governance-mapping.mjs export-reviewed --data data/governance-mapping/v1/dataset.jsonl --bundle C:\evidscope-work\export.json `
+  --trust-anchor .local\trust-anchor.pem --out C:\evidscope-work\reviewed.jsonl
+```
+
+결과의 `skipped`에 `row_changed_since_decision`이 있으면 그 행은 결정 뒤 내용이 바뀐 것입니다. 콘솔에서 다시 결정합니다.
+콘솔을 쓸 수 없을 때는 [거버넌스 매핑 로컬 모델](governance-model.md)의 TSV 시트 절차로 같은 `reviewed.jsonl`을 만들 수 있습니다.
 
 ```powershell
 node scripts/governance-mapping.mjs admission --data C:\evidscope-work\reviewed.jsonl
@@ -70,6 +84,27 @@ node scripts/governance-mapping.mjs training-set --data C:\evidscope-work\review
 ```
 
 `admission`이 `admitted: true`가 아니면 여기서 멈춥니다(종료 코드 2).
+
+## 2-1. 셰이크다운 (검토 전 VRAM·시간 측정)
+
+사람 검토를 기다리는 동안, 파생 행(tune 168, validation 47)만으로 같은 레시피를 한 번 돌려 이 PC의 GPU 메모리와 시간을 잽니다.
+결과 어댑터는 **승격할 수 없고 품질 결과가 아닙니다**. 변환·평가·승격하지 않고, 수치를 기록한 뒤 지웁니다.
+
+```powershell
+$W = "C:\evidscope-work"; New-Item -ItemType Directory -Force "$W\checkpoints","$W\work" | Out-Null
+node scripts/governance-mapping.mjs training-set --data data/governance-mapping/v1/dataset.jsonl --shakedown --out "$W\shakedown.jsonl"
+node scripts/governance-mapping-train.mjs --base-dir $BASE --base-revision $REV --data "$W\shakedown.jsonl" `
+  --checkpoints-dir "$W\checkpoints" --work-dir "$W\work" --shakedown --check-only
+node scripts/governance-mapping-train.mjs --base-dir $BASE --base-revision $REV --data "$W\shakedown.jsonl" `
+  --checkpoints-dir "$W\checkpoints" --work-dir "$W\work" --shakedown
+```
+
+- 출력: `$W\checkpoints\governance-mapping\shakedown\shakedown-adapter`(영수증 상태 `shakedown_not_promotable`). 후보 실행과 디렉터리가 다르고,
+  체크포인트 신원에 `runMode`가 들어가므로 셰이크다운 체크포인트로 후보 실행을 이어갈 수 없습니다(반대도 같음).
+- 영수증의 `trainingMetrics.cudaPeakAllocatedMiB`, `timing.loadSeconds`·`trainSeconds`·`totalSeconds`가 잴 값입니다. 행 수가 후보의 약 57~61%이므로
+  후보 학습 시간은 대략 `trainSeconds × 1.6~1.8`로 봅니다(후보 350~377행 기준). 최대 메모리는 길이 1536 행이 섞이면 거의 같습니다.
+- 학습기 자체가 확인합니다: 셰이크다운 모드는 `runMode: "shakedown"`인 파생 행만, 후보 모드는 셰이크다운 행을 하나라도 받지 않습니다.
+- 팩트시트를 남깁니다(7절, `--kind training`). 볼트가 학습 파일을 저장소에서 다시 만들어 바이트를 비교합니다.
 
 ## 3. 학습
 
@@ -180,5 +215,24 @@ node scripts/governance-mapping.mjs promote --report "$W\report.json" --approval
 `/models/foundation-sec/governance-mapping-lora.gguf`로 두고 `EVIDSCOPE_GOVERNANCE_ADAPTER_SHA256`을 영수증의 어댑터 해시로 줍니다.
 `node scripts/governance-mapping.mjs status`가 `promoted_adapter`를 보일 때만 콘솔이 어댑터를 씁니다.
 
+승격한 뒤에는 7절의 `promotion` 팩트시트를 기록합니다.
+
 되돌리기는 `promotion`을 null로, `role.json`을 `adapter: "none"`, `modelVersion: "unassigned_runtime"`, `evalStatus: "UNREVIEWED"`로
 돌리고 런타임 환경 변수를 빼는 것입니다. 상태는 즉시 꺼짐 또는 기본 모드로 돌아갑니다.
+
+## 7. 팩트시트 기록
+
+학습·평가·승격을 마칠 때마다 요청 파일을 만들고, 콘솔의 AI 검토실 > `실험 비교` > `팩트시트 기록`에서 올립니다(`reviewer`·`admin`).
+볼트가 확인한 뒤 서명된 원장 기록으로 남기고, `모델 현황` 화면과 `GET /api/model-runtime`·`GET /api/model-status`의 `factsheets`에 나타납니다.
+
+```powershell
+# 학습(후보 또는 셰이크다운): 변환한 GGUF 어댑터가 있으면 그 해시도 묶습니다.
+node scripts/governance-mapping.mjs factsheet --kind training --receipt "$W\checkpoints\governance-mapping\run\candidate\training-receipt.json" `
+  --training-set "$W\train.jsonl" --adapter-gguf "$W\checkpoints\governance-mapping-lora.gguf" --out "$W\factsheet-training.json"
+# 평가: 볼트가 보고서 전체를 다시 계산합니다. 보고서는 reports/governance-mapping/에도 두면 실험 비교 화면에 나옵니다.
+node scripts/governance-mapping.mjs factsheet --kind evaluation --report "$W\report.json" --out "$W\factsheet-evaluation.json"
+# 승격: promotion-trust.json의 키로 서명된 영수증만 기록됩니다.
+node scripts/governance-mapping.mjs factsheet --kind promotion --receipt "$W\promotion.dsse.json" --report "$W\report.json" --out "$W\factsheet-promotion.json"
+```
+
+같은 실행을 두 번 기록하면 409입니다. 셰이크다운 어댑터 해시로는 후보 학습·승격 팩트시트를 기록할 수 없습니다.

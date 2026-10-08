@@ -18,17 +18,25 @@ export const BASE_REPOSITORY = 'fdtn-ai/Foundation-Sec-1.1-8B-Instruct';
 const fail = code => { throw Object.assign(Error(code), {code}); };
 const fileSha = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 
+// runMode "shakedown" trains on the derived rows only (training-set --shakedown) into its own output directory; the trainer then
+// writes a shakedown adapter that is never promotable (docs/governance-model-runbook.md).
+export const RUN_DIRS = Object.freeze({candidate: 'governance-mapping/run', shakedown: 'governance-mapping/shakedown'});
 // Every input is an absolute host path; the digests the trainer re-checks are computed here from the same bytes.
-export function trainingSpec({image, baseDir, baseRevision, dataFile, checkpointsDir, scriptsDir, workDir, resumeCheckpoint = null, gpuMemoryFraction = 0.65}) {
+export function trainingSpec({image, baseDir, baseRevision, dataFile, checkpointsDir, scriptsDir, workDir, resumeCheckpoint = null, gpuMemoryFraction = 0.65,
+  runMode = 'candidate'}) {
   if (!IMAGE.test(image || '')) fail('training_image_digest_required');
   if (!REVISION.test(baseRevision || '')) fail('base_revision_required');
+  if (!Object.hasOwn(RUN_DIRS, runMode)) fail('run_mode_invalid');
   for (const p of [baseDir, dataFile, checkpointsDir, scriptsDir, workDir]) if (typeof p !== 'string' || !isAbsolute(p)) fail('absolute_paths_required');
   if (!(gpuMemoryFraction >= 0.1 && gpuMemoryFraction <= 0.65)) fail('gpu_memory_fraction_invalid');
-  if (resumeCheckpoint !== null && !/^governance-mapping\/run\/checkpoint-[1-9][0-9]*$/.test(resumeCheckpoint)) fail('checkpoint_path_invalid');
+  if (resumeCheckpoint !== null && !(typeof resumeCheckpoint === 'string' && resumeCheckpoint.startsWith(RUN_DIRS[runMode] + '/')
+    && /^checkpoint-[1-9][0-9]*$/.test(resumeCheckpoint.slice(RUN_DIRS[runMode].length + 1)))) fail('checkpoint_path_invalid');
+  const modes = new Set(readFileSync(dataFile, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line).runMode ?? 'candidate'));
+  if (modes.size !== 1 || !modes.has(runMode)) fail('training_set_run_mode_mismatch');
   const lock = JSON.parse(readFileSync(join(baseDir, 'artifact-lock.json'), 'utf8'));
   if (lock.repository !== BASE_REPOSITORY || lock.revision !== baseRevision) fail('base_artifact_lock_mismatch');
   return {image, baseDir: resolve(baseDir), baseRevision, dataFile: resolve(dataFile), checkpointsDir: resolve(checkpointsDir),
-    scriptsDir: resolve(scriptsDir), workDir: resolve(workDir), resumeCheckpoint, gpuMemoryFraction,
+    scriptsDir: resolve(scriptsDir), workDir: resolve(workDir), resumeCheckpoint, gpuMemoryFraction, runMode,
     datasetSha256: fileSha(dataFile), baseLockSha256: fileSha(join(baseDir, 'artifact-lock.json')),
     trainerSha256: Object.fromEntries(TRAINER_FILES.map(f => [f, fileSha(join(scriptsDir, f))]))};
 }
@@ -50,7 +58,7 @@ export function dockerCreateArgs(spec, name) {
     '--mount', `type=bind,source=${spec.checkpointsDir},target=${CONTAINER.checkpoints}`,
     spec.image, `${CONTAINER.app}/train-governance-mapping-lora.py`, '--data', CONTAINER.data, '--model-dir', CONTAINER.base,
     '--base-revision', spec.baseRevision, '--gpu-memory-fraction', String(spec.gpuMemoryFraction),
-    '--output', `${CONTAINER.checkpoints}/governance-mapping/run`];
+    '--output', `${CONTAINER.checkpoints}/${RUN_DIRS[spec.runMode ?? 'candidate']}`, ...(spec.runMode === 'shakedown' ? ['--shakedown'] : [])];
   if (spec.resumeCheckpoint) args.push('--resume-from-checkpoint', `${CONTAINER.checkpoints}/${spec.resumeCheckpoint}`);
   return args;
 }
