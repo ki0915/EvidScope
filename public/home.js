@@ -307,10 +307,53 @@
           ['승격 / 런타임 연결', `${r.promoted ? '승격됨' : '승격 안 됨'} · ${r.attachedToRuntime ? '연결됨' : '연결 안 됨'}`]]));
       }
       for (const r of runs) if (r.runtimeNote) training.append(el('p', 'muted wrap', r.runtimeNote));
-      training.append(el('p', 'muted', `이 볼트는 학습 기록을 서명하지 않습니다. 학습 실행: ${data.training.howTo}`));
+      training.append(el('p', 'muted', `저장소 학습 기록은 서명되지 않은 요약입니다. 학습 실행: ${data.training.howTo}`));
     }
-    root.append(head, roles, training, limits(data.limitations), jsonDetails('모델 현황 원문', data));
+    root.append(head, roles, training, factsheetCard(data.factsheets), limits(data.limitations), jsonDetails('모델 현황 원문', data));
     return root;
+  }
+
+  // Signed factsheets of the governance-mapping model (src/governance-factsheets.mjs): one fact list per training, evaluation or
+  // promotion run. A shakedown is labelled as such and shows resource numbers only.
+  const factKinds = { training: '학습 실행', evaluation: '평가 실행', promotion: '승격' };
+  const pct = v => typeof v === 'number' && Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : '—';
+  const hash = v => typeof v === 'string' ? `${v.slice(0, 12)}…` : '—';
+  function factsheetMetrics(f) {
+    const m = f.metrics || {};
+    if (f.kind === 'training') {
+      const resource = `GPU 최대 ${m.cudaPeakAllocatedMiB ?? '—'} MiB · 학습 ${m.trainSeconds ?? m.train_runtime ?? '—'}초`
+        + ` · 전체 ${m.totalSeconds ?? '—'}초 · step ${m.globalStep ?? '—'}`;
+      return f.runMode === 'shakedown' ? `${resource} (자원 측정만)` : `${resource} · 학습 손실 ${m.train_loss ?? '—'} (품질 지표 아님)`;
+    }
+    const c = m.candidate || m.retrieval_constrained;
+    return c ? `${m.candidate ? '후보' : '기본 모델(검색·제약)'} 정밀도 ${pct(c.precision)} · 재현율 ${pct(c.recall)} · ECE ${c.ece ?? '—'}`
+      : f.label === 'shakedown' ? '셰이크다운 어댑터: 수치 표시 안 함' : '—';
+  }
+  function factsheetCard(factsheets) {
+    const panel = card('서명된 팩트시트', '거버넌스 매핑 모델의 학습·평가·승격 실행마다 볼트 원장에 서명된 기록입니다. 기록자는 로그인한 사람입니다.');
+    if (!factsheets || factsheets.status !== 'ok') {
+      panel.append(empty('팩트시트를 확인하지 못했습니다', factsheets?.reason || '응답에 팩트시트 목록이 없습니다.')); return panel;
+    }
+    if (!factsheets.items.length) {
+      panel.append(empty('기록된 팩트시트 없음', '학습·평가를 마친 뒤 governance-mapping.mjs factsheet로 요청을 만들고 실험 비교 화면에서 기록합니다.'));
+      return panel;
+    }
+    for (const f of factsheets.items) {
+      const d = f.dataset || {};
+      panel.append(el('h3', 'wrap', `${factKinds[f.kind] || f.kind} · ${f.label === 'shakedown' ? '셰이크다운 — 승격 불가, 품질 결과 아님' : f.label}`),
+        core.factList([['기록', `${date(f.recordedAt)} · ${f.operator?.id ?? '—'} (${f.operator?.role ?? '—'})`],
+          ['기본 모델', `${f.baseModel?.repository ?? '—'} @ ${hash(f.baseModel?.revision)} · GGUF ${hash(f.baseModel?.ggufSha256)}`
+            + (f.baseModel?.training ? ` · 학습 기반 ${hash(f.baseModel.training.revision)} (잠금 ${hash(f.baseModel.training.artifactLockSha256)})` : '')],
+          ['데이터', `${hash(d.sha256)} · ${d.rows ?? '—'}행 · 사람 검토 ${d.humanReviewedRows ?? '—'}행`
+            + ` (서명된 검토 결정 ${d.withSignedQueueDecision ?? '—'}) · ${d.verification ?? '—'}`],
+          ['레시피', f.recipe ? `rank ${f.recipe.rank} · alpha ${f.recipe.alpha} · epoch ${f.recipe.epochs} · 길이 ${f.recipe.sequenceLength}` : '—'],
+          ['수치', factsheetMetrics(f)], ['어댑터', hash(f.adapter?.ggufSha256)],
+          ['게이트 / 승인', `${f.gate ? (f.gate.eligible ? '통과' : '불통과') : '—'} · `
+            + (f.approver ? `승인 ${f.approver.reviewerId} (${date(f.approver.reviewedAt)})` : '승인 없음')],
+          ['승격 경로', f.promoted ? '승격됨(서명 영수증 확인)' : f.promotable ? '게이트와 서명 승인을 거쳐야 함' : '승격 불가']]));
+    }
+    panel.append(jsonDetails('팩트시트 원문', factsheets.items));
+    return panel;
   }
 
   core.registerView('home', '지금 확인할 일', '지금 활동 중인 에이전트, 위협, 사람의 검토가 필요한 항목과 거버넌스 증거 현황을 한 화면에서 확인합니다.', render);

@@ -140,6 +140,28 @@ test('model status names the base model, no adapter, the upgrade as such, traini
   assert.match((await empty.ui.modelPanel()).textContent, /학습 기록 없음.*training-run\.mjs/);
 });
 
+test('model status lists the signed factsheets; a shakedown shows resource numbers only and is never promotable', async () => {
+  const base = {reviewModel: {model: 'm', provider: 'p', revision: 'r', quantization: 'q'}, classifier: {model: 'c'}, runtime: {enabledByDefault: false},
+    fineTuning: {attached: false, roles: []}, roles: [], training: {howTo: 'x', repository: {runs: []}}, limitations: []};
+  const shakedown = {id: 'training-1', kind: 'training', label: 'shakedown', runMode: 'shakedown', promotable: false, promoted: false, recordedAt: 't1',
+    operator: {id: hostile, role: 'reviewer'}, baseModel: {repository: 'fdtn', revision: '0b58da47aaaa', ggufSha256: '5813d725aaaa',
+      training: {revision: 'f'.repeat(40), artifactLockSha256: 'b'.repeat(64)}},
+    dataset: {sha256: 'a'.repeat(64), rows: 215, humanReviewedRows: 0, withSignedQueueDecision: 0, verification: 'reproduced_from_repository'},
+    recipe: {rank: 8, alpha: 16, epochs: 2, sequenceLength: 1536},
+      metrics: {cudaPeakAllocatedMiB: 7123, trainSeconds: 1480, totalSeconds: 1590, globalStep: 54},
+    adapter: {ggufSha256: null}, gate: null, approver: null};
+  const evaluation = {id: 'evaluation-1', kind: 'evaluation', label: 'candidate_evaluation', promotable: true,
+    recordedAt: 't2', operator: {id: 'op', role: 'admin'},
+    dataset: {}, metrics: {candidate: {precision: 0.96, recall: 0.62, ece: 0.05}}, gate: {eligible: true}, approver: null};
+  const f = fixture(() => ({...base, factsheets: {status: 'ok', items: [evaluation, shakedown]}}));
+  const text = (await f.ui.modelPanel()).textContent;
+  for (const expected of ['서명된 팩트시트', '셰이크다운 — 승격 불가, 품질 결과 아님', 'GPU 최대 7123 MiB', '(자원 측정만)', '승격 불가', '215행',
+    'reproduced_from_repository', '후보 정밀도 96.0%', '게이트와 서명 승인을 거쳐야 함', hostile]) assert.ok(text.includes(expected), expected);
+  assert.ok(!text.includes('학습 손실'), 'no loss for a shakedown');
+  const missing = fixture(() => ({...base, factsheets: {status: 'unavailable', reason: '정책 서명 원장을 검증할 수 없습니다', items: []}}));
+  assert.match((await missing.ui.modelPanel()).textContent, /팩트시트를 확인하지 못했습니다/);
+});
+
 test('lists of public/app.js open on 24 hours, newest first, and load older records through the cursor', async () => {
   const app = readFileSync('public/app.js', 'utf8'), source = app.slice(app.indexOf('const listRanges ='), app.indexOf('function evidenceFacts('));
   const calls = [], pages = {first: {items: [{id: 'b'}], windowTotal: 2, hasMore: true, nextCursor: 'CUR'},
