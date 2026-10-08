@@ -10,6 +10,7 @@ import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 import {prepareTransparency} from './transparency.mjs';
 import {ingestBatchOptions} from './ingest-batch.mjs';
+import {upstreamRequest} from './upstream-http.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
@@ -64,12 +65,14 @@ async function checkReadiness(){
 }
 async function requestBody(req,limit=16384){let size=0;const parts=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw new HttpError(413,`요청 크기 한도 ${limit} bytes 초과`);parts.push(chunk);}return Buffer.concat(parts).toString('utf8');}
 async function upstream(path,method,headers,body){
- const isAuth=authPaths.has(new URL(path,base).pathname),controller=new AbortController();const timer=setTimeout(()=>controller.abort(),isAuth?10000:6000);
+ const isAuth=authPaths.has(new URL(path,base).pathname);
  const forwarded={'content-type':'application/json',authorization:headers.authorization||'','x-evid-timestamp':headers['x-evid-timestamp']||'','x-evid-nonce':headers['x-evid-nonce']||'','x-evid-signature':headers['x-evid-signature']||'',cookie:headers.cookie||'','x-evid-csrf':headers['x-evid-csrf']||''};
  // Legacy bearer clients are checked at this gateway. Session requests also
  // carry the browser Origin to the vault's configured public-origin check.
  if(headers.origin&&(isAuth||/(?:^|;\s*)(?:__Host-)?evidscope-session=/.test(headers.cookie||'')))forwarded.origin=headers.origin;
- try{const response=await fetch(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,signal:controller.signal,redirect:'manual'});return {status:response.status,body:await response.text(),headers:isAuth?{...(response.headers.has('location')?{location:response.headers.get('location')}:{}),...(response.headers.getSetCookie().length?{'set-cookie':response.headers.getSetCookie()}:{})}:{}};}finally{clearTimeout(timer);}
+ // node:http keep-alive rather than fetch (src/upstream-http.mjs); redirects come back as they are, as with redirect:'manual'.
+ const response=await upstreamRequest(new URL(path,base),{method,headers:forwarded,body:method==='GET'?undefined:body,timeoutMs:isAuth?10000:6000}),cookies=response.headers['set-cookie']||[];
+ return {status:response.status,body:response.body.toString('utf8'),headers:isAuth?{...(response.headers.location!==undefined?{location:response.headers.location}:{}),...(cookies.length?{'set-cookie':cookies}:{})}:{}};
 }
 // Binary-safe pass-through for enforcement points at the ingress gateway: bearer token, If-None-Match and the JSON body go up;
 // status, ETag, Content-Type and the (bounded) bytes come back, so a bundle's gzip bytes and a 304 arrive unchanged.

@@ -1,9 +1,10 @@
 // Ingest throughput stage 2 (round 6, docs/performance.md): the verified state carried over a write transaction's own rows,
-// and tampering between transactions still found before the next write.
+// tampering between transactions still found before the next write, and the gateway's node:http upstream.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,randomUUID} from 'node:crypto';
 import {mkdtempSync,rmSync} from 'node:fs';
+import http from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
@@ -11,6 +12,7 @@ import {vault} from './event-key-vault.mjs';
 import {canonical,mac,verifyBundle} from '../src/crypto.mjs';
 import {Store} from '../src/store.mjs';
 import {createGroupCommit} from '../src/ingest-batch.mjs';
+import {upstreamRequest} from '../src/upstream-http.mjs';
 
 const event=(id,extra={})=>({id,actionId:'act-'+id,traceId:'trace-s2',occurredAt:new Date().toISOString(),kind:'intent',actor:'s2-agent',tool:'s2-tool',
  action:'read',resource:'kb-1',note:'stage two',...extra});
@@ -114,4 +116,29 @@ test('verified state: an item that fails after appending rolls back alone; the n
  const state=store.actionProjectionCache.get('alpha');assert.equal(state.count,3);assert.equal(state.head,store.checkpoint('alpha').head);
  assert.deepEqual(counts,{opened:0,suffixRows:0,cold:0},'the undone writes do not read as a write outside projectionMutation');
  assert.equal(summary(state),coldSummary(store));
+});
+
+function server(t,handler){
+ return new Promise(resolve=>{const s=http.createServer(handler);s.listen(0,'127.0.0.1',()=>{t.after(()=>{s.closeAllConnections();s.close();});resolve({s,url:`http://127.0.0.1:${s.address().port}`});});});
+}
+test('gateway upstream: redirects come back unfollowed, the deadline covers the body, oversized answers and other schemes are refused',async t=>{
+ const seen=[];
+ const {url}=await server(t,(req,res)=>{
+  seen.push({method:req.method,path:req.url,cookie:req.headers.cookie,length:req.headers['content-length'],socket:req.socket.remotePort});
+  if(req.url==='/redirect'){res.writeHead(302,{location:'/elsewhere','set-cookie':['a=1','b=2']});res.end('{}');return;}
+  if(req.url==='/slow'){res.writeHead(200);res.write('{');return;}
+  if(req.url==='/large'){res.end('x'.repeat(5000));return;}
+  let body='';req.on('data',c=>body+=c);req.on('end',()=>res.end(JSON.stringify({echo:body})));
+ });
+ const redirect=await upstreamRequest(new URL('/redirect',url),{method:'GET',headers:{cookie:''},timeoutMs:2000});
+ assert.equal(redirect.status,302);assert.equal(redirect.headers.location,'/elsewhere');assert.deepEqual(redirect.headers['set-cookie'],['a=1','b=2']);
+ assert.equal(seen.filter(s=>s.path==='/elsewhere').length,0);
+ const posted=await upstreamRequest(new URL('/api/ingest',url),{method:'POST',headers:{'content-type':'application/json'},body:'{"é":1}',timeoutMs:2000});
+ assert.equal(JSON.parse(posted.body.toString('utf8')).echo,'{"é":1}');assert.equal(seen.at(-1).length,String(Buffer.byteLength('{"é":1}')));
+ const started=Date.now();await assert.rejects(upstreamRequest(new URL('/slow',url),{timeoutMs:300}));assert.ok(Date.now()-started<2000);
+ await assert.rejects(upstreamRequest(new URL('/large',url),{timeoutMs:2000,maxBytes:1000}),/too large/);
+ await assert.rejects(upstreamRequest(new URL('file:///etc/passwd'),{timeoutMs:1000}),/http or https/);
+ // Keep-alive: consecutive calls reuse one connection.
+ const before=seen.length;for(let i=0;i<5;i++)await upstreamRequest(new URL('/api/ingest',url),{method:'POST',body:'{}',timeoutMs:2000});
+ assert.equal(new Set(seen.slice(before).map(s=>s.socket)).size,1);
 });
