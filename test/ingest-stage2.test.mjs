@@ -37,7 +37,8 @@ function coldSummary(store,tenant='alpha'){
 const ledgerCount=store=>store.db.prepare("SELECT COUNT(*) n FROM ledger WHERE tenant='alpha'").get().n;
 // Counts work the next transaction would do to re-verify rows: ledger rows read back as a suffix and events decrypted.
 function spy(store){
- const counts={opened:0,suffixRows:0,cold:0},open=store._openEvent.bind(store),suffix=store._verifiedActionSuffix.bind(store),cold=store._coldActionState.bind(store);
+ const counts={opened:0,suffixRows:0,cold:0},open=store._openEvent.bind(store);
+ const suffix=store._verifiedActionSuffix.bind(store),cold=store._coldActionState.bind(store);
  store._openEvent=(...args)=>{counts.opened++;return open(...args);};
  store._verifiedActionSuffix=(...args)=>{const rows=suffix(...args);counts.suffixRows+=rows.length;return rows;};
  store._coldActionState=(...args)=>{counts.cold++;return cold(...args);};
@@ -74,7 +75,8 @@ test('verified state: rows changed after their transaction by another SQLite con
  other.prepare("UPDATE events SET body=? WHERE tenant='alpha' AND id='a-5'").run(row.body);
  assert.ok((await batch(send,'c',3)).every(r=>r.status===202));
  // 2. The newest ledger row, rewritten with a consistent hash by a writer that removes the append-only trigger.
- const head=other.prepare("SELECT seq,body FROM ledger WHERE tenant='alpha' ORDER BY seq DESC LIMIT 1").get(),forged=head.body.replace('"recordedAt":"','"recordedAt":"1');
+ const head=other.prepare("SELECT seq,body FROM ledger WHERE tenant='alpha' ORDER BY seq DESC LIMIT 1").get();
+ const forged=head.body.replace('"recordedAt":"','"recordedAt":"1');
  other.exec('DROP TRIGGER immutable_update');
  other.prepare("UPDATE ledger SET body=?,hash=? WHERE tenant='alpha' AND seq=?").run(forged,createHash('sha256').update(forged).digest('hex'),head.seq);
  before=ledgerCount(v.store);refused=await batch(send,'d',2);
@@ -107,14 +109,15 @@ test('verified state: a batch that fails at COMMIT time leaves no carried state 
  const exported=v.store.exportBundle('alpha');verifyBundle(exported,v.store.publicKey);
 });
 
-test('verified state: an item that fails after appending rolls back alone; the next batch starts warm and the carried state matches the committed rows',async t=>{
+test('verified state: an item that fails after appending rolls back alone; the next batch starts warm; the carried state is exact',async t=>{
  const dir=mkdtempSync(join(tmpdir(),'evidscope-stage2-')),store=new Store(dir,generateKeyPairSync('ed25519').privateKey);
  t.after(()=>{store.close();rmSync(dir,{recursive:true,force:true});});
  const group=createGroupCommit({store,maxWaitMs:20,begin:()=>store.checkActionProjection('alpha')});
  const append=i=>()=>store.append('alpha','note',{i},'unit');
  await group.submit(null,append(0));
  const counts=spy(store);
- const settled=await Promise.allSettled([group.submit(null,append(1)),group.submit(null,()=>{append(2)();throw Error('refused after writing');}),group.submit(null,append(3))]);
+ const settled=await Promise.allSettled([group.submit(null,append(1)),group.submit(null,()=>{append(2)();throw Error('refused after writing');}),
+  group.submit(null,append(3))]);
  assert.deepEqual(settled.map(r=>r.status),['fulfilled','rejected','fulfilled']);
  const state=store.actionProjectionCache.get('alpha');assert.equal(state.count,3);assert.equal(state.head,store.checkpoint('alpha').head);
  assert.deepEqual(counts,{opened:0,suffixRows:0,cold:0},'the undone writes do not read as a write outside projectionMutation');
@@ -133,13 +136,17 @@ test('exports: an 8b3af6c export still verifies, and a stage-2 export has the sa
  assert.equal((await send(first)).body.duplicate,true);
  const bundle=v.store.exportBundle('alpha'),pem=v.store.publicKey.export({format:'pem',type:'spki'});
  assert.equal(verifyBundle(bundle,pem).valid,true);assert.equal(cli(bundle,pem),0);
- const shapes=b=>{const out={};for(const r of b.records)if(['event','event_receipt'].includes(r.type))out[r.type]=canonical([Object.keys(r).sort(),Object.keys(r.payload).sort()]);
-  out.disclosure=canonical(Object.keys(b.disclosures[0]).sort());out.top=canonical(Object.keys(b).sort());out.checkpoint=canonical(Object.keys(b.checkpoint).sort());return out;};
+ const keys=value=>canonical(Object.keys(value).sort()),shapes=b=>{
+  const out={disclosure:keys(b.disclosures[0]),top:keys(b),checkpoint:keys(b.checkpoint)};
+  for(const r of b.records)if(['event','event_receipt'].includes(r.type))out[r.type]=keys(r)+keys(r.payload);
+  return out;
+ };
  assert.deepEqual(shapes(bundle),shapes(fixture.exportBundle));
 });
 
 function server(t,handler){
- return new Promise(resolve=>{const s=http.createServer(handler);s.listen(0,'127.0.0.1',()=>{t.after(()=>{s.closeAllConnections();s.close();});resolve({s,url:`http://127.0.0.1:${s.address().port}`});});});
+ return new Promise(resolve=>{const s=http.createServer(handler);
+  s.listen(0,'127.0.0.1',()=>{t.after(()=>{s.closeAllConnections();s.close();});resolve({s,url:`http://127.0.0.1:${s.address().port}`});});});
 }
 test('gateway upstream: redirects come back unfollowed, the deadline covers the body, oversized answers and other schemes are refused',async t=>{
  const seen=[];

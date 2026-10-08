@@ -46,15 +46,20 @@ export function createForwardCoalescer({send, single, maxEvents = INGEST_FORWARD
   const stats = {envelopes: 0, events: 0, single: 0, fallbacks: 0};
   async function alone(group) {
     stats.single += group.length;
-    await Promise.all(group.map(async ({headers, body, resolve, reject}) => { try { resolve(await single(headers, body)); } catch (error) { reject(error); } }));
+    await Promise.all(group.map(async ({headers, body, resolve, reject}) => {
+      try { resolve(await single(headers, body)); } catch (error) { reject(error); }
+    }));
   }
   async function dispatch(authorization, group) {
     if (group.length === 1 || now() < unsupportedUntil) return alone(group);
-    const text = `{"format":${JSON.stringify(INGEST_FORWARD_FORMAT)},"items":[${group.map(item => `{"headers":${JSON.stringify(item.itemHeaders)},"body":${item.escaped}}`).join(',')}]}`;
+    const items = group.map(item => `{"headers":${JSON.stringify(item.itemHeaders)},"body":${item.escaped}}`);
+    const text = `{"format":${JSON.stringify(INGEST_FORWARD_FORMAT)},"items":[${items.join(',')}]}`;
     let response;
     try { response = await send(authorization, text); } catch (error) { for (const item of group) item.reject(error); return; }
     // A vault that predates envelopes answers 403, 404 or 413; a busy vault (503) or a bad bearer (401) answers every item alike.
-    if (!response.headers[INGEST_FORWARD_HEADER] && ![401, 503].includes(response.status)) { unsupportedUntil = now() + retryMs; stats.fallbacks++; return alone(group); }
+    if (!response.headers[INGEST_FORWARD_HEADER] && ![401, 503].includes(response.status)) {
+      unsupportedUntil = now() + retryMs; stats.fallbacks++; return alone(group);
+    }
     stats.envelopes++; stats.events += group.length;
     const textBody = response.body.toString('utf8');
     if (response.status !== 200) { for (const item of group) item.resolve({status: response.status, body: textBody}); return; }
@@ -77,7 +82,9 @@ export function createForwardCoalescer({send, single, maxEvents = INGEST_FORWARD
         // The body as a JSON string, as it goes into the envelope; the vault refuses an envelope above INGEST_FORWARD_MAX_BYTES.
         const escaped = JSON.stringify(body), size = Buffer.byteLength(escaped) + 256;
         let group = groups.get(authorization);
-        if (group && (group.items.length >= maxEvents || group.bytes + size > maxBytes)) { groups.delete(authorization); dispatch(authorization, group.items); group = null; }
+        if (group && (group.items.length >= maxEvents || group.bytes + size > maxBytes)) {
+          groups.delete(authorization); dispatch(authorization, group.items); group = null;
+        }
         if (!group) groups.set(authorization, group = {items: [], bytes: 0});
         group.items.push({headers, itemHeaders, body, escaped, resolve, reject}); group.bytes += size;
         immediate ??= setImmediate(flush);

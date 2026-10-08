@@ -37,8 +37,10 @@ test('gateway coalescer: one envelope per bearer and turn; whole-envelope refusa
  const coalescer=createForwardCoalescer({now:()=>clock,retryMs:1000,
   send:async(authorization,text)=>{const value=JSON.parse(text);sent.push({authorization,value});return reply(value);},
   single:async(headers,body)=>{singles.push(body);return {status:202,body:JSON.stringify({single:JSON.parse(body).id})};}});
- const forward=(token,id)=>coalescer.forward({authorization:'Bearer '+token,'x-evid-nonce':'n-'+id,'x-evid-timestamp':'1','x-evid-signature':'s',cookie:'c'},JSON.stringify({id}));
- reply=value=>({status:200,headers:{[INGEST_FORWARD_HEADER]:'1'},body:Buffer.from(JSON.stringify({items:value.items.map(item=>({status:202,body:{id:JSON.parse(item.body).id}}))}))});
+ const forward=(token,id)=>coalescer.forward({authorization:'Bearer '+token,'x-evid-nonce':'n-'+id,'x-evid-timestamp':'1','x-evid-signature':'s',cookie:'c'},
+  JSON.stringify({id}));
+ const answer=items=>({status:200,headers:{[INGEST_FORWARD_HEADER]:'1'},body:Buffer.from(JSON.stringify({items}))});
+ reply=value=>answer(value.items.map(item=>({status:202,body:{id:JSON.parse(item.body).id}})));
  let answers=await Promise.all([forward('a','1'),forward('b','2'),forward('a','3'),forward('a','4')]);
  assert.deepEqual(answers.map(a=>[a.status,JSON.parse(a.body)]),[[202,{id:'1'}],[202,{single:'2'}],[202,{id:'3'}],[202,{id:'4'}]]);
  assert.equal(sent.length,1);assert.equal(sent[0].authorization,'Bearer a');
@@ -52,7 +54,7 @@ test('gateway coalescer: one envelope per bearer and turn; whole-envelope refusa
  const before=sent.length;answers=await Promise.all([forward('a','7'),forward('a','8')]);
  assert.deepEqual(answers.map(a=>JSON.parse(a.body)),[{single:'7'},{single:'8'}]);
  await Promise.all([forward('a','9'),forward('a','10')]);assert.equal(sent.length,before+1,'single calls while the vault is known to predate envelopes');
- clock=2000;reply=value=>({status:200,headers:{[INGEST_FORWARD_HEADER]:'1'},body:Buffer.from(JSON.stringify({items:value.items.map(()=>({status:202,body:{}}))}))});
+ clock=2000;reply=value=>answer(value.items.map(()=>({status:202,body:{}})));
  await Promise.all([forward('a','11'),forward('a','12')]);assert.equal(sent.length,before+2);
  // A lost connection or a malformed answer fails every item of the envelope (the gateway answers 503, never a guess).
  reply=()=>{throw Error('ECONNRESET');};
@@ -84,11 +86,13 @@ test('gateway envelopes end to end: the same answers as the vault gives directly
  assert.deepEqual(viaIngress.map(r=>r.status),direct.map(r=>r.status));
  for(let i=2;i<cases.length;i++)assert.deepEqual(viaIngress[i].body,direct[i].body,cases[i][0]);
  assert.equal((await post(h.ingress.url,agent,retried)).status,202);
- const [dup,first,replay]=await Promise.all([post(h.ingress.url,agent,retried),post(h.ingress.url,agent,event('fw-7'),{nonce:reused}),post(h.ingress.url,agent,event('fw-8'),{nonce:reused})]);
+ const [dup,first,replay]=await Promise.all([post(h.ingress.url,agent,retried),post(h.ingress.url,agent,event('fw-7'),{nonce:reused}),
+  post(h.ingress.url,agent,event('fw-8'),{nonce:reused})]);
  assert.equal(dup.body.duplicate,true);assert.equal(first.status,202);assert.equal(replay.status,409);assert.match(replay.body.error,/nonce/);
  // Many sources at once: every 202 is stored once, in a verifying export.
  const sources=['agent','tool','telemetry'],kinds={agent:'intent',tool:'result',telemetry:'notice'};
- const burst=await Promise.all(Array.from({length:90},(_,i)=>submit(h.ingress.url,h.principal(sources[i%3]),event('fw-b'+i,{kind:kinds[sources[i%3]]}),{timeoutMs:15000})));
+ const burst=await Promise.all(Array.from({length:90},(_,i)=>
+  submit(h.ingress.url,h.principal(sources[i%3]),event('fw-b'+i,{kind:kinds[sources[i%3]]}),{timeoutMs:15000})));
  assert.ok(burst.every(r=>r.status===202&&r.body.duplicate===false));
  const bundle=(await h.api('/api/export')).body;verifyBundle(bundle,h.publicKey);
  const ids=bundle.disclosures.map(d=>d.event.id);assert.equal(new Set(ids).size,ids.length);
@@ -104,7 +108,8 @@ test('gateway envelopes: SIGKILL of the vault under load through the gateway los
  const acknowledged=new Set(),sources=['agent','tool','telemetry'],kinds={agent:'intent',tool:'result',telemetry:'notice'};let next=0,killed=false;
  const sendOne=async i=>{
   const kind=sources[i%3];
-  try{const r=await submit(h.ingress.url,h.principal(kind),event(`kill-${i}`,{kind:kinds[kind]}),{timeoutMs:15000});if(r.status===202)acknowledged.add(`kill-${i}`);}catch{}
+  try{const r=await submit(h.ingress.url,h.principal(kind),event(`kill-${i}`,{kind:kinds[kind]}),{timeoutMs:15000});
+   if(r.status===202)acknowledged.add(`kill-${i}`);}catch{}
  };
  const deadline=Date.now()+60000;
  const restart=(async()=>{while(acknowledged.size<60&&Date.now()<deadline)await new Promise(r=>setTimeout(r,2));killed=true;await h.restart();})();
