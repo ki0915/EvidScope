@@ -197,7 +197,8 @@ export async function run(argv, env = process.env) {
   const assessment = assessExport(loaded.bytes, {publicKey, expectedCheckpoint, transparency, replay: !values['no-replay']});
   // Another tenant's export (signed by the same vault, or naming no valid tenant) is refused whole: not even a negative verdict
   // leaves, because its scores would land on this tenant's Langfuse or Phoenix project. An unreadable export has no verdicts.
-  if (assessment.readable && assessment.tenant !== tenant) return {code: 1, output: {mode: 'refused', export: {source: loaded.source, sha256: assessment.exportSha256,
+  if (assessment.readable && assessment.tenant !== tenant) return {code: 1, output: {mode: 'refused',
+    export: {source: loaded.source, sha256: assessment.exportSha256,
     tenant: assessment.tenant ?? null, expectedTenant: tenant, verdict: 'unverified', reasons: ['tenant_mismatch'], messages: [REASONS.tenant_mismatch]},
     verdicts: [], reasonText: REASONS}};
   const verdicts = actionVerdicts(assessment, {linkBase});
