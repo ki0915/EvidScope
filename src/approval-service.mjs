@@ -23,13 +23,15 @@ const integer=(v,min,max,name)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail(
 // The `approvals` part of the registry policy (admin-only, signed with it). Unknown fields, tiers, roles or exclusions are refused.
 export function normalizeApprovalPolicy(x){
  object(x,'approvals');
- const allowed=['defaultLifetimeSeconds','maxLifetimeSeconds','intervalSeconds','executionWindowSeconds','unregisteredTier','answer'];
+ const allowed=['defaultLifetimeSeconds','maxLifetimeSeconds','intervalSeconds','executionWindowSeconds','unregisteredTier','answer','maxPendingPerSource'];
  for(const k of Object.keys(x))if(!allowed.includes(k))fail(400,`approvals에 허용되지 않은 필드: ${k}`);
  const d=DEFAULT_APPROVAL_POLICY,value=(k,min,max)=>x[k]===undefined?d[k]:integer(x[k],min,max,k);
  const out={defaultLifetimeSeconds:value('defaultLifetimeSeconds',1,86400),maxLifetimeSeconds:value('maxLifetimeSeconds',1,86400),
   intervalSeconds:value('intervalSeconds',1,APPROVAL_LIMITS.maxIntervalSeconds),executionWindowSeconds:value('executionWindowSeconds',1,86400),
   unregisteredTier:x.unregisteredTier===undefined?d.unregisteredTier:RISK_TIERS.includes(x.unregisteredTier)?x.unregisteredTier:fail(400,
    'unregisteredTier 오류'),answer:{}};
+ // Written only when set, so policies signed before this field keep their shape; readers fall back to APPROVAL_LIMITS.pendingPerSource.
+ if(x.maxPendingPerSource!==undefined)out.maxPendingPerSource=integer(x.maxPendingPerSource,1,APPROVAL_LIMITS.maxPendingPerSource,'maxPendingPerSource');
  if(out.defaultLifetimeSeconds>out.maxLifetimeSeconds)fail(400,'defaultLifetimeSeconds는 maxLifetimeSeconds 이하여야 합니다');
  const answer=x.answer===undefined?{}:object(x.answer,'approvals.answer');
  for(const k of Object.keys(answer))if(!RISK_TIERS.includes(k))fail(400,`approvals.answer의 위험 등급 오류: ${k}`);
@@ -108,6 +110,10 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
    }
    if(approvals(p,{actionId:request.actionId}).length>=APPROVAL_LIMITS.requestsPerAction)fail(409,`한 행동에 승인 요청은 최대 ${APPROVAL_LIMITS.requestsPerAction}개입니다`);
    const policy=current(p),limits=policy.approvals;
+   // One enforcement credential cannot flood the queue people read: unanswered, unexpired requests per source are capped.
+   const cap=limits.maxPendingPerSource??APPROVAL_LIMITS.pendingPerSource;
+   const pending=approvals(p,{}).filter(({body:v})=>v.requestedBy===p.id&&v.status==='pending'&&Date.parse(v.expiresAt)>at).length;
+   if(pending>=cap)fail(429,`이 출처의 답을 기다리는 승인 요청이 이미 ${cap}개입니다. 답하거나 만료된 뒤 다시 요청하세요`);
    const lifetime=Math.min(request.requestedExpiry??limits.defaultLifetimeSeconds,limits.maxLifetimeSeconds);
    const entry=coveringEntry(policyObjects(p,'agent_registry').values(),request.target.actor);
    const v={id,version:1,change:'requested',status:'pending',requestedBy:p.id,...request,targetDigest:targetDigest(request.target),requestedAt:iso(at),

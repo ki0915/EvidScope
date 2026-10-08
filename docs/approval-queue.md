@@ -69,6 +69,8 @@ Slack, 메일)도 보내지 않습니다. 사람은 대기열 화면을 보고, 
 - 응답은 `{auth_req_id, expires_in, interval, status, targetDigest, eligibility: {tier, approvers}, duplicate}`입니다.
   `targetDigest`는 `target`의 정규 JSON SHA-256이며, 게이트웨이가 실행하려는 대상과 같은지 이 값으로 대조합니다.
 - 같은 결정 id로 다른 대상·요약을 보내면 409, 한 행동에 요청은 최대 10개입니다.
+- 한 출처가 답을 기다리는(답하지 않았고 만료되지 않은) 요청은 정책의 `maxPendingPerSource`(기본 100, 1~1000)개까지이며, 넘으면 429입니다.
+  같은 요청의 재전송은 상한에서도 그대로 응답합니다(4라운드 재감사 제안 P-2). 유출된 집행 지점 자격 하나가 대기열을 가득 채우지 못하게 합니다.
 
 폴링 응답:
 
@@ -125,6 +127,7 @@ Ed25519는 결정적이므로 같은 답을 여러 번 폴링해도 같은 바�
 | `maxLifetimeSeconds` | 900 | 요청 유효 시간 상한. 더 길게 요청해도 잘립니다 |
 | `intervalSeconds` | 5 | 최소 폴링 간격. 0.5초까지는 일찍 와도 인정합니다 |
 | `executionWindowSeconds` | 300 | 승인 시각부터 실행해도 되는 기간 |
+| `maxPendingPerSource` | 100 | 출처 하나가 동시에 열어 둘 수 있는 답 대기 요청 수. 설정할 때만 서명된 정책에 들어갑니다 |
 
 만료는 별도 기록 없이 `expiresAt`과 현재 시각만으로 정해집니다. 대기열은 만료된 요청을 **만료(거절)**로 보여 주고, 폴링은 `expired_token`을,
 평가는 만료 뒤 실행을 `EXECUTION_AFTER_APPROVAL_EXPIRED`로 냅니다. 만료 뒤에는 답할 수 없고, 원장에 만료 뒤 기록된 답이 있으면 오프라인 검증이 실패합니다.
