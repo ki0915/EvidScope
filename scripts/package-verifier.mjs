@@ -12,11 +12,14 @@ import {dirname, join, posix, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {gzipSync} from 'node:zlib';
+import {MAPPING_VERSIONS, mappingVersionFile} from '../src/evidence-pack-frameworks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = 'src/verify-cli.mjs', NAME = 'evidscope-verify';
 // Read at run time by src/evidence-pack-frameworks.mjs (evidence package mappings), relative to src/ as in the repository.
-export const DATA_FILES = ['data/isms-p-alignment.json', 'data/requirements.json'];
+// Every shipped mapping version goes along, so old packages verify against the version they name.
+export const DATA_FILES = ['data/isms-p-alignment.json', 'data/requirements.json',
+  ...Object.entries(MAPPING_VERSIONS).flatMap(([id, versions]) => Object.keys(versions).map(v => mappingVersionFile(id, Number(v))))];
 export const FORBIDDEN_BUILTINS = ['child_process', 'cluster', 'dgram', 'dns', 'http', 'http2', 'https', 'inspector', 'net', 'tls', 'worker_threads'];
 const IMPORTS = /^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*(['"])([^'"]+)\1|^\s*import\s*(['"])([^'"]+)\3/gm;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');

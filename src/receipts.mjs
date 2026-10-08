@@ -155,7 +155,8 @@ function policyFor(policy, origin, publicKey) {
   if (parsed.logs.some(l => l.name === origin && !l.pub.equals(pinned))) throw Error('The tlog-policy log key for ' + origin + ' is not the pinned vault key');
   return parsed;
 }
-const flagPolicy = (origin, publicKey, transparency = {}) => {
+// The policy an auditor states with flags: the pinned vault key for the origin, and the witnesses and quorum given.
+export const flagPolicy = (origin, publicKey, transparency = {}) => {
   const witnesses = transparency.witnesses || [];
   return parseTlogPolicy(tenantTlogPolicy({origin, publicKey, witnesses, quorum: transparency.quorum ?? (witnesses.length ? 1 : 0)}));
 };

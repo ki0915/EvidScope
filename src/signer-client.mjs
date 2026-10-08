@@ -3,7 +3,9 @@
 // failures reject. Nothing the signer returns is trusted here: transparency.mjs re-derives and verifies every note.
 import http from 'node:http';
 import https from 'node:https';
+import {createPublicKey, verify} from 'node:crypto';
 import {readFileSync, statSync} from 'node:fs';
+import {keyFingerprint} from './dsse.mjs';
 
 // Whoever holds the token can send heads leaves in the vault's place. A token file of the reader's own user must be private
 // (POSIX, as for keys); a Kubernetes Secret file (root:fsGroup 0440) is read through its group bits.
@@ -49,5 +51,24 @@ export function createSignerClient({socket, pipe, url, token = null, ca = null, 
     head: origin => call('/v1/head', {origin}),
     signHeads: request => call('/v1/sign-heads', request),
     info: () => call('/v1/info', {}),
+    signStatement: message => call('/v1/sign-statement', {message: Buffer.from(message).toString('base64')}),
   };
+}
+// A DSSE signer (src/dsse.mjs signEnvelope) backed by a signer process started with --sign-pack-statements: the same interface as
+// src/attestation-signer.mjs. publicKey is the key the caller pins; a refusal, or a signature that does not verify with it, fails.
+export function statementSigner(client, publicKey) {
+  const key = createPublicKey(publicKey);
+  if (key.asymmetricKeyType !== 'ed25519') throw Error('The signer public key must be an Ed25519 key');
+  return {keyid: keyFingerprint(key), publicKey: key, async sign(message) {
+    const {httpStatus, body} = await client.signStatement(message);
+    if (httpStatus !== 200 || body.status !== 'signed' || typeof body.sig !== 'string') {
+      throw Error(`The signer at ${client.target} refused the statement (HTTP ${httpStatus}${body.reason ? ', ' + body.reason : ''})`
+        + (typeof body.message === 'string' ? ': ' + body.message.slice(0, 300) : ''));
+    }
+    const sig = Buffer.from(body.sig, 'base64');
+    if (sig.length !== 64 || !verify(null, message, key, sig)) {
+      throw Error('The signer returned a signature that does not verify with the pinned signer public key');
+    }
+    return sig;
+  }};
 }

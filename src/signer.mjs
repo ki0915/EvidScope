@@ -12,6 +12,8 @@ import https from 'node:https';
 import {dirname, isAbsolute, join, relative, resolve} from 'node:path';
 import * as T from './tlog.mjs';
 import {selfTest} from './signer-backends.mjs';
+import {canonical} from './crypto.mjs';
+import {decodeBase64, INTOTO_PAYLOAD_TYPE, keyFingerprint, pae, parseStatement, sha256Hex} from './dsse.mjs';
 
 export const STATE_FORMAT = 'evidscope-signer-state-v1';
 export const AUTHORIZATION_FORMAT = 'evidscope-signer-authorization-v1';
@@ -27,6 +29,22 @@ const paths = dir => ({state: join(dir, 'state.json'), audit: join(dir, 'audit.l
   pending: join(dir, 'authorizations'), used: join(dir, 'authorizations', 'used'), revoked: join(dir, 'authorizations', 'revoked')});
 const refusal = (reason, message, status = 422, extra = {}) => Object.assign(Error(message), {refusal: reason, status, ...extra});
 const invalid = message => refusal('invalid_request', message, 400);
+
+// Statements a signer started with --sign-pack-statements signs (docs/evidence-pack.md): in-toto Statement v1 payloads of auditor
+// evidence packages, nothing else. The PAE of such a payload holds no newline (canonical JSON), and every heads checkpoint text
+// ends in one, so a statement signature can never stand for a checkpoint signature, and the reverse.
+export const PACK_STATEMENTS = Object.freeze({predicateTypes: ['https://in-toto.io/attestation/svr/v0.2'],
+  verifierIds: ['https://github.com/ki0915/EvidScope/blob/main/docs/evidence-pack.md#builder-v1']});
+// "DSSEv1 <len> <type> <len> <body>", exactly as dsse.mjs pae() writes it.
+function openPae(message) {
+  const head = /^DSSEv1 ([1-9][0-9]{0,5}) /.exec(message.subarray(0, 16).toString('latin1'));
+  if (!head) throw invalid('message is not a DSSE v1 PAE');
+  const typeEnd = head[0].length + Number(head[1]), size = /^ ([0-9]{1,10}) /.exec(message.subarray(typeEnd, typeEnd + 13).toString('latin1'));
+  if (!size) throw invalid('message is not a DSSE v1 PAE');
+  const payloadType = message.subarray(head[0].length, typeEnd).toString('utf8'), body = message.subarray(typeEnd + size[0].length);
+  if (body.length !== Number(size[1]) || !pae(payloadType, body).equals(message)) throw invalid('message is not a DSSE v1 PAE');
+  return {payloadType, body};
+}
 
 export function headsBaseOf(origin) {
   if (typeof origin !== 'string' || !origin.endsWith('/heads')) throw invalid('heads origin must end in /heads');
@@ -336,7 +354,8 @@ function checkEpoch(auth, predecessor, base, next, proofs) {
 }
 
 // ---------- signer core ----------
-export function openSigner({stateDir, backend, limits = {}, now = () => Date.now()}) {
+// statements: null (the default: heads checkpoints only) or {predicateTypes, verifierIds}, e.g. PACK_STATEMENTS.
+export function openSigner({stateDir, backend, limits = {}, now = () => Date.now(), statements = null}) {
   const dir = assertSignerStateDir(stateDir), p = paths(dir), release = lock(dir);
   let state, audit;
   try {
@@ -472,11 +491,46 @@ export function openSigner({stateDir, backend, limits = {}, now = () => Date.now
     queue = run.catch(() => {});
     return run;
   }
+  // Only a canonical in-toto Statement v1 of an allowed predicate type and verifier; the signer computes nothing for the caller but
+  // checks the PAE it is asked to sign, and refusals are audited like heads refusals.
+  async function statement(req) {
+    if (!plain(req) || typeof req.message !== 'string') throw invalid('request needs message: the base64 DSSE PAE to sign');
+    let message;
+    try { message = decodeBase64(req.message, 'message'); } catch (error) { throw invalid(error.message); }
+    const {payloadType, body} = openPae(message);
+    if (payloadType !== INTOTO_PAYLOAD_TYPE) throw refusal('not_allowed', `payload type ${JSON.stringify(payloadType.slice(0, 80))} is not signed here`);
+    let parsed;
+    try { parsed = parseStatement(body); } catch (error) { throw refusal('not_allowed', error.message); }
+    if (canonical(parsed) !== body.toString('utf8')) throw refusal('not_allowed', 'the statement is not canonical JSON');
+    if (!statements.predicateTypes.includes(parsed.predicateType) || !statements.verifierIds.includes(parsed.predicate?.verifier?.id)) {
+      throw refusal('not_allowed', 'the statement is not of a predicate type and verifier this signer signs');
+    }
+    let signature;
+    try { signature = await backend.sign(message); } catch (error) { throw refusal('backend', `signing backend failed: ${error.message}`, 503); }
+    if (!Buffer.isBuffer(signature) || signature.length !== 64 || !edVerify(null, message, backend.publicKey, signature)) {
+      throw refusal('backend', 'signing backend returned a signature that does not verify', 503);
+    }
+    audit.append({event: 'statement_signed', predicateType: parsed.predicateType, verifier: parsed.predicate.verifier.id, subjects: parsed.subject.length,
+      payloadSha256: sha256Hex(body)});
+    return {status: 'signed', keyid: keyFingerprint(backend.publicKey), sig: signature.toString('base64')};
+  }
+  function signStatement(req) {
+    if (!statements) return Promise.reject(refusal('not_found', 'this signer signs heads checkpoints only (start it with --sign-pack-statements)', 404));
+    // One signature at a time on the backend, in line with heads leaves.
+    const run = queue.then(() => statement(req)).catch(error => {
+      if (error.refusal && error.refusal !== 'invalid_request') {
+        audit.append({event: 'refused', kind: 'statement', reason: error.refusal, message: error.message.slice(0, 500)});
+      }
+      throw error;
+    });
+    queue = run.catch(() => {});
+    return run;
+  }
   return {
-    publicKey: backend.publicKey, signHeads, audit,
+    publicKey: backend.publicKey, signHeads, signStatement, audit,
     head(origin) { headsBaseOf(origin); const r = state.origins[origin]; return r ? headOf(origin, r) : {origin, known: false}; },
     info() {
-      return {format: 'evidscope-signer-info-v1', key: keyName(pub), backend: backend.kind, origins: Object.entries(state.origins)
+      return {format: 'evidscope-signer-info-v1', key: keyName(pub), backend: backend.kind, statements: !!statements, origins: Object.entries(state.origins)
         .map(([origin, r]) => ({origin, status: r.status, size: r.size, updated: r.updated}))};
     },
     close() { audit.append({event: 'stop'}); audit.close(); release(); },
@@ -500,14 +554,15 @@ const tokenDigest = token => sha256(Buffer.from(token, 'utf8'));
 // listen: {socket: path} (Unix socket; token optional) | {pipe: name} (Windows named pipe; token required) | {host, port} (loopback, or
 // any host with tls: {cert, key}; token required). The token is compared in constant time.
 export async function startSignerServer({stateDir, backend, listen, token = null, tls = null, limits = {}, socketMode = 0o600, now = () => Date.now(),
-  log = line => process.stderr.write(JSON.stringify({component: 'signer', ...line}) + '\n')}) {
+  statements = null, log = line => process.stderr.write(JSON.stringify({component: 'signer', ...line}) + '\n')}) {
   if (!plain(listen)) throw Error('Signer listen address missing');
   const tcp = listen.port !== undefined, pipe = listen.pipe !== undefined;
   if (tcp && !tls && !LOOPBACK.has(listen.host ?? '127.0.0.1')) throw Error('A signer on a non-loopback address needs TLS (--tls-cert/--tls-key)');
   if ((tcp || pipe) && !token) throw Error('A signer on TCP or a named pipe needs a bearer token file (--token-file)');
   if (token !== null && (typeof token !== 'string' || token.length < 32)) throw Error('Signer token must be at least 32 characters');
   await selfTest(backend);
-  const core = openSigner({stateDir, backend, limits, now}), max = {...DEFAULT_LIMITS, ...limits}, expected = token && tokenDigest(token);
+  const core = openSigner({stateDir, backend, limits, now, statements}), max = {...DEFAULT_LIMITS, ...limits}, expected = token && tokenDigest(token);
+  const routes = ['/v1/sign-heads', '/v1/head', '/v1/info', ...(statements ? ['/v1/sign-statement'] : [])];
   const signBucket = bucket(max.signsPerMinute, max.signBurst, now), requestBucket = bucket(max.requestsPerMinute, max.requestBurst, now);
   const counters = {unauthorized: 0, rateLimited: 0, tooLarge: 0, refusedConnections: 0};
   const send = (res, status, body, headers = {}) => {
@@ -517,7 +572,7 @@ export async function startSignerServer({stateDir, backend, listen, token = null
   const handler = async (req, res) => {
     try {
       const path = new URL(req.url, 'http://signer').pathname;
-      if (req.method !== 'POST' || !['/v1/sign-heads', '/v1/head', '/v1/info'].includes(path)) return send(res, 404, {status: 'error', reason: 'not_found'});
+      if (req.method !== 'POST' || !routes.includes(path)) return send(res, 404, {status: 'error', reason: 'not_found'});
       if (expected) {
         const given = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '')?.[1];
         if (!given || !timingSafeEqual(tokenDigest(given), expected)) {
@@ -530,7 +585,7 @@ export async function startSignerServer({stateDir, backend, listen, token = null
         res.setHeader('connection', 'close');
         return send(res, 413, {status: 'error', reason: 'too_large'});
       }
-      const wait = requestBucket() || (path === '/v1/sign-heads' ? signBucket() : 0);
+      const wait = requestBucket() || (path.startsWith('/v1/sign-') ? signBucket() : 0);
       if (wait) { counters.rateLimited++; return send(res, 429, {status: 'error', reason: 'rate_limited'}, {'retry-after': String(wait)}); }
       const parts = [];
       let size = 0;
@@ -550,6 +605,7 @@ export async function startSignerServer({stateDir, backend, listen, token = null
       }
       if (path === '/v1/info') return send(res, 200, {...core.info(), counters});
       if (path === '/v1/head') return send(res, 200, core.head(body?.origin));
+      if (path === '/v1/sign-statement') return send(res, 200, await core.signStatement(body));
       return send(res, 200, await core.signHeads(body));
     } catch (error) {
       if (error.refusal) {

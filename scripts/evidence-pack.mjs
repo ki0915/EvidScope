@@ -2,8 +2,11 @@
 // (signature, chain, transparency, signed histories, replay); nothing is written unless every check and the package's own
 // verification pass. `verify` is evidscope-verify pack.
 //   node scripts/evidence-pack.mjs build --framework eu-ai-act-logging|kr-ai-basic-act|isms-p --tenant T --key VAULT_PUBLIC.pem
-//     --signing-key BUILDER_PRIVATE.pem --out DIR|FILE.tar.gz (--export EXPORT.json [--attestation FILE] | --api URL --token-file FILE)
-//     [--case-report REPORT.json]... [--case ID]... [--from ISO --to ISO] [--checkpoint CHECKPOINT.json] [transparency flags]
+//     (--signing-key BUILDER_PRIVATE.pem | (--signer-socket PATH | --signer-url URL [--signer-token-file FILE] [--signer-ca CA.pem])
+//       --signer-public-key SIGNER_PUBLIC.pem) --out DIR|FILE.tar.gz (--export EXPORT.json [--attestation FILE] | --api URL --token-file FILE)
+//     [--case-report REPORT.json]... [--case ID]... [--from ISO --to ISO [--period-only]] [--checkpoint CHECKPOINT.json] [transparency flags]
+// --period-only carries only the ledger range of the period, each record with its receipt (docs/evidence-pack.md); without it the
+// package carries the whole export. --signer-*: sign through a signer process started with --sign-pack-statements (docs/signer.md).
 //   node scripts/evidence-pack.mjs verify PACK KEY.pem [CHECKPOINT.json] [--pack-key BUILDER_PUBLIC.pem] [--tenant T] [--mapping-from-pack]
 // --export and --case-report accept the plain file or the vault's ?attest=intoto response. --api reads both with an auditor token
 // from the file (or EVIDSCOPE_AUDITOR_TOKEN); tokens are sent only over https or to a loopback address.
@@ -13,6 +16,7 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {attestationSigner} from '../src/attestation-signer.mjs';
+import {createSignerClient, readSignerToken, statementSigner} from '../src/signer-client.mjs';
 import {sha256Hex} from '../src/dsse.mjs';
 import {attestedInput, buildPack, FILES, TAR_ROOT, verifyEvidence, verifyPack} from '../src/evidence-pack.mjs';
 import {FRAMEWORKS} from '../src/evidence-pack-frameworks.mjs';
@@ -30,7 +34,26 @@ const readFile = (path, max, what) => {
 const OPTIONS = {...transparencyFlags, 'min-checkpoint': {type: 'string'}, framework: {type: 'string'}, tenant: {type: 'string'},
   key: {type: 'string'}, 'signing-key': {type: 'string'}, out: {type: 'string'}, export: {type: 'string'}, attestation: {type: 'string'},
   api: {type: 'string'}, 'token-file': {type: 'string'}, 'case-report': {type: 'string', multiple: true}, case: {type: 'string', multiple: true},
-  from: {type: 'string'}, to: {type: 'string'}, checkpoint: {type: 'string'}};
+  from: {type: 'string'}, to: {type: 'string'}, checkpoint: {type: 'string'}, 'period-only': {type: 'boolean'}, 'signer-socket': {type: 'string'},
+  'signer-url': {type: 'string'}, 'signer-token-file': {type: 'string'}, 'signer-ca': {type: 'string'}, 'signer-public-key': {type: 'string'}};
+
+// The package signer: the builder's PEM key, or a signer process whose public key the builder pins (src/signer-client.mjs).
+function packSigner(values, connect = createSignerClient) {
+  const remote = values['signer-socket'] ?? values['signer-url'];
+  if (!!values['signing-key'] === (remote !== undefined) || (values['signer-socket'] && values['signer-url'])) {
+    throw new UsageError('Pass exactly one of --signing-key FILE, --signer-socket PATH or --signer-url URL');
+  }
+  if (values['signing-key']) return attestationSigner(readFile(values['signing-key'], 64 * 1024, 'Signing key').toString('utf8'));
+  if (!values['signer-public-key']) throw new UsageError('--signer-socket and --signer-url need --signer-public-key SIGNER_PUBLIC.pem');
+  const url = values['signer-url'];
+  if (url !== undefined && !/^https:\/\//.test(url) && !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/.test(url)) {
+    throw new UsageError('--signer-url must be https (plain http only to a loopback address)');
+  }
+  const client = connect({...(values['signer-socket'] ? {socket: resolve(values['signer-socket'])} : {url}),
+    token: values['signer-token-file'] ? readSignerToken(resolve(values['signer-token-file'])) : null,
+    ca: values['signer-ca'] ? readFile(values['signer-ca'], 64 * 1024, 'Signer CA') : null});
+  return statementSigner(client, readFile(values['signer-public-key'], 64 * 1024, 'Signer public key').toString('utf8'));
+}
 
 // A JSON GET with the auditor token; refuses plain http except to loopback, so the token never crosses a network in clear.
 export async function apiGet(base, path, token, fetchImpl = fetch) {
@@ -86,28 +109,29 @@ function write(out, files) {
   return {directory: target};
 }
 
-export async function build(argv, {fetchImpl = fetch, now = new Date()} = {}) {
+export async function build(argv, {fetchImpl = fetch, now = new Date(), connect} = {}) {
   let parsed;
   try { parsed = parseArgs({args: argv, options: OPTIONS, strict: true, allowPositionals: false}); } catch (error) { throw new UsageError(error.message); }
   const {values} = parsed, usage = transparencyUsage(values);
   if (usage) throw new UsageError(usage);
-  for (const name of ['framework', 'tenant', 'key', 'signing-key', 'out']) if (!values[name]) throw new UsageError('Missing --' + name);
+  for (const name of ['framework', 'tenant', 'key', 'out']) if (!values[name]) throw new UsageError('Missing --' + name);
   if (!FRAMEWORKS.includes(values.framework)) throw new UsageError('--framework must be one of ' + FRAMEWORKS.join(', '));
   if (!!values.from !== !!values.to) throw new UsageError('Pass --from and --to together');
+  if (values['period-only'] && !values.from) throw new UsageError('--period-only needs --from and --to');
   if (existsSync(resolve(values.out))) throw Error(`Refusing to overwrite ${resolve(values.out)}`);
-  const publicKey = readFile(values.key, 64 * 1024, 'Key file').toString('utf8');
-  const signer = attestationSigner(readFile(values['signing-key'], 64 * 1024, 'Signing key').toString('utf8'));
+  const publicKey = readFile(values.key, 64 * 1024, 'Key file').toString('utf8'), signer = packSigner(values, connect);
   const checkpoint = values.checkpoint ? JSON.parse(readFile(values.checkpoint, MiB, 'Checkpoint').toString('utf8')) : undefined;
   const {exported, caseReports} = await inputs(values, fetchImpl);
   // Refuses anything that does not verify, before a single file is written.
   const evidence = verifyEvidence({exportBytes: exported.bytes, exportAttestation: exported.attestation, caseReports, publicKey, checkpoint, flags: values});
   const {files, index} = await buildPack({evidence, framework: values.framework, tenant: values.tenant, signer, now,
-    period: values.from ? {from: values.from, to: values.to} : null});
+    period: values.from ? {from: values.from, to: values.to} : null, periodOnly: !!values['period-only']});
   // The package must verify as an auditor would check it (builder key, same trust inputs) before it is written.
   verifyPack(files, {publicKey, packKey: signer.publicKey, checkpoint, flags: values});
   const written = write(values.out, files);
-  return {built: written, framework: values.framework, tenant: index.scope.tenant, period: index.scope.period, counts: index.counts,
-    builderKeyid: signer.keyid, statement: FILES.envelope, files: [...files.keys()].sort().map(path => ({path, sha256: sha256Hex(files.get(path))})),
+  return {built: written, framework: values.framework, packageScope: index.scope.kind, tenant: index.scope.tenant, period: index.scope.period,
+    counts: index.counts, builderKeyid: signer.keyid, signedBy: values['signing-key'] ? 'signing_key_file' : 'signer_process', statement: FILES.envelope,
+    files: [...files.keys()].sort().map(path => ({path, sha256: sha256Hex(files.get(path))})),
     note: 'Give the auditor the builder public key and the vault public key separately from the package.'};
 }
 

@@ -1,0 +1,468 @@
+{
+ "format": "evidscope-evidence-pack-mapping-v1",
+ "version": 2,
+ "mappingStatus": "draft_requires_human_review",
+ "id": "kr-ai-basic-act",
+ "title": {
+  "ko": "인공지능기본법(법률 제21311호)·시행령 등록 요구사항",
+  "en": "Korean AI Basic Act: registered requirements"
+ },
+ "sources": [
+  {
+   "title": "data/requirements.json (인공지능기본법 법률 제21311호, 시행령 제36580호)",
+   "readVia": "requirements catalog of EvidScope",
+   "note": "Article references and source URLs are those of the catalog; they were not re-read for evidence packages."
+  }
+ ],
+ "items": [
+  {
+   "id": "KR-31-1",
+   "citation": "인공지능기본법 제31조제1항 / 시행령 제23조",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "AI 사용 사전 고지",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "notice_pre_delivery"
+    }
+   ],
+   "judgement": [
+    "KR-31-1"
+   ]
+  },
+  {
+   "id": "KR-31-2",
+   "citation": "인공지능기본법 제31조제2항 / 시행령 제23조제2항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "생성형 결과물 표시",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "generated_output_marking"
+    }
+   ],
+   "judgement": [
+    "KR-31-2"
+   ]
+  },
+  {
+   "id": "KR-31-3",
+   "citation": "인공지능기본법 제31조제3항 / 시행령 제23조제3항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "사실적인 합성물의 명확한 고지",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "realistic_media_disclosure"
+    }
+   ],
+   "judgement": [
+    "KR-31-3"
+   ]
+  },
+  {
+   "id": "KR-32-RISK",
+   "citation": "인공지능기본법 제32조제1항제1호 / 시행령 제24조",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "안전성 위험 식별·평가·완화",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "safety_risk_management"
+    },
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "record",
+     "name": "agent_registry_policy"
+    }
+   ],
+   "judgement": [
+    "KR-32-RISK"
+   ]
+  },
+  {
+   "id": "KR-32-MONITOR",
+   "citation": "인공지능기본법 제32조제1항제2호 / 시행령 제24조",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "안전사고 모니터링·대응 체계",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "safety_incident_monitoring"
+    },
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "record",
+     "name": "case"
+    },
+    {
+     "type": "record",
+     "name": "case_decision"
+    },
+    {
+     "type": "eventKind",
+     "name": "safety_alert",
+     "source": "safety"
+    }
+   ],
+   "judgement": [
+    "KR-32-MONITOR"
+   ]
+  },
+  {
+   "id": "KR-32-SUBMIT",
+   "citation": "인공지능기본법 제32조제2항·제3항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "안전성 이행 결과 제출",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "safety_submission_receipt"
+    }
+   ],
+   "judgement": [
+    "KR-32-SUBMIT"
+   ]
+  },
+  {
+   "id": "KR-33",
+   "citation": "인공지능기본법 제33조제1항 / 시행령 제25조",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0033&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "고영향 해당 여부 사전 검토",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "high_impact_pre_review"
+    },
+    {
+     "type": "checkType",
+     "name": "high_impact_confirmation"
+    }
+   ],
+   "judgement": [
+    "KR-33"
+   ]
+  },
+  {
+   "id": "KR-34-RISK",
+   "citation": "인공지능기본법 제34조제1항제1호",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "고영향 위험관리",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "high_impact_risk_management"
+    },
+    {
+     "type": "checkType",
+     "name": "supplier_risk_reliance"
+    },
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "record",
+     "name": "agent_registry_policy"
+    }
+   ],
+   "judgement": [
+    "KR-34-RISK"
+   ]
+  },
+  {
+   "id": "KR-34-EXPLAIN",
+   "citation": "인공지능기본법 제34조제1항제2호",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "설명 방안",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "explanation_plan"
+    },
+    {
+     "type": "checkType",
+     "name": "supplier_explanation_reliance"
+    }
+   ],
+   "judgement": [
+    "KR-34-EXPLAIN"
+   ]
+  },
+  {
+   "id": "KR-34-PROTECT",
+   "citation": "인공지능기본법 제34조제1항제3호",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "이용자 보호",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "user_protection"
+    },
+    {
+     "type": "checkType",
+     "name": "supplier_protection_reliance"
+    }
+   ],
+   "judgement": [
+    "KR-34-PROTECT"
+   ]
+  },
+  {
+   "id": "KR-34-OVERSIGHT",
+   "citation": "인공지능기본법 제34조제1항제4호",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "사람의 관리·감독",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "oversight_plan"
+    },
+    {
+     "type": "record",
+     "name": "approval_request"
+    },
+    {
+     "type": "eventKind",
+     "name": "human_approval",
+     "source": "authority"
+    },
+    {
+     "type": "eventKind",
+     "name": "human_oversight_review",
+     "source": "authority"
+    },
+    {
+     "type": "record",
+     "name": "case_decision"
+    },
+    {
+     "type": "record",
+     "name": "agent_stop_order"
+    }
+   ],
+   "judgement": [
+    "KR-34-OVERSIGHT"
+   ]
+  },
+  {
+   "id": "KR-34-DOCUMENT",
+   "citation": "인공지능기본법 제34조제1항제5호 / 시행령 제27조제1항·제2항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "조치 문서·보관·게시",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "document_publication_retention"
+    },
+    {
+     "type": "record",
+     "name": "governance_document"
+    },
+    {
+     "type": "record",
+     "name": "retention_policy"
+    },
+    {
+     "type": "integrityCheck",
+     "name": "signed_ledger"
+    }
+   ],
+   "judgement": [
+    "KR-34-DOCUMENT"
+   ]
+  },
+  {
+   "id": "KR-35-IMPACT",
+   "citation": "인공지능기본법 제35조제1항 / 시행령 제28조",
+   "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "기본권 영향평가와 취약계층",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "impact_assessment"
+    },
+    {
+     "type": "checkType",
+     "name": "impact_effort"
+    }
+   ],
+   "judgement": [
+    "KR-35-IMPACT"
+   ]
+  },
+  {
+   "id": "KR-35-PUBLIC",
+   "citation": "인공지능기본법 제35조제2항",
+   "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "공공 이용 시 평가 제품 우선 고려",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "public_impact_preference"
+    }
+   ],
+   "judgement": [
+    "KR-35-PUBLIC"
+   ]
+  },
+  {
+   "id": "KR-30-EFFORT",
+   "citation": "인공지능기본법 제30조제3항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "고영향 AI 사전 검·인증 노력",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "certification_effort"
+    }
+   ],
+   "judgement": [
+    "KR-30-EFFORT"
+   ]
+  },
+  {
+   "id": "KR-30-PUBLIC",
+   "citation": "인공지능기본법 제30조제4항",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "공공 이용 시 검·인증 AI 우선 고려",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "public_certification_preference"
+    }
+   ],
+   "judgement": [
+    "KR-30-PUBLIC"
+   ]
+  },
+  {
+   "id": "KR-36-REPRESENTATIVE",
+   "citation": "인공지능기본법 제36조제1항·제2항·제3항 / 시행령 제29조",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0036&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "국외 사업자의 국내대리인 지정·신고",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "domestic_representative"
+    }
+   ],
+   "judgement": [
+    "KR-36-REPRESENTATIVE"
+   ]
+  },
+  {
+   "id": "KR-40-ORDER",
+   "citation": "인공지능기본법 제40조제1항·제2항·제3항 / 제43조제1항제3호",
+   "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0040&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+   "sourceStatus": "requirements_catalog_verified_statute_and_decree_2026-10-06",
+   "title": {
+    "ko": "사실조사 자료와 중지·시정명령 이행",
+    "en": null
+   },
+   "evidence": [
+    {
+     "type": "checkType",
+     "name": "authority_order_response"
+    },
+    {
+     "type": "record",
+     "name": "agent_stop_order"
+    },
+    {
+     "type": "eventKind",
+     "name": "stop_requested",
+     "source": "safety"
+    },
+    {
+     "type": "eventKind",
+     "name": "block_registered",
+     "source": "safety"
+    },
+    {
+     "type": "eventKind",
+     "name": "stop_confirmed",
+     "source": "safety"
+    }
+   ],
+   "judgement": [
+    "KR-40-ORDER"
+   ]
+  }
+ ],
+ "notMapped": []
+}

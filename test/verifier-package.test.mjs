@@ -98,8 +98,9 @@ test('package-verifier builds a dependency-free, reproducible verifier folder an
   // other files of the package; nothing loads code dynamically or reaches for the network through globals.
   assert.deepEqual(files.filter(p => p.startsWith('src/')), a.files.map(f => f.path).filter(p => p.startsWith('src/')));
   assert.ok(files.includes('src/verify-cli.mjs') && !files.includes('src/service.mjs') && !files.includes('src/store.mjs'));
-  // The mappings of evidence packages read these data files beside src/, as in the repository.
-  assert.deepEqual(files.filter(p => p.startsWith('data/')), ['data/isms-p-alignment.json', 'data/requirements.json']);
+  // The mappings of evidence packages read these data files beside src/, as in the repository, and every shipped mapping version.
+  assert.deepEqual(files.filter(p => p.startsWith('data/')), [...['eu-ai-act-logging', 'isms-p', 'kr-ai-basic-act'].flatMap(id => [1, 2]
+    .map(v => `data/evidence-pack-mappings/${id}-v${v}.json`)), 'data/isms-p-alignment.json', 'data/requirements.json']);
   for (const p of files.filter(f => f.endsWith('.mjs'))) {
     const text = read(p).toString();
     assert.doesNotMatch(text, /\bimport\s*\(|\brequire\s*\(|\bfetch\s*\(|WebSocket|process\.(binding|dlopen)|createRequire/, p);
