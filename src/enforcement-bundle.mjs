@@ -20,13 +20,19 @@ export function enforcementState({tenant,revision,entries,orders}){
  // Keyed by registry ids and free-text actor names: null-prototype maps, so __proto__, constructor or toString stay data.
  const agents=Object.create(null),actors=Object.create(null),sources=Object.create(null),stopOrders=Object.create(null);
  const sorted=[...entries].sort((a,b)=>byText(a.id,b.id));
+ // An active order keeps the sources and actors it stopped (frozen in its target) until it ends, so editing the entry or
+ // registering the names again under another entry does not take them out of distribution.
+ const names=(own,stops,k)=>[...new Set([...strings(own),...stops.flatMap(o=>strings(o.target?.[k]))])];
  for(const e of sorted){
   const stops=live.filter(o=>o.agentId===e.id);
   agents[e.id]={state:e.state,stopped:stops.some(o=>o.scope==='agent'),
    stopped_tools:[...new Set(stops.filter(o=>o.scope==='tools').flatMap(o=>strings(o.tools)))].sort(byText),
-   stop_orders:stops.map(o=>o.id),sources:strings(e.sources),actors:strings(e.actors),
+   stop_orders:stops.map(o=>o.id),sources:names(e.sources,stops,'sources'),actors:names(e.actors,stops,'actors'),
    tools:Object.fromEntries((Array.isArray(e.tools)?e.tools:[]).filter(t=>typeof t?.name==='string')
     .map(t=>[t.name,{enforcement:t.enforcement==='required'?'required':'not_required'}]))};
+ }
+ for(const o of live)if(Object.hasOwn(agents,o.agentId)){
+  for(const s of strings(o.target?.sources))sources[s]??=o.agentId;for(const a of strings(o.target?.actors))actors[a]??=o.agentId;
  }
  // One live entry per source and actor (the registry refuses overlaps); a retired entry answers only for names no live entry has.
  for(const retired of [false,true])for(const e of sorted)if((e.state==='retired')===retired){

@@ -48,14 +48,16 @@ export function createStopOrders({store,principals,policyObjects,dirty,rows,reta
    for(const ep of listed)if(!known.has(ep))fail(400,`등록되지 않은 집행 지점(enforcement 출처 자격)입니다: ${ep}`);
    const evidence=evidenceRefs(p,x.evidence),current=policy(p),settings=stopPropagationOf(current),at=now(),orderId=randomUUID();
    const suspends=scope==='agent'&&entry.state==='production',transitionId=suspends?randomUUID():null;
+   // A covering order replaces earlier active ones of the same agent, so one lift ends what one stop started. It inherits the
+   // names they stopped: re-issuing after an edit must not release a source or actor without the four-eyes lift.
+   const replaced=activeOf(p,entry.id).filter(o=>scope==='agent'||o.scope==='tools'&&o.tools.every(t=>tools.includes(t)));
+   const names=k=>[...new Set([...entry[k],...replaced.flatMap(o=>o.target?.[k]||[])])];
    const order={id:orderId,agentId:entry.id,registryVersion:entry.version,entryState:entry.state,scope,tools,reason,evidence,
-    target:{sources:entry.sources,actors:entry.actors},enforcementPoints:coverage(p,entry,listed,settings),
+    target:{sources:names('sources'),actors:names('actors')},enforcementPoints:coverage(p,entry,listed,settings),
     propagation:{windowSeconds:settings.windowSeconds,policyVersion:current.version,policySource:current.source},
     issuedBy:p.id,issuedAt:at,status:'active',version:1,change:'issued',effectiveFrom:at,...(suspends?{suspension:{transitionId}}:{})};
    store.put(p,STOP_ORDER_TYPE,orderId,order);dirty(p.tenant);
-   // A covering order replaces earlier active ones of the same agent, so one lift ends what one stop started.
-   const superseded=activeOf(p,entry.id).filter(o=>o.id!==orderId&&(scope==='agent'||o.scope==='tools'&&o.tools.every(t=>tools.includes(t))))
-    .map(o=>putVersion(p,o,{status:'superseded',supersededBy:{orderId,by:p.id,at}},'superseded').id);
+   const superseded=replaced.map(o=>putVersion(p,o,{status:'superseded',supersededBy:{orderId,by:p.id,at}},'superseded').id);
    // A whole-agent stop also closes pending promotion or resume requests: they must be asked again after the lift.
    if(scope==='agent')supersede(p,entry.id,suspends?'state_changed':'stop_order_issued');
    const applied=suspends?suspend(p,entry,{id:transitionId,reason,evidence,stopOrderId:orderId}):null;

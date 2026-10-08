@@ -63,3 +63,31 @@ test('R4-1: an entry id or actor name that is an Object.prototype key stays in t
     ['suspended', 'toString', 'toString', true]);
   assert.deepEqual(denyList(state).entries.map(e => e.agent), ['toString']);
 });
+
+test('R4-2: editing a stopped entry does not take its sources and actors out of distribution', async () => {
+  const created = await call('/api/registry', {id: 'mail-agent', owner: 'ops', purpose: 'replies', sources: ['alpha-agent'], actors: ['mail-agent']});
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  const stop = await call('/api/registry/mail-agent/stop', {reason: 'incident'});
+  assert.equal(stop.status, 200, JSON.stringify(stop.body));
+  // The same reviewer, alone, empties the names the order stopped (allowed outside approved/production) and re-registers them.
+  const edited = await call('/api/registry/mail-agent', {sources: [], actors: []});
+  assert.equal(edited.status, 200, JSON.stringify(edited.body));
+  assert.equal((await call('/api/registry', {id: 'mail-agent-2', owner: 'ops', purpose: 'x', sources: ['alpha-agent'], actors: ['mail-agent']})).status, 200);
+  const entry = (await denied()).find(e => e.agent === 'mail-agent');
+  assert.deepEqual([entry.deny, entry.sources, entry.actors], ['all', ['alpha-agent'], ['mail-agent']], 'the deny-list keeps the stopped names');
+  const data = await bundle();
+  assert.deepEqual([data.sources['alpha-agent'], data.actors['mail-agent']], ['mail-agent', 'mail-agent'], 'an active order keeps its names');
+  assert.deepEqual([data.agents['mail-agent'].sources, data.agents['mail-agent'].actors], [['alpha-agent'], ['mail-agent']]);
+  // A new whole-agent order by the same reviewer supersedes the first one; it inherits the names the first order stopped.
+  const again = await call('/api/registry/mail-agent/stop', {reason: 'reissued'});
+  assert.deepEqual([again.status, again.body.superseded], [200, [stop.body.order.id]]);
+  assert.deepEqual([again.body.order.target.sources, again.body.order.target.actors], [['alpha-agent'], ['mail-agent']]);
+  assert.deepEqual([(await bundle()).sources['alpha-agent'], (await denied()).find(e => e.agent === 'mail-agent').sources], ['mail-agent', ['alpha-agent']]);
+  // Lifting with four eyes releases the names to the entry that holds them now.
+  const order = again.body.order.id;
+  await call(`/api/registry/stops/${order}/lift`, {reason: 'fixed'});
+  const lifted = await h.api(`/api/registry/stops/${order}/lift/approve`, {body: {reason: 'ok'}, headers: {authorization: `Bearer ${second.token}`}});
+  assert.equal(lifted.status, 200, JSON.stringify(lifted.body));
+  const after = await bundle();
+  assert.deepEqual([after.sources['alpha-agent'], after.agents['mail-agent'].sources], ['mail-agent-2', []]);
+});
