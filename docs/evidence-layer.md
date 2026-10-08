@@ -45,6 +45,7 @@ flowchart LR
 | 위트니스 | 연결 | C2SP tlog-witness·cosignature, [litewitness](https://github.com/FiloSottile/torchwood), [OmniWitness](https://github.com/transparency-dev/witness) | 제출 클라이언트(pump)와 정책. 위트니스 서버는 만들지 않음(시험용 제외) |
 | 정책 | 연결 | [OPA](https://github.com/open-policy-agent/opa)·[Cedar](https://github.com/cedar-policy/cedar)·[MS AGT](https://github.com/microsoft/agent-governance-toolkit) 결정을 증거로 수집 | 기존 결정적 `evaluate()` 유지, 새 정책 언어는 만들지 않음 |
 | 차단·정지 배포 | 연결 | OPA Bundle Service API·Status API, AI·MCP 게이트웨이 | 레지스트리 상태와 정지 명령을 묶음·DSSE 거부 목록으로 내주고 활성화 보고를 기록. 차단은 집행 지점이 함([킬 스위치](kill-switch.md)) |
+| 에이전트 목록 | 연결 | [A2A Agent Card](https://github.com/a2aproject/A2A), [Backstage 카탈로그](https://backstage.io/docs/features/software-catalog/descriptor-format) | 신뢰 필드를 옮기지 않는 가져오기와 서명된 출처 기록([에이전트 레지스트리](agent-registry.md)) |
 | 사람 승인 | 형식 차용 | OpenID CIBA Core 1.0 poll 모드 | 승인 대기열과 DSSE 서명 답([사람 승인 대기열](approval-queue.md)). OAuth 토큰은 발급하지 않음 |
 | SIEM 전달 | 직렬화만 구현 | OCSF Detection Finding(2004) | OCSF 변환기. 상관분석·UEBA·SOAR는 만들지 않음 |
 | 규제 매핑 | **직접 구현(차별점)** | 인공지능기본법·시행령, ISMS-P 인증기준(참고 정렬) | 조문 단위 요구사항·기술검사·적용 판단 |

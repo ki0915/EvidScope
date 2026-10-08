@@ -21,6 +21,8 @@
 > **개선 2라운드(2026-10-07):** heads 로그 서명 키를 vault 밖의 [heads 서명기](docs/signer.md)로 옮길 수 있게 해, 서명기를 켜고 검증자가 그 키와 origin base를 고정하면 vault 호스트를 장악한 공격자도 tenant를 되돌린 기록에 위트니스 공동서명을 받을 수 없게 했고, 원장에는 salt를 넣은 커밋먼트만 남기고 이벤트 키를 [키 epoch로 감싸](docs/event-key-wrapping.md) 파기가 백업까지 미치게 했습니다. 내보내기는 DSSE·in-toto 증명과 C2SP `tlog-proof` [영수증](docs/receipts.md)으로 받고 따로 배포하는 `evidscope-verify`로 확인합니다. ISMS-P 인증기준 101개 항목과의 [참고 정렬](docs/isms-p-alignment.md)을 고시 원문으로 고정했습니다. 인증 판정은 아닙니다.
 >
 > **개선 3라운드(2026-10-07):** 2라운드 기능의 재감사 결함 4건을 고쳤고, 에이전트를 서명된 [레지스트리](docs/agent-registry.md)에 등록해 수명 주기 전이를 4-eyes로 남기며 게이트웨이·정책 엔진의 결정을 받아 실제 실행과 대조합니다. 검토자가 내린 [정지 명령](docs/kill-switch.md)은 OPA 묶음과 서명된 거부 목록으로 집행 지점에 배포되고 전파 시각이 증거로 남으며, 정책 엔진이 승인을 요구하면 [사람 승인 대기열](docs/approval-queue.md)에서 답하고 게이트웨이가 서명된 답을 검증합니다. 차단은 여전히 집행 지점이 합니다.
+>
+> **개선 4라운드(2026-10-08):** 3라운드 기능의 재감사 결함 5건(검토자 한 사람의 승인 우회, 거부 목록 누락 등)을 고쳤고, A2A Agent Card와 Backstage 카탈로그의 에이전트를 출처를 서명해 [레지스트리](docs/agent-registry.md) 후보로 가져오며, OTLP 결정 span과 Cedar 결정도 받습니다.
 
 ## 목적과 대상
 
