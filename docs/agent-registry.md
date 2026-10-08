@@ -1,6 +1,7 @@
 # 에이전트 레지스트리·정책 결정 수집 가이드
 
-> 2026-10-07 개선 3라운드(R3-G)에서 추가한 기능입니다. 증거 계층 전체 구조는 [증거 계층 아키텍처](evidence-layer.md)를 보세요.
+> 2026-10-07 개선 3라운드(R3-G)에서 추가한 기능입니다. OTLP 결정 span과 Cedar 어댑터는 4라운드(R4-D)에서 더했습니다. 증거 계층 전체
+> 구조는 [증거 계층 아키텍처](evidence-layer.md)를 보세요.
 
 ## 무엇을 하고 무엇을 하지 않는가
 
@@ -13,7 +14,8 @@
    승인이 필요한 전이는 등록자·구성 수정자·요청자가 아닌 검토자가 승인합니다(4-eyes). 전이 조건(게이트)과 위험 등급 규칙은 코드가 아니라
    서명된 정책 데이터입니다.
 2. **정책 결정 수집.** 게이트웨이·정책 엔진·가드레일 같은 집행 지점을 `enforcement` 출처로 등록해 `policy_decision`·`guardrail_decision`
-   기록을 받고, 같은 행동의 독립 도구 기록과 비교합니다. OPA 결정 로그는 어댑터로 변환합니다.
+   기록을 받고, 같은 행동의 독립 도구 기록과 비교합니다. OPA 결정 로그와 Cedar 결정(Amazon Verified Permissions CloudTrail 기록, Cedar
+   응답을 담은 로그)은 어댑터로 변환하고, 게이트웨이가 내보내는 OTLP 결정 span은 OTLP 수신기가 받습니다.
 
 **EvidScope는 여전히 아무것도 차단하지 않습니다.** 정지(suspended)나 폐기(retired) 상태로 바꿔도 에이전트 실행은 멈추지 않습니다. 차단은
 AI/MCP 게이트웨이와 OPA·Cedar·AGT 같은 정책 엔진이 하고, EvidScope는 그 결정과 실제 실행 기록을 서명해 보관하고 어긋남을 발견(finding)으로
@@ -201,6 +203,109 @@ node scripts/collect-opa-decisions.mjs --log decisions.json.gz --collector colle
 찾아 HMAC 수집 경로로 보냅니다. 거부된 이벤트가 있으면 종료 코드 1입니다. 어댑터는 OPA 서명·결정 로그의 완전성·실제 집행을 확인하지
 않으며, 결과의 `assurance`가 이를 밝힙니다.
 
+### OPA 결정 로그의 서명
+
+OPA 문서([결정 로그](https://www.openpolicyagent.org/docs/management-decision-logs), [설정](https://www.openpolicyagent.org/docs/configuration))에는
+결정 로그 자체에 서명이나 무결성 값을 붙이는 방법이 없습니다. 서명은 정책 묶음(bundle) 검증에만 있고, 결정 로그 업로드의 `services[_].credentials`
+(bearer·OAuth2·mTLS 등)는 업로드하는 쪽을 서비스에 인증할 뿐 로그 내용을 서명하지 않습니다. 또 OPA는 버퍼 한도·초당 한도·`drop` 규칙에 따라
+결정 이벤트를 버릴 수 있습니다. 그래서 어댑터는 서명을 검증하지 않고(`assurance.signatureVerified:false`), 서명 형식을 따로 만들지도 않습니다.
+EvidScope가 확인하는 것은 전송한 수집기의 `enforcement` 출처 자격(HMAC)까지입니다.
+
+## Cedar 결정 어댑터
+
+Cedar의 권한 판단 응답은 `decision`(Allow·Deny)과 `diagnostics`(`reason`: 결정을 만든 정책 id 목록, `errors`: 평가 중 오류가 난 정책 id와
+오류)로 이루어집니다. Cedar 자체에는 결정 로그 형식이 없으므로 `src/cedar-decision-adapter.mjs`는 문서로 정해진 두 형태를 받습니다.
+
+| `format` | 입력 | 결정·정책 | 시각·결정 id |
+|---|---|---|---|
+| `avp-cloudtrail` | [Amazon Verified Permissions CloudTrail](https://docs.aws.amazon.com/verifiedpermissions/latest/userguide/monitoring-cloudtrail.html) 데이터 이벤트(`{"Records":[...]}`, `IsAuthorized`·`IsAuthorizedWithToken`·`BatchIsAuthorized`·`BatchIsAuthorizedWithToken`) | `additionalEventData.decision`(배치는 `results[i].decision`), 기록에 있으면 `determiningPolicies`·`errors` | `eventTime`, `requestID`(배치는 `requestID:i`) |
+| `cedar-response` | 애플리케이션이 Cedar 응답(`{decision, diagnostics}`, FFI·WASM의 `{type:"success", response}`, Cedar Agent 응답)을 담아 남긴 로그 항목 | `decision`, `diagnostics.reason`, `diagnostics.errors[].policyId` | 수집기 설정 `record.id`·`record.time` pointer |
+
+- **결정:** 대소문자와 상관없이 `allow`·`deny`만 받습니다. `type:"failure"`(판단 자체 실패), CloudTrail `errorCode`가 있는 호출, 그 밖의 값은
+  추측하지 않고 `rejected`로 보고합니다.
+- **정책:** 결정을 만든 정책이 하나면 그 id가 `policyId`, 여럿이면 정렬한 id 목록의 digest(`cedar-policies:<32자리>`)가 `policyId`이고 id 목록은
+  `note`에 남깁니다(길이 한도 안에서). 오류는 개수와 정책 id만 남기고 오류 메시지는 남기지 않습니다. AVP 정책 저장소 id는 `note`에 남깁니다.
+- **남기지 않는 것:** 요청 `context`·엔터티, 오류·경고 메시지, CloudTrail의 `userIdentity`·`sourceIPAddress`·`userAgent`·`eventID`·리소스 ARN.
+- **대상 행동:** OPA 어댑터와 같이 수집기 설정의 JSON pointer로만 읽습니다. `avp-cloudtrail`에서는 결정 하나의 요청(`principal`·`action`·
+  `resource`·`context`) 아래만 가리킬 수 있습니다. `actor`는 필수이고, `actionId`를 주지 않으면 `cedar:<결정 id>`가 됩니다.
+- AVP가 아닌 이벤트, 다른 API 호출, 수집기 설정 `policyStoreId`와 다른 정책 저장소의 이벤트는 `skipped`에 이름별 개수로만 셉니다.
+  CloudTrail이 같은 기록을 두 번 전달하면 `skipped.duplicate`로 세고, 같은 결정 id에 내용이 다르면 거부합니다.
+- 이벤트 id는 수집기 id와 결정 id에서 만들어 같은 로그를 다시 보내도 중복으로 처리됩니다. `engine`은 `amazon-verified-permissions` 또는 `cedar`입니다.
+
+```json
+{"id": "alpha-gateway", "tenant": "alpha", "kind": "enforcement", "enforcementPointId": "photo-app", "format": "avp-cloudtrail",
+ "policyStoreId": "PSEXAMPLEabcdefg111111",
+ "target": {"actor": {"pointer": "/principal/entityId"}, "action": {"pointer": "/action/actionId"},
+            "actionId": {"pointer": "/context/contextMap/action_id/string"}}}
+```
+
+```powershell
+node scripts/collect-cedar-decisions.mjs --log cloudtrail.json.gz --collector collector.json            # 미리보기(기본)
+node scripts/collect-cedar-decisions.mjs --log cloudtrail.json.gz --collector collector.json --send --config config.json --base https://ingress.example.com/
+```
+
+전송·한도·종료 코드는 OPA 수집 스크립트와 같습니다(8MiB, 결정 1000건). AVP의 `decision`은 AVP가 그렇게 판단했다는 기록이지, 호출한
+애플리케이션이 그 판단을 집행했다는 기록이 아닙니다. CloudTrail 데이터 이벤트는 기본으로 꺼져 있고 늦게 전달될 수 있으므로 늦은 증거
+(`LATE_EVIDENCE`)와 함께 보세요.
+
+## OTLP 결정 span
+
+게이트웨이·사이드카가 결정을 OpenTelemetry span으로 내보내면 기존 OTLP 수신기(`POST /v1/traces`)가 받습니다. OTel 시맨틱 컨벤션에는 권한
+결정 결과 속성이 아직 없고(보안 규칙 `security_rule.*`만 개발 단계로 있음), [kube-agentic-networking 제안 0033](https://kube-agentic-networking.sigs.k8s.io/proposals/0033-Observability/)이
+검사 span에 `event.action`(allow·deny)과 `event.outcome`(검사 자체의 성공·실패)을 두자고 제안합니다. EvidScope는 이 제안을 따릅니다.
+agentgateway는 현재 정책 호출 child span(`agentgateway.outbound.kind: Policy`)과 `reason`만 내고 allow·deny 속성은 없으므로, Collector의
+transform 처리기로 0033 속성을 붙여야 합니다.
+
+| span 속성 | 결정 기록 필드 |
+|---|---|
+| `event.action` (`allow`·`deny`만) | `decision`. 이 속성이 있는 span만 결정 span입니다. 다른 값은 `unsupported_decision`으로 거부합니다. |
+| `gen_ai.agent.name`·`agent.name`·`gen_ai.agent.id`·`agent.id`(0033 baggage) | `actor`(필수) |
+| `gen_ai.tool.name`·`tool.name` | `tool`. 없으면 `mcp.method.name`이 `action`이 됩니다(둘 다 없으면 `decision_target_missing`). |
+| `security_rule.ruleset.name`, `security_rule.version` | `policyId`(식별자 형식이 아니면 digest), `policyVersion` |
+| `event.outcome` (`success`·`failure`·`unknown`) | `status` |
+| span 끝 시각(없거나 시작보다 이르면 시작 시각), 길이 | `occurredAt`, `latencyMs` |
+| trace id, span id | `actionId: otel-trace:<trace>`, `decisionId: otel:<trace>:<span>`, 이벤트 id `otel-decision:<trace>:<span>` |
+
+- `security_rule.name`이 있는 0033 규칙 span(`mcp.authorization.rule` 등)은 부모 검사 span의 결정을 설명할 뿐이라 저장하지 않습니다
+  (`decision_rule_span`). 둘 다 저장하면 결정 하나가 두 번 세어집니다.
+- 0033 예시의 검사 span에는 행위자·도구가 없고 부모 요청 span에 있습니다. 게이트웨이나 Collector가 검사 span에 `gen_ai.agent.id`와
+  `gen_ai.tool.name`을 함께 실어야 저장됩니다.
+- `error.message`, span 이름·이벤트·링크·상태 메시지, `guardrail.*`·`audit.*` 같은 다른 속성은 디코딩하지 않습니다.
+- 도구 출처가 같은 행동의 실행과 비교되게 하려면 실행 기록의 `actionId`를 `otel-trace:<W3C trace id>`로 보내야 합니다.
+
+**어느 자격이 결정을 저장하는가.** 결정은 `enforcement` 출처만 저장합니다. OTLP 수신기는 bearer 토큰만 받으므로, OTLP로 결정을 보내는 집행
+지점은 자기 `enforcement` 자격에 `otlpDecisions`를 켜야 합니다(OPA 상태 보고 경로처럼 bearer 토큰으로 인증하며, HMAC 비밀은 `/api/ingest`용으로 유지).
+
+```json
+{"id": "alpha-gateway", "tenant": "alpha", "role": "source", "kind": "enforcement", "token": "...", "hmacSecret": "...",
+ "otlpDecisions": {"enforcementPointId": "mcp-gw-1", "engine": "envoy-ext-authz", "clockUncertaintyMs": 1000}}
+```
+
+- vault는 결정 기록에 이 설정의 `enforcementPointId`·`engine`(기본 `otel`)·`clockUncertaintyMs`(기본 `unknown`)와 매핑 버전
+  (`note`의 `otel-decision-map-1`)을 더합니다. span이 이 값들을 정할 수 없습니다. 설정이 틀리면 서버가 시작하지 않습니다.
+- `otlp` 출처는 결정을 저장할 수 없습니다. 결정 span은 `decision_needs_enforcement_source`로 거부되고, GenAI span의 매핑·저장·
+  거부 개수는 이전과 같습니다. `otlpDecisions`가 없는 `enforcement` 자격은 OTLP 경로에서 403입니다.
+- `otlpDecisions`를 켠 자격이 보낸 GenAI span은 저장하지 않습니다(`not_decision_span`). 한 span이 GenAI span이면서 결정 span이면
+  자격에 맞는 쪽 하나만 저장하고 거부로 세지 않습니다.
+- `recordedBeforeExecution`은 쓰지 않습니다. span은 끝난 뒤 묶음으로 내보내지므로 결정이 실행 전에 기록됐는지 span으로는 알 수 없습니다.
+- `clockUncertaintyMs`를 정하지 않으면 시계 오차를 모르는 것으로 보아 거부와 실행의 순서를 확정하지 않습니다. 이때 거부 뒤 실행은
+  `EXECUTION_AFTER_DENY`가 아니라 `DECISION_ORDER_UNCERTAIN`으로 보고됩니다.
+- 같은 span을 다시 받으면 중복으로 처리됩니다. 자격 설정(`engine` 등)을 바꾼 뒤 같은 span을 다시 보내면 내용 충돌(`id_conflict`)입니다.
+
+## 출처별 매핑과 증명 범위
+
+| 출처 | 결정 근거 | 증명하는 것 | 증명하지 않는 것 |
+|---|---|---|---|
+| 직접 수집(`/api/ingest`, HMAC) | 집행 지점이 보낸 결정 기록 | 그 `enforcement` 자격이 이 내용을 보냈다는 것(요청 서명·nonce) | 실제 집행, 기록 시각의 정확성, 빠짐없음 |
+| OPA 결정 로그 어댑터 | `decision_id`·`result`·`path`·`bundles` | 수집기 자격이 이 결정 로그 내용을 전달했다는 것, 묶음 리비전 digest | OPA가 서명하지 않으므로 로그가 OPA에서 바뀌지 않았다는 것, 버려진 결정이 없다는 것, 집행 |
+| Cedar 어댑터(AVP CloudTrail) | `additionalEventData.decision`, 요청 | 수집기 자격이 이 CloudTrail 기록을 전달했다는 것 | CloudTrail 다이제스트 검증(하지 않음), 애플리케이션의 집행, 데이터 이벤트 기록이 켜져 있었다는 것 |
+| Cedar 어댑터(Cedar 응답 로그) | `decision`·`diagnostics` | 수집기 자격이 이 로그 항목을 전달했다는 것 | 로그 항목이 실제 Cedar 호출에서 나왔다는 것, 집행 |
+| OTLP 결정 span | `event.action` 등 허용 목록 속성 | `otlpDecisions`를 켠 `enforcement` 자격(bearer)이 이 span을 보냈다는 것 | 요청 서명(OTLP는 bearer만), 실행 전 기록 여부, 내보내지 않은 span, 집행 |
+
+모든 경로에서 결정 기록은 같은 필드 허용 목록과 검증(`validateEvent`)을 거치고, 같은 결정 규칙(`EXECUTION_AFTER_DENY` 등)이 같은 방식으로
+적용됩니다. 집행 여부는 어느 경로에서든 독립 도구 기록과의 비교로만 드러납니다. 이런 출처가 없는 tenant는 평가·스냅샷 해시·내보내기·검증이
+이전과 같습니다.
+
 ## 내보내기·오프라인 검증·재생
 
 레지스트리 기록(`agent_registry`·`agent_transition`·`agent_registry_policy`)은 다른 서명 객체처럼 내보내기에 들어갑니다. 검증기는 레지스트리
@@ -241,8 +346,10 @@ v1·v2 평가를 모두 원장 접두사에서 다시 계산합니다. 레지스
   되돌리기·갈라치기는 [투명성 로그](transparency-log.md)가 맡습니다.
 - 행동 시각(`occurredAt`)과 행위자 이름은 출처의 자기 보고입니다. 출처가 시각을 앞당기면 정지 이전 활동처럼 보일 수 있으므로, 등록 항목에
   인증된 `sources`를 넣고 늦게 받은 증거(`LATE_EVIDENCE`)를 함께 봐야 합니다.
-- 결정 기록이 실제로 집행됐는지, 결정 로그가 빠짐없는지는 확인하지 않습니다. OPA 서명된 결정 로그 검증과 OTLP span의 결정 매핑(kube-agentic-
-  networking 제안 0033의 `event.action`·`event.outcome`)은 다음 라운드 범위입니다.
+- 결정 기록이 실제로 집행됐는지, 결정 로그가 빠짐없는지는 확인하지 않습니다. OPA는 결정 로그 서명 방법을 제공하지 않아 서명 검증이 없고,
+  AVP CloudTrail 다이제스트 파일 검증도 하지 않습니다.
+- OTLP 결정 span은 0033 제안(제안 단계)의 `event.action` 값 `allow`·`deny`만 받습니다. `require_approval`·`modify`나 가드레일과 정책 결정의
+  구분(`guardrail_decision`)은 span 속성으로 정해진 것이 없어 모두 `policy_decision`으로 기록합니다.
 - 반복 거부의 창·임계값은 엔진 상수입니다. 등록 항목·정책을 쓸 때마다 tenant 전체를 다시 평가하므로 행동이 많은 tenant에서는 분석 대기열이 늘어납니다.
   평가 스냅샷에는 모든 등록 항목·정책 버전의 요약이 들어가므로, 버전이 아주 많아지면 스냅샷 한도를 넘어 평가가 `quarantined_resource_limit`로 기록됩니다.
 - 운영(production) 중에도 `owner`·`purpose`·`assetIds`·`systemId`는 고칠 수 있습니다(새 버전으로 기록). 동결되는 것은 구성 필드뿐입니다.

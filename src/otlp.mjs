@@ -6,13 +6,14 @@
 // and status messages never enter an event.
 import {validateAIObservation} from './ai-observations.mjs';
 import {screeningUnavailable} from './content-screening.mjs';
-import {canonical} from './crypto.mjs';
+import {canonical, digest} from './crypto.mjs';
 import {decodeTraceRequestProtobuf, OtlpDecodeError, structureBudget, structureLimits, NO_ATTRIBUTES} from './otlp-protobuf.mjs';
 
 export {OtlpDecodeError};
 export const OTLP_MAPPING_VERSION = 'otel-genai-map-1';
 export const OTLP_BATCH_FORMAT = 'evidscope-otlp-batch-v1';
 export const OTLP_COLLECTOR_ID = 'evidscope-otlp-receiver';
+export const OTLP_DECISION_MAPPING = 'otel-decision-map-1';
 
 // The only span attributes EvidScope decodes (protobuf) or reads (JSON).
 export const SPAN_ATTRIBUTE_ALLOWLIST = Object.freeze([
@@ -25,8 +26,13 @@ export const SPAN_ATTRIBUTE_ALLOWLIST = Object.freeze([
   'openinference.span.kind', 'llm.provider', 'llm.system', 'llm.model_name',
   'llm.token_count.prompt', 'llm.token_count.completion', 'embedding.model_name', 'tool.name', 'agent.name',
 ]);
+// Policy-decision spans (docs/agent-registry.md): kube-agentic-networking proposal 0033 `event.action` / `event.outcome` on the
+// check span, OTel `security_rule.*` (registry, development) for the policy, `agent.id` as 0033 propagates it, MCP method name.
+export const DECISION_ATTRIBUTE_ALLOWLIST = Object.freeze([
+  'event.action', 'event.outcome', 'security_rule.name', 'security_rule.ruleset.name', 'security_rule.version', 'mcp.method.name', 'agent.id',
+]);
 export const RESOURCE_ATTRIBUTE_ALLOWLIST = Object.freeze(['service.name']);
-const SPAN_KEYS = new Set(SPAN_ATTRIBUTE_ALLOWLIST), RESOURCE_KEYS = new Set(RESOURCE_ATTRIBUTE_ALLOWLIST);
+const SPAN_KEYS = new Set([...SPAN_ATTRIBUTE_ALLOWLIST, ...DECISION_ATTRIBUTE_ALLOWLIST]), RESOURCE_KEYS = new Set(RESOURCE_ATTRIBUTE_ALLOWLIST);
 
 // Known content-bearing keys (GenAI semconv opt-in content, deprecated and vendor dialects). Not used
 // for filtering (the allowlist is authoritative); kept for tests and the Collector configuration.
@@ -265,17 +271,58 @@ export function mapSpan(span, resource, now = Date.now()) {
   }};
 }
 
-// Maps a decoded request. rejected counts every span that is not stored, including non-GenAI spans.
+// ---- decision span -> policy_decision candidate -----------------------------------------------
+
+const SPAN_DECISIONS = new Set(['allow', 'deny']), OUTCOMES = new Set(['success', 'failure', 'unknown']);
+const MAX_LATENCY_MS = 3600000;
+// A span carrying `event.action` is a decision span. Returns undefined for any other span, else {decision} or {rejected}.
+// The candidate is not a record yet: the vault accepts it only from an enforcement source that opted in, and adds the
+// enforcement point, engine and clock bound from that credential's configuration (src/otlp-ingest.mjs).
+export function mapDecisionSpan(span, now = Date.now()) {
+  const a = span.attributes, value = a.get('event.action');
+  if (value === undefined) return undefined;
+  const traceId = span.traceId, spanId = span.spanId;
+  if (!HEX32.test(traceId) || ZERO.test(traceId) || !HEX16.test(spanId) || ZERO.test(spanId)) return {rejected: 'invalid_span_context'};
+  if (typeof value !== 'string' || !SPAN_DECISIONS.has(value)) return {rejected: 'unsupported_decision'};
+  // 0033 per-rule spans (security_rule.name) attribute the outcome of their parent check span, which carries the same
+  // event.action; storing both would count one decision twice.
+  if (a.get('security_rule.name') !== undefined) return {rejected: 'decision_rule_span'};
+  // The decision exists when the check span ends; its start is used only when the end is missing or earlier.
+  const start = occurredAt(span.startTimeUnixNano);
+  if (!start) return {rejected: 'invalid_time'};
+  const ended = occurredAt(span.endTimeUnixNano) && BigInt(span.endTimeUnixNano) >= BigInt(span.startTimeUnixNano);
+  const at = ended ? occurredAt(span.endTimeUnixNano) : start, nanos = ended ? BigInt(span.endTimeUnixNano) - BigInt(span.startTimeUnixNano) : undefined;
+  if (Date.parse(at) > now + 300000) return {rejected: 'future_time'};
+  const actor = text(a.get('gen_ai.agent.name')) ?? text(a.get('agent.name')) ?? id(a.get('gen_ai.agent.id')) ?? id(a.get('agent.id'));
+  const tool = text(a.get('gen_ai.tool.name')) ?? text(a.get('tool.name'));
+  // With a tool named, the MCP method (tools/call) is not the action of the tool record and would never match it.
+  const action = tool ? undefined : text(a.get('mcp.method.name'));
+  if (!actor || (!tool && !action)) return {rejected: 'decision_target_missing'};
+  const outcome = a.get('event.outcome'), ruleset = text(a.get('security_rule.ruleset.name')), version = text(a.get('security_rule.version'));
+  return {decision: {
+    id: `otel-decision:${traceId}:${spanId}`, kind: 'policy_decision', occurredAt: at, traceId, actionId: `otel-trace:${traceId}`, actor,
+    ...(tool ? {tool} : {action}), decision: value, decisionId: `otel:${traceId}:${spanId}`,
+    ...(OUTCOMES.has(outcome) ? {status: outcome} : {}),
+    ...(ruleset ? {policyId: ID.test(ruleset) ? ruleset : `otel-ruleset:${digest(ruleset).slice(0, 32)}`} : {}),
+    ...(version ? {policyVersion: version} : {}),
+    ...(nanos !== undefined ? {latencyMs: Math.min(MAX_LATENCY_MS, Number(nanos / 1000000n))} : {}),
+  }};
+}
+
+// Maps a decoded request. rejected counts every span that is not stored, including non-GenAI spans. A decision span is
+// forwarded as a candidate; `companion` marks one whose span also became a GenAI event, so the vault counts that span once
+// whichever of the two the credential may store.
 export function mapTraceRequest(decoded, {now = Date.now()} = {}) {
-  const events = [], rejected = {};
+  const events = [], decisions = [], rejected = {};
   let spans = 0;
   for (const rs of decoded.resourceSpans) for (const ss of rs.scopeSpans) for (const span of ss.spans) {
     spans++;
-    const mapped = mapSpan(span, rs.resource, now);
-    if (mapped.event) events.push(mapped.event);
-    else rejected[mapped.rejected] = (rejected[mapped.rejected] || 0) + 1;
+    const mapped = mapSpan(span, rs.resource, now), decision = mapDecisionSpan(span, now);
+    if (mapped.event) { events.push(mapped.event); if (decision?.decision) decisions.push({...decision.decision, companion: true}); }
+    else if (decision?.decision) decisions.push(decision.decision);
+    else { const reason = decision?.rejected ?? mapped.rejected; rejected[reason] = (rejected[reason] || 0) + 1; }
   }
-  return {spans, events, rejected};
+  return {spans, events, decisions, rejected};
 }
 
 // Vault-side re-validation. An OTLP principal can POST /api/ingest/otlp itself (MODE=vault serves it on the public
@@ -326,6 +373,21 @@ export function otlpEventInvariant(raw) {
   }
   if (raw.kind !== 'notice' || raw.actionId !== `otel-trace:${match[1]}` || raw.tool !== 'otel-genai' || raw.resource !== undefined) return false;
   return NOTICE_ACTIONS.has(raw.action) && observationInvariant(raw.aiObservation, raw, match[1], match[2]);
+}
+
+// Vault-side shape of a decision candidate: exactly what mapDecisionSpan emits (plus the companion flag), nothing else.
+const DECISION_ID = /^otel-decision:([0-9a-f]{32}):([0-9a-f]{16})$/;
+const DECISION_KEYS = ['id', 'kind', 'occurredAt', 'traceId', 'actionId', 'actor', 'tool', 'action', 'decision', 'decisionId', 'status', 'policyId',
+  'policyVersion', 'latencyMs', 'companion'];
+export function otlpDecisionInvariant(raw) {
+  const match = typeof raw?.id === 'string' && DECISION_ID.exec(raw.id);
+  if (!match || !plain(raw, DECISION_KEYS) || raw.kind !== 'policy_decision' || raw.traceId !== match[1]) return false;
+  if (raw.actionId !== `otel-trace:${match[1]}` || raw.decisionId !== `otel:${match[1]}:${match[2]}` || !SPAN_DECISIONS.has(raw.decision)) return false;
+  if (typeof raw.occurredAt !== 'string' || !ISO_MS.test(raw.occurredAt) || new Date(raw.occurredAt).toISOString() !== raw.occurredAt) return false;
+  if (text(raw.actor) !== raw.actor || (raw.tool === undefined) === (raw.action === undefined)) return false;
+  if (!optional(raw.tool, v => text(v) === v) || !optional(raw.action, v => text(v) === v)) return false;
+  if (!optional(raw.status, v => OUTCOMES.has(v)) || !optional(raw.policyId, v => ID.test(v)) || !optional(raw.policyVersion, v => text(v) === v)) return false;
+  return optional(raw.latencyMs, v => counter(v) && v <= MAX_LATENCY_MS) && optional(raw.companion, v => v === true);
 }
 
 export function rejectionSummary(rejected) {
