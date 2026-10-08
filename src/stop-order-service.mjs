@@ -120,5 +120,5 @@ export function createStopOrders({store,principals,policyObjects,dirty,rows,reta
   if(parts.length===4&&parts[2]==='lift'&&['approve','refuse'].includes(parts[3]))return decideLift(p,parts[1],parts[3],x);
   fail(404,'지원하지 않는 정지 명령 경로입니다');
  }
- return {issue,handle,assertPromotion,liftOnResume,forAgent,activeOf};
+ return {issue,handle,assertPromotion,liftOnResume,forAgent,activeOf,propagation};
 }

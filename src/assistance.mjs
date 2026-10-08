@@ -7,12 +7,22 @@ import {buildRoleExecution,loadRolePackages} from './role-packages.mjs';
 import {primaryModelPolicy} from './model-policy.mjs';
 
 const safeModelPolicy=primaryModelPolicy;
-const legacyModelPolicy=()=>({provider:'ollama-local',model:'qwen3:4b',cloudAllowed:false,maxResponses:4,timeoutSeconds:300,generation:{think:false,temperature:0.7,topP:0.8,topK:20,numCtx:8192,numPredict:1024,maxPromptBytes:24000}});
+// Version 1 of the repository base profiles, as first shipped (local Ollama qwen3:4b). No run uses it: the first assistance
+// read of a tenant signs a version 2 with safeModelPolicy, and packages and runs refuse any other policy. It stays because
+// version 1 is the unsigned base every tenant's signed profile history starts from (src/model-status.mjs shows the upgrade).
+const firstShippedModelPolicy=()=>({provider:'ollama-local',model:'qwen3:4b',cloudAllowed:false,maxResponses:4,timeoutSeconds:300,generation:{think:false,temperature:0.7,topP:0.8,topK:20,numCtx:8192,numPredict:1024,maxPromptBytes:24000}});
 const repositoryRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const rolePacks=loadRolePackages({root:repositoryRoot}),rolePackById=new Map(rolePacks.map(pack=>[pack.id,pack]));
 const protocolTools=['read_frozen_bundle','submit_advisory_draft'];
 const roleMetadata=id=>{const pack=rolePackById.get(id);return {id:pack.id,version:pack.version,packagePath:pack.packagePath,profileOwner:pack.profileOwner,modelVersion:pack.modelVersion,evalStatus:pack.evalStatus,adapter:pack.adapter,declaredTools:[...pack.tools],toolExecution:'declared_not_executable'};};
-const baseProfiles=rolePacks.map(pack=>({id:pack.id,version:1,name:pack.title,kind:'runtime',description:`Bounded repository role package ${pack.packagePath}`,instructions:[pack.instructions],tools:[...protocolTools],knowledge:[...pack.knowledge],eval:{required:[...pack.evalSets]},rolePackage:roleMetadata(pack.id),modelPolicy:legacyModelPolicy()}));
+const baseProfiles=rolePacks.map(pack=>({id:pack.id,version:1,name:pack.title,kind:'runtime',description:`Bounded repository role package ${pack.packagePath}`,instructions:[pack.instructions],tools:[...protocolTools],knowledge:[...pack.knowledge],eval:{required:[...pack.evalSets]},rolePackage:roleMetadata(pack.id),modelPolicy:firstShippedModelPolicy()}));
+// Latest profile of each repository role from the signed profile values (read-only, no upgrade), for src/model-status.mjs.
+export function latestRoleProfiles(signedProfiles){
+ const all=[...baseProfiles.map(clone),...signedProfiles];
+ return baseProfiles.map(base=>{const latest=all.filter(p=>p.id===base.id).sort((a,b)=>b.version-a.version)[0];
+  return {id:base.id,version:latest.version,modelPolicy:clone(latest.modelPolicy),rolePackage:clone(latest.rolePackage||base.rolePackage),
+   upgradePending:canonical(latest.modelPolicy)!==canonical(safeModelPolicy()),approvedPolicy:safeModelPolicy()};});
+}
 const humanRoles=new Set(['auditor','reviewer','admin']);
 const editableRoles=new Set(['reviewer','admin']);
 const terminalStates=new Set(['completed','abstained','failed','timed_out']);
