@@ -152,7 +152,7 @@ test('OTLP/JSON decoding accepts producer variants and ignores unknown fields', 
   const result = map(jsonRequest(...variants), 'json');
   assert.equal(result.events.length, 2); assert.equal(result.events[0].status, 'failure'); assert.equal(result.events[0].aiObservation.usage.inputTokens, 5);
   assert.equal(result.events[1].id, `otel:${TRACE}:00f067aa0ba902c2`); assert.equal(result.events[1].occurredAt, '2026-10-06T14:30:00.000Z');
-  assert.deepEqual(map('{}', 'json'), {spans: 0, events: [], rejected: {}});
+  assert.deepEqual(map('{}', 'json'), {spans: 0, events: [], decisions: [], rejected: {}});
   for (const bad of ['not json', '[]', '{"resourceSpans":{}}', '{"resourceSpans":[{"scopeSpans":[{"spans":[1]}]}]}'])
     assert.throws(() => decodeTraceRequest(bad, 'json'), e => e instanceof OtlpDecodeError && e.status === 400, bad);
   assert.throws(() => decodeTraceRequest(jsonRequest(jsonSpan({}), jsonSpan({})), 'json', {maxSpans: 1}), e => e.status === 413);

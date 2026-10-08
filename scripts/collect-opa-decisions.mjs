@@ -9,7 +9,7 @@ import {adaptOpaDecisions} from '../src/opa-decision-adapter.mjs';
 import {submit} from '../src/client.mjs';
 
 const MAX_BYTES=8*1024*1024;
-function load(file){
+export function load(file){
  const bytes=readFileSync(file);if(bytes.length>MAX_BYTES)throw Error('Bounded input exceeds 8MiB');
  const text=bytes[0]===0x1f&&bytes[1]===0x8b?gunzipSync(bytes,{maxOutputLength:MAX_BYTES}):bytes;
  return JSON.parse(text.toString('utf8'));
@@ -17,6 +17,10 @@ function load(file){
 export async function collectOpaDecisions({logFile,collectorFile,configFile,base,send=false}){
  const collector=load(collectorFile),result=adaptOpaDecisions(load(logFile),collector);
  if(!send)return {mode:'preview',...result};
+ return submitDecisions({collector,result,configFile,base});
+}
+// Shared with the other decision collectors (scripts/collect-cedar-decisions.mjs).
+export async function submitDecisions({collector,result,configFile,base}){
  const url=new URL(base);
  const loopback=url.protocol==='http:'&&['127.0.0.1','[::1]','localhost'].includes(url.hostname);
  if(url.username||url.password||url.search||url.hash||url.pathname!=='/'||!(url.protocol==='https:'||loopback))
@@ -30,7 +34,7 @@ export async function collectOpaDecisions({logFile,collectorFile,configFile,base
   if(response.status!==202)throw Error(`Decision ingestion failed: HTTP ${response.status}; resubmitting reuses the same event IDs`);
   submissions.push({id:event.id,accepted:true,duplicate:!!response.body.duplicate});
  }
- return {mode:'submitted',submissions,rejected:result.rejected,assurance:result.assurance};
+ return {mode:'submitted',submissions,rejected:result.rejected,...(result.skipped?{skipped:result.skipped}:{}),assurance:result.assurance};
 }
 if(process.argv[1]&&resolve(process.argv[1])===resolve('scripts/collect-opa-decisions.mjs')){
  const args=process.argv.slice(2),value=key=>args[args.indexOf(key)+1];
