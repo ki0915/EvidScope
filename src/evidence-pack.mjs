@@ -97,9 +97,11 @@ export function verifyEvidence({exportBytes, exportAttestation = null, caseRepor
 // ---------- index ----------
 const capSeqs = e => (Array.isArray(e.seqs) && e.seqs.length > MAX_SEQS ? {...e, seqs: e.seqs.slice(0, MAX_SEQS), seqsOmitted: e.seqs.length - MAX_SEQS} : e);
 const PRESENT = new Set(['present', 'verified_by_this_package']);
-function itemStatus(evidence) {
-  if (evidence.some(e => PRESENT.has(e.status))) return 'evidence_present';
-  return evidence.some(e => e.status === 'none_recorded') ? 'no_evidence_recorded' : 'not_in_export';
+// With a period, the signed-ledger check covers the whole ledger and is no evidence of that period by itself (round 7: a package for
+// a period without one log record still claimed "evidence present" for the log-keeping items).
+function itemStatus(evidence, period = null) {
+  if (evidence.some(e => PRESENT.has(e.status) && !(period && e.type === 'integrityCheck'))) return 'evidence_present';
+  return evidence.some(e => e.status === 'none_recorded' || PRESENT.has(e.status)) ? 'no_evidence_recorded' : 'not_in_export';
 }
 const caseFile = i => `${FILES.cases}case-${i + 1}.json`;
 // Same inputs, same index: everything here comes from verified evidence, the mapping and the period.
@@ -118,7 +120,7 @@ export function computeIndex({evidence, mapping, period = null}) {
       return reports.length ? {...m, caseReports: reports} : m;
     });
     const human = item.judgement === null ? null : judgements.filter(j => item.judgement.includes(j.requirementId));
-    return {id: item.id, citation: item.citation, title: item.title, sourceStatus: item.sourceStatus, status: itemStatus(found), evidence: found,
+    return {id: item.id, citation: item.citation, title: item.title, sourceStatus: item.sourceStatus, status: itemStatus(found, period), evidence: found,
       humanJudgement: human};
   });
   const tally = s => items.filter(i => i.status === s).length;
@@ -145,7 +147,7 @@ export function assertIndexBacked(index, evidence) {
   const records = evidence.bundle.records, period = index.scope.period;
   const kindOf = {record: null, eventKind: 'event', checkType: 'event', finding: 'evaluation'};
   for (const item of index.items) {
-    if (item.status !== itemStatus(item.evidence)) throw Error(`Index item ${item.id} claims ${item.status} without matching evidence`);
+    if (item.status !== itemStatus(item.evidence, period)) throw Error(`Index item ${item.id} claims ${item.status} without matching evidence`);
     for (const e of item.evidence) {
       const located = (e.seqs?.length ?? 0) + (e.seqsOmitted ?? 0), expected = e.type === 'finding' ? e.actions : e.count;
       if (e.status === 'present' ? !(e.count > 0 && located > 0 && located === expected) : e.seqs !== undefined) {
@@ -209,7 +211,7 @@ export function renderSummary(index, lang) {
     `- ${t.cases}: ${index.evidence.caseReports.length ? index.evidence.caseReports.map(c => `${c.file} (${md(c.reviewState)})`).join(', ') : t.none}`,
     '', `## ${t.items}`, ''];
   for (const item of index.items) {
-    const present = item.evidence.filter(e => PRESENT.has(e.status))
+    const present = item.status !== 'evidence_present' ? [] : item.evidence.filter(e => PRESENT.has(e.status))
       .map(e => `${evidenceLabel(e)} ${e.count}${seqSpan(e)}${e.caseReports ? ' → ' + e.caseReports.map(md).join(', ') : ''}`);
     const judgement = j => `${md(j.assessment)}/${md(j.applicability)} seq ${j.seq}${j.legalReviewRecord ? `, ${t.legal} seq ${j.legalReviewRecord.seq}` : ''}`;
     const judged = item.humanJudgement === null ? ''
