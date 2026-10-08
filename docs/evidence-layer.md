@@ -40,7 +40,7 @@ flowchart LR
 |---|---|---|---|
 | 수집 | 연결 | OpenTelemetry SDK, [OpenLLMetry](https://github.com/traceloop/openllmetry), [OpenInference](https://github.com/Arize-ai/openinference), [OTel Collector](https://github.com/open-telemetry/opentelemetry-collector) core | `/v1/traces` 수신기(JSON·protobuf·gzip/deflate/zstd), GenAI span → 증거 이벤트 매퍼 |
 | 스키마 | 채택 | [OTel GenAI semconv](https://github.com/open-telemetry/semantic-conventions-genai) 입력, [OCSF](https://github.com/ocsf/ocsf-schema) 출력 | 매핑표와 권한·승인 참조용 `evidscope.*` 이름공간만 |
-| 텔레메트리 저장·검색 | 연결 | [Langfuse](https://github.com/langfuse/langfuse), [Phoenix](https://github.com/Arize-ai/phoenix), SIEM | 증거 원장과 projection, trace ID 연결 |
+| 텔레메트리 저장·검색 | 연결 | [Langfuse](https://github.com/langfuse/langfuse), [Phoenix](https://github.com/Arize-ai/phoenix), SIEM | 증거 원장과 projection, trace ID 연결, 검증된 판정을 Langfuse 점수·Phoenix 주석으로 보냄([관측 도구 연동](observability-integration.md)) |
 | 변조 증거 | 표준대로 작게 구현 | RFC 6962 Merkle, [C2SP](https://github.com/C2SP/C2SP) signed-note·tlog-checkpoint | 의존성 없는 `src/tlog.mjs`(C2SP 시험 벡터로 검증) |
 | 위트니스 | 연결 | C2SP tlog-witness·cosignature, [litewitness](https://github.com/FiloSottile/torchwood), [OmniWitness](https://github.com/transparency-dev/witness) | 제출 클라이언트(pump)와 정책. 위트니스 서버는 만들지 않음(시험용 제외) |
 | 정책 | 연결 | [OPA](https://github.com/open-policy-agent/opa)·[Cedar](https://github.com/cedar-policy/cedar)·[MS AGT](https://github.com/microsoft/agent-governance-toolkit) 결정을 증거로 수집 | 기존 결정적 `evaluate()` 유지, 새 정책 언어는 만들지 않음 |
