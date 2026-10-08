@@ -116,7 +116,8 @@ async function parallel(url,requests){
  const answers=sockets.map(socket=>new Promise(resolve=>{let data='';socket.setTimeout(10000,()=>socket.destroy());
   socket.on('data',chunk=>{data+=chunk;if(data.includes('\r\n\r\n'))socket.destroy();});socket.on('close',()=>resolve(data.match(/^HTTP\/1\.1 \d+/)?.[0]));}));
  requests.forEach(({token,headers={},body},i)=>sockets[i].write(`POST /api/ingest HTTP/1.1\r\nHost: a\r\nAuthorization: Bearer ${token}\r\n`
-  +`Content-Type: application/json\r\n${Object.entries(headers).map(([k,v])=>`${k}: ${v}\r\n`).join('')}Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`));
+  +`Content-Type: application/json\r\n${Object.entries(headers).map(([k,v])=>`${k}: ${v}\r\n`).join('')}`
+  +`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`));
  return Promise.all(answers);
 }
 test('gateway envelopes: an oversized bearer cannot switch the gateway to one vault call per event for every source',async t=>{

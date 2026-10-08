@@ -2,7 +2,8 @@
 // operator's side: the vault makes no outbound calls (docs/observability-integration.md). The export is verified offline with
 // the trusted key first; only then can an action read `verified`. Preview is the default and contacts neither tool.
 //   node scripts/push-verdicts.mjs (--export EXPORT.json | --evidscope https://audit.example/) --key TRUST_ANCHOR.pem
-//     (--tenant TENANT | --checkpoint CHECKPOINT.json) [CHECKPOINT and transparency flags as scripts/verify.mjs] [--no-replay] [--link-base https://audit.example/]
+//     (--tenant TENANT | --checkpoint CHECKPOINT.json) [transparency flags as scripts/verify.mjs] [--no-replay]
+//     [--link-base https://audit.example/]
 //     [--langfuse https://cloud.langfuse.com [--langfuse-environment NAME]] [--phoenix https://phoenix.example] [--send]
 // Credentials come from the environment only: EVIDSCOPE_TOKEN (auditor), LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY, PHOENIX_API_KEY.
 import {randomUUID} from 'node:crypto';

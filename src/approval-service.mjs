@@ -140,7 +140,8 @@ export function createApprovals({store,principals,policyObjects,signer,now=()=>D
   }
   // Up to half a second early still counts as on time (network jitter).
   if(at+500>=entry.next)return;
-  const longer=Math.min(entry.interval+APPROVAL_LIMITS.slowDownSeconds,APPROVAL_LIMITS.maxIntervalSeconds);holder.entries.set(id,{next:at+longer*1000,interval:longer});
+  const longer=Math.min(entry.interval+APPROVAL_LIMITS.slowDownSeconds,APPROVAL_LIMITS.maxIntervalSeconds);
+  holder.entries.set(id,{next:at+longer*1000,interval:longer});
   ciba(400,'slow_down',`폴링 간격 ${longer}초 이상을 지키세요`,{interval:longer});
  }
  function prune(at){

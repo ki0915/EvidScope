@@ -120,7 +120,8 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
   t.after(() => h.close());
   const langfuse = await mockLangfuse(), phoenix = await mockPhoenix(); t.after(() => Promise.all([langfuse.close(), phoenix.close()]));
   const {common, when} = await scenario(h), dir = tempDir('evidscope-push-'), key = join(h.dir, 'trust-anchor.pem');
-  const base = ['--tenant', 'alpha', '--evidscope', `${h.audit.url}/`, '--key', key, '--link-base', 'https://audit.example/', '--langfuse', langfuse.url, '--phoenix', phoenix.url];
+  const base = ['--tenant', 'alpha', '--evidscope', `${h.audit.url}/`, '--key', key, '--link-base', 'https://audit.example/', '--langfuse', langfuse.url,
+    '--phoenix', phoenix.url];
   const exportFile = join(dir, 'export.json'), exported = (await h.api('/api/export')).body;
   writeFileSync(exportFile, JSON.stringify(exported));
   for (const canary of CANARIES) assert.ok(readFileSync(exportFile, 'utf8').includes(canary) || canary === CANARIES[8], `export holds ${canary}`);
