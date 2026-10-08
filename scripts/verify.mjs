@@ -6,6 +6,7 @@ import {REGISTRY_TYPES,verifyRegistryHistory} from '../src/agent-registry.mjs';
 import {STOP_ORDER_TYPE,verifyExportStopOrders} from '../src/stop-orders.mjs';
 import {APPROVAL_TYPE,verifyApprovalHistory} from '../src/approvals.mjs';
 import {verifyAttestation} from '../src/receipts.mjs';
+import {hasRotationRecords,verifyRotationHistory} from '../src/retention-rotation.mjs';
 import {transparencyOptions,transparencyFlags} from './transparency-flags.mjs';
 import {main} from '../src/verify-cli.mjs';
 // `pack` verifies an auditor evidence package (docs/evidence-pack.md) exactly as evidscope-verify pack does.
@@ -26,7 +27,9 @@ else try{
  const registry=bundle.records.some(row=>REGISTRY_TYPES.includes(row.type))?verifyRegistryHistory(bundle.records):undefined;
  const stopOrders=bundle.records.some(row=>row.type===STOP_ORDER_TYPE)?verifyExportStopOrders(bundle):undefined;
  const approvals=bundle.records.some(row=>row.type===APPROVAL_TYPE)?verifyApprovalHistory(bundle.records):undefined;
- console.log(JSON.stringify(replay||attestation||registry||approvals||stopOrders?{...result,...(registry?{registry}:{}),...(approvals?{approvals}:{}),
-  ...(stopOrders?{stopOrders}:{}),...(replay?{replay}:{}),...(attestation?{attestation}:{})}:result,null,2));
- if(replay&&!replay.valid||registry&&!registry.valid||approvals&&!approvals.valid||stopOrders&&!stopOrders.valid)process.exitCode=1;
+ // Rotation policies and scheduled dispositions (docs/retention-rotation.md): two people, routine classes only, holds and cases first.
+ const retentionRotation=hasRotationRecords(bundle.records)?verifyRotationHistory(bundle.records):undefined;
+ console.log(JSON.stringify(replay||attestation||registry||approvals||stopOrders||retentionRotation?{...result,...(registry?{registry}:{}),...(approvals?{approvals}:{}),
+  ...(stopOrders?{stopOrders}:{}),...(retentionRotation?{retentionRotation}:{}),...(replay?{replay}:{}),...(attestation?{attestation}:{})}:result,null,2));
+ if(replay&&!replay.valid||registry&&!registry.valid||approvals&&!approvals.valid||stopOrders&&!stopOrders.valid||retentionRotation&&!retentionRotation.valid)process.exitCode=1;
 }catch(e){console.error(e.message);process.exitCode=1;}
