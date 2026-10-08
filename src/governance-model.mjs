@@ -9,7 +9,8 @@ import {canonical} from './crypto.mjs';
 import {INTOTO_PAYLOAD_TYPE, ed25519Verifier, intotoStatement, openEnvelope, parseStatement, signEnvelope} from './dsse.mjs';
 import {TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, mappingError, parseModelContent, resolveMapping, RULE_KIND, normalizeMappingItem}
   from './governance-mapping.mjs';
-import {BASELINES, PINNED_GGUF, SAFETY_CHECKS, assessGovernanceReport, beats, hashOf, measurementProblem, scoreSummary, verifyGovernanceReport}
+import {BASELINES, GATE, PINNED_GGUF, SAFETY_CHECKS, assessGovernanceReport, compareWithBaseline, hashOf, measurementProblem, scoreSummary,
+  verifyGovernanceReport}
   from './governance-mapping-eval.mjs';
 import {governanceAdmission, buildDataset} from './governance-mapping-data.mjs';
 
@@ -87,14 +88,17 @@ export function verifyPromotion({envelope, report, role, trust, now = Date.now()
   return {...p, keyid: signer.keyid};
 }
 
-// Base mode: the base model with retrieval and the constrained schema runs only when a measured report shows it beats rules-only
-// on precision at no lower coverage and loses no safety check to it.
+// Base mode: the base model with retrieval and the constrained schema runs only when a measured report shows it reaches the gate's
+// minimum precision, beats rules-only under the gate's precision comparison and loses no safety check to it.
 export function assessBaselineMode(report, {now = Date.now()} = {}) {
   let m;
   try { m = verifyGovernanceReport(report, {now, requireCandidate: false}); } catch (error) { return {allowed: false, reasons: [error.code || error.message]}; }
   const rc = m.metrics.retrieval_constrained, rules = m.metrics.rules_only, reasons = [], problem = measurementProblem(report, 'retrieval_constrained');
   if (problem) reasons.push(`retrieval_constrained: ${problem}`);
-  if (!beats(rc, rules)) reasons.push('baseline_not_better_than_rules_on_precision');
+  if (!(rc.precision >= GATE.minPrecision)) reasons.push('baseline_precision_below_minimum');
+  const outputs = Object.fromEntries(Object.entries(report.variants).map(([v, run]) => [v, run.outputs]));
+  if (!compareWithBaseline(m.gateRows, outputs, 'rules_only', {candidate: 'retrieval_constrained'}).beats)
+    reasons.push('baseline_not_better_than_rules_on_precision');
   for (const k of SAFETY_CHECKS) if (rc.safety[k].rate < rules.safety[k].rate) reasons.push(`baseline_loses_${k}`);
   return {allowed: reasons.length === 0, reasons, metrics: m.metrics};
 }
