@@ -1,4 +1,4 @@
-// Links from EvidScope's action and trace views to the same trace in Langfuse or Phoenix (config.json traceLinks), and the
+// Links from EvidScope's action and trace views to the same trace in Langfuse or Phoenix (TRACE_LINKS_FILE), and the
 // #action= deep link back (docs/observability-integration.md).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,8 +31,7 @@ test('trace link templates: https, placeholder after the host, bounded, checked 
 function fixture(t, traceLinksConfig) {
   mkdirSync('.test-runs', {recursive: true});
   const dir = mkdtempSync(resolve('.test-runs/trace-links-')), config = initialize(dir);
-  if (traceLinksConfig !== undefined) config.traceLinks = traceLinksConfig;
-  const s = createService({dataDir: join(dir, 'data'), config, key: readFileSync(join(dir, 'signing-private.pem'), 'utf8')});
+  const s = createService({dataDir: join(dir, 'data'), config, key: readFileSync(join(dir, 'signing-private.pem'), 'utf8'), traceLinks: traceLinksConfig});
   t.after(() => s.store.close());
   const principal = kind => config.principals.find(p => p.tenant === 'alpha' && (p.kind === kind || p.role === kind));
   const get = path => s.handle('GET', new URL(`http://localhost${path}`), {authorization: `Bearer ${principal('auditor').token}`});

@@ -43,7 +43,7 @@ import {bundleSigner} from './enforcement-bundle.mjs';
 import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 
-export function createService({dataDir,config,key,dataKey,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
+export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
  bundleSigning}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
@@ -51,8 +51,8 @@ export function createService({dataDir,config,key,dataKey,previousDataKeys=[],ev
  const duplicateIds=duplicatePrincipalIds(principals);
  if(duplicateIds.length)throw Error(`Invalid credential configuration: principal ids must be unique (duplicate: ${duplicateIds.join(', ')})`);
  workerTenantScopes(principals,config.profile);
- // Operator-configured links to the same trace in Langfuse or Phoenix (docs/observability-integration.md); checked before anything opens.
- const linkTemplates=traceLinkTemplates(config.traceLinks);
+ // Operator-configured links to the same trace in Langfuse or Phoenix (TRACE_LINKS_FILE, docs/observability-integration.md), checked first.
+ const linkTemplates=traceLinkTemplates(traceLinkConfig);
  const activation=assertRecoveryActivation({dataDir,key,config});
  // Pin and witness anchors are checked read-only before Store can migrate or re-seal anything.
  const tlogConfig=prepared?.config||loadTransparencyConfig({dataDir}),tlogStartup=assertTransparencyAnchors({dataDir,key,config:tlogConfig,probe:prepared?.probe});

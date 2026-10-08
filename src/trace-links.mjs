@@ -1,7 +1,7 @@
 // Links from EvidScope's action and trace views to the same OTel trace in Langfuse, Phoenix or another trace UI
-// (docs/observability-integration.md). The operator configures URL templates in config.json `traceLinks`; the vault only fills
-// in a validated W3C trace id and never contacts the target. Example:
-//   "traceLinks": [{"name": "Langfuse", "url": "https://cloud.langfuse.com/project/PROJECT_ID/traces/{traceId}"}]
+// (docs/observability-integration.md). The operator lists URL templates in the JSON file TRACE_LINKS_FILE names; the vault only
+// fills in a validated W3C trace id and never contacts the target. Example file:
+//   [{"name": "Langfuse", "url": "https://cloud.langfuse.com/project/PROJECT_ID/traces/{traceId}"}]
 export const TRACE_LINK_LIMITS = Object.freeze({templates: 4, name: 40, url: 500, traces: 10});
 const PLACEHOLDER = '{traceId}', SAMPLE = '0123456789abcdef0123456789abcdef';
 const otelTrace = v => typeof v === 'string' && /^[a-f0-9]{32}$/.test(v) && !/^0+$/.test(v);

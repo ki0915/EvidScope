@@ -366,7 +366,7 @@ function actionEvidenceSummary(data) {
   }
   node.append(referenceCard); return node;
 }
-// Operator-configured links to the same OTel trace in Langfuse or Phoenix (config.json traceLinks); https only, new tab, no referrer.
+// Operator-configured links to the same OTel trace in Langfuse or Phoenix (TRACE_LINKS_FILE); https only, new tab, no referrer.
 function traceLinkRow(links) {
   const safe = (Array.isArray(links) ? links : []).filter((link) => { try { return new URL(link.url).protocol === 'https:'; } catch { return false; } });
   if (!safe.length) return null;

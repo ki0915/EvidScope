@@ -111,7 +111,13 @@ const sent = (...mocks) => mocks.flatMap(m => m.requests.map(r => r.raw)).join('
 const env = (h, extra = {}) => ({EVIDSCOPE_TOKEN: h.principal('auditor').token, ...SECRETS, ...extra});
 
 test('push-verdicts: mapping, preview default, idempotent update, canaries, tampering, credentials, HTTPS and redirects', async t => {
-  const h = await harness(); t.after(() => h.close());
+  // The vault links its action view to the same trace in Langfuse (TRACE_LINKS_FILE); the pushed comment links back.
+  const linksFile = join(tempDir('evidscope-links-'), 'trace-links.json');
+  writeFileSync(linksFile, JSON.stringify([{name: 'Langfuse', url: 'https://langfuse.example/project/p1/traces/{traceId}'}]));
+  process.env.TRACE_LINKS_FILE = linksFile;
+  let h;
+  try { h = await harness(); } finally { delete process.env.TRACE_LINKS_FILE; }
+  t.after(() => h.close());
   const langfuse = await mockLangfuse(), phoenix = await mockPhoenix(); t.after(() => Promise.all([langfuse.close(), phoenix.close()]));
   const {common, when} = await scenario(h), dir = tempDir('evidscope-push-'), key = join(h.dir, 'trust-anchor.pem');
   const base = ['--evidscope', `${h.audit.url}/`, '--key', key, '--link-base', 'https://audit.example/', '--langfuse', langfuse.url, '--phoenix', phoenix.url];
@@ -158,6 +164,8 @@ test('push-verdicts: mapping, preview default, idempotent update, canaries, tamp
     assert.ok(phxVerdict.result.explanation.includes('https://audit.example/#action=pay-run-1'));
     assert.deepEqual([...phoenix.annotations.values()].filter(a => a.span_id).map(a => a.span_id).sort(), [SPAN_CHAT, SPAN_TOOL]);
     assert.ok(phoenix.requests.every(r => r.query === '?sync=true'));
+    const view = (await h.api('/api/actions/pay-run-1')).body;
+    assert.deepEqual(view.traceLinks, [{name: 'Langfuse', traceId: TRACE, url: `https://langfuse.example/project/p1/traces/${TRACE}`}]);
   });
 
   await t.test('no payload or body field leaves EvidScope (canaries)', () => {
