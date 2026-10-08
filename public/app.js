@@ -1079,6 +1079,7 @@ async function rotationCard() {
   const data = await api('/api/retention/rotation'); const active = data.active; const scheduler = data.scheduler || {};
   const node = card('정기 로테이션', '두 사람이 사전 승인한 정책의 일상 이벤트 분류만 기간이 지나면 일정에 따라 내용 키를 파기합니다. 원장 기록·해시는 남습니다.');
   const days = (seconds) => seconds === null || seconds === undefined ? '사용 안 함' : `${Math.round(seconds / 86400 * 100) / 100}일`;
+  if (data.historyValid === false) node.append(el('p', 'message error', `로테이션 정책·정기 파기 이력이 검증되지 않아 실행을 거부합니다: ${data.historyError}`));
   if (active) {
     node.append(el('p', '', `활성 정책 v${active.version} · 제안 ${active.proposedBy} · 승인 ${active.approvedBy} · 유효기한 ${date(active.validUntil)}`),
       el('p', 'muted', `접근 기록 보관 ${days(active.terms.accessLogRetentionSeconds)} · 1회 최대 ${active.terms.maxPerRun}건 · 목적: ${active.terms.purpose}`),

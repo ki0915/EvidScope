@@ -1,7 +1,8 @@
 import {randomUUID} from 'node:crypto';
 import {cleanText,date,identifier,fail} from './model.mjs';
 import {canonical,digest,isEncryptedEvent,verifyBundle} from './crypto.mjs';
-import {ROTATION_PRINCIPAL,ROTATION_TYPE,checkRotationHistory,eventRotationClass,requiredRotationSeconds,rotationTermsProblem} from './retention-rotation.mjs';
+import {ROTATION_PRINCIPAL,ROTATION_TYPE,checkRotationHistory,eventRotationClass,requiredRotationSeconds,rotationTermsProblem,verifyRotationHistory}
+ from './retention-rotation.mjs';
 import {ACCESS_PRUNE_TYPE} from './access-log.mjs';
 
 // Destruction is an explicit two-person operation: a plan per erasure, or a rotation policy two people activated beforehand
@@ -121,6 +122,8 @@ export function createRetention(store,{rotation:{intervalMs=0}={},accessLog}={})
  // and the event's own retainUntil always win (scan marks such events ineligible); the verifier then checks what was written.
  function rotate(tenant){
   const p={tenant,id:ROTATION_PRINCIPAL,role:'system'};
+  // Access-log rows are deleted after the commit, so the run must own its transaction: an outer rollback could undo the signed boundary.
+  if(store.db.isTransaction||store.ledgerTransaction)throw Error('Retention rotation must run in its own transaction');
   const result=store.transaction(()=>{
    try{store.checkActionProjection(tenant);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}
    const {bundle,bySeq,items}=scan(p),policy=checkRotationHistory(bundle.records).active,now=new Date(),at=now.toISOString();
@@ -171,9 +174,10 @@ export function createRetention(store,{rotation:{intervalMs=0}={},accessLog}={})
   return results;
  }
  function rotationStatus(p){
-  const bundle=verifyProjection(p),history=checkRotationHistory(bundle.records),policies=store.list(p.tenant,ROTATION_TYPE);
+  // An unverifiable history is reported, not hidden: runs refuse it, and the screen shows why.
+  const bundle=verifyProjection(p),history=verifyRotationHistory(bundle.records),policies=store.list(p.tenant,ROTATION_TYPE);
   const last=bundle.records.filter(r=>r.type==='retention_disposition'&&r.payload.rotation).at(-1);
-  return {active:history.active,policies:policies.sort((a,b)=>b.version-a.version),
+  return {historyValid:history.valid,...(history.valid?{}:{historyError:history.error}),active:history.active??null,policies:policies.sort((a,b)=>b.version-a.version),
    scheduler:{enabled:intervalMs>0,intervalMs:intervalMs||null,lastRun:runs.get(p.tenant)||null,nextRunAt:intervalMs>0?nextRunAt:null},
    lastDisposition:last?{seq:last.seq,executedAt:last.payload.executedAt,erased:last.payload.keyIds.length,policyVersion:last.payload.rotation.policyVersion}:null,
    erasedByClass:history.erasedByClass,scheduledDispositions:history.scheduledDispositions,rotatedEvents:history.rotatedEvents,

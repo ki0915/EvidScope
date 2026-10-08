@@ -5,6 +5,8 @@ import {createHash,generateKeyPairSync,randomUUID} from 'node:crypto';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tempDir} from './temp-dir.mjs';
+import {harness} from './harness.mjs';
+import {submit} from '../src/client.mjs';
 import {createService} from '../src/service.mjs';
 import {canonical,digest,mac,makeCheckpoint,verifyBundle} from '../src/crypto.mjs';
 import {evaluateJob} from '../src/worker.mjs';
@@ -212,6 +214,8 @@ test('the verifier refuses a critical class, a one-person activation or an early
  // The vault refuses to run on a policy history it cannot verify.
  f.store.transaction(()=>f.store.put({tenant:'alpha',id:'admin'},'retention_rotation','forced',{...activation(good).payload,id:'forced'}));
  await assert.rejects(()=>f.call('/api/retention/rotation/run',{},'admin'),/Retention rotation history invalid/);
+ const shown=await f.call('/api/retention/rotation',undefined,'auditor');
+ assert.equal(shown.historyValid,false);assert.match(shown.historyError,/changed its terms/);assert.equal(shown.active,null);
 });
 
 test('exports written before rotation keep verifying, and recovery frontiers accept scheduled dispositions',async t=>{
@@ -297,4 +301,22 @@ test('an access log from before pruning gets the floor-aware delete trigger and 
  assert.match(log.db.prepare("SELECT sql FROM sqlite_schema WHERE name='access_log_immutable_delete'").get().sql,/access_log_floor/);
  assert.throws(()=>log.db.prepare('DELETE FROM access_log WHERE tenant=?').run('alpha'),/append only/);
  assert.throws(()=>log.db.exec('DROP TRIGGER access_log_immutable_delete'),/not authorized/);
+});
+
+test('the vault schedules rotation from RETENTION_ROTATION_INTERVAL_MS and erases a routine event over HTTP',async t=>{
+ process.env.RETENTION_ROTATION_INTERVAL_MS='1000';
+ let h;try{h=await harness({vaultOnly:true});}finally{delete process.env.RETENTION_ROTATION_INTERVAL_MS;}
+ t.after(()=>h.close());
+ const api=(path,body,role='reviewer')=>h.api(path,{body,role});
+ assert.equal((await api('/api/retention/policy',{retentionSeconds:1,purpose:'synthetic',reason:'synthetic only'})).status,200);
+ const event={id:'heartbeat-1',actionId:'heartbeat',traceId:'heartbeat',kind:'heartbeat',occurredAt:new Date().toISOString()};
+ assert.equal((await submit(h.ingress.url,h.principal('telemetry'),event)).status,202);
+ const proposal=(await api('/api/retention/rotation',{classes:[{sourceKind:'telemetry',kind:'heartbeat',retentionSeconds:1}],purpose:'x',reason:'x'})).body;
+ assert.equal((await api(`/api/retention/rotation/${proposal.id}/approve`,{reason:'second person'},'admin')).status,200);
+ let status;
+ for(let i=0;i<40&&!status?.rotatedEvents;i++){await sleep(250);status=(await h.api('/api/retention/rotation')).body;}
+ assert.equal(status.scheduler.enabled,true);assert.equal(status.scheduler.intervalMs,1000);
+ assert.equal(status.rotatedEvents,1,JSON.stringify(status.scheduler));
+ assert.equal((await h.api('/api/events')).body.total,0);
+ assert.equal((await h.api('/api/integrity')).body.valid,true);
 });
