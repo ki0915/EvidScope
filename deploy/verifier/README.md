@@ -79,6 +79,10 @@ vault 키처럼 묶음과 다른 경로로 받습니다. 검증기는 검증한 
 node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key builder-public.pem [CHECKPOINT.json] [--tenant T]
 ```
 
+기간 묶음(`--period-only`)은 기간의 원장 구간만 레코드 영수증으로 담습니다. 검증기는 각 레코드가 서명된 tenant 로그에 들어 있음을
+확인하지만, 기간 안에 어떤 증거가 없다는 것(부재)은 증명하지 않습니다. 이 폴더는 배포한 모든 대응표 버전을 `data/evidence-pack-mappings/`에
+싣고 있어, 예전 묶음도 그 묶음이 이름 붙인 버전으로 검증합니다.
+
 투명성 플래그(선택): `--witness VKEY`(반복) `--quorum N` `--origin-base BASE` `--max-staleness 초` `--require-transparency`
 `--require-tenant-witness` `--heads-key VKEY`(반복, [heads 서명기](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md) 키) `--require-heads-signer`(`--origin-base` 필요).
 `vault_host`는 `--origin-base`를 고정했을 때만 나옵니다.

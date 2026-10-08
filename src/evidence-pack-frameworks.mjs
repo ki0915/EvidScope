@@ -3,6 +3,7 @@
 // "evidence present" never means that an item is met. Published with the offline verifier together with the data files it reads.
 import {readFileSync} from 'node:fs';
 import {canonical} from './crypto.mjs';
+import {sha256Hex} from './dsse.mjs';
 import {EVIDENCE_TYPES} from './evidence-inventory.mjs';
 import {krGovernanceCheckDefinitions} from './kr-governance-evidence.mjs';
 
@@ -112,18 +113,48 @@ function ismsMapping() {
 }
 
 const BUILDERS = {'eu-ai-act-logging': euMapping, 'kr-ai-basic-act': krMapping, 'isms-p': ismsMapping};
-// The mapping object written to mapping.json of a package; the same input always gives the same bytes.
+// Mapping versions shipped with the verifier: data/evidence-pack-mappings/<framework>-v<n>.json, the exact mapping.json bytes of
+// packages that name the version (version 1: the mappings of round 6, which carry no version field). A package verifies against the
+// version it names; a version this verifier does not ship is refused unless the auditor accepts the package's own mapping.
+export const MAPPING_VERSION = 2;
+export const MAPPING_VERSIONS = {
+  'eu-ai-act-logging': {1: '54b474415247708702aa4a0df6079cd3447794269ffeceb0a0c6a2a4717e4b5f',
+    2: 'e9e4a7305536ec7e09cfbaa2ab07a145b1a7a3a2e031654620283c40da77d0fc'},
+  'kr-ai-basic-act': {1: '0a3bcb097f605a65393996242d13a6a251b3258b08257d2de46b87da32c49d93',
+    2: '0b34923d153fe0fb80cd103efdbd75425b8b6d332621645691a5dcad48f29b6c'},
+  'isms-p': {1: '2276885b8d3e3a4cbfce6884ddb3411b32dc79167b5e278234172453841b7aaa',
+    2: '4bd27ad7a29c036f2f2074e8deca3ff9c72cd5cf9fbf453c25ac88b9d2fdfd21'},
+};
+export const mappingVersionFile = (id, version) => `data/evidence-pack-mappings/${id}-v${version}.json`;
+// The shipped bytes of a mapping version, or null when this verifier does not ship it.
+export function shippedMapping(id, version) {
+  const sha256 = Object.hasOwn(MAPPING_VERSIONS, id) && Number.isSafeInteger(version) ? MAPPING_VERSIONS[id][version] : undefined;
+  if (!sha256) return null;
+  const bytes = readFileSync(new URL(`../${mappingVersionFile(id, version)}`, import.meta.url));
+  if (sha256Hex(bytes) !== sha256) throw Error(`Shipped mapping ${id} version ${version} differs from its recorded digest`);
+  return bytes;
+}
+// The mapping object written to mapping.json of a new package; the same input always gives the same bytes.
 export function frameworkMapping(id) {
   if (!Object.hasOwn(BUILDERS, id)) throw Error('Unknown framework ' + JSON.stringify(id) + '; use one of ' + FRAMEWORKS.join(', '));
-  return checkMapping({format: MAPPING_FORMAT, mappingStatus: 'draft_requires_human_review', ...BUILDERS[id]()});
+  return checkMapping({format: MAPPING_FORMAT, version: MAPPING_VERSION, mappingStatus: 'draft_requires_human_review', ...BUILDERS[id]()});
 }
 export const mappingBytes = mapping => Buffer.from(JSON.stringify(mapping, null, 1) + '\n', 'utf8');
+// Builders write only the current shipped version: a changed catalog or alignment file needs a new version, not new bytes under an old one.
+export function currentMappingBytes(id) {
+  const bytes = mappingBytes(frameworkMapping(id));
+  if (sha256Hex(bytes) !== MAPPING_VERSIONS[id][MAPPING_VERSION]) {
+    throw Error(`The ${id} mapping built from the data files differs from shipped version ${MAPPING_VERSION}; ship it as a new mapping version`);
+  }
+  return bytes;
+}
 
 const plain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const text = v => typeof v === 'string' && v.length > 0 && v.length <= 2000;
 // Structural check of a mapping, also applied to one read from a package with --mapping-from-pack.
 export function checkMapping(m) {
-  if (!plain(m) || m.format !== MAPPING_FORMAT || !FRAMEWORKS.includes(m.id) || !Array.isArray(m.items) || !m.items.length) throw Error('Malformed mapping');
+  if (!plain(m) || m.format !== MAPPING_FORMAT || !FRAMEWORKS.includes(m.id) || !Array.isArray(m.items) || !m.items.length
+    || (m.version !== undefined && !(Number.isSafeInteger(m.version) && m.version >= 2))) throw Error('Malformed mapping');
   const ids = new Set();
   for (const item of m.items) {
     if (!plain(item) || !/^[A-Z][A-Z0-9.-]{1,63}$/.test(item.id) || ids.has(item.id) || !text(item.citation) || !plain(item.title) || !text(item.title.ko)) {

@@ -1,7 +1,8 @@
 # 감사인용 증거 묶음
 
-> 2026-10-08 개선 6라운드에서 추가한 기능입니다. 서명 원장·영수증의 형식은 [표준 영수증과 검증기](receipts.md),
-> 위트니스는 [투명성 로그](transparency-log.md), ISMS-P 정렬표는 [ISMS-P 참고 정렬](isms-p-alignment.md)을 보세요.
+> 2026-10-08 개선 6라운드에서 추가하고 7라운드에서 기간 묶음, 레코드 영수증, 서명기 서명, 대응표 버전을 더했습니다. 서명 원장·영수증의
+> 형식은 [표준 영수증과 검증기](receipts.md), 위트니스는 [투명성 로그](transparency-log.md), 서명기는 [heads 서명기](signer.md),
+> ISMS-P 정렬표는 [ISMS-P 참고 정렬](isms-p-alignment.md)을 보세요.
 
 ## 무엇을 해결하는가
 
@@ -21,11 +22,13 @@
 |---|---|---|
 | `pack.intoto.json` | 아래 모든 파일을 subject로 하는 서명 | [DSSE](https://github.com/secure-systems-lab/dsse) 봉투, [in-toto Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md), predicate [Simple Verification Result v0.2](https://github.com/in-toto/attestation/blob/main/spec/predicates/svr.md) |
 | `SHA256SUMS` | 나머지 파일의 SHA-256 | `sha256sum -c` 형식 |
-| `evidence/export.json` | vault가 내준 서명 내보내기, 받은 바이트 그대로 | `evidscope-export-v2` (체크포인트·투명성 노트·위트니스 공동서명 포함) |
+| `evidence/export.json` | vault가 내준 서명 내보내기, 받은 바이트 그대로(원장 전체 묶음만) | `evidscope-export-v2` (체크포인트·투명성 노트·위트니스 공동서명 포함) |
+| `evidence/period.json` | 기간 묶음만: 기간 구간, v1 체크포인트, tenant 로그 증명 자료, 구간 안 이벤트의 공개본 | `evidscope-evidence-pack-period-v1` (아래 [기간 묶음](#기간-묶음)) |
+| `evidence/receipts.json` | 색인이 가리키는 레코드(기간 묶음은 구간의 모든 레코드)마다 표준 영수증 | `evidscope-evidence-pack-receipts-v1`, 항목마다 레코드 본문과 `c2sp.org/tlog-proof@v1` |
 | `evidence/export.json.intoto.json` | 내보내기의 vault 증명(있을 때) | [표준 영수증](receipts.md)의 DSSE in-toto 증명과 tlog-proof |
 | `evidence/case-reports/case-N.json`(`.intoto.json`) | 서명된 사건 보고서와 그 증명(있을 때) | `evidscope-case-report-v1` |
-| `mapping.json` | 이 묶음이 쓴 요구사항 대응표 | `evidscope-evidence-pack-mapping-v1` |
-| `index.json` | 항목별 증거 위치(원장 seq)·검증 결과·사람 판단 | `evidscope-evidence-pack-index-v1` |
+| `mapping.json` | 이 묶음이 쓴 요구사항 대응표(`version` 필드가 대응표 버전) | `evidscope-evidence-pack-mapping-v1` |
+| `index.json` | 항목별 증거 위치(원장 seq)·검증 결과·사람 판단 | `evidscope-evidence-pack-index-v2` (6라운드 묶음은 `-v1`) |
 | `summary.ko.md`, `summary.en.md` | 색인에서 생성한 한국어·영어 요약 | Markdown, 항목마다 한 줄 |
 
 하나의 파일로 받을 때는 위 폴더를 `evidence-pack/` 아래에 담은 ustar `.tar.gz`입니다. `tar -xzf`로 풀어도 되고, 검증기는
@@ -50,8 +53,11 @@
 node scripts/evidence-pack.mjs build --framework eu-ai-act-logging --tenant alpha \
   --key vault-public.pem --signing-key builder-private.pem --out pack-2026q3.tar.gz \
   --export evidscope-export-1234.json [--attestation evidscope-export-1234.json.intoto.json] \
-  [--case-report case.json]... [--from 2026-07-01T00:00:00Z --to 2026-10-01T00:00:00Z] [--checkpoint CHECKPOINT.json] \
+  [--case-report case.json]... [--from 2026-07-01T00:00:00Z --to 2026-10-01T00:00:00Z [--period-only]] [--checkpoint CHECKPOINT.json] \
   [--witness VKEY --quorum 1 --origin-base evidscope.example.com/prod]
+# 서명기 프로세스로 서명(--signing-key 대신):
+#   --signer-socket /run/pack-signer/signer.sock --signer-public-key pack-signer-public.pem
+#   --signer-url https://pack-signer.internal:8443 --signer-token-file token --signer-ca ca.pem --signer-public-key pack-signer-public.pem
 # vault API에서 직접(감사자 토큰, https 또는 loopback만):
 node scripts/evidence-pack.mjs build --framework isms-p --tenant alpha --key vault-public.pem --signing-key builder-private.pem \
   --out pack/ --api https://evidscope.example.com --token-file auditor.token --case <caseId>...
@@ -65,10 +71,10 @@ node scripts/evidence-pack.mjs build --framework isms-p --tenant alpha --key vau
   head와 보고서에 담긴 모든 이벤트·사람 판단이 내보내기의 레코드와 같아야 합니다. 하나라도 어긋나면 아무 파일도 쓰지 않습니다.
 - `--tenant`는 내보내기의 tenant와 같아야 합니다. 마지막으로 만든 묶음을 감사인과 같은 방법으로 검증한 뒤에야 씁니다.
   기존 파일·폴더는 덮어쓰지 않습니다.
-- `--from`/`--to`는 vault가 서명한 `recordedAt` 기준의 반열린 구간 `[from, to)`입니다. 색인은 구간 안의 레코드만 세지만, 묶음에는
-  **원장 전체**가 들어갑니다. 해시 체인을 끝까지 검증하려면 전체가 필요하기 때문입니다. 구간 밖 기록을 감사인에게 보이면 안 되는
-  경우에는 이 기능을 쓰지 마세요(아래 한계).
+- `--from`/`--to`는 vault가 서명한 `recordedAt` 기준의 반열린 구간 `[from, to)`입니다. 색인은 구간 안의 레코드만 셉니다.
+  `--period-only`가 없으면 묶음에는 **원장 전체**(내보내기)가 들어가고, 있으면 기간의 원장 구간만 들어갑니다([기간 묶음](#기간-묶음)).
 - `--signing-key`는 묶는 사람의 Ed25519 개인키입니다. vault 키와 다른 키를 쓰고, 공개키는 묶음과 다른 경로로 감사인에게 줍니다.
+  키 파일 대신 서명기 프로세스를 쓸 수 있습니다([서명기로 서명하기](#서명기로-서명하기)).
 
 ## 묶음 검증하기
 
@@ -83,9 +89,12 @@ node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key bu
 1. `pack.intoto.json`의 DSSE 서명(`--pack-key`, 없으면 vault 키), in-toto Statement v1과 SVR predicate의 형식.
 2. statement가 이름 붙인 파일과 묶음의 파일이 정확히 같고(추가·누락·제자리가 없는 파일 거부), 파일마다 SHA-256이 맞으며,
    `SHA256SUMS`도 같습니다.
-3. `mapping.json`이 이 검증기의 대응표와 바이트 단위로 같습니다. 다르면 `--mapping-from-pack`을 줄 때만 묶음의 대응표를 쓰고,
-   결과에 `mapping.source: "package"`로 밝힙니다. statement의 정책 digest도 같아야 합니다.
-4. 내보내기와 사건 보고서를 위와 같은 검사로 다시 검증합니다. 함께 든 vault 증명(`.intoto.json`)도 확인합니다.
+3. `mapping.json`이 이름 붙인 대응표 버전을 이 검증기가 싣고 있고, 그 버전과 바이트 단위로 같습니다([대응표 버전](#대응표-버전)).
+   싣지 않은 버전이거나 다르면 `--mapping-from-pack`을 줄 때만 묶음의 대응표를 쓰고, 결과에 `mapping.source: "package"`로 밝힙니다.
+   statement의 정책 digest도 같아야 합니다.
+4. 내보내기와 사건 보고서를 위와 같은 검사로 다시 검증합니다. 함께 든 vault 증명(`.intoto.json`)도 확인합니다. 기간 묶음은
+   내보내기 대신 기간 구간을 [아래](#기간-묶음)와 같이 검증합니다. `evidence/receipts.json`의 영수증을 하나하나 영수증으로 확인하고,
+   원장 전체 묶음에서는 내보내기에서 다시 만든 영수증과 바이트 단위로 대조합니다.
 5. 검증한 증거·대응표·기간에서 `index.json`을 다시 만들어 바이트 단위로 비교하고, 모든 seq가 구간 안의 올바른 종류 레코드인지,
    사람 판단이 서명된 평가 레코드인지 확인합니다.
 6. 두 요약을 색인에서 다시 만들어 비교합니다. 항목 절의 모든 줄은 색인 항목 하나를 정확히 가리키고 그 항목의 상태를 그대로
@@ -109,15 +118,136 @@ node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key bu
 ```
 
 - 항목 상태: `evidence_present`(대응한 증거 종류 중 하나 이상이 기록됨), `no_evidence_recorded`(기록 없음), `not_in_export`(내보내기에
-  담기지 않는 API 응답·저장소 파일만 지정됨).
+  담기지 않는 API 응답·저장소 파일만 지정됨), 기간 묶음에서만 `no_evidence_in_package`(이 묶음에 증거 없음, 부재는 증명하지 않음).
 - 증거 상태는 [ISMS-P 보고서](isms-p-alignment.md)와 같은 `present`, `none_recorded`, `not_in_export`에 더해, 이 묶음이 원장 전체를
   검증했음을 뜻하는 `verified_by_this_package`(`signed_ledger`)가 있습니다. 증거 종류(`record`, `eventKind`, `checkType`, `finding`,
   `integrityCheck`, `api`, `file`)와 세는 방법은 ISMS-P 보고서와 같은 코드(`src/evidence-inventory.mjs`)입니다.
-- `seqs`는 원장 순번입니다. 항목당 1,000개까지 적고 나머지는 `seqsOmitted`로 셉니다. 레코드 하나를 따로 넘겨야 하면
-  `GET /api/receipts/record?seq=N`의 tlog-proof 영수증([표준 영수증](receipts.md))을 쓰세요.
+- `seqs`는 원장 순번입니다. 항목당 1,000개까지 적고 나머지는 `seqsOmitted`로 셉니다. 색인이 적은 모든 seq(증거 위치, 사람 판단과
+  그 법률 검토, 사건 보고서의 이벤트·판단)의 영수증이 `evidence/receipts.json`에 들어 있습니다([레코드 영수증](#레코드-영수증)).
+- v2 색인은 `framework.mappingVersion`, `scope.kind`(`ledger` 또는 `period`), `evidence.receipts`(파일, 영수증 수, 덮지 못한 수
+  `notCovered`, 증명에 쓴 체크포인트 크기)를 더 적습니다. 기간 묶음은 `evidence.export` 대신 `evidence.period`(구간, 체크포인트, 공개·삭제·
+  미공개 이벤트 수, 재계산 요약과 재계산 불가 사유)와 `scope.packageRecords`, `scope.absence: "not_established_by_a_period_package"`를 적습니다.
 - `humanJudgement`: 인공지능기본법 항목은 같은 요구사항 ID로 기간 안에 서명된 마지막 사람 평가와 그 법률 검토 기록입니다
   ([증거 계약](kr-governance-evidence.md)). EvidScope 요구사항 목록에 없는 항목은 `null`입니다. 사건의 사람 판단은 `case_decision`
   증거로 나오고, 그 판단을 담은 사건 보고서 파일이 `caseReports`로 연결됩니다.
+
+## 기간 묶음
+
+`--period-only`로 만든 묶음은 기간에 해당하는 **원장 구간만** 담습니다. 한 분기의 감사인이 다른 분기의 기록과 메타데이터를 받지 않게
+하려는 것입니다. 증명 형식은 새로 만들지 않았습니다. 레코드마다 [표준 영수증](receipts.md)의 레코드 본문과
+`c2sp.org/tlog-proof@v1`을, 체크포인트 사이는 RFC 6962 일관성 증명을 쓰며, 묶는 쪽은 `src/tlog.mjs`와 `src/receipts.mjs`의
+함수로 만들고 검증기는 사건 보고서와 같은 `verifyReportTransparency`로 확인합니다.
+
+### 담는 것
+
+- **구간**: vault가 서명한 `recordedAt`이 기간 안인 첫 레코드부터 마지막 레코드까지의 연속한 seq 구간 `range.first`–`range.last`.
+  시계가 뒤로 간 경우처럼 구간 가운데에 기간 밖 레코드가 끼면 그것도 담지만(연속성을 보이기 위해) 색인에는 세지 않습니다.
+  구간의 첫 레코드와 마지막 레코드는 반드시 기간 안이어야 하며, 기간 앞뒤로 넓힌 묶음은 거부합니다.
+- **레코드 영수증**(`evidence/receipts.json`): 구간의 모든 레코드. 영수증의 체크포인트는 `/api/receipts/record`와 같은 규칙으로
+  고릅니다. 위트니스가 공동서명한 tenant 체크포인트가 레코드를 덮으면 그것, 아니면 내보낼 때의 최신 tenant 체크포인트입니다.
+- **`evidence/period.json`**: 기간, 구간, 내보내기의 `evidscope-checkpoint-v1`, tenant 로그 자료(사건 보고서와 같은
+  `evidscope-transparency-v1` 형식: 최신 tenant 체크포인트, head 레코드의 포함 증명, 공동서명 체크포인트와 heads 항목에서 최신
+  체크포인트로 가는 일관성 증명), 구간 안 암호화 이벤트의 공개본. 알려진 필드만 허용합니다.
+- 내보내기의 tenant 로그 체크포인트가 모든 레코드를 덮어야 만들 수 있습니다(투명성 모드가 꺼져 있으면 기간 묶음을 만들 수 없음).
+  한 묶음은 레코드 200,000개까지이며, 더 크면 기간을 나눕니다.
+
+### 검증기가 확인하는 것
+
+1. v1 체크포인트의 vault 서명. 외부 체크포인트를 주면 정확히 같아야 합니다(`verifyBundle`과 같은 비교).
+2. tenant 로그 자료: 최신 tenant 체크포인트가 고정한 vault 키로 서명되었고 크기가 v1 체크포인트와 같으며 head 레코드를 포함하는지,
+   공동서명 체크포인트와 heads 항목이 일관성 증명으로 그 체크포인트에 이어지는지, 위트니스 플래그를 주면 정족수·신선도까지
+   (`rollbackCheckedAgainst`를 포함해 사건 보고서와 같은 결과). `--min-checkpoint`는 원장 전체가 필요하므로 기간 묶음에서는 거부합니다.
+3. 영수증: 구간의 seq마다 정확히 하나, 레코드 파일이 해시 필드 없는 canonical 본문이고 그 SHA-256이 레코드 해시이며 tenant·seq가 맞는지,
+   tlog-proof가 위 규칙의 체크포인트(바이트 단위로 같은 노트)에 포함을 보이는지. 체크포인트 서명은 감사인의 정책(고정한 vault 키,
+   `--witness`·`--quorum`)으로 확인합니다.
+4. 이웃 레코드의 해시 연결(`previous`)과 구간이 seq 1에서 시작하면 첫 레코드의 `previous`가 0인지, 구간이 체크포인트 끝까지 가면 마지막
+   레코드가 head인지.
+5. 공개본: 내보내기 검증과 같은 규칙(바인딩, 약속값, 삭제 순서)을 구간 안에서 적용합니다. 구간 뒤의 `retention_disposition`은 묶음에
+   없으므로, 공개본 없는 암호화 이벤트는 나중에 삭제된 것인지 묶는 쪽이 뺀 것인지 구별할 수 없어 `undisclosedEvents`로 셉니다.
+6. 이 구간만으로 색인과 두 요약을 다시 만들어 바이트 단위로 대조합니다.
+
+### 감사인이 결론 낼 수 있는 것과 없는 것
+
+| 결론 | 기간 묶음 | 원장 전체 묶음 |
+|---|---|---|
+| 색인이 가리키는 레코드가 vault가 서명한 tenant 로그에 들어 있고 내용이 서명된 그대로다 | 예 | 예 |
+| 구간 안에서 빠진 레코드가 없다(seq 연속, 해시 연결) | 예 | 예(원장 전체) |
+| 기간 안에 어떤 증거가 **없다** | **아니오** | 원장 안에서는 예(수집의 완전성은 별개) |
+| 구간 첫 레코드 앞, 마지막 레코드 뒤에 기간 안 레코드가 더 없다 | 아니오 | 예 |
+| 레지스트리·승인·정지 명령의 서명 이력이 처음부터 맞다 | 아니오 | 예 |
+| 평가를 다시 계산해 같은 결과가 나온다 | 구간이 seq 1에서 시작할 때만 | 예 |
+| 되돌리기가 없다(위트니스·외부 체크포인트를 준 경우) | 예 | 예 |
+
+- 부재를 증명하지 못하므로 기간 묶음의 색인은 `none_recorded`·`no_evidence_recorded`를 쓰지 않고 `none_in_package`·
+  `no_evidence_in_package`(요약: "이 묶음에 증거 없음(부재는 증명하지 않음)")를 씁니다. 검증기는 부재를 주장하는 기간 묶음 색인을 거부하고,
+  `scope.absence`에 `not_established_by_a_period_package`를 적습니다. 요약의 "이 묶음이 증명하지 않는 것"에도 두 줄이 더 붙습니다.
+- 평가 재계산은 그 평가보다 앞선 모든 레코드(자산, 룰, 예외, 레지스트리, 이전 이벤트)가 필요합니다. 구간이 seq 1에서 시작하면 그 접두가
+  모두 있으므로 원장 전체와 같은 재계산을 하고, 아니면 구간의 모든 평가를 `not_replayable`(사유 `prior_records_not_in_package`)로 표시합니다.
+  일치했다고도 불일치했다고도 하지 않으며, statement의 `EVIDSCOPE_EVALUATION_REPLAY_MATCHED`는 실제로 재계산한 경우에만 인정합니다.
+  이력 검증도 같은 이유로 `not_verifiable_from_a_period_package`입니다. `finding` 증거는 서명된 평가 기록의 내용이며, 재계산 여부를
+  `replay.notReplayable`로 함께 적습니다.
+- 사건 보고서는 vault 서명으로 따로 검증하고, 보고서가 보여 주는 모든 이벤트와 사람 판단이 구간의 레코드와 같아야 합니다. 구간 밖
+  이벤트·판단을 보여 주는 보고서는 기간 묶음에 넣을 수 없습니다(원장 전체 묶음을 쓰거나 기간을 넓힙니다). 보고서의 head는 구간 안에 있을
+  때만 대조합니다.
+- statement 속성은 `EVIDSCOPE_EXPORT_SIGNATURE_AND_CHAIN_VERIFIED` 대신 `EVIDSCOPE_PERIOD_RECORDS_INCLUDED_IN_SIGNED_TENANT_LOG`입니다.
+
+## 레코드 영수증
+
+`evidence/receipts.json`은 레코드마다 `{seq, hash, type, record, proof}`를 담습니다. `record`는 `/api/receipts/record`의 `record`와 같은
+원장 본문(해시 필드 없는 canonical JSON), `proof`는 `c2sp.org/tlog-proof@v1`입니다. 파일에서 꺼내면 다른 도구로도 확인됩니다.
+
+```sh
+jq -j '.receipts[0].record' evidence/receipts.json > r.json
+jq -j '.receipts[0].proof' evidence/receipts.json > r.tlog-proof
+node evidscope-verify.mjs tlog-proof r.tlog-proof r.json --key vault-public.pem [--witness VKEY --quorum 1 --origin-base BASE]
+```
+
+- 원장 전체 묶음: 색인이 가리키는 모든 seq 가운데 내보내기의 tenant 체크포인트가 덮는 것. 검증기는 내보내기에서 같은 영수증을 다시 만들어
+  바이트 단위로 대조하고, 각 영수증도 위처럼 확인합니다. 내보내기에 tenant 로그 자료가 없으면 영수증 파일이 없고 색인의
+  `evidence.receipts.reason`이 `export_has_no_tenant_log_checkpoint`입니다.
+- 기간 묶음: 구간의 모든 레코드. 기간 묶음에서는 영수증이 곧 증거입니다.
+- 영수증 정책 파일(`.tlog-policy`)은 담지 않습니다. 정책은 신뢰 기준이 아니므로 감사인이 밖에서 받은 vault 키와 위트니스 키로 만듭니다.
+  vault가 보고하는 요약 필드(`quorumMet` 등)도 담지 않으며, 검증 결과의 `receipts`(영수증 수, 정족수, 정족수를 채운 영수증 수)가 그 역할을 합니다.
+
+## 서명기로 서명하기
+
+묶음 서명 키를 파일 대신 서명기 프로세스([heads 서명기](signer.md)와 같은 `scripts/signer.mjs`)에 둘 수 있습니다.
+
+```sh
+node scripts/signer.mjs keygen --out pack-signer-key.pem --public-out pack-signer-public.pem
+node scripts/signer.mjs init --state-dir /pack-signer/state --backend file --key-file pack-signer-key.pem
+node scripts/signer.mjs serve --state-dir /pack-signer/state --backend file --key-file pack-signer-key.pem \
+  --socket /run/pack-signer/signer.sock --sign-pack-statements
+node scripts/evidence-pack.mjs build ... --signer-socket /run/pack-signer/signer.sock --signer-public-key pack-signer-public.pem
+```
+
+- `--sign-pack-statements`를 준 서명기만 `POST /v1/sign-statement`를 엽니다. 서명기는 받은 DSSE PAE를 직접 풀어, payload type이
+  `application/vnd.in-toto+json`이고 본문이 canonical in-toto Statement v1이며 predicate가 SVR v0.2, `verifier.id`가 이 문서의
+  `#builder-v1`인 것만 서명합니다. 그 밖의 바이트(체크포인트 노트, 다른 predicate, 들여쓰기한 JSON)는 `not_allowed`·`invalid_request`로
+  거부하고 감사 로그에 남깁니다. 서명과 거부 모두 서명기 감사 로그(`statement_signed`, `refused`)에 남고, 서명 속도 제한을 heads 서명과
+  함께 씁니다. 키 백엔드(file, ssh-agent, command/KMS)도 heads 서명기와 같습니다.
+- canonical JSON에는 줄바꿈이 없으므로 statement의 PAE에는 줄바꿈이 없고, 체크포인트 노트 본문은 줄바꿈으로 끝납니다. 그래서 한 키가 둘 다
+  서명해도 서로를 대신할 수 없습니다. 그래도 **묶음용 서명기는 heads 서명기와 다른 인스턴스·상태 디렉터리·키로** 운영하기를 권합니다.
+  heads 서명기의 token을 묶는 사람에게 주면 그 사람이 heads 잎도 보낼 수 있기 때문입니다.
+- 서명기는 statement가 증거와 맞는지는 보지 않습니다. 서명기에 닿는 사람은 키 파일을 가진 사람처럼 묶음에 서명할 수 있으므로 소켓 권한과
+  token을 묶는 사람에게만 줍니다. 그래도 감사인의 검증기는 증거에서 색인과 요약을 다시 만들므로, 서명만으로 증거보다 많은 주장이 통과하지는 않습니다.
+- 묶는 쪽은 `--signer-public-key`로 서명기 공개키를 고정합니다. 서명기가 거부하거나, 돌려준 서명이 그 키로 검증되지 않거나, 완성된 묶음이
+  그 키로 검증되지 않으면 아무 파일도 쓰지 않습니다(키 파일로 서명할 때와 같은 규칙). `--signer-url`은 https이거나 loopback http만
+  받고, token·CA는 heads 서명기 연결과 같습니다. 감사인은 이 공개키를 `--pack-key`로 줍니다.
+
+## 대응표 버전
+
+대응표가 바뀌면 예전 묶음이 새 검증기에서 통과하지 못하던 문제를 버전으로 풉니다.
+
+- 새 묶음의 `mapping.json`은 `version`(지금은 2)을 적고, v2 색인의 `framework.mappingVersion`도 같은 값입니다. `version`이 없는 대응표는
+  버전 1(6라운드 묶음)입니다. 버전 1과 2의 차이는 이 필드뿐이고 항목은 같습니다.
+- 검증기는 배포한 모든 버전을 `data/evidence-pack-mappings/<framework>-v<N>.json`(묶음의 `mapping.json`과 같은 바이트)으로 싣고,
+  `src/evidence-pack-frameworks.mjs`의 `MAPPING_VERSIONS`에 각 파일의 SHA-256을 적습니다. 묶음이 이름 붙인 버전과 바이트 단위로 같으면
+  `--mapping-from-pack` 없이 통과하고, 결과에 `mapping.version`을 적습니다. 싣지 않은 버전은 예전처럼 거부합니다.
+- 묶는 쪽은 데이터 파일(`data/requirements.json`, `data/isms-p-alignment.json`)에서 만든 대응표가 현재 버전 파일과 같을 때만 묶음을
+  만듭니다. 데이터가 바뀌면 같은 버전 번호로 다른 바이트를 내지 않고, 새 버전 파일과 digest를 추가해야 합니다(`test/evidence-pack-period.test.mjs`가
+  확인). 6라운드 검증기는 v2 색인과 영수증 파일을 모르므로, 새 묶음은 이 라운드 이후의 검증기로 검증합니다. 6라운드 묶음은 새 검증기에서
+  예전과 똑같이 검증됩니다.
 
 ## 대응표와 출처
 
@@ -182,17 +312,23 @@ Article 72에도 개정 표시가 있어 해당 항목은 `text_read_amendment_u
   행동이 기록되었다는 뜻이 아닙니다.
 - **출처가 스스로 보고한 내용의 진실성.** `occurredAt`, 상태, 측정값은 출처의 주장입니다. 서명은 vault가 그 기록을 받았음을 보증합니다.
 - **되돌리기·잘라내기의 부재.** 외부 체크포인트나 위트니스 없이 검증하면 서명 키를 가진 호스트가 만든 짧은 원장을 구별하지 못합니다.
+- **기간 묶음에서 기간 안 증거의 부재.** 위 [표](#감사인이-결론-낼-수-있는-것과-없는-것)를 보세요.
 - **묶는 사람이 고른 범위의 적절성.** 어떤 사건 보고서를 넣을지, 어떤 기간을 볼지는 묶는 사람이 정합니다. 검증기는 넣은 것이
   맞는지를 확인할 뿐 빠진 사건이 없는지는 알 수 없습니다.
 
 ## 한계와 다음 단계
 
-- 기간을 정해도 원장 전체가 묶음에 들어갑니다. 구간만 담으려면 레코드별 tlog-proof와 일관성 증명으로 체인을 대신해야 하며,
-  다음 라운드 후보입니다.
-- 묶음 서명 키는 파일 PEM만 받습니다. 원격 서명기([heads 서명기](signer.md)와 같은 분리)는 아직 연결하지 않았습니다.
-- 대응표가 바뀌면 이전 묶음은 새 검증기에서 `--mapping-from-pack` 없이 통과하지 않습니다. 묶음의 대응표를 쓸 때는 결과의
-  `mapping.sha256`을 배포된 값과 비교하세요.
+- 기간 묶음은 부재를 증명하지 못합니다. 구간 바로 앞뒤의 기간 밖 레코드 하나씩을 "울타리"로 담으면 `recordedAt`이 단조로운 원장에서는
+  구간 경계를 증명할 수 있지만, 다른 기간의 기록을 보이게 되고 vault가 `recordedAt` 단조성을 서명으로 보장하지 않으므로 넣지 않았습니다.
+- 기간 묶음은 구간 앞 기록이 필요한 재계산과 서명 이력을 확인하지 않습니다. 필요한 앞선 기록만 골라 담는 방식은 재계산 입력이 레코드 종류마다
+  달라 이번에 정의하지 않았습니다.
+- 복구 epoch 뒤의 내보내기로 만든 기간 묶음은 epoch 기록을 담지 않으므로, 감사인은 새 origin base를 고정해야 합니다(예전 base 고정은 거부).
+- 묶는 쪽이 `--checkpoint`로 확인한 되돌리기 검사는 감사인도 같은 체크포인트를 줄 때만 인정됩니다(묶음에 체크포인트를 넣으면 신뢰 기준이
+  되지 못하므로). 감사인이 받은 체크포인트가 묶음의 것보다 새로우면 기간 묶음은 정확히 같은 체크포인트만 비교하므로 통과하지 않습니다.
+- 대응표의 버전 1과 2는 `version` 필드만 다릅니다. 실제 항목을 고친 첫 버전은 아직 없습니다.
 - EU 항목의 Digital Omnibus 개정 본문, 인공지능기본법 원문은 이번에 다시 읽지 못했습니다. 사람이 원문으로 확인할 때까지
   `sourceStatus`가 그 상태를 밝힙니다.
-- 대응은 `src/evidence-pack-frameworks.mjs`, 묶음 형식과 검증은 `src/evidence-pack.mjs`, 시험은 `test/evidence-pack.test.mjs`
-  (8b3af6c 시점 내보내기 `test/fixtures/pack-export-8b3af6c.json`으로 만든 묶음 포함)에 있습니다.
+- 대응은 `src/evidence-pack-frameworks.mjs`, 묶음 형식과 검증은 `src/evidence-pack.mjs`, 기간 묶음과 영수증은 `src/evidence-pack-period.mjs`,
+  시험은 `test/evidence-pack.test.mjs`(8b3af6c 시점 내보내기 `test/fixtures/pack-export-8b3af6c.json`으로 만든 묶음 포함)와
+  `test/evidence-pack-period.test.mjs`(d7413a0이 만든 묶음 `test/fixtures/pack-d7413a0/`, 만든 스크립트
+  `test/fixtures/make-pack-d7413a0-fixture.mjs` 포함)에 있습니다.

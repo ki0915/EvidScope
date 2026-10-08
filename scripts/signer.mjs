@@ -5,6 +5,7 @@
 //   node scripts/signer.mjs init   --state-dir DIR BACKEND [--if-missing]   (--if-missing: keep an existing state of the same key)
 //   node scripts/signer.mjs serve  --state-dir DIR BACKEND (--socket PATH [--socket-mode 600] | --pipe NAME | --host 127.0.0.1 --port N)
 //                                  [--token-file FILE] [--tls-cert CERT.pem --tls-key KEY.pem] [--signs-per-minute N] [--max-request-bytes N]
+//                                  [--sign-pack-statements]   (also sign evidence package statements: docs/evidence-pack.md)
 //   node scripts/signer.mjs public-key --state-dir DIR [--out SIGNER_PUBLIC.pem]       (the vault's signer.publicKeyFile)
 //   node scripts/signer.mjs vkey   --state-dir DIR --origin-base BASE                   (witnessctl add-key, verify --heads-key)
 //   node scripts/signer.mjs status --state-dir DIR
@@ -28,8 +29,8 @@ import {parseArgs} from 'node:util';
 import * as T from '../src/tlog.mjs';
 import {createBackend, readEd25519PublicKey, selfTest} from '../src/signer-backends.mjs';
 import {
-  createAuthorization, initSignerState, listAuthorizations, readSignerState, revokeAuthorization, rotateSignerKey, signerHead, startSignerServer,
-  verifyAuditLog,
+  createAuthorization, initSignerState, listAuthorizations, PACK_STATEMENTS, readSignerState, revokeAuthorization, rotateSignerKey, signerHead,
+  startSignerServer, verifyAuditLog,
 } from '../src/signer.mjs';
 import {readSignerToken} from '../src/signer-client.mjs';
 
@@ -41,7 +42,7 @@ const OPTIONS = {
   'tls-key': {type: 'string'}, 'signs-per-minute': {type: 'string'}, 'max-request-bytes': {type: 'string'}, 'max-entries': {type: 'string'},
   'origin-base': {type: 'string'}, checkpoint: {type: 'string'}, 'vault-key': {type: 'string'}, witness: {type: 'string', multiple: true},
   quorum: {type: 'string'}, 'max-age': {type: 'string'}, 'from-base': {type: 'string'}, 'to-base': {type: 'string'}, 'accept-loss': {type: 'string'},
-  restored: {type: 'string'}, 'if-missing': {type: 'boolean'},
+  restored: {type: 'string'}, 'if-missing': {type: 'boolean'}, 'sign-pack-statements': {type: 'boolean'},
   'drop-log': {type: 'string', multiple: true}, id: {type: 'string'}, verify: {type: 'boolean'}, note: {type: 'string'},
 };
 const need = (values, ...names) => { for (const n of names) if (values[n] === undefined) throw Error(`--${n} is required`); };
@@ -172,7 +173,7 @@ async function main(argv) {
       const server = await startSignerServer({stateDir: dir, backend: await createBackend(backendSpec(values)), listen, limits,
         token: values['token-file'] ? readSignerToken(resolve(values['token-file'])) : null,
         tls: values['tls-cert'] ? {cert: readFileSync(resolve(values['tls-cert'])), key: readFileSync(resolve(values['tls-key']))} : null,
-        socketMode: values['socket-mode'] ? parseInt(values['socket-mode'], 8) : 0o600});
+        socketMode: values['socket-mode'] ? parseInt(values['socket-mode'], 8) : 0o600, statements: values['sign-pack-statements'] ? PACK_STATEMENTS : null});
       let stopping = null;
       const stop = () => (stopping ??= server.close().then(() => process.exit(0)));
       process.once('SIGTERM', stop);
