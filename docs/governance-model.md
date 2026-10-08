@@ -1,0 +1,207 @@
+# 거버넌스 매핑 로컬 모델
+
+> 2026-10-08 개선 7라운드에서 추가했습니다. 워커는 Claude나 Codex가 아니라 PC에서 돌아가는 로컬 모델
+> (`fdtn-ai/Foundation-Sec-1.1-8B-Instruct`, Q4_K_M GGUF)입니다. 학습·평가 실행 순서는 [실행 안내서](governance-model-runbook.md)에 있습니다.
+
+## 한 줄 요약
+
+증거 하나를 받아 **출고된 매핑 표의 요구사항 ID**에 연결하는 일입니다. 정밀도가 먼저입니다. 확실하지 않으면 기권하고,
+구조화 기록처럼 표가 이미 답하는 증거는 규칙이 답하며 모델은 그 답을 바꿀 수 없습니다. 모델의 답은 언제나 제안(advisory)이고
+사람이 한 건씩 확인합니다. 지금 모델 상태는 **꺼짐**(`no_measured_report`)입니다. 측정 보고서와 사람 승인이 생길 때까지 켜지지 않습니다.
+
+## 작업 정의
+
+입력 하나, 출력 하나입니다(`src/governance-mapping.mjs`).
+
+| 항목 | 내용 |
+| --- | --- |
+| 입력 종류 | `document_excerpt`, `registry_entry`, `record_summary`, `finding_note`(모델 범위) / `structured`(규칙 범위) |
+| 입력 텍스트 | 600자 이하, 제어문자 제거, NFC 정규화. 증거 안의 문장은 지시가 아니라 데이터입니다 |
+| 증거 위치(locator) | `doc:...`, `evidence:...` 형식 1~4개. 출력은 이 목록에 있는 위치만 인용할 수 있습니다 |
+| 카탈로그 | 출고된 v2 매핑 표 3종의 55개 항목: EU AI Act 로깅 10, 인공지능기본법 18, ISMS-P 27 (digest `f12872b3…5c860`) |
+| 출력 | `{"abstain": bool, "mappings": [{"requirementId", "relation", "evidenceLocator", "confidence"}]}` 최대 5건 |
+| relation | `supports`(충족 근거), `contradicts`(반대 근거), `context_only`(관련 맥락일 뿐) |
+| confidence | `low`, `medium`, `high` (보정 측정에 씀: 명목값 0.5 / 0.75 / 0.9) |
+| 기권 | `abstain: true` ⇔ `mappings`가 비어 있음. 카탈로그 밖 주제, 근거 부족, 주입 지시는 기권 또는 무시 |
+
+출력은 llama.cpp `response_format: json_schema`로 강제합니다. 스키마의 `requirementId`는 카탈로그 55개 ID의 enum,
+`evidenceLocator`는 그 입력의 위치 enum이므로 문법상 다른 값을 낼 수 없습니다. 그래도 서버와 실행기는 모든 출력을
+`validateMappingOutput`으로 다시 검사하고, 맞지 않으면 고치지 않고 실패로 기록합니다.
+
+카탈로그 텍스트는 요구사항 쪽 문장만 씁니다(제목, 조문, `data/requirements.json`의 요구사항·필요 증거, ISMS-P 수동 점검 항목).
+표의 증거 설명(`what`, `shows`)은 아래 파생 데이터의 입력이므로 프롬프트 후보 설명에 넣지 않습니다.
+
+## 규칙이 먼저, 모델은 자유 텍스트만
+
+`kind: "structured"` 증거(기록 이름, 이벤트 종류, 점검 유형, 발견사항 코드, 무결성 점검, API, 파일)는 매핑 표의 색인이 답합니다.
+발견사항 코드는 `context_only`, 나머지는 `supports`입니다. 이 범위에 모델 답이 들어오면 `rule_override_refused`로 거부하고,
+모델 요청 자체를 만들지 않습니다(`rule_determined_item`). 모델은 표가 답하지 못하는 자유 텍스트(문서 발췌, 등록부 항목 설명,
+기록 요약, 발견사항 메모)만 맡습니다.
+
+## 데이터셋
+
+`data/governance-mapping/v1/dataset.jsonl` 507행은 `node scripts/governance-mapping.mjs build`가 결정적으로 만듭니다.
+테스트가 저장소 파일과 다시 만든 결과가 같은지 확인합니다.
+
+| 출처 | 행 | tune | validation | test | 사람 검토 |
+| --- | --- | --- | --- | --- | --- |
+| 표에서 기계적으로 파생 (`derived_mapping_table`) | 288 | 168 | 47 | 73 | 행별 검토 불필요. 게이트가 매번 표에서 다시 파생해 대조 |
+| Claude 초안 (`claude_drafted`) | 219 | 147 | 15 | 57 | **219행 모두 필요**. 지금 검토된 행 0 |
+
+파생 규칙은 다섯 가지입니다. ISMS-P 정렬표의 증거 설명 147행과 지원 요약 41행(그 문장을 나열한 항목이 정답),
+정렬표가 "정렬 안 함"으로 선언한 인증기준 74행(카탈로그 밖이므로 정답은 기권), 인공지능기본법 점검 유형 23행(그 점검 유형을
+나열한 항목 전부), EU 표가 매핑하지 않는다고 적은 조문 3행(기권). 단, 파생 정답은 **표와 같다는 것**만 보장합니다.
+표 자체가 `draft_requires_human_review`이므로 법적 정답이라는 뜻은 아닙니다.
+
+Claude 초안 219행(기권 45, 주입 시도 16)은 실제 증거 문장이 아니라 합성 문장이고 정답도 Claude가 붙였습니다.
+`data/governance-mapping/v1/drafted-items.json` 머리에 그렇게 적혀 있고 모든 행이 `humanReviewed: false`, `UNREVIEWED`입니다.
+어떤 코드도 이 행을 검토됨으로 바꾸지 않습니다. 이름이 있는 사람이 아래 절차로 승인한 행만 학습·게이트에 들어갑니다.
+
+### 분할과 누수 방지
+
+요구사항 단위로 분할을 고정했습니다(`data/governance-mapping/v1/splits.json`, test 14개·validation 8개 요구사항).
+정답에 test 요구사항이 하나라도 있으면 그 행은 test, 아니면 validation 요구사항이 있으면 validation, 나머지는 tune입니다.
+기권 행은 `sha256("governance-mapping-v1:" + familyId)`로 나눕니다. 입학 검사는 세 수준의 누수를 거부합니다:
+같은 family가 두 분할에 있음, 같은 정규화 텍스트가 두 분할에 있음, tune 행이 test·validation 요구사항을 정답으로 가짐.
+
+### 사람 검토 (일괄 승인·거절)
+
+```bash
+node scripts/governance-mapping.mjs review-sheet --data data/governance-mapping/v1/dataset.jsonl --out review.tsv
+# review.tsv의 decision 열에 행마다 approve 또는 reject를 직접 적습니다(빈칸은 미검토로 남음, 와일드카드 없음).
+node scripts/governance-mapping.mjs import-decisions --data data/governance-mapping/v1/dataset.jsonl --sheet review.tsv \
+  --reviewer <본인 ID> --reviewed-at <ISO 시각> --attest-pii-reviewed --attest-source-consent --out reviewed.jsonl
+node scripts/governance-mapping.mjs admission --data reviewed.jsonl
+```
+
+시트에는 텍스트, 위치, 초안 정답(요구사항 제목 포함), 주입 시도에서 금지할 ID가 나옵니다. 승인은 기존
+`scripts/model-training-data.mjs`의 `importHumanReviews`를 그대로 거쳐 `recordHash`·`reviewedPayloadHash`·`reviewBinding`이
+붙고, 승인 후 텍스트나 정답이 바뀌면 그 행은 자격을 잃습니다. 거절한 행은 빠지며 다른 정답으로 바꿔 넣지 않습니다.
+
+학습 입학 최소치(`src/model-policy.mjs`: tune 300 / validation 50 / test 100)를 채우려면 적어도
+tune 147행 중 132행, validation 15행 중 3행, test 57행 중 27행을 승인해야 합니다. 승격 게이트는 test에서 사람이 검토한
+자유 텍스트 행을 30개 이상 요구하므로 test는 실제로 30행 이상이 필요합니다.
+
+## 평가 장치와 기준선
+
+`scripts/governance-mapping.mjs report`가 test 분할만으로 비교 보고서를 만들고, `gate`가 판정합니다(`src/governance-mapping-eval.mjs`).
+
+| 변형 | 내용 |
+| --- | --- |
+| `always_abstain` | 항상 기권 |
+| `rules_only` | 표에 있는 식별자(밑줄·슬래시가 있는 기록 이름, 발견사항 코드, API·파일 경로)가 문장에 그대로 있으면 그 항목 |
+| `zero_shot` | 기본 모델, 카탈로그 ID 목록만, `json_object` |
+| `retrieval` | 기본 모델 + 후보 12개(글자 bigram·단어 TF-IDF), `json_object` |
+| `retrieval_constrained` | 위와 같고 `json_schema`로 ID·위치 enum 강제 |
+| `candidate` | `retrieval_constrained` + 학습한 LoRA 어댑터 |
+
+측정값은 정밀도·재현율(=coverage), 요구사항별 정밀도·재현율, macro 평균, exact match, 기권율(전체·답할 항목),
+기권 정답률, 보정(신뢰도 구간별 정밀도와 ECE)입니다. 안전 점검 다섯 가지는 스키마 유효, 카탈로그 ID만, 주어진 위치만,
+주입 무시, 기권해야 할 때 기권입니다. 점수는 사람이 검토한 행과 파생 행(게이트 행)으로 계산하고, 전체 행 점수는 참고로만 둡니다.
+
+모델 변형의 출력은 `scripts/governance_mapping_batch.py`의 영수증이 있어야 측정으로 인정합니다. 영수증은 네트워크 인터페이스가
+`lo` 하나뿐인 컨테이너, 고정 GGUF 해시(`5813d725…421ed`), 고정 디코딩(temperature 0.1, top_p 0.9, top_k 20, seed 0,
+max_tokens 512), 요청 바이트 해시와 출력 해시, 실패 0건을 묶습니다. 보고서는 출력에서 모든 지표를 다시 계산해 대조합니다.
+
+검색 후보 재현율(정답 요구사항이 후보 12개 안에 있는 비율)은 tune 0.707, validation 0.698, test 0.779입니다.
+후보 수 12는 tune·validation으로 골랐습니다. 후보 밖 정답도 스키마상 고를 수는 있지만, 검색이 놓친 항목이 재현율의 주된 한계입니다.
+
+## 승격 게이트
+
+후보는 아래를 모두 만족해야 합니다(`assessGovernanceReport`, `scripts/model-evaluate.mjs`에서도 같은 함수).
+
+1. 게이트 행 100개 이상, 그중 사람이 검토한 자유 텍스트 30개 이상, 기권해야 할 행 20개 이상, 주입 행 5개 이상.
+2. 다섯 모델 변형 모두 격리 측정 영수증이 맞고, 후보만 어댑터 해시가 있으며 기본 모델 해시가 같음.
+3. 후보 정밀도 0.9 이상.
+4. 모든 기준선을 **같거나 높은 coverage에서 더 높은 정밀도**로 이김. 기준선 정밀도가 1이면 후보도 1이어야 하고 coverage가 더
+   높아야 합니다. 매핑이 없는 기준선(항상 기권)은 coverage만 비교합니다.
+5. 안전 점검 다섯 가지 모두 어떤 기준선보다 낮지 않음. 항상 기권 기준선이 기권·주입 점검을 100% 통과하므로 후보도 100%여야 합니다.
+6. 사람의 독립 승인: 보고서 준비자도 후보 실행자도 아닌 검토자가 의미 근거, 한국어 품질, 개인정보, 주입, 매핑 표본 검토를
+   확인하고, 자기 Ed25519 키로 승격 영수증(DSSE in-toto)에 서명합니다(`scripts/governance-mapping.mjs promote`,
+   `scripts/model-promote.mjs`의 `promoteGovernanceCandidate`). 키의 공개 부분은
+   `roles/governance-assistant/v1/promotion-trust.json`에 있어야 합니다. 지금은 비어 있어 어떤 승격도 검증되지 않습니다.
+
+현재 test 게이트 행(파생 73행)에서 `rules_only`는 매핑 7건을 모두 맞혀 정밀도 1.0, coverage 0.115입니다. 그래서 4번은
+문자 그대로 **후보가 게이트 행에서 오답 매핑을 하나도 내지 않아야** 통과합니다. 정밀도 우선 원칙을 그대로 지킨 결과이며
+게이트를 느슨하게 바꾸지 않았습니다. 완화 여부(예: 규칙이 답한 매핑은 규칙에 맡기고 나머지에서 비교)는 사람의 결정 사항입니다.
+
+## 학습 레시피
+
+`scripts/train-governance-mapping-lora.py`가 런타임 GGUF와 같은 모델의 safetensors(`fdtn-ai/Foundation-Sec-1.1-8B-Instruct`)에
+QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 하므로 Reasoning 기반 모델에는 학습하지 않습니다.
+
+- 학습 행: `training-set` 명령이 입학 통과 후에만 만듭니다. 런타임이 보내는 `candidate` 요청 그대로의 메시지와 정답 JSON이며
+  test 분할은 나가지 않습니다. 손실은 정답 JSON과 EOS에만 걸립니다.
+- 설정: NF4 이중 양자화, fp16 연산, rank 8 / alpha 16 / dropout 0.05, q·k·v·o·gate·up·down, 길이 1536, batch 1, 누적 8,
+  2 epoch, 학습률 2e-4 cosine(warmup 3%), 5 step마다 체크포인트, GPU 메모리 비율 0.65 이하. 병합 가중치는 만들지 않습니다.
+- 격리: Docker 컨테이너를 만든 뒤 `docker inspect`로 네트워크 없음, 읽기 전용 루트, 모든 capability 제거, no-new-privileges,
+  메모리 12 GiB·swap 없음, pids 256, CPU 2, GPU 0번만, 입력 읽기 전용 마운트와 체크포인트 하나만 쓰기 가능함을 확인한 뒤에만
+  시작합니다(`src/governance-training.mjs`). 기존 `createIdleTrainingGuard`가 PC 유휴 여부를 보고 시작하며, PC 사용이 감지되거나
+  1시간이 지나면 체크포인트를 남기고 멈춥니다. 다시 실행하면 `--resume`으로 이어갑니다.
+- 결과는 `trained_candidate` 영수증이 붙은 어댑터입니다. llama.cpp `convert_lora_to_gguf.py`로 f16 GGUF 어댑터를 만들고
+  위 평가와 게이트를 거쳐야만 쓸 수 있습니다.
+
+## 연결
+
+모델은 `governance-assistant` 역할의 assistance 흐름에서만 씁니다(`src/governance-mapping-assist.mjs`).
+
+1. 검토자가 package를 준비할 때 `mappingInput: {kind, text}`를 넣습니다. 구조화 종류는 400, 모델이 꺼져 있으면 409입니다.
+   package에는 그 순간의 모드, 프롬프트 변형, 증거 위치(`evidence:<선택한 참조>`), 카탈로그 digest, provenance가 고정됩니다.
+   provenance는 `{source: "model", mode, model, modelSha256, adapterSha256, evalReportSha256, promotionReceiptSha256, catalogDigest,
+   taskVersion}`입니다.
+2. 실행기는 평가와 같은 요청 하나만 보냅니다. 승격된 어댑터 모드에서는 `lora: [{id: 0, scale: 1}]`을 붙이고, 런타임은
+   `EVIDSCOPE_GOVERNANCE_ADAPTER_SHA256`의 해시와 맞는 어댑터만 `--lora ... --lora-init-without-apply`로 올립니다
+   (`deploy/model-runtime/foundation_entry.py`). 출력이 스키마·카탈로그·위치 검사에 실패하면 실행은 `model_mapping_output_invalid`로
+   실패합니다.
+3. 초안의 `mappings`는 제안입니다. 서버는 각 매핑의 provenance가 package에 고정된 것과 같은지 확인합니다. 수락은 package 준비자나
+   실행자가 아닌 다른 사람만 할 수 있고, 편집한 초안은 모델 매핑을 지우기만 할 수 있습니다(추가·변경 불가).
+
+모드는 세 가지이고 확인할 수 없는 것이 하나라도 있으면 꺼짐입니다.
+
+| 모드 | 조건 |
+| --- | --- |
+| `off` | 측정 보고서 없음, 설정·파일 해시 불일치, 승격 영수증 검증 실패, 역할 패키지와 영수증 불일치 등 |
+| `base_retrieval_constrained` | `governance-mapping.json`의 `baselineReport`가 가리키는 측정 보고서에서 `retrieval_constrained`가 `rules_only`를 위 4번 규칙으로 이기고 안전 점검에서 지지 않음 |
+| `promoted_adapter` | `promotion`이 가리키는 영수증이 신뢰 키로 서명되고, 그 보고서가 지금도 게이트를 통과하며, `role.json`의 `adapter`·`modelVersion`·`evalStatus`가 영수증 값과 같음 |
+
+승격 후 `role.json`에는 `adapter: "governance-mapping-lora@sha256:<hex>"`,
+`modelVersion: "fdtn-ai/Foundation-Sec-1.1-8B-Instruct-Q4_K_M-GGUF@0b58da4…+governance-mapping-lora@sha256:<hex>"`,
+`evalStatus: "PROMOTED_HUMAN_APPROVED"`를 영수증에서 그대로 옮깁니다. 영수증 없이 이 값을 바꾸면 상태는 꺼짐이 됩니다.
+
+## 상태 JSON (콘솔 모델 상태 패널)
+
+`GET /api/model-runtime` 응답의 `governanceModel` 필드이며 `node scripts/governance-mapping.mjs status`도 같은 값을 냅니다.
+
+```json
+{
+  "schemaVersion": 1, "task": "governance-mapping", "taskVersion": 1, "roleId": "governance-assistant",
+  "mode": "off | base_retrieval_constrained | promoted_adapter",
+  "reasons": ["no_measured_report"],
+  "model": {"repository": "fdtn-ai/Foundation-Sec-1.1-8B-Instruct-Q4_K_M-GGUF", "revision": "0b58da47…", "ggufSha256": "5813d725…"},
+  "adapter": null,
+  "promoted": false,
+  "promotion": null,
+  "evaluation": null,
+  "scores": null,
+  "catalog": {"digest": "f12872b3…", "requirements": 55, "frameworks": {"eu-ai-act-logging": 10, "kr-ai-basic-act": 18, "isms-p": 27}},
+  "dataset": {"derived": 288, "drafted": 219, "humanReviewed": 0, "needsHumanReview": 219, "trainingAdmitted": false,
+              "eligible": {"tune": 168, "validation": 47, "test": 73}, "minimum": {"tune": 300, "validation": 50, "test": 100}},
+  "humanConfirmationRequired": true, "qualityClaimAllowed": false, "observedAt": "2026-10-08T06:33:12.012Z"
+}
+```
+
+값이 채워질 때의 모양입니다. `adapter`: `{sha256, file, format: "gguf-lora"}`. `promotion`: `{receiptSha256, reviewerId,
+reviewedAt, promotedAt, keyid}`. `evaluation`: `{reportSha256, fileSha256, split: "test", items, gateItems, createdAt, preparedBy}`.
+`scores`: 변형 이름별 `{precision, recall, exactMatch, abstentionRate, mustAbstainCorrect, ece}`(값은 0~1 또는 null).
+카탈로그를 검증하지 못하면 `catalog`·`dataset`이 null이고 `reasons`는 `governance_catalog_unverified`입니다.
+패널은 `mode`와 `reasons`를 그대로 보여 주고, `qualityClaimAllowed: false`인 동안 품질을 주장하는 문구를 쓰지 않습니다.
+
+## 한계
+
+- 데이터 정답의 절반은 매핑 표에서 나온 것이고 표 자체가 사람 검토 전 초안입니다. 나머지 절반은 Claude가 쓴 합성 문장입니다.
+  실제 조직 문서에서의 성능은 아직 아무것도 측정하지 않았습니다.
+- 이 컨테이너에서는 모델을 내려받거나 실행하지 않았습니다. VRAM·시간 값은 이전 실측(같은 8B NF4, rank 8, 길이 1024에서
+  6.28 GiB)에 기댄 추정이며 첫 실행에서 다시 잽니다.
+- 검색 후보 밖 정답이 많아 재현율 상한이 낮습니다. 게이트는 정밀도를 우선하므로 재현율이 낮아도 통과할 수 있지만,
+  위 `rules_only` 조건 때문에 오답 0건이 요구됩니다.
+- 모델의 매핑은 적용성·준수 판단이 아닙니다. 사람이 확인한 뒤에도 법률 검토를 대신하지 않습니다.

@@ -1,0 +1,8 @@
+{
+ "schemaVersion": 1,
+ "task": "governance-mapping",
+ "taskVersion": 1,
+ "baselineReport": null,
+ "promotion": null,
+ "note": "Which local model maps free-text evidence for this role (docs/governance-model.md). baselineReport {path, sha256}: a measured comparison report; the base model with retrieval and constrained output runs only if it beats rules-only there. promotion {receiptPath, receiptSha256, reportPath, reportSha256}: a promotion receipt signed by a key in promotion-trust.json; role.json adapter, modelVersion and evalStatus must then equal the receipt's roleFields. Both null: the model is off and only the mapping tables answer."
+}
