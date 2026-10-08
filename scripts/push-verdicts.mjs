@@ -193,7 +193,8 @@ export async function run(argv, env = process.env) {
     witness: assessment.witness ?? 'none'}, verdicts: verdicts.map(summary), reasonText: REASONS};
   const scores = langfuse ? langfuseScores(verdicts, {environment: values['langfuse-environment']}) : null;
   const annotations = phoenix ? phoenixAnnotations(verdicts) : null;
-  let failed = assessment.verdict !== 'verified';
+  // A replay mismatch is per action; like scripts/verify.mjs --replay it fails the run.
+  let failed = assessment.verdict !== 'verified' || verdicts.some(v => v.verdict === 'tampered');
   if (!values.send) {
     // The preview shows exactly what would leave this machine, so an operator can check it before --send.
     if (scores) output.langfuse = {endpoint: where(new URL('api/public/ingestion', langfuse)), events: scores.events, deletes: scores.deletes};

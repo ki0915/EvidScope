@@ -150,9 +150,8 @@ export function actionVerdicts(assessment, {linkBase = null} = {}) {
     if (!context) continue;
     const key = `${event.actionId}\0${context.traceId}`;
     if (!groups.has(key))
-      groups.set(key, {actionId: event.actionId, traceId: context.traceId, firstRecordedAt: isoMillis(recordedAt), seqs: [], spans: new Map()});
+      groups.set(key, {actionId: event.actionId, traceId: context.traceId, firstRecordedAt: isoMillis(recordedAt), spans: new Map()});
     const group = groups.get(key);
-    group.seqs.push(seq);
     if (context.spanId && !group.spans.has(context.spanId) && group.spans.size < LIMITS.spansPerTrace) group.spans.set(context.spanId, {seq, hash});
   }
   const approvals = trusted ? approvalCounts(bundle) : new Map(), actionSeqs = new Map();
