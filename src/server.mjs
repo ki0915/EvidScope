@@ -9,6 +9,7 @@ import {tick} from './worker.mjs';
 import {dataKeysFromEnv} from './data-keys.mjs';
 import {createOtlpHttp,localForwarder,remoteForwarder,otlpLimits,OTLP_TRACES_PATH} from './otlp-http.mjs';
 import {prepareTransparency} from './transparency.mjs';
+import {ingestBatchOptions} from './ingest-batch.mjs';
 import {ENFORCEMENT_PREFIX,STATUS_MAX_BYTES,STATUS_PATH} from './enforcement-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const mode=process.env.MODE||'vault',host=process.env.HOST||'127.0.0.1',port=Number(process.env.PORT||8080);
@@ -35,7 +36,7 @@ const accessLogEnv=Object.fromEntries([['sealIntervalMs','ACCESS_LOG_SEAL_INTERV
 // Optional links to the same trace in Langfuse or Phoenix (src/trace-links.mjs): a JSON array kept outside config.json, so changing
 // it never needs a signed config rebinding after a restoration.
 const traceLinks=mode==='vault'&&process.env.TRACE_LINKS_FILE?JSON.parse(readFileSync(process.env.TRACE_LINKS_FILE,'utf8')):undefined;
-let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,traceLinks,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
+let service;if(mode==='vault')service=createService({transparency,accessLog:accessLogEnv,traceLinks,dataDir:process.env.DATA_DIR||join(root,'.local','data'),config:JSON.parse(readFileSync(process.env.CONFIG_FILE||join(root,'.local','config.json'),'utf8')),key:readFileSync(process.env.SIGNING_KEY_FILE||join(root,'.local','signing-private.pem'),'utf8'),...dataKeysFromEnv(process.env),eventKeystoreDir:process.env.EVENT_KEYSTORE_DIR||undefined,bundleSigning,ingestBatch:ingestBatchOptions(),requirements:JSON.parse(readFileSync(join(root,'data','requirements.json'),'utf8')),runtimeReceipt});
 const otlpHttpLimits=otlpLimits(),otlp=mode==='vault'||mode==='ingress'?createOtlpHttp({limits:otlpHttpLimits,forward:mode==='vault'?localForwarder(service):remoteForwarder(base,{timeoutMs:otlpHttpLimits.forwardTimeoutMs}),log:e=>process.stderr.write(JSON.stringify(e)+'\n')}):null;
 const security={'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY'};
 // A public, sanitized serving-instance label, never a credential or upstream label.

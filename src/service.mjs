@@ -27,7 +27,8 @@ import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
 import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysAvailable} from './data-keys.mjs';
 import {createOtlpIngest,otlpSource} from './otlp-ingest.mjs';
-import {appendSourceEvent,assertAnalysisCapacity,receiptMatch} from './event-ingest.mjs';
+import {beginIngestBatch,ingestSourceEvent} from './event-ingest.mjs';
+import {createGroupCommit} from './ingest-batch.mjs';
 import {eventKeyStatus} from './event-keys.mjs';
 import {attachEventKeystore} from './event-keystore.mjs';
 import {UNANCHORED,assertTransparencyAnchors,createTransparency,loadTransparencyConfig} from './transparency.mjs';
@@ -44,7 +45,7 @@ import {APPROVAL_PATHS,createApprovals} from './approval-service.mjs';
 import {eventTraceIds,traceLinkTemplates,traceLinks} from './trace-links.mjs';
 
 export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkConfig,previousDataKeys=[],eventKeystoreDir,requirements=[],runtimeReceipt=()=>undefined,transparency:prepared,verifiedStateMaxAgeMs,accessLog:accessLogOptions,
- bundleSigning}) {
+ bundleSigning,ingestBatch:ingestBatchLimits}) {
  // Credentials are checked before anything is opened: every principal has its own token and a unique id (round 2, S6).
  const principals=config.principals||[];
  if(principals.some(p=>!p.id||!p.tenant||!p.token||p.token.length<32)||new Set(principals.map(p=>p.token)).size!==principals.length)throw Error('Invalid credential configuration');
@@ -75,6 +76,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
  const analysis=createAnalysis(store,principals,{profile:config.profile});
  const finance=createFinanceEvidence({store,dataDir,key,keyring,requirements,governanceReport:report});
  const ingestOtlp=createOtlpIngest({store,principals,verifiedActions});
+ // Source ingest group commit (src/ingest-batch.mjs, docs/performance.md); ingestBatch: {maxWaitMs, maxEvents}.
+ const ingestBatch=createGroupCommit({store,...ingestBatchLimits,begin:sources=>beginIngestBatch(store,sources,verifiedActions)});
  const identity=createIdentity({config,store});
  const tenants=new Set([...principals,...identity.bindings].map(p=>p.tenant));
  const human=p=>{if(!['auditor','reviewer','admin'].includes(p.role))fail(403,'인간 감사 계정만 접근할 수 있습니다');};
@@ -293,16 +296,8 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
    if(!/^\d{13}$/.test(ts||'')||Math.abs(Date.now()-Number(ts))>300000||!nonce||!/^[a-zA-Z0-9-]{16,80}$/.test(nonce))fail(401,'서명 시각 또는 nonce가 유효하지 않습니다');
    if(!p.hmacSecret||!equal(mac(p.hmacSecret,ts,nonce,body),signature||''))fail(401,'출처 서명 검증 실패');
    let raw;try{raw=JSON.parse(body);}catch{fail(400,'JSON 형식 오류');}const e=validateEvent(raw,p);
-   return store.transaction(()=>{
-    verifiedActions(p);
-    store.db.prepare('DELETE FROM nonces WHERE expires<?').run(Date.now());
-    if(store.db.prepare('SELECT 1 FROM nonces WHERE source=? AND nonce=?').get(p.id,nonce))fail(409,'이미 사용한 nonce입니다');
-    store.db.prepare('INSERT INTO nonces VALUES(?,?,?)').run(p.id,nonce,Date.now()+600000);
-    const prev=receiptMatch(store,p.tenant,p.id,e.id,e.fingerprint);
-    if(prev){if(prev==='unverifiable')fail(409,'동일 출처 이벤트 ID의 이전 접수 지문 키가 파기되어 내용을 비교할 수 없습니다');if(prev!=='same')fail(409,'동일 출처 이벤트 ID의 내용 충돌');store.count('duplicates');return {accepted:true,duplicate:true,durability:'sqlite_full_commit',analysis:'asynchronous',externalSeal:false};}
-    assertAnalysisCapacity(store,p.tenant);appendSourceEvent(store,p,e);
-    store.count('accepted');return {accepted:true,duplicate:false,durability:'sqlite_full_commit',analysis:'asynchronous',externalSeal:false};
-   });
+   // Answered after the COMMIT of the batch that holds it (src/ingest-batch.mjs).
+   return ingestBatch.submit(p,context=>ingestSourceEvent(store,context,p,nonce,e));
   }
   if(path==='/api/ingest/otlp'&&method==='POST')return ingestOtlp(p,body);
   if(path===APPROVAL_PATHS.request&&method==='POST')return approvals.open(p,headers,body);
@@ -464,5 +459,5 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch};
 }

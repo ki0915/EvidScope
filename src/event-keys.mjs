@@ -9,8 +9,8 @@
 // - keystore (src/event-keystore.mjs): files outside DATA_DIR sealed by the data key; event keys are stored wrapped.
 // Epoch store interface, also the hook for a KMS or the signer process to hold the secrets (calls are synchronous because
 // Store.transaction is): kind, wrapsEventKeys, available, present, ensure, destroyed, destroy, list, tombstones, mac, wrap, unwrap.
-import {createCipheriv,createDecipheriv,createHmac,hkdfSync,randomBytes} from 'node:crypto';
-import {canonical,equal,isEncryptedEvent,verifyBundle,ENCRYPTED_EVENT_V2} from './crypto.mjs';
+import {createCipheriv,createDecipheriv,createHash,createHmac,hkdfSync,randomBytes} from 'node:crypto';
+import {canonical,equal,isEncryptedEvent,secretKey,verifyBundle,ENCRYPTED_EVENT_V2} from './crypto.mjs';
 import {eventKeyMaterialBytes,openEvent} from './encryption.mjs';
 
 export const EPOCH_PATTERN=/^\d{4}-(?:0[1-9]|1[0-2])$/;
@@ -22,7 +22,7 @@ const WRAP_INFO='evidscope/event-key-epoch/v1/event-key-wrap',WRAPPED_FORMAT='ev
 // Wrapped key: 'EKW1' || material length in 32-byte units || iv || ciphertext || tag. Lengths 65 and 97 never equal a raw
 // key (32 for v1, 64 for v2 key || salt), so the stored length alone tells wrapped from raw keys.
 const WRAP_MAGIC=Buffer.from('EKW1'),WRAP_OVERHEAD=WRAP_MAGIC.length+1+12+16;
-const derive=(secret,info)=>Buffer.from(hkdfSync('sha256',secret,Buffer.alloc(0),Buffer.from(info,'utf8'),32));
+const derive=(secret,info)=>secretKey(Buffer.from(hkdfSync('sha256',secret,Buffer.alloc(0),Buffer.from(info,'utf8'),32)));
 export const checkEpoch=epoch=>{if(typeof epoch!=='string'||!EPOCH_PATTERN.test(epoch))throw Error('Invalid event-key epoch');return epoch;};
 
 export function epochOfRetainUntil(retainUntil){
@@ -35,25 +35,36 @@ export const eventKeyEpoch=payload=>payload.format===ENCRYPTED_EVENT_V2?checkEpo
 export const epochEnd=epoch=>{const [year,month]=checkEpoch(epoch).split('-').map(Number);return Date.UTC(year,month,1);};
 
 // Operations over an epoch secret; stores differ only in where the secret lives (secret(tenant,epoch) => Buffer|undefined).
+// Derived keys are cached per tenant, epoch and purpose (round 5, docs/performance.md): the secret is still looked up on every
+// call, and a cached key is used only while that lookup returns a secret with the same SHA-256, so a destroyed or replaced epoch
+// is never served from the cache. forget(tenant,epoch) drops an epoch's derived keys when it is destroyed.
 export function epochOperations(secret,destroyed){
+ const derived=new Map();
  const need=(tenant,epoch)=>{
   const value=secret(tenant,checkEpoch(epoch));if(value)return value;
   throw Error(destroyed(tenant,epoch)?`Event-key epoch ${epoch} was destroyed; its event keys and receipt tags can no longer be opened`
    :`Event-key epoch ${epoch} is not available`);
  };
+ const keyOf=(tenant,epoch,info)=>{
+  const value=need(tenant,epoch),id=canonical([tenant,epoch,info]),cached=derived.get(id),check=createHash('sha256').update(value).digest();
+  if(cached&&cached.check.equals(check))return cached.key;
+  const key=derive(value,info);if(derived.size>=1024)derived.delete(derived.keys().next().value);
+  derived.set(id,{check,key});return key;
+ };
  return {
   available:(tenant,epoch)=>EPOCH_PATTERN.test(epoch)&&!!secret(tenant,epoch),
-  mac:(tenant,epoch,text)=>createHmac('sha256',derive(need(tenant,epoch),FINGERPRINT_INFO)).update(text).digest('hex'),
+  forget(tenant,epoch){for(const info of [FINGERPRINT_INFO,WRAP_INFO])derived.delete(canonical([tenant,epoch,info]));},
+  mac:(tenant,epoch,text)=>createHmac('sha256',keyOf(tenant,epoch,FINGERPRINT_INFO)).update(text).digest('hex'),
   wrap(tenant,epoch,aad,plaintext){
    if(!Buffer.isBuffer(plaintext)||!plaintext.length||plaintext.length%32||plaintext.length>255*32)throw Error('Invalid event key material');
-   const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',derive(need(tenant,epoch),WRAP_INFO),iv);cipher.setAAD(Buffer.from(canonical(aad)));
+   const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',keyOf(tenant,epoch,WRAP_INFO),iv);cipher.setAAD(Buffer.from(canonical(aad)));
    return Buffer.concat([WRAP_MAGIC,Buffer.from([plaintext.length/32]),iv,cipher.update(plaintext),cipher.final(),cipher.getAuthTag()]);
   },
   unwrap(tenant,epoch,aad,blob){
    const bytes=Buffer.from(blob);
    const valid=bytes.length>WRAP_OVERHEAD&&bytes.subarray(0,4).equals(WRAP_MAGIC)&&bytes.length===WRAP_OVERHEAD+bytes[4]*32;
    if(!valid)throw Error('Wrapped event key is malformed');
-   const decipher=createDecipheriv('aes-256-gcm',derive(need(tenant,epoch),WRAP_INFO),bytes.subarray(5,17));
+   const decipher=createDecipheriv('aes-256-gcm',keyOf(tenant,epoch,WRAP_INFO),bytes.subarray(5,17));
    decipher.setAAD(Buffer.from(canonical(aad)));decipher.setAuthTag(bytes.subarray(bytes.length-16));
    return Buffer.concat([decipher.update(bytes.subarray(17,bytes.length-16)),decipher.final()]);
   },
@@ -61,11 +72,12 @@ export function epochOperations(secret,destroyed){
 }
 
 // Secrets in evidence.db. mutate wraps writes (Store.projectionMutation). Old read-only snapshots may lack the tables.
-export function databaseEpochStore(db,{mutate=fn=>fn()}={}){
+// read(sql) may return a cached prepared statement for the two lookups made per event (Store.cachedStatement).
+export function databaseEpochStore(db,{mutate=fn=>fn(),read=sql=>db.prepare(sql)}={}){
  let ready=false;
  const tables=()=>ready||(ready=!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='event_key_epochs'").get());
  const secret=(tenant,epoch)=>{
-  if(!tables())return undefined;const row=db.prepare('SELECT secret FROM event_key_epochs WHERE tenant=? AND epoch=?').get(tenant,epoch);
+  if(!tables())return undefined;const row=read('SELECT secret FROM event_key_epochs WHERE tenant=? AND epoch=?').get(tenant,epoch);
   return row?Buffer.from(row.secret):undefined;
  };
  const destroyed=(tenant,epoch)=>tables()&&!!db.prepare('SELECT 1 FROM event_key_epoch_tombstones WHERE tenant=? AND epoch=?').get(tenant,epoch);
@@ -81,6 +93,7 @@ export function databaseEpochStore(db,{mutate=fn=>fn()}={}){
     if(deleted!==1)throw Error('Event-key epoch is not stored');
     db.prepare('INSERT OR IGNORE INTO event_key_epoch_tombstones VALUES(?,?,?,?)').run(tenant,epoch,at,'database');
    });
+   this.forget(tenant,epoch);
   },
   list:tenant=>tables()?db.prepare('SELECT tenant,epoch,created_at AS createdAt FROM event_key_epochs WHERE tenant=? ORDER BY epoch').all(tenant):[],
   tombstones:tenant=>tables()
