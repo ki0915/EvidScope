@@ -83,6 +83,10 @@ verified evidence and accepts only checks it establishes itself:
 node evidscope-verify.mjs pack pack-2026q3.tar.gz vault-public.pem --pack-key builder-public.pem [CHECKPOINT.json] [--tenant T]
 ```
 
+A period package (`--period-only`) carries only the ledger range of its period, as record receipts. The verifier checks that each record
+is included in the signed tenant log, but such a package does not establish that evidence is absent inside the period. This folder ships
+every published mapping version in `data/evidence-pack-mappings/`, so an older package verifies against the version it names.
+
 Transparency flags (optional): `--witness VKEY` (repeatable) `--quorum N` `--origin-base BASE` `--max-staleness SECONDS`
 `--require-transparency` `--require-tenant-witness` `--heads-key VKEY` (repeatable, the [heads signer](https://github.com/ki0915/EvidScope/blob/main/docs/signer.md)'s key)
 `--require-heads-signer` (needs `--origin-base`; `vault_host` is reported only under a pinned origin base).

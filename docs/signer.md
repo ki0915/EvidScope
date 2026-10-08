@@ -314,6 +314,13 @@ npm start                                                         # 서명기를
 `serve.json`의 인수를 `--backend ssh-agent --fingerprint SHA256:...`로 바꾸면 Windows OpenSSH agent의 키를 씁니다. 같은 PC·같은 계정에서
 도는 서명기는 프로세스만 나눌 뿐 호스트 장악을 막지 못합니다. 기능 확인용입니다.
 
+## 증거 묶음 서명
+
+같은 `scripts/signer.mjs serve`에 `--sign-pack-statements`를 주면 감사인용 증거 묶음의 in-toto statement(SVR v0.2, EvidScope 묶는 쪽
+`verifier.id`)도 서명합니다(`POST /v1/sign-statement`). 그 밖의 바이트는 서명하지 않으며, 서명과 거부는 감사 로그에 남습니다. 플래그가 없으면
+서명기는 예전처럼 heads 체크포인트만 서명하고 그 경로는 404입니다. 묶는 사람에게 heads 서명기 token을 주지 않도록 묶음용 서명기는 별도
+인스턴스·키로 운영하기를 권합니다. 자세한 내용은 [감사인용 증거 묶음](evidence-pack.md#서명기로-서명하기)을 보세요.
+
 ## 장애와 운영
 
 | 보고 | 의미 | 조치 |
