@@ -1,6 +1,8 @@
 // Guarded governance-mapping QLoRA run on the operator's Windows PC with Docker Desktop (docs/governance-model-runbook.md).
 //   node scripts/governance-mapping-train.mjs [--image repo@sha256:<digest>] --base-dir D --base-revision <40 hex> --data train.jsonl
-//        --checkpoints-dir D --work-dir D [--resume governance-mapping/run/checkpoint-N] [--check-only]
+//        --checkpoints-dir D --work-dir D [--resume governance-mapping/run/checkpoint-N] [--check-only] [--shakedown]
+// --shakedown: a run on the derived rows only (training-set --shakedown) to measure VRAM and time before the human review is done.
+// Its adapter goes to governance-mapping/shakedown, is never promotable and is not a quality result.
 // The image defaults to the pinned public-QA training image (same packages, already on the PC; no new build).
 // --check-only prints the spec, the docker arguments and the host decision without creating a container.
 // Training starts only when the idle-host guard allows it and stops (with a checkpoint) when the PC is needed or after one hour.
@@ -20,6 +22,7 @@ export async function runGovernanceTraining(argv, {probe = () => probeWindowsHos
   let checkOnly = false;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--check-only') { checkOnly = true; continue; }
+    if (argv[i] === '--shakedown') { options.runMode = 'shakedown'; continue; }
     const key = KEYS[argv[i]];
     if (!key || options[key] !== undefined || !argv[i + 1] || argv[i + 1].startsWith('--')) {
       throw Error('usage: see the header of scripts/governance-mapping-train.mjs');

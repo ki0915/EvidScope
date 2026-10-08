@@ -61,7 +61,9 @@ export function presence(rows, disclosures, period) {
 let mappings = null;
 const frameworkMappings = () => (mappings ??= FRAMEWORKS.map(id => frameworkMapping(id)));
 
-export function createHome({store, policyObjects, verifiedEvents, approvals, registry, legalReviewState, runtimeStatus, now = () => Date.now()}) {
+// factsheets(p): the signed governance-model factsheets ({status, items}); src/governance-model-service.mjs.
+export function createHome({store, policyObjects, verifiedEvents, approvals, registry, legalReviewState, runtimeStatus, now = () => Date.now(),
+  factsheets = () => ({status: 'unavailable', reason: 'not_configured', items: []})}) {
   const values = (p, type) => [...policyObjects(p, type).values()];
 
   // Events received in [since, now], newest first, as one indexed range; cut at WINDOW_LIMITS (then counts are lower bounds).
@@ -280,7 +282,7 @@ export function createHome({store, policyObjects, verifiedEvents, approvals, reg
     result.threats.integrity = integrity(p);
     return result;
   }
-  const status = p => modelStatus({signedProfiles: values(p, 'assistance_profile'), runtime: runtimeStatus()});
+  const status = p => modelStatus({signedProfiles: values(p, 'assistance_profile'), runtime: runtimeStatus(), factsheets: factsheets(p)});
   function compactModel(p) {
     const s = status(p), latest = s.training.repository.runs.at(-1);
     return {reviewModel: s.reviewModel.model, revision: s.reviewModel.revision, quantization: s.reviewModel.quantization,

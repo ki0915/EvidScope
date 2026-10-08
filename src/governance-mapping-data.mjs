@@ -19,6 +19,7 @@ const read = path => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.u
 const norm = text => String(text).normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 export const fingerprint = row => sha256(norm(row.prompt));
 export const datasetHash = rows => sha256(canonical([...rows].sort((a, b) => (a.id < b.id ? -1 : 1))));
+export const toJsonl = rows => rows.map(r => JSON.stringify(r)).join('\n') + '\n';
 export const itemOf = row => ({kind: row.evidence[0].kind, locators: row.evidence.map(e => e.id), text: row.prompt, language: row.language});
 const hashSplit = familyId => {
   const n = parseInt(sha256(`governance-mapping-v1:${familyId}`).slice(0, 8), 16) % 20;
@@ -170,15 +171,28 @@ export function governanceAdmission(rows, {now = Date.now()} = {}) {
 }
 
 // Rows for the trainer: exactly the prompt the runtime sends (variant "candidate") and the gold JSON as the target. Test never leaves.
+const trainerRow = (r, runMode) => {
+  const request = buildMappingRequest(itemOf(r), {variant: 'candidate'});
+  const target = r.labelSource === 'derived_mapping_table' ? r.candidateOutput : r.approvedOutput;
+  return {id: r.id, task: TASK, taskVersion: TASK_VERSION, roleId: ROLE_ID, split: r.split, familyId: r.familyId, messages: request.messages,
+    target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null,
+      catalogDigest: request.catalogDigest, runMode};
+};
 export function trainingRows(rows, {now = Date.now()} = {}) {
   const gate = governanceAdmission(rows, {now});
   if (!gate.admitted) throw Object.assign(Error('governance_training_admission_failed'), {admission: gate});
-  return rows.filter(r => r.split !== 'test' && rowEligibility(r, {now}).eligible).map(r => {
-    const request = buildMappingRequest(itemOf(r), {variant: 'candidate'});
-    const target = r.labelSource === 'derived_mapping_table' ? r.candidateOutput : r.approvedOutput;
-    return {id: r.id, task: TASK, taskVersion: TASK_VERSION, roleId: ROLE_ID, split: r.split, familyId: r.familyId, messages: request.messages,
-      target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null, catalogDigest: request.catalogDigest};
-  });
+  return rows.filter(r => r.split !== 'test' && rowEligibility(r, {now}).eligible).map(r => trainerRow(r, 'candidate'));
+}
+// Shakedown: the derived tune/validation rows only, to measure VRAM and time on the PC before the human review is done. Every row is
+// labelled runMode "shakedown"; the trainer then writes a shakedown adapter that is never promotable and never a quality result.
+// No reviewed row is used, so the run says nothing about the drafted data either.
+export function shakedownRows(rows, {now = Date.now()} = {}) {
+  const derived = rows.filter(r => r.split !== 'test' && r.labelSource === 'derived_mapping_table');
+  if (!derived.length || derived.some(r => !rowEligibility(r, {now}).eligible)) throw Error('governance_shakedown_rows_invalid');
+  const families = new Map();
+  for (const r of derived) { if (!families.has(r.familyId)) families.set(r.familyId, new Set()); families.get(r.familyId).add(r.split); }
+  if ([...families.values()].some(splits => splits.size > 1)) throw Error('governance_shakedown_family_split_leakage');
+  return derived.map(r => trainerRow(r, 'shakedown'));
 }
 
 // ---------- human review: a bulk approve/reject pass over the drafted rows ----------
@@ -215,3 +229,44 @@ export function applyReviewDecisions(rows, decisions, {reviewerId, reviewedAt, p
     unreviewed: imported.filter(r => r.labelSource === 'claude_drafted' && r.humanReviewed !== true).length};
 }
 export const reviewPacket = rows => exportHumanReviewPacket(rows.filter(r => r.labelSource === 'claude_drafted' && r.humanReviewed !== true));
+
+// ---------- review queue (console, docs/governance-model.md "검토 대기열") ----------
+// One signed ledger decision per drafted row (src/governance-review-queue.mjs). The queue never edits an answer: approve means the
+// drafted answer as shown, so the decision binds the reviewedPayloadHash the row carries once approved, plus its recordHash.
+export const QUEUE_DECISION_TYPE = 'governance_mapping_review';
+export const queueBinding = r => reviewedPayloadHash({...r, approvedOutput: r.candidateOutput});
+const SHA64 = /^[a-f0-9]{64}$/;
+export function queueDecisionProblem(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d) || typeof d.id !== 'string' || !['approve', 'reject'].includes(d.decision)) return 'decision_invalid';
+  if (!SHA64.test(d.reviewedPayloadHash || '') || !SHA64.test(d.recordHash || '')) return 'decision_binding_invalid';
+  if (typeof d.reviewerId !== 'string' || !d.reviewerId.trim() || !Number.isFinite(Date.parse(d.reviewedAt))) return 'decision_reviewer_invalid';
+  if (d.piiReviewed !== true || d.sourceConsent !== true) return 'decision_attestation_missing';
+  return null;
+}
+// decisions: the signed decision values in ledger order (a later decision for the same row supersedes an earlier one). Each is
+// applied only while the row still has the content it was decided on; the rest are reported, never applied. Approvals go through
+// importHumanReviews exactly like the review sheet's (applyReviewDecisions), each with its own deciding reviewer and time.
+export function applyQueueDecisions(rows, decisions) {
+  const byId = new Map(rows.map(r => [r.id, r])), latest = new Map(), skipped = [];
+  for (const d of decisions) {
+    const problem = queueDecisionProblem(d);
+    if (problem) { skipped.push({id: typeof d?.id === 'string' ? d.id : null, reason: problem}); continue; }
+    latest.set(d.id, d);
+  }
+  const approve = [], rejected = [];
+  for (const d of latest.values()) {
+    const r = byId.get(d.id);
+    const reason = !r || r.labelSource !== 'claude_drafted' ? 'row_unknown' : r.humanReviewed === true ? 'row_already_reviewed'
+      : recordHash(r) !== d.recordHash || queueBinding(r) !== d.reviewedPayloadHash ? 'row_changed_since_decision' : null;
+    if (reason) { skipped.push({id: d.id, reason}); continue; }
+    if (d.decision === 'reject') { rejected.push({id: d.id, note: String(d.note || '')}); continue; }
+    approve.push({id: d.id, recordHash: d.recordHash, approved: true, reviewerId: d.reviewerId.trim(), reviewedAt: d.reviewedAt, sourceConsent: true,
+      piiReviewed: true, approvedOutput: r.candidateOutput});
+  }
+  const rejectedIds = new Set(rejected.map(x => x.id)), kept = rows.filter(r => !rejectedIds.has(r.id));
+  const out = approve.length ? importHumanReviews(kept, approve) : kept, result = new Map(out.map(r => [r.id, r]));
+  for (const a of approve) if (result.get(a.id)?.reviewedPayloadHash !== latest.get(a.id).reviewedPayloadHash)
+    throw Error('review_queue_binding_mismatch: ' + a.id);
+  return {rows: out, approved: approve.length, rejected, skipped,
+    unreviewed: out.filter(r => r.labelSource === 'claude_drafted' && r.humanReviewed !== true).length};
+}

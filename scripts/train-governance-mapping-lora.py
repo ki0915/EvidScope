@@ -5,6 +5,9 @@ messages with the retrieved catalog candidates) and the gold JSON as the target.
 runtime model, fdtn-ai/Foundation-Sec-1.1-8B-Instruct, so the adapter applies to the pinned Q4_K_M GGUF after conversion
 with llama.cpp convert_lora_to_gguf.py. Merged weights are never written.
 --check-only and --token-check run without GPU libraries; training needs the isolated container (EVIDSCOPE_ISOLATED=1).
+--shakedown trains the same recipe on the derived rows only (`training-set --shakedown`) to measure VRAM and time before the human
+review is done. Its adapter goes to <output>/shakedown-adapter with status shakedown_not_promotable: verify_candidate refuses it,
+it is never promoted and its numbers are not a quality result.
 """
 import argparse
 import hashlib
@@ -15,6 +18,7 @@ from pathlib import Path
 import re
 import signal
 import sys
+import time
 from functools import partial
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -54,7 +58,7 @@ def valid_target(text):
     return value["abstain"] == (len(value["mappings"]) == 0) and len(value["mappings"]) <= 5
 
 
-def admission(path):
+def admission(path, shakedown=False):
     """Re-checks what the node admission already decided; the held-out test split never reaches this file."""
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     reasons, ids, families, digests = [], set(), {}, set()
@@ -75,15 +79,21 @@ def admission(path):
             reasons.append("target_invalid")
         if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
             reasons.append("label_provenance_invalid")
+        if shakedown and (row.get("runMode") != "shakedown" or row.get("labelSource") != "derived_mapping_table"):
+            reasons.append("shakedown_requires_derived_shakedown_rows")
+        if not shakedown and row.get("runMode", "candidate") != "candidate":
+            reasons.append("shakedown_rows_in_candidate_run")
     if any(len(splits) > 1 for splits in families.values()):
         reasons.append("family_split_leakage")
     if len(digests) != 1:
         reasons.append("catalog_digest_mixed")
     counts = {split: sum(row.get("split") == split for row in rows) for split in ("tune", "validation")}
-    if counts["tune"] < 300 or counts["validation"] < 50:
+    # A shakedown measures resources only, so the review minimums do not apply; it still needs both splits.
+    if (counts["tune"] < 1 or counts["validation"] < 1) if shakedown else (counts["tune"] < 300 or counts["validation"] < 50):
         reasons.append("eligible_counts_below_policy")
     reasons = sorted(set(reasons))
-    return rows, {"admitted": not reasons, "counts": counts, "reasons": reasons, "qualityClaimAllowed": False}
+    return rows, {"admitted": not reasons, "runMode": "shakedown" if shakedown else "candidate", "counts": counts, "reasons": reasons,
+                  "qualityClaimAllowed": False, "promotable": not shakedown}
 
 
 def encode_row(tokenizer, row, sequence_length=RECIPE["sequenceLength"]):
@@ -133,13 +143,16 @@ def identity_for(args, root):
     return {"task": TASK, "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
             "datasetSha256": sha256_file(args.data), "trainerSha256": sha256_file(here), "artifactHelperSha256": sha256_file(here.with_name("training_artifacts.py")),
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
-            "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", ""), "gpuMemoryFractionPercent": round(args.gpu_memory_fraction * 100), **RECIPE}
+            "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", ""), "gpuMemoryFractionPercent": round(args.gpu_memory_fraction * 100),
+            "runMode": "shakedown" if args.shakedown else "candidate", **RECIPE}
 
 
 def check_output(args):
     output = Path(args.output).resolve()
     if not output.is_relative_to(Path("/checkpoints").resolve()) or output == Path("/checkpoints").resolve():
         raise RuntimeError("training_output_path_invalid")
+    if (output.name == "shakedown") != bool(args.shakedown):
+        raise RuntimeError("training_output_run_mode_mismatch")
     if args.resume_from_checkpoint:
         resume = Path(args.resume_from_checkpoint).resolve()
         if not resume.is_relative_to(output) or not re.fullmatch(r"checkpoint-[1-9][0-9]*", resume.name):
@@ -150,6 +163,7 @@ def check_output(args):
 
 
 def train(args, rows):
+    started = time.monotonic()
     if os.name != "posix" or os.environ.get("EVIDSCOPE_ISOLATED") != "1" or not Path("/etc/podinfo/uid").is_file():
         raise RuntimeError("isolated_training_job_required")
     if not 0.1 <= args.gpu_memory_fraction <= 0.65:
@@ -184,6 +198,7 @@ def train(args, rows):
                                                  attn_implementation="sdpa", quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                                  bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=torch.float16))
     model = kbit.prepare_memory_efficient_kbit(model)
+    loaded = time.monotonic()
     torch.cuda.empty_cache()
     model = get_peft_model(model, LoraConfig(r=RECIPE["rank"], lora_alpha=RECIPE["alpha"], lora_dropout=RECIPE["dropout"], target_modules=RECIPE["targetModules"],
                                              bias="none", task_type="CAUSAL_LM"))
@@ -216,15 +231,19 @@ def train(args, rows):
     result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint or None)
     if stop["requested"]:
         raise SystemExit(75)
+    trained = time.monotonic()
     collate.verify_finite_adapter(model, torch)
-    candidate = output / "candidate"
+    candidate = output / ("shakedown-adapter" if args.shakedown else "candidate")
     model.save_pretrained(candidate, safe_serialization=True)
     if any(path.name.startswith("model") and path.suffix == ".safetensors" for path in candidate.iterdir()):
         raise RuntimeError("merged_weights_forbidden")
     metrics = {**result.metrics, "cudaPeakAllocatedMiB": round(torch.cuda.max_memory_allocated() / 1048576)}
-    receipt = {"schemaVersion": 2, "status": "trained_candidate", "identity": identity, "globalStep": trainer.state.global_step, "trainingMetrics": metrics,
+    timing = {"loadSeconds": round(loaded - started, 1), "trainSeconds": round(trained - loaded, 1), "totalSeconds": round(time.monotonic() - started, 1)}
+    receipt = {"schemaVersion": 2, "status": "shakedown_not_promotable" if args.shakedown else "trained_candidate", "identity": identity,
+               "globalStep": trainer.state.global_step, "trainingMetrics": metrics, "timing": timing,
                "trainingRunCompleted": True, "heldOutTestUsedForTraining": False, "qualityClaimAllowed": False, "promotionAllowed": False,
-               "next": "convert with llama.cpp convert_lora_to_gguf.py, evaluate with scripts/governance_mapping_batch.py, gate with scripts/governance-mapping.mjs"}
+               "next": "record the VRAM/time numbers (factsheet --kind training); do not convert, evaluate or promote a shakedown adapter" if args.shakedown
+               else "convert with llama.cpp convert_lora_to_gguf.py, evaluate with scripts/governance_mapping_batch.py, gate with scripts/governance-mapping.mjs"}
     atomic_json(candidate / "training-receipt.json", receipt)
     seal_candidate(candidate, identity, trainer.state.global_step, metrics)
     print(json.dumps(receipt, ensure_ascii=False), flush=True)
@@ -240,8 +259,9 @@ def main(argv=None):
     parser.add_argument("--output", default="/checkpoints/governance-mapping/run")
     parser.add_argument("--gpu-memory-fraction", type=float, default=0.65)
     parser.add_argument("--resume-from-checkpoint")
+    parser.add_argument("--shakedown", action="store_true")
     args = parser.parse_args(argv)
-    rows, gate = admission(args.data)
+    rows, gate = admission(args.data, shakedown=args.shakedown)
     print(json.dumps(gate), flush=True)
     if not gate["admitted"]:
         return 2
