@@ -90,6 +90,8 @@ If-None-Match: "<이전 ETag>"
 - `ETag`는 리비전(서명할 때는 서명 키 id를 덧붙임)이고, `If-None-Match`가 같으면 304를 돌려줍니다.
 - 묶음에는 그 tenant의 **등록 항목 상태·출처 자격·행위자·도구(정책 결정 필수 여부)와 활성 정지 명령**만 들어갑니다. 이름·책임자·목적·사유·증거
   참조·이벤트 내용은 넣지 않으며, 다른 tenant의 자격으로는 그 tenant의 묶음만 받습니다.
+- 등록 id와 행위자 이름은 자유 문자열이라 `__proto__`·`constructor`·`toString`처럼 JavaScript 객체의 기본 속성과 같은 이름도 그대로
+  싣습니다. 3라운드 구현은 이런 이름의 등록 항목·행위자를 묶음과 거부 목록에서 빠뜨려, 정지한 에이전트가 허용될 수 있었습니다(4라운드 재감사 R4-1에서 수정).
 
 ```json
 {"evidscope": {"format": "evidscope-enforcement-bundle-v1", "tenant": "alpha", "revision": "57-3f1c...",
@@ -151,7 +153,8 @@ status:
 ```
 
 Rego 예시는 `package killswitch`이며, 호출의 출처 자격(없으면 행위자 이름)으로 등록 항목을 찾아 `production`이 아니거나 전체 정지 명령이
-있거나 도구가 `stopped_tools`에 있으면 거부합니다. 묶음 루트 `evidscope`는 EvidScope 묶음이 소유하므로 정책을 그 아래 패키지에 두지 마세요.
+있거나 도구가 `stopped_tools`에 있으면 거부합니다. 출처·행위자로 찾은 등록 id가 묶음의 `agents`에 없으면(`agent_not_in_bundle`) 역시 거부해,
+조회가 어긋날 때 기본값으로 허용하지 않습니다. 묶음 루트 `evidscope`는 EvidScope 묶음이 소유하므로 정책을 그 아래 패키지에 두지 마세요.
 **이 Rego는 예시이며 EvidScope 시험에서 OPA로 파싱하지 않았습니다**(저장소에 OPA 실행 파일이 없고 새로 설치하지 않았습니다). 운영에 쓰기 전에
 `opa check`와 `opa test`로 확인하세요.
 

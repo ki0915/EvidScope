@@ -17,7 +17,8 @@ const byText=(a,b)=>a<b?-1:a>b?1:0;
 // Enforcement view: no names, owners, purposes, reasons or event content; only what a policy needs to allow or deny a call.
 export function enforcementState({tenant,revision,entries,orders}){
  const live=orders.filter(o=>o.status==='active').sort((a,b)=>byText(a.id,b.id));
- const agents={},actors={},sources={},stopOrders={};
+ // Keyed by registry ids and free-text actor names: null-prototype maps, so __proto__, constructor or toString stay data.
+ const agents=Object.create(null),actors=Object.create(null),sources=Object.create(null),stopOrders=Object.create(null);
  const sorted=[...entries].sort((a,b)=>byText(a.id,b.id));
  for(const e of sorted){
   const stops=live.filter(o=>o.agentId===e.id);

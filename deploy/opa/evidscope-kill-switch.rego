@@ -20,6 +20,12 @@ agent := registry.agents[agent_id]
 
 deny contains "agent_not_registered" if not agent_id
 
+# A name that resolves to an entry the bundle does not carry is denied, never allowed by default.
+deny contains "agent_not_in_bundle" if {
+	agent_id
+	not agent
+}
+
 deny contains sprintf("agent_state_%s", [agent.state]) if agent.state != "production"
 
 deny contains sprintf("stop_order_%s", [order]) if {
