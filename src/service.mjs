@@ -343,7 +343,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   if(path==='/api/events'&&method==='GET'){
    const q=(url.searchParams.get('q')||'').slice(0,200),kind=url.searchParams.get('kind'),trace=url.searchParams.get('traceId');
    const limit=Math.max(1,Math.min(500,Number(url.searchParams.get('limit'))||100)),offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
-   const links=trace?{traceLinks:traceLinks(linkTemplates,[trace])}:{};
+   const found=trace?traceLinks(linkTemplates,[trace]):[],links=found.length?{traceLinks:found}:{};
    return store.transaction(()=>{verifiedEvents(p);
     // The verified events facet binds the kind/trace_id columns to the signed bodies, so those filters and the page run in SQL;
     // free-text q keeps matching the canonical body in JS.

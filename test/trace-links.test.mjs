@@ -48,7 +48,7 @@ test('action and trace views carry links to the same trace; none without configu
     ['Phoenix', `https://phoenix.example/projects/UHJvamVjdDox/traces/${TRACE}?selected=1`]]);
   const trace = await get(`/api/events?traceId=${TRACE}`);
   assert.equal(trace.traceLinks.length, 2);
-  assert.equal((await get('/api/events?traceId=x%22%3E%3Cscript%3E')).traceLinks.length, 0, 'only W3C trace ids become links');
+  assert.equal((await get('/api/events?traceId=x%22%3E%3Cscript%3E')).traceLinks, undefined, 'only W3C trace ids become links');
   assert.equal((await get('/api/events')).traceLinks, undefined);
   const plain = fixture(t);
   assert.deepEqual((await plain.get(`/api/actions/${encodeURIComponent(`otel-trace:${TRACE}`)}`)).traceLinks, []);
