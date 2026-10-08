@@ -12,7 +12,8 @@ export function encryptEvent(event,tenant,seq,{policy,retainUntil,keyEpoch}) {
  const header={format:ENCRYPTED_EVENT_V2,keyId,tenant,seq,actionId:event.actionId,policyVersion:policy.version,retainUntil,keyEpoch,commitmentAlg:PAYLOAD_COMMITMENT_V2};
  const cipher=createCipheriv('aes-256-gcm',secretKey(key),iv);cipher.setAAD(Buffer.from(canonical(header)));
  const text=canonical(event),plaintext=padded(text),ciphertext=Buffer.concat([cipher.update(plaintext,'utf8'),cipher.final()]);
- return {material:Buffer.concat([key,salt]),keyId,payload:{...header,iv:iv.toString('base64'),ciphertext:ciphertext.toString('base64'),
+// text: the canonical plaintext, for a writer that keeps what it just sealed (Store._advanceVerifiedStates); not stored.
+ return {material:Buffer.concat([key,salt]),keyId,text,payload:{...header,iv:iv.toString('base64'),ciphertext:ciphertext.toString('base64'),
   tag:cipher.getAuthTag().toString('base64'),payloadCommitment:payloadCommitment(salt,event,text)}};
 }
 // Returns {event, salt}; salt is null for v1. Throws unless the plaintext matches the ledger commitment.
