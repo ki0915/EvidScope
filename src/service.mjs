@@ -28,6 +28,7 @@ import {checkReceiptProjection} from './receipt-integrity.mjs';
 import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysAvailable} from './data-keys.mjs';
 import {createOtlpIngest,otlpSource} from './otlp-ingest.mjs';
 import {beginIngestBatch,endIngestBatch,ingestSourceEvent} from './event-ingest.mjs';
+import {INGEST_FORWARD_PATH} from './ingest-forward.mjs';
 import {createGroupCommit} from './ingest-batch.mjs';
 import {eventKeyStatus} from './event-keys.mjs';
 import {attachEventKeystore} from './event-keystore.mjs';
@@ -271,6 +272,7 @@ export function createService({dataDir,config,key,dataKey,traceLinks:traceLinkCo
   const p=auth(headers,method);
   if(path==='/internal/complete'){if(p.role!=='worker')fail(403,'인증된 분석 서비스 전용');}
   else if(path==='/api/ingest/otlp'){if(!otlpSource(p))fail(403,'OTLP 수집 출처 자격이 필요합니다');}
+  else if(path===INGEST_FORWARD_PATH){if(p.role!=='source')fail(403,'수집 출처 자격이 필요합니다');}
   else if(STATUS_PATH.test(path))enforcementPoint(p);
   else if(preauthorizedPaths.has(path))reviewer(p);
   else fail(400,'사전 인증 대상 경로가 아닙니다');
