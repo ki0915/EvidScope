@@ -126,6 +126,7 @@ def run(args):
         command += ["--lora", args.lora, "--lora-init-without-apply"]
     started = datetime.now(timezone.utc).isoformat()
     outputs, failures, usage = {}, 0, {"promptTokens": 0, "completionTokens": 0, "maxPromptTokens": 0}
+    reasons, truncated = {}, 0
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         base = f"http://127.0.0.1:{port}"
@@ -135,19 +136,28 @@ def run(args):
             body = {"messages": item["messages"], "response_format": item["response_format"], "stream": False, "cache_prompt": False, **decoding}
             if item["adapter"]:
                 body["lora"] = [{"id": 0, "scale": 1.0}]
+            asked = time.monotonic()
             try:
                 response = http_json(base + "/v1/chat/completions", body, timeout=args.request_timeout)
                 choice = response["choices"][0]
-                if choice.get("finish_reason") != "stop" or not isinstance(choice["message"].get("content"), str):
-                    raise ValueError("incomplete")
-                outputs[item["id"]] = choice["message"]["content"]
+                content = choice["message"].get("content")
+                if not isinstance(content, str) or choice.get("finish_reason") not in ("stop", "length"):
+                    raise ValueError("finish_" + str(choice.get("finish_reason")))
+                # A reply cut at max_tokens is the model's answer for this item: it is kept as given and scored (it will not
+                # parse), not dropped as an infrastructure failure.
+                truncated += choice.get("finish_reason") == "length"
+                outputs[item["id"]] = content
                 tokens = response.get("usage", {})
                 usage["promptTokens"] += int(tokens.get("prompt_tokens", 0))
                 usage["completionTokens"] += int(tokens.get("completion_tokens", 0))
                 usage["maxPromptTokens"] = max(usage["maxPromptTokens"], int(tokens.get("prompt_tokens", 0)))
-            except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError):
+            except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError) as error:
                 outputs[item["id"]] = ""
                 failures += 1
+                reason = str(error) if isinstance(error, ValueError) and str(error).startswith("finish_") else type(error).__name__
+                reasons[reason] = reasons.get(reason, 0) + 1
+            # Rest the GPU between requests in proportion to the time the request took (operator's choice, 2026-10-10).
+            time.sleep((time.monotonic() - asked) * args.pause_ratio)
     finally:
         process.terminate()
         try:
@@ -163,7 +173,8 @@ def run(args):
                "contextTokens": args.ctx, "gpuLayers": args.gpu_layers},
                "isolation": {"networkInterfaces": interfaces, "verified": interfaces == ["lo"]},
                "decoding": decoding, "requestsSha256": requests_hash, "outputsSha256": hashlib.sha256(outputs_text.encode("utf-8")).hexdigest(),
-               "count": len(requests), "failures": failures, "usage": usage, "startedAt": started, "finishedAt": datetime.now(timezone.utc).isoformat()}
+               "count": len(requests), "failures": failures, "failureReasons": reasons, "truncated": truncated, "pauseRatio": args.pause_ratio,
+               "usage": usage, "startedAt": started, "finishedAt": datetime.now(timezone.utc).isoformat()}
     with open(args.out, "x", encoding="utf-8") as stream:
         stream.write(outputs_text + "\n")
     with open(args.receipt, "x", encoding="utf-8") as stream:
@@ -188,9 +199,13 @@ def main(argv=None):
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--start-timeout", type=int, default=600)
     parser.add_argument("--request-timeout", type=int, default=120)
+    parser.add_argument("--pause-ratio", type=float, default=0.5)
     args = parser.parse_args(argv)
+    if not 0 <= args.pause_ratio <= 4:
+        parser.error("--pause-ratio must be between 0 and 4")
     receipt = run(args)
-    print(json.dumps({key: receipt[key] for key in ("variant", "count", "failures", "isolation", "modelSha256", "adapterSha256")}))
+    print(json.dumps({key: receipt[key] for key in ("variant", "count", "failures", "failureReasons", "truncated", "isolation", "modelSha256",
+                                                     "adapterSha256")}))
     return 0 if receipt["failures"] == 0 else 2
 
 

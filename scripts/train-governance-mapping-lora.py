@@ -213,8 +213,18 @@ def train(args, rows):
     signal.signal(signal.SIGINT, lambda *_: stop.update(requested=True))
 
     class Checkpoints(TrainerCallback):
+        step_started = None
+
+        def on_step_begin(self, arguments, state, control, **_):
+            self.step_started = time.monotonic()
+            return control
+
         def on_step_end(self, arguments, state, control, **_):
             print(json.dumps({"optimizerStep": state.global_step, "cudaPeakAllocatedMiB": round(torch.cuda.max_memory_allocated() / 1048576)}), flush=True)
+            # Rest the GPU after each optimizer step in proportion to the step's time (operator's choice, 2026-10-10: keep the
+            # card cool rather than finish fastest). The pause does not change what is learned.
+            if self.step_started is not None and args.pause_ratio > 0:
+                time.sleep((time.monotonic() - self.step_started) * args.pause_ratio)
             if stop["requested"]:
                 control.should_save = True
                 control.should_training_stop = True
@@ -265,7 +275,10 @@ def main(argv=None):
     parser.add_argument("--gpu-memory-fraction", type=float, default=0.65)
     parser.add_argument("--resume-from-checkpoint")
     parser.add_argument("--shakedown", action="store_true")
+    parser.add_argument("--pause-ratio", type=float, default=0.5)
     args = parser.parse_args(argv)
+    if not 0 <= args.pause_ratio <= 4:
+        parser.error("--pause-ratio must be between 0 and 4")
     rows, gate = admission(args.data, shakedown=args.shakedown)
     print(json.dumps(gate), flush=True)
     if not gate["admitted"]:

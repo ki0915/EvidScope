@@ -9,7 +9,7 @@
 // VRAM and a safe GPU temperature, and stops with a checkpoint on memory pressure, overheating or after one hour.
 // --idle-only restores the earlier rule (start only on an idle PC, stop when it is used).
 // Under the active-use policy a run stopped for GPU heat or the one-hour limit is resumed from its newest sealed checkpoint
-// once the GPU is at or below 70 C (at most six resumes, waiting at most 30 minutes each time).
+// once the GPU is at or below 65 C (at most six resumes, waiting at most 30 minutes each time).
 import {pathToFileURL, fileURLToPath} from 'node:url';
 import {existsSync, readdirSync} from 'node:fs';
 import {dirname, join} from 'node:path';
@@ -18,7 +18,7 @@ import {RUN_DIRS, createDockerTrainingLauncher, dockerCreateArgs, trainingSpec} 
 import {probeWindowsHostResources} from './training-host-check.mjs';
 import {QA_IMAGE} from './public-qa-workload.mjs';
 
-export const COOLING = Object.freeze({resumeAtOrBelowC: 70, pollMs: 30000, maxWaitMs: 1800000, maxResumes: 6});
+export const COOLING = Object.freeze({resumeAtOrBelowC: 65, pollMs: 30000, maxWaitMs: 1800000, maxResumes: 6});
 const RESUMABLE = new Set(['gpu_temperature_high', 'runtime_deadline']);
 
 // Newest checkpoint the trainer sealed (checkpoint-complete.json) for this run mode, as a path relative to the checkpoints directory.

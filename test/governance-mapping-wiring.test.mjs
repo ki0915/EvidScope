@@ -229,7 +229,7 @@ test('training runner: a run stopped for GPU heat resumes from its newest sealed
   const argv = ['--image', spec.image, '--base-dir', spec.baseDir, '--base-revision', spec.baseRevision, '--data', spec.dataFile,
     '--checkpoints-dir', spec.checkpointsDir, '--work-dir', spec.workDir];
   const heat = {state: 'stopped_for_host_activity', reason: 'gpu_temperature_high', reasons: ['gpu_temperature_high'], terminationConfirmed: true};
-  const temps = [82, 75, 70], waits = [], launched = [];
+  const temps = [82, 70, 65], waits = [], launched = [];
   const results = [heat, {state: 'stopped', reason: 'completed', terminationConfirmed: true}];
   const deps = {probe: async () => ({gpu: {temperatureC: temps.shift()}}), wait: async ms => { waits.push(ms); },
     launcherFor: ({spec: s}) => { launched.push(s.resumeCheckpoint); return {}; }, guardFor: () => ({run: async () => results.shift()})};

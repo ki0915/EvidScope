@@ -18,7 +18,7 @@ test('primary client fixes endpoint, generation limits and tokenizes the rendere
  assert.ok(calls.every(c=>c.model==='primary'&&c.options.signal instanceof AbortSignal));
  assert.match(calls[1].payload.content,/한국어/);assert.equal(calls[1].payload.parse_special,true);
  assert.equal(calls[2].payload.max_tokens,512);assert.equal(calls[2].payload.stream,false);assert.equal(calls[2].payload.cache_prompt,false);
- assert.deepEqual(calls[2].payload.response_format,{type:'json_schema',schema});
+ assert.deepEqual(calls[2].payload.response_format,{type:'json_schema',json_schema:{name:'evidscope_output',strict:true,schema}});
  assert.equal(r.providerReport.quantizationLevel,null,'configured Q4 is not a measured quantization report');
  assert.equal(r.providerReport.inputTokens,100);
 });

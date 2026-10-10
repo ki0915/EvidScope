@@ -16,7 +16,7 @@ const testRows = readFileSync(dataset, 'utf8').trim().split('\n').map(l => JSON.
 
 // A stand-in for llama-server: same endpoints, records each request body, answers every item with an abstention.
 const STUB = `#!/usr/bin/env python3
-import json, sys
+import json, os, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 port = int(sys.argv[sys.argv.index("--port") + 1]); log = sys.argv[0] + ".log"
 class H(BaseHTTPRequestHandler):
@@ -28,8 +28,12 @@ class H(BaseHTTPRequestHandler):
         self.reply({"status": "ok"} if self.path == "/health" else {"build_info": "stub"})
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["content-length"])))
-        with open(log, "a") as f: f.write(json.dumps({"lora": body.get("lora"), "argv": sys.argv[1:]}) + "\\n")
-        self.reply({"choices": [{"finish_reason": "stop", "message": {"content": "{\\"abstain\\":true,\\"mappings\\":[]}"}}],
+        with open(log, "a") as f: f.write(json.dumps({"lora": body.get("lora"), "argv": sys.argv[1:], "format": body.get("response_format")}) + "\\n")
+        n = sum(1 for _ in open(log))
+        if os.path.exists(sys.argv[0] + ".mixed") and n % 3 == 2:
+            self.send_response(500); self.send_header("content-length", "0"); self.end_headers(); return
+        finish = "length" if os.path.exists(sys.argv[0] + ".mixed") and n % 3 == 1 else "stop"
+        self.reply({"choices": [{"finish_reason": finish, "message": {"content": "{\\"abstain\\":true,\\"mappings\\":[]}"}}],
                     "usage": {"prompt_tokens": 9, "completion_tokens": 3}})
 HTTPServer(("127.0.0.1", port), H).serve_forever()
 `;
@@ -130,4 +134,30 @@ test('trainer: triton is reported unavailable before transformers or peft import
   assert.ok(off > 0);
   assert.ok(off < src.indexOf('from transformers import AutoTokenizer, AutoModelForCausalLM'));
   assert.ok(off < src.indexOf('from peft import'));
+});
+
+test('batch runner: constrained requests carry the schema where llama-server reads it; cut replies are scored, errors are counted by reason',
+  {skip: process.platform === 'win32'}, () => {
+  const [constrained] = variantRequests(testRows.slice(0, 1), 'retrieval_constrained'), [loose] = variantRequests(testRows.slice(0, 1), 'retrieval');
+  assert.equal(constrained.response_format.type, 'json_schema');
+  assert.equal(constrained.response_format.json_schema.strict, true);
+  assert.equal(constrained.response_format.json_schema.schema.type, 'object');
+  assert.equal(constrained.response_format.schema, undefined);
+  assert.deepEqual(loose.response_format, {type: 'json_object'});
+  const f = fixture();
+  writeFileSync(f.server + '.mixed', '');
+  runGovernanceMappingCommand(['requests', '--data', dataset, '--variant', 'retrieval_constrained', '--out',
+    join(f.dir, 'retrieval_constrained.requests.jsonl')]);
+  const r = batch(f, 'retrieval_constrained', ['--pause-ratio', '0']);
+  assert.equal(r.status, 2);
+  const receipt = JSON.parse(readFileSync(join(f.dir, 'retrieval_constrained.receipt.json'), 'utf8'));
+  const outputs = JSON.parse(readFileSync(join(f.dir, 'retrieval_constrained.outputs.json'), 'utf8'));
+  const every = k => testRows.filter((_, i) => (i + 1) % 3 === k).length;
+  assert.equal(receipt.truncated, every(1));
+  assert.equal(receipt.failures, every(2));
+  assert.deepEqual(receipt.failureReasons, {HTTPError: every(2)});
+  assert.equal(Object.values(outputs).filter(o => o === '').length, every(2));
+  const log = readFileSync(f.server + '.log', 'utf8').trim().split('\n').map(l => JSON.parse(l));
+  assert.ok(log.every(x => x.format.json_schema.schema.type === 'object'));
+  assert.equal(batch(f, 'retrieval_constrained', ['--pause-ratio', '9']).status, 2);
 });

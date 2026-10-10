@@ -136,9 +136,13 @@ export function baselineOutput(variant, row, catalog = governanceCatalog()) {
 }
 
 // The request a model variant sends for a row; the measurement binds the hash of these requests.
+// llama-server reads a JSON schema only from response_format.json_schema.schema (OpenAI form); a top-level "schema" next to
+// type "json_schema" is ignored and the reply is unconstrained (measured on the PC, 2026-10-10).
+export const llamaResponseFormat = f => (f.type === 'json_schema'
+  ? {type: 'json_schema', json_schema: {name: 'evidscope_output', strict: true, schema: f.schema}} : f);
 export function variantRequests(rows, variant, catalog = governanceCatalog()) {
   return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog});
-    return {id: r.id, variant, messages: q.messages, response_format: q.responseFormat, adapter: q.adapter, ...DECODING}; });
+    return {id: r.id, variant, messages: q.messages, response_format: llamaResponseFormat(q.responseFormat), adapter: q.adapter, ...DECODING}; });
 }
 
 // ---------- comparison report ----------
