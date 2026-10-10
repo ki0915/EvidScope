@@ -195,7 +195,8 @@ test('training launcher: offline, read-only container verified before start; sto
   assert.ok(badLog.includes('rm --force') && !badLog.some(x => x.startsWith('start')));
 
   let state = 'running';
-  const log = [], launcher = createDockerTrainingLauncher({spec, newName: () => NAME, execute: docker(() => ({...inspected(spec),
+  const log = [], logs = id => `trainer output of ${id}\n`;
+  const launcher = createDockerTrainingLauncher({spec, newName: () => NAME, logs, execute: docker(() => ({...inspected(spec),
     State: {Running: state === 'running', Status: state === 'running' ? 'running' : 'exited', ExitCode: 0}}), log)});
   const workload = await launcher.start();
   assert.equal(workload.isolation, 'verified_before_start');
@@ -204,6 +205,7 @@ test('training launcher: offline, read-only container verified before start; sto
   state = 'exited';
   assert.equal((await launcher.observe(workload)).state, 'succeeded');
   await launcher.stop(workload);
+  assert.equal(readFileSync(join(spec.workDir, `${NAME}.log`), 'utf8'), `trainer output of ${'e'.repeat(64)}\n`);
   assert.deepEqual(await launcher.observe(workload), {state: 'absent', terminationConfirmed: true});
   assert.deepEqual(log.filter(x => /^(create|start|stop|rm)/.test(x)), ['create --name', 'start ' + 'e'.repeat(64), 'stop --time', 'rm ' + 'e'.repeat(64)]);
   const check = await runGovernanceTraining(['--image', spec.image, '--base-dir', spec.baseDir, '--base-revision', spec.baseRevision, '--data', spec.dataFile,

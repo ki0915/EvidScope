@@ -124,3 +124,10 @@ print(json.dumps({"gate": gate, "masked": encoded["labels"].count(-100), "prefix
   const check = run(['scripts/train-governance-mapping-lora.py', '--data', file, '--check-only']);
   assert.equal(check.status, 2);
 });
+
+test('trainer: triton is reported unavailable before transformers or peft import bitsandbytes (the image has no C compiler)', () => {
+  const src = readFileSync('scripts/train-governance-mapping-lora.py', 'utf8'), off = src.indexOf('torch_triton.has_triton = lambda: False');
+  assert.ok(off > 0);
+  assert.ok(off < src.indexOf('from transformers import AutoTokenizer, AutoModelForCausalLM'));
+  assert.ok(off < src.indexOf('from peft import'));
+});

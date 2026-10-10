@@ -3,7 +3,7 @@
 // fixed memory/pids/cpu limits, one GPU, inputs mounted read-only and exactly one writable checkpoint directory.
 // createIdleTrainingGuard (src/training-resource-guard.mjs) drives start/observe/stop; nothing here downloads anything.
 import {createHash, randomUUID} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
+import {execFileSync, spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {isAbsolute, join, resolve} from 'node:path';
 
@@ -93,9 +93,12 @@ export function isolationProblems(info, spec) {
 
 const run = (program, args) => execFileSync(program, args, {encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024, windowsHide: true,
   stdio: ['ignore', 'pipe', 'pipe']});
+// The trainer writes progress and errors to stdout and stderr; keep both, since the container is removed right after.
+const containerLogs = id => { const r = spawnSync('docker', ['logs', '--tail', '400', id], {encoding: 'utf8', timeout: 60000, windowsHide: true});
+  return (r.stdout || '') + (r.stderr || ''); };
 
 // launcher.start → create + inspect + start; observe → running/succeeded/failed/absent; stop → stop + remove that container id only.
-export function createDockerTrainingLauncher({spec, execute = run, newName = () => `evidscope-governance-train-${randomUUID()}`}) {
+export function createDockerTrainingLauncher({spec, execute = run, logs = containerLogs, newName = () => `evidscope-governance-train-${randomUUID()}`}) {
   const inspect = id => { try { return JSON.parse(execute('docker', ['inspect', id]))[0]; } catch { return null; } };
   return {
     async start() {
@@ -122,6 +125,7 @@ export function createDockerTrainingLauncher({spec, execute = run, newName = () 
     },
     async stop(workload) {
       try { execute('docker', ['stop', '--time', '60', workload.uid]); } catch {}
+      try { writeFileSync(join(spec.workDir, `${workload.name}.log`), logs(workload.uid)); } catch {}
       execute('docker', ['rm', workload.uid]);
     },
   };

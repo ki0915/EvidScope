@@ -181,6 +181,11 @@ def train(args, rows):
     collate = load_helper("governance_collate", "train-public-qa.py")
     kbit = load_helper("governance_kbit", "public-qa-kbit.py")
     import torch
+    # The pinned image has no C compiler, and triton compiles a small driver module on first GPU use, so importing
+    # bitsandbytes' optional triton kernels fails. 4-bit QLoRA uses bitsandbytes' CUDA library, not those kernels, so report
+    # triton unavailable before transformers or peft import bitsandbytes.
+    import torch.utils._triton as torch_triton
+    torch_triton.has_triton = lambda: False
     from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, Trainer, TrainingArguments, TrainerCallback
     from peft import LoraConfig, get_peft_model
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir, local_files_only=True, trust_remote_code=False)
