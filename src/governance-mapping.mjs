@@ -14,7 +14,7 @@ export const MODEL_KINDS = Object.freeze(['document_excerpt', 'registry_entry', 
 export const RULE_KIND = 'structured';
 export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
 export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 3,
-  exampleChars: 160, meaningChars: 90});
+  exampleChars: 100, meaningChars: 56});
 // What a requirement asks, without its title and citation (the catalog text is title + citation + measures).
 export const requirementMeaning = e => e.text.replace(e.title.ko, '').replace(e.citation, '').replace(/\s+/g, ' ').trim();
 const STRUCTURED_TYPES = ['record', 'eventKind', 'checkType', 'finding', 'integrityCheck', 'api', 'file'];
@@ -246,8 +246,10 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
     candidates = [...new Set([...fromExamples, ...retrieveRequirements(item.text, {catalog}).map(c => c.id)])].slice(0, LIMITS.candidates);
     if (examples) candidates.sort();
     user = {evidence, candidates: candidates.map(id => {
-       const e = catalog.byId.get(id), c = {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars)};
-       return examples ? {...c, asks: clip(requirementMeaning(e), LIMITS.meaningChars)} : c; })};
+       const e = catalog.byId.get(id), title = clip(e.title.ko, LIMITS.snippetChars);
+       // With examples the label (a citation, up to 40 characters for KR items) gives way to what the item asks, so the prompt
+       // stays within what the 12 GB card trains under its memory cap (an 'asks' line beside the label ran out of memory).
+       return examples ? {id, title, asks: clip(requirementMeaning(e), LIMITS.meaningChars)} : {id, label: e.label, title}; })};
     if (examples) user.examples = near.map(n => ({text: clip(n.example.text, LIMITS.exampleChars),
       answer: n.example.abstain ? 'abstain' : n.example.requirementIds}));
   }
