@@ -12,7 +12,7 @@ import {TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, mappingError
 import {BASELINES, GATE, PINNED_GGUF, SAFETY_CHECKS, assessGovernanceReport, compareWithBaseline, hashOf, measurementProblem, scoreSummary,
   verifyGovernanceReport}
   from './governance-mapping-eval.mjs';
-import {governanceAdmission, buildDataset} from './governance-mapping-data.mjs';
+import {governanceAdmission, buildDataset, governanceExamples} from './governance-mapping-data.mjs';
 
 export const PROMOTION_PREDICATE = 'https://evidscope.dev/attestations/governance-model-promotion/v1';
 export const ROLE_DIR = 'roles/governance-assistant/v1';
@@ -186,7 +186,8 @@ export function createGovernanceMapper({status, infer}) {
     if (!['base_retrieval_constrained', 'promoted_adapter'].includes(status.mode)) {
       return {scope: 'model', abstain: true, mappings: [], provenance: 'none', state: 'model_off', reasons: [...status.reasons]};
     }
-    const request = buildMappingRequest(item, {variant: status.mode === 'promoted_adapter' ? 'candidate' : 'retrieval_constrained'});
+    const request = buildMappingRequest(item, {variant: status.mode === 'promoted_adapter' ? 'candidate' : 'retrieval_constrained',
+      examples: governanceExamples()});
     if (request.catalogDigest !== status.catalog.digest) throw mappingError('mapping_catalog_mismatch');
     const result = await infer({messages: request.messages, schema: request.responseFormat.schema, adapter: request.adapter, signal});
     const resolved = resolveMapping(item, parseModelContent(result.content)), provenance = provenanceOf(status);

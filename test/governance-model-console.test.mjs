@@ -11,7 +11,8 @@ import {createService} from '../src/service.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
 import {QUEUE_DECISION_TYPE, applyReviewDecisions, buildDataset, queueBinding, rowEligibility, shakedownRows, toJsonl}
   from '../src/governance-mapping-data.mjs';
-import {DECODING, PINNED_GGUF, baselineOutput, buildComparisonReport, hashOf, variantRequests} from '../src/governance-mapping-eval.mjs';
+import {DECODING, DETERMINISTIC_BASELINES, PINNED_GGUF, baselineOutput, buildComparisonReport, hashOf, variantRequests}
+  from '../src/governance-mapping-eval.mjs';
 import {ROLE_DIR, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {buildFactsheet, evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {draftedRows, queueItem, repositoryDataset} from '../src/governance-review-queue.mjs';
@@ -155,7 +156,7 @@ const receipt = (variant, outputs, adapterSha256) => ({schemaVersion: 1, source:
   outputsSha256: hashOf(outputs), count: testRows.length, failures: 0, usage: {}, startedAt: 'x', finishedAt: 'y'});
 export function measuredReport({adapterSha256 = 'c'.repeat(64), candidate = gold, withCandidate = true} = {}) {
   const variants = {};
-  for (const v of ['always_abstain', 'rules_only']) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', ...(withCandidate ? ['candidate'] : [])]) {
     const outputs = Object.fromEntries(testRows.map(r => [r.id, v === 'candidate' ? candidate(r) : baselineOutput('rules_only', r)]));
     variants[v] = {outputs, receipt: receipt(v, outputs, adapterSha256)};
@@ -226,7 +227,8 @@ test('factsheets: shakedown recorded as never promotable; evaluation numbers rec
   const byFile = Object.fromEntries(view.reports.map(r => [r.file, r]));
   assert.equal(byFile['broken.json'].status, 'unverified');
   assert.equal(byFile['candidate.json'].status, 'verified');
-  assert.deepEqual(byFile['candidate.json'].variants, ['always_abstain', 'rules_only', 'zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
+  assert.deepEqual(byFile['candidate.json'].variants, ['always_abstain', 'rules_only', 'nearest_example', 'zero_shot', 'retrieval', 'retrieval_constrained',
+    'candidate']);
   assert.deepEqual(byFile['candidate.json'].rowsByBasis, {human_reviewed: 57, derived: 59, not_eligible: 0});
   assert.equal(byFile['candidate.json'].variantsData.candidate.byBasis.human_reviewed.precision, 1);
   assert.ok(Object.keys(byFile['candidate.json'].variantsData.candidate.byFramework).length >= 2);

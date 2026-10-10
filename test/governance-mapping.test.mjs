@@ -6,11 +6,11 @@ import {join, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {canonical} from '../src/crypto.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
-import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, outputMatchesTruth, resolveMapping, retrieveRequirements,
-  ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
-import {applyReviewDecisions, buildDataset, governanceAdmission, loadSplits, reviewSheet, rowEligibility, trainingRows}
+import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, nearestExamples, outputMatchesTruth, resolveMapping,
+  retrieveRequirements, ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
+import {applyReviewDecisions, buildDataset, governanceAdmission, governanceExamples, loadSplits, reviewSheet, rowEligibility, trainingRows}
   from '../src/governance-mapping-data.mjs';
-import {DECODING, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, evaluateOutputs, hashOf,
+import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, evaluateOutputs, hashOf,
   variantRequests} from '../src/governance-mapping-eval.mjs';
 import {ROLE_DIR, adapterField, governanceModelStatus, modelVersionField, promoteGovernanceCandidate, provenanceOf, verifyPromotion,
   createGovernanceMapper} from '../src/governance-model.mjs';
@@ -34,7 +34,7 @@ const receipt = (rows, variant, outputs, extra = {}) => ({schemaVersion: 1, sour
   outputsSha256: hashOf(outputs), count: rows.length, failures: 0, usage: {}, startedAt: 'x', finishedAt: 'y', ...extra});
 function report(rows, candidateOutput, {preparedBy = 'operator-a', receiptExtra = {}} = {}) {
   const variants = {};
-  for (const v of ['always_abstain', 'rules_only']) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']) {
     const outputs = Object.fromEntries(rows.map(r => [r.id, v === 'candidate' ? candidateOutput(r) : baselineOutput('rules_only', r)]));
     variants[v] = {outputs, receipt: receipt(rows, v, outputs, v === 'candidate' ? receiptExtra : {})};
@@ -158,6 +158,24 @@ test('baselines: always-abstain abstains; rules-only maps literal table identifi
   assert.equal(beats({precision: 1, recall: 0.5}, {precision: 1, recall: 0.07}), true);
   assert.equal(beats({precision: 0.95, recall: 0.5}, {precision: null, recall: 0}), true);
   assert.equal(beats({precision: 0.95, recall: 0.4}, {precision: 0.9, recall: 0.5}), false);
+});
+
+test('examples: the bank is the derived tune split; a row never sees itself; candidates are listed in id order', () => {
+  const bank = governanceExamples(), byId = new Map(dataset.map(r => [r.id, r]));
+  assert.ok(bank.length > 100 && bank.every(e => byId.get(e.id)?.split === 'tune' && byId.get(e.id).labelSource === 'derived_mapping_table'));
+  const own = dataset.find(r => r.id === bank[0].id), item = {kind: own.evidence[0].kind, locators: own.evidence.map(e => e.id), text: own.prompt};
+  const train = JSON.parse(buildMappingRequest(item, {variant: 'candidate', examples: bank, excludeId: own.id}).messages[1].content);
+  assert.equal(train.examples.length, LIMITS.examples);
+  assert.ok(!train.examples.some(e => e.text === own.prompt));
+  assert.equal(JSON.parse(buildMappingRequest(item, {variant: 'candidate', examples: bank}).messages[1].content).examples[0].text, own.prompt);
+  const ids = train.candidates.map(c => c.id);
+  assert.deepEqual(ids, [...ids].sort());
+  for (const e of train.examples) if (Array.isArray(e.answer)) for (const id of e.answer) assert.ok(ids.includes(id));
+  const r = dataset.find(x => x.split === 'test' && !x.truth.abstain && x.labelSource === 'derived_mapping_table');
+  const sent = JSON.parse(variantRequests([r], 'retrieval_constrained')[0].messages[1].content);
+  assert.ok(sent.examples.every(e => bank.some(b => b.text.startsWith(e.text.replace(/…$/, '')))));
+  const copied = JSON.parse(baselineOutput('nearest_example', r));
+  assert.deepEqual(copied.mappings.map(m => m.requirementId), [...nearestExamples(r.prompt, bank, {k: 1})[0].example.requirementIds].sort());
 });
 
 const testRows = approveAll(dataset).filter(r => r.split === 'test');

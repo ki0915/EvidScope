@@ -8,6 +8,7 @@ import {canonical} from './crypto.mjs';
 import {LIMITS, MODEL_KINDS, buildMappingRequest, governanceCatalog, mappingError, normalizeMappingItem, parseModelContent,
   validateMappingOutput} from './governance-mapping.mjs';
 import {provenanceOf} from './governance-model.mjs';
+import {governanceExamples} from './governance-mapping-data.mjs';
 
 const ACTIVE = new Set(['base_retrieval_constrained', 'promoted_adapter']);
 const LOCATOR = /^[A-Za-z0-9._:@/#-]{1,190}$/;
@@ -33,7 +34,7 @@ export function prepareMappingTask(input, {status, evidenceRefs}) {
 
 // The runner side: the exact request the evaluation measured for this variant.
 export function mappingRequestFor(task) {
-  const request = buildMappingRequest(task.item, {variant: task.variant});
+  const request = buildMappingRequest(task.item, {variant: task.variant, examples: governanceExamples()});
   if (request.catalogDigest !== task.catalogDigest || request.adapter !== task.adapter) throw mappingError('mapping_catalog_mismatch');
   return request;
 }

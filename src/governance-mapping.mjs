@@ -13,7 +13,8 @@ export const CONFIDENCE = Object.freeze(['low', 'medium', 'high']);
 export const MODEL_KINDS = Object.freeze(['document_excerpt', 'registry_entry', 'record_summary', 'finding_note']);
 export const RULE_KIND = 'structured';
 export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
-export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60});
+export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 3,
+  exampleChars: 160});
 const STRUCTURED_TYPES = ['record', 'eventKind', 'checkType', 'finding', 'integrityCheck', 'api', 'file'];
 const LOCATOR = /^[a-z][a-z0-9-]{0,30}:[A-Za-z0-9._:@/#-]{1,200}$/;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -177,6 +178,33 @@ function retrievalIndex(catalog) {
   retrievalCache = {catalog, vector, docs: docs.map(d => ({id: d.id, ...vector(d.tf)}))};
   return retrievalCache;
 }
+// Labelled examples (the tune split of the table-derived rows, src/governance-mapping-data.mjs governanceExamples) indexed the same way.
+// The nearest ones go into the prompt with their answers: the model sees how similar evidence was filed, not only requirement titles.
+// examples: [{id, text, requirementIds, abstain}]; the index is cached per array.
+const exampleIndexes = new WeakMap();
+export function exampleIndex(examples) {
+  if (exampleIndexes.has(examples)) return exampleIndexes.get(examples);
+  const tfs = examples.map(e => terms(e.text)), df = new Map();
+  for (const tf of tfs) for (const t of tf.keys()) df.set(t, (df.get(t) || 0) + 1);
+  const idf = t => Math.log((tfs.length + 1) / ((df.get(t) || 0) + 1)) + 1;
+  const vector = tf => {
+    const v = new Map();
+    let norm = 0;
+    for (const [t, n] of tf) { const w = (1 + Math.log(n)) * idf(t); v.set(t, w); norm += w * w; }
+    return {v, norm: Math.sqrt(norm) || 1}; };
+  const index = {vector, docs: examples.map((e, i) => ({example: e, ...vector(tfs[i])}))};
+  exampleIndexes.set(examples, index);
+  return index;
+}
+// The k examples closest to text, best first; an example with excludeId (the row being trained on) is never its own example.
+export function nearestExamples(text, examples, {k = LIMITS.examples, excludeId = null} = {}) {
+  const index = exampleIndex(examples), query = index.vector(terms(text));
+  return index.docs.filter(d => d.example.id !== excludeId).map(d => {
+    let dot = 0;
+    for (const [t, w] of query.v) { const x = d.v.get(t); if (x) dot += w * x; }
+    return {example: d.example, score: dot / (d.norm * query.norm)}; })
+    .sort((a, b) => b.score - a.score || (a.example.id < b.example.id ? -1 : 1)).slice(0, k);
+}
 export function retrieveRequirements(text, {catalog = governanceCatalog(), k = LIMITS.candidates} = {}) {
   const index = retrievalIndex(catalog), query = index.vector(terms(text));
   return index.docs.map(d => {
@@ -199,7 +227,11 @@ const SYSTEM = [
   'You never decide legal compliance or applicability; a human confirms every mapping.',
 ].join(' ');
 const clip = (s, n) => { const chars = [...String(s ?? '')]; return chars.length > n ? chars.slice(0, n - 1).join('') + '…' : chars.join(''); };
-export function buildMappingRequest(input, {variant, catalog = governanceCatalog()} = {}) {
+// examples (optional, see nearestExamples): with them the user message carries the nearest labelled examples, the requirements those
+// examples were filed under join the candidates ahead of the retrieved ones, and candidates are listed in id order so their position
+// says nothing (the pilot adapter picked the first-listed candidate in 24 of 45 answers). excludeId keeps a training row out of its
+// own examples.
+export function buildMappingRequest(input, {variant, catalog = governanceCatalog(), examples = null, excludeId = null} = {}) {
   if (!VARIANTS.includes(variant)) throw mappingError('mapping_variant_unknown');
   const item = normalizeMappingItem(input);
   if (item.kind === RULE_KIND) throw mappingError('rule_determined_item');
@@ -207,9 +239,14 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
   let user, candidates = null;
   if (variant === 'zero_shot') user = {evidence, catalogIds: catalog.ids};
   else {
-    candidates = retrieveRequirements(item.text, {catalog}).map(c => c.id);
+    const near = examples ? nearestExamples(item.text, examples, {excludeId}) : [];
+    const fromExamples = near.flatMap(n => n.example.requirementIds).filter(id => catalog.byId.has(id));
+    candidates = [...new Set([...fromExamples, ...retrieveRequirements(item.text, {catalog}).map(c => c.id)])].slice(0, LIMITS.candidates);
+    if (examples) candidates.sort();
     user = {evidence, candidates: candidates.map(id => {
        const e = catalog.byId.get(id); return {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars)}; })};
+    if (examples) user.examples = near.map(n => ({text: clip(n.example.text, LIMITS.exampleChars),
+      answer: n.example.abstain ? 'abstain' : n.example.requirementIds}));
   }
   const constrained = variant === 'retrieval_constrained' || variant === 'candidate';
   return {variant, messages: [{role: 'system', content: SYSTEM}, {role: 'user', content: JSON.stringify(user)}],

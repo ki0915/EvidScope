@@ -6,7 +6,8 @@ import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {applyReviewDecisions, buildDataset, rowEligibility, shakedownRows, toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
-import {DECODING, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, compareWithBaseline, hashOf, variantRequests}
+import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, compareWithBaseline,
+  hashOf, variantRequests}
   from '../src/governance-mapping-eval.mjs';
 import {assessBaselineMode} from '../src/governance-model.mjs';
 import {RUN_DIRS, dockerCreateArgs, trainingSpec} from '../src/governance-training.mjs';
@@ -27,7 +28,7 @@ function report(variantsOutput) {
     decoding: {...DECODING}, requestsSha256: hashOf(variantRequests(testRows, v)), outputsSha256: hashOf(outputs), count: testRows.length, failures: 0,
     usage: {}, startedAt: 'x', finishedAt: 'y'});
   const variants = {};
-  for (const v of ['always_abstain', 'rules_only']) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']) {
     if (!variantsOutput[v]) continue;
     const outputs = Object.fromEntries(testRows.map(r => [r.id, variantsOutput[v](r)]));

@@ -69,6 +69,7 @@ test('batch runner: binds the exact request bytes, the outputs and the model; th
   assert.equal(receipt.adapterSha256, null);
   assert.equal(receipt.isolation.verified, receipt.isolation.networkInterfaces.length === 1 && receipt.isolation.networkInterfaces[0] === 'lo');
   const report = buildComparisonReport(testRows, {always_abstain: {outputs}, rules_only: {outputs: Object.fromEntries(testRows.map(x => [x.id, '']))},
+    nearest_example: {outputs},
     zero_shot: {outputs, receipt}, retrieval: {outputs, receipt}, retrieval_constrained: {outputs, receipt}}, {preparedBy: 'operator-a'});
   assert.match(measurementProblem(report, 'retrieval_constrained'), /isolation_not_verified|base_model_mismatch/);
   assert.equal(report.variants.retrieval_constrained.requestsSha256, receipt.requestsSha256);

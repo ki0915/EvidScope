@@ -25,7 +25,8 @@ import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDat
   trainingRows} from '../src/governance-mapping-data.mjs';
 import {evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {DATASET_ID} from '../src/governance-review-queue.mjs';
-import {ALL_VARIANTS, MODEL_VARIANTS, assessGovernanceReport, baselineOutput, buildComparisonReport, variantRequests} from '../src/governance-mapping-eval.mjs';
+import {ALL_VARIANTS, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutput, buildComparisonReport, variantRequests}
+  from '../src/governance-mapping-eval.mjs';
 import {governanceModelStatus, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
 
@@ -120,7 +121,7 @@ export function runGovernanceMappingCommand(argv) {
   }
   if (command === 'report') {
     const o = options(rest), rows = readRows(o.data).filter(r => r.split === 'test'), variants = {};
-    for (const v of ['always_abstain', 'rules_only']) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
+    for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
     for (const v of MODEL_VARIANTS) {
       let outputs;
       try { outputs = JSON.parse(readFileSync(join(o.runs, `${v}.outputs.json`), 'utf8')); }

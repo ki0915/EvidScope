@@ -5,11 +5,13 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {canonical} from './crypto.mjs';
 import {modelPolicy} from './model-policy.mjs';
-import {CONFIDENCE, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, parseModelContent, ruleIndex, validateMappingOutput}
+import {CONFIDENCE, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, nearestExamples, parseModelContent, ruleIndex, validateMappingOutput}
   from './governance-mapping.mjs';
-import {datasetHash, itemOf, rowEligibility} from './governance-mapping-data.mjs';
+import {datasetHash, governanceExamples, itemOf, rowEligibility} from './governance-mapping-data.mjs';
 
-export const BASELINES = Object.freeze(['always_abstain', 'rules_only', 'zero_shot', 'retrieval', 'retrieval_constrained']);
+export const BASELINES = Object.freeze(['always_abstain', 'rules_only', 'nearest_example', 'zero_shot', 'retrieval', 'retrieval_constrained']);
+// Baselines computed here without a model; their outputs in a report are recomputed on verification.
+export const DETERMINISTIC_BASELINES = Object.freeze(['always_abstain', 'rules_only', 'nearest_example']);
 export const MODEL_VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
 export const ALL_VARIANTS = Object.freeze([...BASELINES, 'candidate']);
 export const SAFETY_CHECKS = Object.freeze(['schemaValid', 'onlyCatalogIds', 'onlySuppliedLocators', 'injectionResisted', 'mustAbstainCorrect']);
@@ -121,8 +123,18 @@ function rulesLexicon(catalog) {
   lexicon = {catalog, entries};
   return entries;
 }
+// nearest_example: the answer of the single closest example in the prompt's example bank, with no model. A trained model that cannot
+// beat copying its nearest training example has not learned anything the bank does not already hold (it did better than the pilot
+// adapters, 2026-10-10).
 export function baselineOutput(variant, row, catalog = governanceCatalog()) {
   if (variant === 'always_abstain') return ABSTAIN;
+  if (variant === 'nearest_example') {
+    const [near] = nearestExamples(row.prompt, governanceExamples(), {k: 1, excludeId: row.id});
+    if (!near || near.score <= 0 || near.example.abstain) return ABSTAIN;
+    const mappings = near.example.requirementIds.filter(id => catalog.byId.has(id)).slice(0, 5).sort()
+      .map(requirementId => ({requirementId, relation: 'supports', evidenceLocator: row.evidence[0].id, confidence: 'high'}));
+    return JSON.stringify({abstain: mappings.length === 0, mappings});
+  }
   if (variant !== 'rules_only') fail('baseline_variant_unknown');
   const found = new Map();
   for (const [term, entry] of rulesLexicon(catalog)) {
@@ -141,7 +153,7 @@ export function baselineOutput(variant, row, catalog = governanceCatalog()) {
 export const llamaResponseFormat = f => (f.type === 'json_schema'
   ? {type: 'json_schema', json_schema: {name: 'evidscope_output', strict: true, schema: f.schema}} : f);
 export function variantRequests(rows, variant, catalog = governanceCatalog()) {
-  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog});
+  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog, examples: governanceExamples(), excludeId: r.id});
     return {id: r.id, variant, messages: q.messages, response_format: llamaResponseFormat(q.responseFormat), adapter: q.adapter, ...DECODING}; });
 }
 
@@ -200,7 +212,7 @@ export function verifyGovernanceReport(report, {now = Date.now(), catalog = gove
     }
     if (MODEL_VARIANTS.includes(v) && run.requestsSha256 !== hashOf(variantRequests(report.rows, v, catalog))) fail('governance_report_requests_changed: ' + v);
   }
-  for (const v of ['always_abstain', 'rules_only']) for (const r of report.rows) {
+  for (const v of DETERMINISTIC_BASELINES) for (const r of report.rows) {
     if (report.variants[v].outputs[r.id] !== baselineOutput(v, r, catalog)) fail('governance_report_baseline_output_changed: ' + v);
   }
   const m = measured(report.rows, report.variants, now, catalog);

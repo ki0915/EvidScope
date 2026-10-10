@@ -143,6 +143,17 @@ export function rederived(id) {
   if (!derivedById.size) { const bySplit = loadSplits(); for (const i of derivedItems()) derivedById.set(i.id, row(i, bySplit)); }
   return derivedById.get(id) ?? null;
 }
+// The example bank the prompt draws on (buildMappingRequest examples): the table-derived rows of the tune split only, so a validation
+// or test row never sees itself or a sibling it is measured against. Derived from the shipped tables, not from dataset.jsonl.
+let examples;
+export function governanceExamples() {
+  if (!examples) {
+    rederived('');
+    examples = Object.freeze([...derivedById.values()].filter(r => r.split === 'tune').map(r => Object.freeze({id: r.id, text: r.prompt,
+      abstain: r.truth.abstain, requirementIds: Object.freeze(r.truth.mappings.map(m => m.requirementId))})));
+  }
+  return examples;
+}
 const FIXED = ['id', 'task', 'taskVersion', 'roleId', 'split', 'familyId', 'sourceId', 'language', 'labelSource', 'derivation', 'prompt', 'evidence', 'truth'];
 const fixed = r => Object.fromEntries(FIXED.map(k => [k, r[k] ?? null]));
 
@@ -194,7 +205,7 @@ export function governanceAdmission(rows, {now = Date.now()} = {}) {
 
 // Rows for the trainer: exactly the prompt the runtime sends (variant "candidate") and the gold JSON as the target. Test never leaves.
 const trainerRow = (r, runMode) => {
-  const request = buildMappingRequest(itemOf(r), {variant: 'candidate'});
+  const request = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples(), excludeId: r.id});
   const target = r.labelSource === 'derived_mapping_table' ? r.candidateOutput : r.approvedOutput;
   return {id: r.id, task: TASK, taskVersion: TASK_VERSION, roleId: ROLE_ID, split: r.split, familyId: r.familyId, messages: request.messages,
     target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null,
