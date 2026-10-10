@@ -56,10 +56,10 @@ foreach ($f in @("config.json","generation_config.json","model.safetensors.index
                  "model-00001-of-00004.safetensors","model-00002-of-00004.safetensors","model-00003-of-00004.safetensors","model-00004-of-00004.safetensors")) {
   curl.exe --fail --location --retry 3 --continue-at - --output "$BASE\$f" "https://huggingface.co/fdtn-ai/Foundation-Sec-1.1-8B-Instruct/resolve/$REV/$f"
 }
-node -e "const fs=require('fs'),c=require('crypto'),d=process.argv[1];const files=fs.readdirSync(d).filter(f=>f!=='artifact-lock.json').sort().map(path=>({path,sha256:c.createHash('sha256').update(fs.readFileSync(d+'/'+path)).digest('hex')}));fs.writeFileSync(d+'/artifact-lock.json',JSON.stringify({repository:'fdtn-ai/Foundation-Sec-1.1-8B-Instruct',revision:process.argv[2],files}),{flag:'wx'})" $BASE $REV
+node --input-type=module -e "import fs from 'node:fs';import c from 'node:crypto';const [d,rev]=process.argv.slice(1);const hash=p=>new Promise((ok,no)=>{const h=c.createHash('sha256');fs.createReadStream(p).on('data',x=>h.update(x)).on('end',()=>ok(h.digest('hex'))).on('error',no)});const files=[];for(const path of fs.readdirSync(d).filter(f=>f!=='artifact-lock.json').sort())files.push({path,sha256:await hash(d+'/'+path)});fs.writeFileSync(d+'/artifact-lock.json',JSON.stringify({repository:'fdtn-ai/Foundation-Sec-1.1-8B-Instruct',revision:rev,files}),{flag:'wx'})" $BASE $REV
 ```
 
-Hugging Face 페이지에 표시된 각 파일의 SHA-256과 `artifact-lock.json`의 값을 사람이 대조합니다. 샤드 수가 다르면 목록을 고칩니다.
+샤드가 2GiB를 넘으므로 파일을 스트림으로 해시합니다. Hugging Face 페이지(또는 `https://huggingface.co/api/models/fdtn-ai/Foundation-Sec-1.1-8B-Instruct/tree/$REV`의 `lfs.oid`)에 표시된 각 파일의 SHA-256과 `artifact-lock.json`의 값을 대조합니다. 샤드 수가 다르면 목록을 고칩니다.
 학습기는 시작할 때 이 잠금 파일의 모든 파일을 다시 해시합니다.
 
 ## 2. 사람 검토와 입학
