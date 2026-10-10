@@ -242,7 +242,8 @@ def train(args, rows):
                                  remove_unused_columns=False)
     # The held-out test split is never loaded here; validation loss is a training diagnostic, not a quality measurement.
     trainer = Trainer(model=model, args=settings, train_dataset=tune, eval_dataset=validation,
-                      data_collator=partial(collate.collate_rows, pad_token_id=tokenizer.eos_token_id), callbacks=[Checkpoints()])
+                      data_collator=partial(collate.collate_rows, pad_token_id=tokenizer.eos_token_id,
+                                                    max_length=RECIPE["sequenceLength"]), callbacks=[Checkpoints()])
     result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint or None)
     if stop["requested"]:
         raise SystemExit(75)

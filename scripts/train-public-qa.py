@@ -114,9 +114,9 @@ def encode_row(tokenizer, row, sequence_length=1024, full_context=False):
         radius //= 2
 
 
-def pad_batch(features, pad_token_id):
+def pad_batch(features, pad_token_id, max_length=1024):
     """Right-pad only to this batch's longest sequence; never mask real EOS labels."""
-    if not features or any(not 0 < len(row["input_ids"]) <= 1024 or len(row["attention_mask"]) != len(row["input_ids"]) or len(row["labels"]) != len(row["input_ids"]) for row in features):
+    if not features or any(not 0 < len(row["input_ids"]) <= max_length or len(row["attention_mask"]) != len(row["input_ids"]) or len(row["labels"]) != len(row["input_ids"]) for row in features):
         raise ValueError("training_batch_sequence_invalid")
     length = max(len(row["input_ids"]) for row in features)
     return [{"input_ids": row["input_ids"] + [pad_token_id] * (length - len(row["input_ids"])),
@@ -141,11 +141,11 @@ def supervised_causal_positions(row, eos_token_id):
     return [position - 1 for position in supervised]
 
 
-def collate_rows(features, pad_token_id):
+def collate_rows(features, pad_token_id, max_length=1024):
     from transformers import default_data_collator
     if len(features) != 1:
         raise ValueError("training_batch_size_one_required")
-    padded = pad_batch(features, pad_token_id)
+    padded = pad_batch(features, pad_token_id, max_length)
     logits_to_keep = supervised_causal_positions(padded[0], pad_token_id)
     batch = default_data_collator(padded)
     label_positions = batch["labels"].new_tensor([position + 1 for position in logits_to_keep])
