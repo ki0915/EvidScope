@@ -31,6 +31,9 @@ body:is([data-workspace-view="agents"],[data-workspace-view="events"],[data-work
 @media(max-width:1150px){.home-columns{grid-template-columns:1fr}}
 @media(max-width:760px){.home-count{min-width:118px;flex-basis:118px}.home-count strong{font-size:20px}}
 .model-review .review-text{white-space:pre-wrap;font-size:15px;line-height:1.75;background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:16px}
+.model-review .review-translation{white-space:pre-wrap;font-size:15px;line-height:1.75;background:#fffdf3;border:1px dashed var(--border);border-radius:8px;padding:12px 16px}
+.model-review .review-mapping{border:1px solid var(--border);border-left:4px solid #1f7a7a;border-radius:8px;padding:10px 14px;margin:10px 0}
+.model-review .review-mapping p{margin:4px 0}.model-review .review-guide{margin:6px 0 0;padding-left:20px;line-height:1.8}
 .model-review .review-attest{display:flex;flex-wrap:wrap;gap:18px;margin:14px 0}.model-review .check-field{display:flex;gap:8px;align-items:center;font-size:12px}
 .model-review .review-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.model-review button.danger{background:#fff2f3;color:var(--red);border-color:#e3a7ad}
 .model-experiments table{white-space:normal}

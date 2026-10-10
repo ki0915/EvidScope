@@ -14,7 +14,7 @@ import {QUEUE_DECISION_TYPE, applyReviewDecisions, buildDataset, queueBinding, r
 import {DECODING, PINNED_GGUF, baselineOutput, buildComparisonReport, hashOf, variantRequests} from '../src/governance-mapping-eval.mjs';
 import {ROLE_DIR, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {buildFactsheet, evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
-import {repositoryDataset} from '../src/governance-review-queue.mjs';
+import {draftedRows, queueItem, repositoryDataset} from '../src/governance-review-queue.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -42,6 +42,14 @@ test('queue: one drafted row at a time with its hashes; reviewer/admin decide, o
   assert.ok(row, 'the queue serves a drafted test row');
   assert.equal(view.item.reviewedPayloadHash, queueBinding(row));
   assert.equal(view.item.text, row.prompt);
+  // Review aids: every non-Korean drafted row has a reference translation and every shown requirement a plain explanation; neither is
+  // part of the row the decision binds.
+  for (const r of draftedRows(repositoryDataset())) {
+    const shown = queueItem(r);
+    assert.equal(Boolean(shown.textKo), r.language !== 'ko', `${r.id} translation`);
+    for (const m of [...shown.draftedAnswer.mappings, ...shown.forbidden]) assert.ok(m.plain, `${r.id} ${m.requirementId} explanation`);
+    assert.equal(shown.reviewedPayloadHash, queueBinding(r));
+  }
   assert.deepEqual(view.progress.splits.test, {...view.progress.splits.test, drafted: 57, approved: 0, rejected: 0, pending: 57, eligible: 73,
     minimum: 100, neededApprovals: 27});
   assert.equal(view.progress.splits.test.gate.neededApprovals, 30);

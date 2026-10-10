@@ -3,6 +3,7 @@
 // reviewedPayloadHash and recordHash, the deciding principal and the vault's time. A later decision for the same row must name the
 // one it replaces. Nothing here marks a row reviewed: `export-reviewed` (scripts/governance-mapping.mjs) applies the signed decisions
 // to the dataset through applyReviewDecisions/importHumanReviews, the same path as the review sheet.
+import {readFileSync} from 'node:fs';
 import {digest} from './crypto.mjs';
 import {cleanText, fail} from './model.mjs';
 import {TASK, TASK_VERSION, governanceCatalog} from './governance-mapping.mjs';
@@ -20,15 +21,30 @@ let cached;
 export const repositoryDataset = () => (cached ??= Object.freeze(buildDataset()));
 export const draftedRows = rows => rows.filter(r => r.labelSource === 'claude_drafted');
 
+// Review aids shown next to a row: what each requirement asks in plain Korean (the requirement catalog's own sentence for the AI
+// Basic Act items, Claude-written summaries for the rest) and Korean reference translations of the non-Korean rows. They are display
+// only: they are not part of the dataset, the row hashes or the decisions.
+const json = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
+let aids;
+export function reviewAids() {
+  if (aids) return aids;
+  const guide = json('governance-mapping/v1/review-guide.json'), catalogText = new Map(json('requirements.json').map(r => [r.id, r.requirement]));
+  aids = Object.freeze({notice: guide.notice, plain: id => catalogText.get(id) ?? guide.requirements[id] ?? null,
+    plainSource: id => catalogText.has(id) ? 'requirement_catalog' : guide.requirements[id] ? 'claude_summary' : null,
+    translation: id => guide.translations[id] ?? null});
+  return aids;
+}
 const requirement = (catalog, id) => {
-  const e = catalog.byId.get(id);
-  return e ? {requirementId: id, title: e.title.ko, titleEn: e.title.en, framework: e.framework, citation: e.citation} : {requirementId: id, title: null};
+  const e = catalog.byId.get(id), a = reviewAids();
+  return e ? {requirementId: id, title: e.title.ko, titleEn: e.title.en, framework: e.framework, citation: e.citation, plain: a.plain(id),
+    plainSource: a.plainSource(id)} : {requirementId: id, title: null};
 };
-// What the reviewer sees: the text, its locators, the drafted answer with requirement titles, and for an injection row the IDs the
-// answer must not contain. The hashes are what a decision binds.
+// What the reviewer sees: the text, its locators, the drafted answer with requirement titles and plain explanations, and for an
+// injection row the IDs the answer must not contain. The hashes are what a decision binds.
 export function queueItem(r, catalog = governanceCatalog()) {
   return {id: r.id, split: r.split, kind: r.evidence[0].kind, language: r.language, familyId: r.familyId, labelSource: r.labelSource,
     synthetic: r.synthetic === true, reviewStatus: r.reviewStatus, text: r.prompt, locators: r.evidence.map(e => e.id),
+    textKo: r.language === 'ko' ? null : reviewAids().translation(r.id), aidNotice: reviewAids().notice,
     draftedAnswer: {abstain: r.truth.abstain, mappings: r.truth.mappings.map(m => ({...requirement(catalog, m.requirementId), relation: m.relation,
       evidenceLocators: [...m.evidenceLocators]}))},
     injection: Array.isArray(r.truth.forbidden),

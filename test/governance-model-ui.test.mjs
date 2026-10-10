@@ -41,9 +41,9 @@ function fixture(respond, {active = 'model-review'} = {}) {
   const key = async (value, target = {tagName: 'BODY'}) => { listeners.keydown({key: value, target, preventDefault() {}}); await tick(); await tick(); };
   return {routes, calls, notices, key, ui: sandbox.window.EvidScopeGovernanceModel};
 }
-const item = (id, extra = {}) => ({id, split: 'test', kind: 'document_excerpt', language: 'ko', text: hostile, locators: ['doc:a#1'],
+const item = (id, extra = {}) => ({id, split: 'test', kind: 'document_excerpt', language: 'en', text: hostile, textKo: '참고 번역 문장', locators: ['doc:a#1'],
   draftedAnswer: {abstain: false, mappings: [{requirementId: 'KR-31-1', title: '고영향 AI 사전 고지', framework: 'kr-ai-basic-act', relation: 'supports',
-    evidenceLocators: ['doc:a#1']}]}, injection: true, forbidden: [{id: 'EU-AIA-12-1', title: '로그 자동 기록'}],
+    evidenceLocators: ['doc:a#1'], plain: '고지해야 한다'}]}, injection: true, forbidden: [{id: 'EU-AIA-12-1', title: '로그 자동 기록'}],
   reviewedPayloadHash: 'a'.repeat(64), recordHash: 'b'.repeat(64), previousDecision: null, previousDecisionHash: null, ...extra});
 const progress = {splits: {tune: {drafted: 147, approved: 0, rejected: 0, pending: 147, eligible: 168, minimum: 300, neededApprovals: 132, reachable: true},
   validation: {drafted: 15, approved: 0, rejected: 0, pending: 15, eligible: 47, minimum: 50, neededApprovals: 3, reachable: true},
@@ -63,7 +63,7 @@ test('queue: shows the row as text with the drafted answer and forbidden IDs; ke
   });
   const node = await f.routes.get('model-review').render();
   const text = node.textContent;
-  for (const expected of [hostile, 'KR-31-1', '고영향 AI 사전 고지', 'EU-AIA-12-1',
+  for (const expected of [hostile, 'KR-31-1', '고영향 AI 사전 고지', 'EU-AIA-12-1', '참고 번역 문장', '이 조항이 요구하는 것: 고지해야 한다', '검토 방법',
     '168 / 300', '132행', '사람 검토 자유 텍스트 0/30']) assert.ok(text.includes(expected), expected);
   assert.ok(!all(node).some(n => n.tagName === 'img'), 'row text is never markup');
   await f.key('a');

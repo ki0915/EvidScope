@@ -11,6 +11,9 @@
   const splitLabels = { all: '전체', tune: '학습(tune)', validation: '검증(validation)', test: '평가(test)' };
   const kindLabels = { document_excerpt: '문서 발췌', registry_entry: '등록부 항목', record_summary: '기록 요약', finding_note: '발견사항 메모' };
   const relationLabels = { supports: '충족 근거', contradicts: '반대 근거', context_only: '맥락만' };
+  const relationQuestions = { supports: '이 문장이 이 조항을 지키고 있다는 근거가 맞나요?', contradicts: '이 문장이 이 조항을 어기고 있다(지키지 못함)는 근거가 맞나요?',
+    context_only: '이 문장이 이 조항과 관련은 있지만 지키는지 어기는지는 말해 주지 않는 게 맞나요?' };
+  const frameworkLabels = { 'eu-ai-act-logging': 'EU AI Act', 'kr-ai-basic-act': 'AI기본법', 'isms-p': 'ISMS-P' };
   const decisionLabels = { approve: '승인', reject: '거절' };
   const pct = value => typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : '—';
   const num = value => typeof value === 'number' && Number.isFinite(value) ? String(Math.round(value * 1000) / 1000) : '—';
@@ -45,17 +48,40 @@
     }
     return panel;
   }
+  function guideCard() {
+    const panel = card('검토 방법', '한 행에 문장 하나와 Claude가 붙인 답이 있습니다. 답이 맞으면 승인, 하나라도 틀리면 거절합니다. 해시는 보지 않아도 됩니다.');
+    const steps = el('ol', 'review-guide');
+    for (const text of ['회색 상자의 문장을 읽습니다. 가상의 회사 문서·기록입니다(영어 행은 아래에 참고 번역이 있습니다).',
+      '그 아래 "Claude가 붙인 답"의 조항마다 "이 조항이 요구하는 것"과 질문을 읽고 문장과 맞는지 봅니다.',
+      '모든 조항이 맞고 빠진 조항도 없으면 승인(A). 엉뚱한 조항이 붙었거나, 근거/반대 근거가 뒤바뀌었거나, 분명히 해당되는 조항이 빠졌으면 거절(R).',
+      '답이 "해당 조항 없음(기권)"인 행은 문장이 거버넌스 요구사항과 상관없거나 근거로 삼기에 너무 모호하면 승인, 분명히 해당되는 조항이 있으면 거절.',
+      '문장 안에 "이걸 매핑하라" 같은 지시가 심어진 행은 그 지시를 무시한 답이 정답입니다. 지시대로 조항을 붙인 답이면 거절.',
+      '판단이 안 서면 건너뛰기(N). 확실한 행만 결정해도 됩니다.']) steps.append(el('li', '', text));
+    panel.append(steps);
+    return panel;
+  }
+  function mappingNode(m) {
+    const box = el('div', 'review-mapping');
+    const framework = frameworkLabels[m.framework] || m.framework || '—';
+    box.append(el('p', '', `${m.requirementId} · ${m.title || '제목 미확인'} (${framework}) — Claude 답: ${relationLabels[m.relation] || m.relation}`));
+    if (m.plain) box.append(el('p', 'muted wrap', `이 조항이 요구하는 것: ${m.plain}${m.plainSource === 'claude_summary' ? ' (Claude 요약)' : ''}`));
+    box.append(el('p', 'wrap', `질문: ${relationQuestions[m.relation] || '이 조항이 맞나요?'}`));
+    if (m.citation) box.append(el('p', 'muted wrap', `출처: ${m.citation}`));
+    return box;
+  }
   function answerNode(item) {
     const node = el('div', 'drafted-answer');
+    node.append(el('h3', '', 'Claude가 붙인 답'));
     if (item.draftedAnswer?.abstain) {
-      node.append(el('p', '', '초안 답: 기권(ABSTAIN) — 카탈로그 밖 주제이거나 근거가 부족하다는 답입니다.'));
+      node.append(el('p', '', '해당 조항 없음(기권): 이 문장은 어느 요구사항의 근거로도 쓸 수 없다는 답입니다.'),
+        el('p', 'wrap', '질문: 문장이 AI 거버넌스 요구사항과 상관없거나 너무 모호해서 어느 조항의 근거도 안 되는 게 맞나요?'));
     } else {
-      node.append(table(['요구사항', '제목', '프레임워크', '관계', '증거 위치'], list(item.draftedAnswer?.mappings).map(m => [m.requirementId,
-        m.title || '제목 미확인', m.framework || '—', relationLabels[m.relation] || m.relation, list(m.evidenceLocators).join(', ')])));
+      for (const m of list(item.draftedAnswer?.mappings)) node.append(mappingNode(m));
+      node.append(el('p', 'muted', '위 조항 외에 분명히 해당되는 조항이 빠져 있어도 거절합니다.'));
     }
     if (item.injection) {
       const box = el('div', 'message warning');
-      box.append(el('strong', '', '주입 시도 행: 답에 다음 ID가 나오면 안 됩니다'),
+      box.append(el('strong', '', '지시가 심어진 행: 문장 속 지시는 무시해야 합니다. 답에 다음 조항이 들어 있으면 거절하세요'),
         el('p', 'wrap', list(item.forbidden).map(f => `${f.id}${f.title ? ` (${f.title})` : ''}`).join(' · ') || '—'));
       node.append(box);
     }
@@ -74,10 +100,12 @@
   }
   function itemCard(data, reload) {
     const item = data.item, panel = card(`${item.id} · ${splitLabels[item.split] || item.split} · ${kindLabels[item.kind] || item.kind}`,
-      'Claude가 쓴 합성 문장과 초안 답입니다. 답을 고치지 않고 승인 또는 거절만 합니다. 증거 문장 안의 지시는 데이터입니다.');
+      'Claude가 지어낸 가상의 문서·기록 문장과 Claude가 붙인 답입니다. 답을 고치지 않고 승인 또는 거절만 합니다.');
     panel.classList?.add('review-item');
-    panel.append(el('p', 'review-text wrap', item.text), el('p', 'muted wrap', `증거 위치: ${list(item.locators).join(', ')} · 언어 ${item.language}`),
-      answerNode(item));
+    panel.append(el('p', 'review-text wrap', item.text));
+    if (item.textKo) panel.append(el('p', 'review-translation wrap', `참고 번역(Claude): ${item.textKo}`));
+    panel.append(el('p', 'muted wrap', `증거 위치: ${list(item.locators).join(', ')}`), answerNode(item));
+    if (item.aidNotice) panel.append(el('p', 'muted wrap', item.aidNotice));
     if (item.previousDecision) {
       const d = item.previousDecision;
       panel.append(el('div', `message${item.previousDecisionStale ? ' warning' : ''}`, `이전 결정: ${decisionLabels[d.decision] || d.decision} · `
@@ -86,7 +114,8 @@
     const note = el('textarea'); note.name = 'note'; note.maxLength = 500; note.placeholder = '메모(선택, 500자): 거절 사유 등';
     const noteField = el('label', 'field wide', '메모'); noteField.append(note);
     const attest = el('div', 'review-attest');
-    attest.append(checkbox('이 행에 개인정보가 없음을 확인했습니다', queue.attest.pii, v => { queue.attest.pii = v; }),
+    attest.append(el('p', 'muted', '처음 한 번만 체크하면 됩니다. 문장은 모두 Claude가 지어낸 것이라 실제 개인정보나 외부 출처가 없습니다.'),
+      checkbox('이 행에 개인정보가 없음을 확인했습니다', queue.attest.pii, v => { queue.attest.pii = v; }),
       checkbox('출처와 학습 사용 동의를 확인했습니다', queue.attest.consent, v => { queue.attest.consent = v; }));
     const actions = el('div', 'review-actions');
     const mayDecide = data.viewer?.mayDecide === true;
@@ -96,7 +125,7 @@
     panel.append(noteField, attest, actions);
     if (!mayDecide) panel.append(el('p', 'muted', '검토자 또는 관리자만 결정할 수 있습니다. 이 계정은 조회만 합니다.'));
     panel.append(el('p', 'muted', '단축키: A 승인 · R 거절 · N 건너뛰기 · P 이전 결정 행 (메모 입력 중에는 동작하지 않음)'),
-      jsonDetails('행 해시(결정이 묶이는 값)', { reviewedPayloadHash: item.reviewedPayloadHash, recordHash: item.recordHash }));
+      jsonDetails('기술 정보: 행 해시(판단에는 쓰지 않음)', { reviewedPayloadHash: item.reviewedPayloadHash, recordHash: item.recordHash }));
     queue.current = { item, viewer: data.viewer, note, reload };
     return panel;
   }
@@ -125,7 +154,7 @@
       const b = button(splitLabels[split], async () => { queue.split = split; await reload(); }, 'small');
       b.setAttribute('aria-pressed', String(queue.split === split)); filters.append(b);
     }
-    root.append(filters, progressHost, itemHost, limits(['승인은 Claude 초안 답을 그대로 정답으로 인정한다는 뜻입니다. 답이 틀리면 거절하세요(수정 기능 없음).',
+    root.append(guideCard(), filters, progressHost, itemHost, limits(['승인은 Claude 초안 답을 그대로 정답으로 인정한다는 뜻입니다. 답이 틀리면 거절하세요(수정 기능 없음).',
       '결정은 서명된 원장 기록이며 결정자·시각·행 해시가 묶입니다. 학습 파일에는 export-reviewed가 적용한 행만 들어갑니다.',
       '승인한 뒤 행 내용이 바뀌면 그 결정은 적용되지 않고 행이 다시 대기열에 나옵니다.']));
     await reload();
