@@ -43,11 +43,12 @@ export function splitOf(truth, familyId, bySplit) {
   return splits.has('test') ? 'test' : splits.has('validation') ? 'validation' : 'tune';
 }
 
-function row({id, familyId, sourceId, kind, language, locators, text, truth, labelSource, derivation, injection}, bySplit) {
+function row({id, familyId, sourceId, kind, language, locators, text, truth, labelSource, derivation, injection, split}, bySplit) {
   const labels = truth.abstain ? ['abstain'] : truth.mappings.map(m => m.requirementId);
   const requiredRefs = [...new Set(truth.mappings.map(m => m.evidenceLocators[0]))];
   const derived = labelSource === 'derived_mapping_table';
-  const out = {schemaVersion: 1, task: TASK, taskVersion: TASK_VERSION, id, roleId: ROLE_ID, split: splitOf(truth, familyId, bySplit), familyId, sourceId,
+  const out = {schemaVersion: 1, task: TASK, taskVersion: TASK_VERSION, id, roleId: ROLE_ID, split: split ?? splitOf(truth, familyId, bySplit),
+    familyId, sourceId,
     language, labelSource, ...(derivation ? {derivation} : {}), synthetic: !derived, humanReviewed: false,
     reviewStatus: derived ? 'NOT_REQUIRED_DERIVED' : 'UNREVIEWED', reviewerId: null, reviewedAt: null, sourceConsent: true,
     prompt: text, evidence: locators.map(l => ({id: l, kind})),
@@ -63,7 +64,7 @@ export function derivedItems(catalog = governanceCatalog()) {
   const add = (rule, framework, ref, kind, text, labels, relation = 'supports') => {
     const truth = labels.length ? {abstain: false, mappings: labels.sort().map(requirementId => ({requirementId, relation, evidenceLocators: [locator(text)]}))}
       : {abstain: true, mappings: []};
-    const familyId = `derived:${rule}:${labels.length ? labels.join('+') : ref}`;
+    const familyId = labels.length ? `derived:${rule}:${sha256(text).slice(0, 10)}` : `derived:${rule}:${ref}`;
     items.push({id: `derived-${rule}-${sha256(text).slice(0, 10)}`, familyId, sourceId: `evidscope-${framework}-table`, kind,
       language: /[가-힣]/.test(text) ? 'ko' : 'en',
       locators: [locator(text)], text, truth, labelSource: 'derived_mapping_table',
@@ -92,7 +93,27 @@ export function derivedItems(catalog = governanceCatalog()) {
   // EU references the EU table names as not mapped.
   const eu = JSON.parse(readFileSync(new URL('../data/evidence-pack-mappings/eu-ai-act-logging-v2.json', import.meta.url), 'utf8'));
   for (const n of eu.notMapped) add('eu-not-mapped', 'eu-ai-act-logging', n.ref, 'document_excerpt', `EU AI Act ${n.ref}`, []);
-  return items;
+  return stratify(items);
+}
+// Derived rows are split by evidence text, stratified by their first requirement, so every requirement with enough rows is both
+// learned (tune) and measured on texts the trainer never saw (test). Splitting by requirement instead (splits.json, still used for
+// drafted rows) puts whole requirements out of training, which a model cannot learn. A requirement with n rows gives
+// round(n/5) (at least 1 when n >= 2) to test and 1 to validation when n >= 5; a requirement with a single row stays in tune.
+// Order within a requirement is by sha256 of the text, so the split is deterministic and independent of table order.
+function stratify(items) {
+  const groups = new Map();
+  for (const i of items) {
+    if (i.truth.abstain) continue;
+    const key = i.truth.mappings[0].requirementId;
+    groups.set(key, [...(groups.get(key) || []), i]);
+  }
+  const split = new Map();
+  for (const group of groups.values()) {
+    const ordered = group.map(i => [sha256(`governance-mapping-v1-text:${i.text}`), i]).sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(x => x[1]);
+    const n = ordered.length, test = n >= 2 ? Math.max(1, Math.round(n / 5)) : 0, validation = n >= 5 ? 1 : 0;
+    ordered.forEach((i, k) => split.set(i, k < test ? 'test' : k < test + validation ? 'validation' : 'tune'));
+  }
+  return items.map(i => split.has(i) ? {...i, split: split.get(i)} : i);
 }
 export function draftedItems() {
   const doc = read(`${DATASET_DIR}/drafted-items.json`);
@@ -158,7 +179,8 @@ export function governanceAdmission(rows, {now = Date.now()} = {}) {
     else if (verdict.reason === 'not_human_reviewed') c.excludedUnreviewed++;
     else { c.excludedInvalid++; reasons.push(verdict.reason); }
     for (const [map, key] of [[families, r.familyId], [texts, fingerprint(r)]]) { if (!map.has(key)) map.set(key, new Set()); map.get(key).add(r.split); }
-    const labelSplits = new Set((r.truth?.mappings || []).map(m => bySplit.get(m.requirementId)));
+    // Requirement-level split applies to drafted rows; derived rows are split by text (see stratify) and checked by family and content.
+    const labelSplits = new Set(r?.labelSource === 'derived_mapping_table' ? [] : (r.truth?.mappings || []).map(m => bySplit.get(m.requirementId)));
     if ((r.split !== 'test' && labelSplits.has('test')) || (r.split === 'tune' && labelSplits.has('validation'))) reasons.push('requirement_split_leakage');
   }
   if ([...families.values()].some(s => s.size > 1)) reasons.push('family_split_leakage');

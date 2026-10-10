@@ -78,17 +78,24 @@ test('dataset: deterministic, equal to the committed file, drafted rows never ma
   assert.equal(drafted.length, 219);
   assert.ok(drafted.every(r => r.humanReviewed === false && r.reviewStatus === 'UNREVIEWED' && r.reviewerId === null && r.synthetic === true));
   assert.ok(derived.every(r => r.reviewStatus === 'NOT_REQUIRED_DERIVED' && r.humanReviewed === false && rowEligibility(r).basis === 'derived'));
+  // Drafted rows are split by requirement (splits.json); derived rows by text, stratified so each test requirement is also learned.
   const splits = loadSplits();
-  for (const r of dataset) for (const m of r.truth.mappings) {
+  for (const r of drafted) for (const m of r.truth.mappings) {
     const s = splits.get(m.requirementId);
     if (s === 'test') assert.equal(r.split, 'test', r.id);
     if (s === 'validation') assert.notEqual(r.split, 'tune', r.id);
   }
+  const tuned = new Set(derived.filter(r => r.split === 'tune').flatMap(r => r.truth.mappings.map(m => m.requirementId)));
+  const tested = derived.filter(r => r.split === 'test' && !r.truth.abstain);
+  assert.ok(tested.length >= 30);
+  for (const r of tested) for (const m of r.truth.mappings) assert.ok(tuned.has(m.requirementId), `${r.id} ${m.requirementId} learned`);
+  assert.equal(new Set(derived.map(r => r.familyId)).size, derived.length - derived.filter(r => r.truth.abstain).length
+    + new Set(derived.filter(r => r.truth.abstain).map(r => r.familyId)).size);
   const admission = governanceAdmission(dataset);
   assert.equal(admission.admitted, false);
   assert.ok(!admission.reasons.some(x => /leakage/.test(x)));
   assert.deepEqual(Object.fromEntries(Object.entries(admission.counts).map(([s, c]) => [s, [c.eligible, c.excludedUnreviewed]])),
-    {tune: [168, 147], validation: [47, 15], test: [73, 57]});
+    {tune: [194, 147], validation: [35, 15], test: [59, 57]});
   assert.throws(() => trainingRows(dataset), /governance_training_admission_failed/);
 });
 
