@@ -210,4 +210,8 @@ test('training launcher: offline, read-only container verified before start; sto
     '--checkpoints-dir', spec.checkpointsDir, '--work-dir', spec.workDir, '--check-only'], {probe: async () => { throw Error('no host'); }});
   assert.deepEqual(check.decision, {allowed: false, reasons: ['host_resource_probe_unavailable']});
   assert.equal(check.dockerArgs[0], 'create');
+  assert.equal(check.policy, 'active_use');
+  const idle = await runGovernanceTraining(['--image', spec.image, '--base-dir', spec.baseDir, '--base-revision', spec.baseRevision, '--data', spec.dataFile,
+    '--checkpoints-dir', spec.checkpointsDir, '--work-dir', spec.workDir, '--check-only', '--idle-only'], {probe: async () => { throw Error('no host'); }});
+  assert.equal(idle.policy, 'idle_only');
 });

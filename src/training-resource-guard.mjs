@@ -1,4 +1,9 @@
-export const TRAINING_RESOURCE_POLICY=Object.freeze({receiptMaxAgeMs:5000,minIdleSeconds:900,maxStartCpuPercent:20,minStartFreeMemoryGiB:18,maxStartGpuMemoryUsedMiB:1024,maxStartGpuUtilizationPercent:10,maxGpuTemperatureC:80,minContinueIdleSeconds:30,minContinueFreeMemoryGiB:8,minContinueGpuFreeMiB:1024,checkIntervalMs:2000,maxStopPolls:40});
+export const TRAINING_RESOURCE_POLICY=Object.freeze({mode:'idle_only',receiptMaxAgeMs:5000,minIdleSeconds:900,maxStartCpuPercent:20,minStartFreeMemoryGiB:18,maxStartGpuMemoryUsedMiB:1024,maxStartGpuUtilizationPercent:10,maxGpuTemperatureC:80,minContinueIdleSeconds:30,minContinueFreeMemoryGiB:8,minContinueGpuFreeMiB:1024,checkIntervalMs:2000,maxStopPolls:40});
+// Owner's choice (2026-10-10): governance-mapping training may run while the PC is in use. Only checks that protect the
+// machine itself remain: enough free VRAM for the run's 0.65 cap at start, GPU temperature, and host/GPU memory headroom
+// while running. Interactive use, CPU and other GPU work no longer block or stop a run.
+export const TRAINING_ACTIVE_USE_POLICY=Object.freeze({...TRAINING_RESOURCE_POLICY,mode:'active_use',minStartGpuFreeMiB:8448,minContinueFreeMemoryGiB:2,minContinueGpuFreeMiB:256});
+const activeUse=p=>p.mode==='active_use';
 const number=(value,min,max)=>typeof value==='number'&&Number.isFinite(value)&&value>=min&&value<=max;
 
 export function validateHostResourceReceipt(receipt,{now=Date.now()}={}){
@@ -11,7 +16,12 @@ export function validateHostResourceReceipt(receipt,{now=Date.now()}={}){
 
 export function trainingStartDecision(receipt,options={}){
  let r;try{r=validateHostResourceReceipt(receipt,options);}catch(error){return {allowed:false,reasons:[error.message]};}
- const p=TRAINING_RESOURCE_POLICY,reasons=[];
+ const p=options.policy||TRAINING_RESOURCE_POLICY,reasons=[];
+ if(activeUse(p)){
+  if(r.gpu.memoryTotalMiB-r.gpu.memoryUsedMiB<p.minStartGpuFreeMiB)reasons.push('gpu_memory_insufficient');
+  if(r.gpu.temperatureC>p.maxGpuTemperatureC)reasons.push('gpu_temperature_high');
+  return {allowed:reasons.length===0,reasons,policy:p.mode};
+ }
  if(r.idleSeconds<p.minIdleSeconds)reasons.push('interactive_session_not_idle');
  if(r.cpuPercent>p.maxStartCpuPercent)reasons.push('host_cpu_busy');
  if(r.freeMemoryGiB<p.minStartFreeMemoryGiB)reasons.push('host_memory_reserve_low');
@@ -25,8 +35,8 @@ export function trainingStartDecision(receipt,options={}){
 
 export function trainingContinueDecision(receipt,options={}){
  let r;try{r=validateHostResourceReceipt(receipt,options);}catch(error){return {allowed:false,reasons:[error.message]};}
- const p=TRAINING_RESOURCE_POLICY,reasons=[];
- if(r.idleSeconds<p.minContinueIdleSeconds)reasons.push('interactive_use_resumed');
+ const p=options.policy||TRAINING_RESOURCE_POLICY,reasons=[];
+ if(!activeUse(p)&&r.idleSeconds<p.minContinueIdleSeconds)reasons.push('interactive_use_resumed');
  if(r.freeMemoryGiB<p.minContinueFreeMemoryGiB)reasons.push('host_memory_pressure');
  if(!r.onAcPower)reasons.push('host_power_changed');
  if(r.gpu.temperatureC>p.maxGpuTemperatureC)reasons.push('gpu_temperature_high');
@@ -36,7 +46,7 @@ export function trainingContinueDecision(receipt,options={}){
 
 // The launcher is a trusted control-plane adapter. The training container never sees
 // host processes, input state, kubectl credentials, or this receipt.
-export function createIdleTrainingGuard({probe,launcher,clock=()=>Date.now(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+export function createIdleTrainingGuard({probe,launcher,clock=()=>Date.now(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms)),policy=TRAINING_RESOURCE_POLICY}={}){
  if(typeof probe!=='function'||!launcher||['start','observe','stop'].some(k=>typeof launcher[k]!=='function'))throw Error('training_guard_dependencies_required');
  async function stopAndConfirm(workload,reason){
   for(let attempt=0;attempt<TRAINING_RESOURCE_POLICY.maxStopPolls;attempt++){
@@ -50,7 +60,7 @@ export function createIdleTrainingGuard({probe,launcher,clock=()=>Date.now(),wai
  }
  return {async run(options={}){
   if(options.signal?.aborted)return {state:'cancelled',started:false,terminationConfirmed:true};
-  const start=trainingStartDecision(await probe(),{now:clock()});if(!start.allowed)return {state:'blocked_host_busy',started:false,reasons:start.reasons,terminationConfirmed:true};
+  const start=trainingStartDecision(await probe(),{now:clock(),policy});if(!start.allowed)return {state:'blocked_host_busy',started:false,reasons:start.reasons,terminationConfirmed:true};
   if(options.signal?.aborted)return {state:'cancelled',started:false,terminationConfirmed:true};
   let workload;
   try{
@@ -60,7 +70,7 @@ export function createIdleTrainingGuard({probe,launcher,clock=()=>Date.now(),wai
     await wait(TRAINING_RESOURCE_POLICY.checkIntervalMs);
     if(options.signal?.aborted)return stopAndConfirm(workload,'cancelled');
     if(clock()-startedAt>=3600000)return stopAndConfirm(workload,'runtime_deadline');
-    const decision=trainingContinueDecision(await probe(),{now:clock()});if(!decision.allowed){const stopped=await stopAndConfirm(workload,decision.reasons[0]);return {...stopped,state:'stopped_for_host_activity',reasons:decision.reasons};}
+    const decision=trainingContinueDecision(await probe(),{now:clock(),policy});if(!decision.allowed){const stopped=await stopAndConfirm(workload,decision.reasons[0]);return {...stopped,state:'stopped_for_host_activity',reasons:decision.reasons};}
     const state=await launcher.observe(workload);
     if(state?.state==='succeeded')return stopAndConfirm(workload,'completed');
     if(state?.state==='failed')return stopAndConfirm(workload,'failed');

@@ -7,8 +7,9 @@
 
 - Windows 11, WSL2 백엔드의 Docker Desktop, NVIDIA 드라이버와 Docker GPU 지원(`docker run --gpus` 동작), RTX 3080 12 GB,
   RAM 32 GB 기준입니다. 명령은 저장소 루트의 PowerShell에서 실행하고 Node 24를 씁니다.
-- 기존 학습 정책을 그대로 따릅니다. 시작 전 유휴 판정(`scripts/training-host-check.mjs`)이 통과해야 하고, PC 사용이 감지되면
-  체크포인트를 남기고 멈춥니다. 한 번의 실행은 1시간을 넘지 않습니다.
+- 2026-10-10 소유자 결정으로 PC를 쓰는 중에도 학습합니다(`TRAINING_ACTIVE_USE_POLICY`). 시작 조건은 GPU 여유 메모리 8,448 MiB 이상과
+  GPU 온도 80°C 이하뿐이고, 실행 중에는 호스트 여유 메모리 2 GiB 미만, GPU 여유 256 MiB 미만, 과열일 때만 체크포인트를 남기고 멈춥니다.
+  예전처럼 유휴일 때만 돌리려면 `--idle-only`를 붙입니다. 한 번의 실행은 1시간을 넘지 않습니다.
 - 아래 `C:\evidscope-work`는 예시 작업 폴더입니다. 경로는 모두 절대 경로로 넘깁니다.
 
 ## 학습 시작까지 최단 경로
@@ -136,8 +137,8 @@ node scripts/governance-mapping-train.mjs --base-dir $BASE --base-revision $REV 
   --checkpoints-dir "$W\checkpoints" --work-dir "$W\work"
 ```
 
-`--check-only`는 docker 인자와 유휴 판정만 보여 줍니다. 실제 실행은 컨테이너를 만든 뒤 `docker inspect`로 격리를 확인하고서야
-시작합니다. 멈췄다면(`stopped_for_host_activity`, `runtime_deadline`) 마지막 체크포인트로 이어갑니다.
+`--check-only`는 docker 인자와 시작 판정만 보여 줍니다. 실제 실행은 컨테이너를 만든 뒤 `docker inspect`로 격리를 확인하고서야
+시작합니다. 멈췄다면(`stopped_for_host_activity`(메모리 부족·과열), `runtime_deadline`) 마지막 체크포인트로 이어갑니다.
 
 ```powershell
 node scripts/governance-mapping-train.mjs ... --resume governance-mapping/run/checkpoint-<N>

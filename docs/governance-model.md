@@ -211,8 +211,8 @@ QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 �
   2 epoch, 학습률 2e-4 cosine(warmup 3%), 5 step마다 체크포인트, GPU 메모리 비율 0.65 이하. 병합 가중치는 만들지 않습니다.
 - 격리: Docker 컨테이너를 만든 뒤 `docker inspect`로 네트워크 없음, 읽기 전용 루트, 모든 capability 제거, no-new-privileges,
   메모리 12 GiB·swap 없음, pids 256, CPU 2, GPU 0번만, 입력 읽기 전용 마운트와 체크포인트 하나만 쓰기 가능함을 확인한 뒤에만
-  시작합니다(`src/governance-training.mjs`). 기존 `createIdleTrainingGuard`가 PC 유휴 여부를 보고 시작하며, PC 사용이 감지되거나
-  1시간이 지나면 체크포인트를 남기고 멈춥니다. 다시 실행하면 `--resume`으로 이어갑니다.
+  시작합니다(`src/governance-training.mjs`). 2026-10-10부터 PC 사용 중에도 시작하며(`TRAINING_ACTIVE_USE_POLICY`, `--idle-only`로 예전 규칙),
+  메모리 부족·과열이 감지되거나 1시간이 지나면 체크포인트를 남기고 멈춥니다. 다시 실행하면 `--resume`으로 이어갑니다.
 - 셰이크다운(`training-set --shakedown`, `governance-mapping-train.mjs --shakedown`): 사람 검토가 끝나기 전에 PC의 VRAM·시간을 재려고 파생 행
   (tune 168, validation 47)만으로 같은 레시피를 돌립니다. 모든 행과 영수증에 `runMode: "shakedown"`이 붙고, 어댑터는
   `governance-mapping/shakedown/shakedown-adapter`에 `shakedown_not_promotable` 상태로 남습니다. 학습기의 후보 검증(`verify_candidate`)은
