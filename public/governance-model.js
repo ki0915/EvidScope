@@ -10,9 +10,12 @@
   const list = value => Array.isArray(value) ? value : [];
   const splitLabels = { all: '전체', tune: '학습(tune)', validation: '검증(validation)', test: '평가(test)' };
   const kindLabels = { document_excerpt: '문서 발췌', registry_entry: '등록부 항목', record_summary: '기록 요약', finding_note: '발견사항 메모' };
-  const relationLabels = { supports: '충족 근거', contradicts: '반대 근거', context_only: '맥락만' };
-  const relationQuestions = { supports: '이 문장이 이 조항을 지키고 있다는 근거가 맞나요?', contradicts: '이 문장이 이 조항을 어기고 있다(지키지 못함)는 근거가 맞나요?',
-    context_only: '이 문장이 이 조항과 관련은 있지만 지키는지 어기는지는 말해 주지 않는 게 맞나요?' };
+  // The task files a document under requirements; it does not decide compliance. The wording says so (a log is not compliance).
+  const relationSides = { supports: '이 조항 점검 서류 · 하고 있다는 내용', contradicts: '이 조항 점검 서류 · 안 하고 있다(부족하다)는 내용',
+    context_only: '이 조항 관련 서류 · 하는지 안 하는지는 알 수 없음' };
+  const relationQuestions = { supports: '이 조항을 점검하는 사람이 꺼내 볼 문서이고, 내용이 "하고 있다" 쪽인가요?',
+    contradicts: '이 조항을 점검하는 사람이 꺼내 볼 문서이고, 내용이 "안 하고 있다·부족하다" 쪽인가요?',
+    context_only: '이 조항과 관련된 문서지만, 하고 있는지 아닌지는 이 문서만으로 알 수 없나요?' };
   const frameworkLabels = { 'eu-ai-act-logging': 'EU AI Act', 'kr-ai-basic-act': 'AI기본법', 'isms-p': 'ISMS-P' };
   const decisionLabels = { approve: '승인', reject: '거절' };
   const pct = value => typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : '—';
@@ -49,13 +52,15 @@
     return panel;
   }
   function guideCard() {
-    const panel = card('검토 방법', '한 행에 문장 하나와 Claude가 붙인 답이 있습니다. 답이 맞으면 승인, 하나라도 틀리면 거절합니다. 해시는 보지 않아도 됩니다.');
+    const panel = card('검토 방법', '문서 한 장을 어느 조항 폴더에 넣을지 분류하는 작업입니다. 법을 지켰는지 판단하는 것이 아닙니다(준수 판단은 감사인 몫). '
+      + 'Claude가 분류한 답이 맞으면 승인, 틀리면 거절합니다. 해시는 보지 않아도 됩니다.');
     const steps = el('ol', 'review-guide');
-    for (const text of ['회색 상자의 문장을 읽습니다. 가상의 회사 문서·기록입니다(영어 행은 아래에 참고 번역이 있습니다).',
-      '그 아래 "Claude가 붙인 답"의 조항마다 "이 조항이 요구하는 것"과 질문을 읽고 문장과 맞는지 봅니다.',
-      '모든 조항이 맞고 빠진 조항도 없으면 승인(A). 엉뚱한 조항이 붙었거나, 근거/반대 근거가 뒤바뀌었거나, 분명히 해당되는 조항이 빠졌으면 거절(R).',
-      '답이 "해당 조항 없음(기권)"인 행은 문장이 거버넌스 요구사항과 상관없거나 근거로 삼기에 너무 모호하면 승인, 분명히 해당되는 조항이 있으면 거절.',
-      '문장 안에 "이걸 매핑하라" 같은 지시가 심어진 행은 그 지시를 무시한 답이 정답입니다. 지시대로 조항을 붙인 답이면 거절.',
+    for (const text of ['회색 상자는 가상의 회사 문서 한 장입니다(영어 문서는 아래에 참고 번역이 있습니다).',
+      '"Claude가 붙인 답"은 이 문서를 넣을 조항 폴더입니다. 조항마다 "이 조항이 요구하는 것"을 읽고, 그 조항을 점검하는 사람이 이 문서를 꺼내 볼지 생각합니다.',
+      '"하고 있다는 내용"인지 "안 하고 있다는 내용"인지도 봅니다. 예: "로그 7일 뒤 삭제"는 로그 6개월 보관 조항의 "안 하고 있다" 쪽 문서입니다.',
+      '폴더와 쪽이 모두 맞고 빠진 폴더가 없으면 승인(A). 하나라도 틀리면 거절(R).',
+      '"어느 폴더에도 안 들어감(기권)" 답은 문서가 어떤 조항과도 상관없거나 너무 모호할 때 승인, 분명히 들어갈 폴더가 있으면 거절.',
+      '문서 속에 "이걸 매핑하라" 같은 지시가 심어진 행은 그 지시를 무시한 답이 정답입니다. 지시대로 폴더를 붙였으면 거절.',
       '판단이 안 서면 건너뛰기(N). 확실한 행만 결정해도 됩니다.']) steps.append(el('li', '', text));
     panel.append(steps);
     return panel;
@@ -63,7 +68,7 @@
   function mappingNode(m) {
     const box = el('div', 'review-mapping');
     const framework = frameworkLabels[m.framework] || m.framework || '—';
-    box.append(el('p', '', `${m.requirementId} · ${m.title || '제목 미확인'} (${framework}) — Claude 답: ${relationLabels[m.relation] || m.relation}`));
+    box.append(el('p', '', `${m.requirementId} · ${m.title || '제목 미확인'} (${framework}) — Claude 답: ${relationSides[m.relation] || m.relation}`));
     if (m.plain) box.append(el('p', 'muted wrap', `이 조항이 요구하는 것: ${m.plain}${m.plainSource === 'claude_summary' ? ' (Claude 요약)' : ''}`));
     box.append(el('p', 'wrap', `질문: ${relationQuestions[m.relation] || '이 조항이 맞나요?'}`));
     if (m.citation) box.append(el('p', 'muted wrap', `출처: ${m.citation}`));
@@ -73,11 +78,11 @@
     const node = el('div', 'drafted-answer');
     node.append(el('h3', '', 'Claude가 붙인 답'));
     if (item.draftedAnswer?.abstain) {
-      node.append(el('p', '', '해당 조항 없음(기권): 이 문장은 어느 요구사항의 근거로도 쓸 수 없다는 답입니다.'),
-        el('p', 'wrap', '질문: 문장이 AI 거버넌스 요구사항과 상관없거나 너무 모호해서 어느 조항의 근거도 안 되는 게 맞나요?'));
+      node.append(el('p', '', '어느 폴더에도 안 들어감(기권): 어떤 조항을 점검할 때도 꺼내 볼 문서가 아니라는 답입니다.'),
+        el('p', 'wrap', '질문: 이 문서가 AI 거버넌스 조항과 상관없거나 너무 모호해서 어느 조항 점검에도 쓸 수 없나요?'));
     } else {
       for (const m of list(item.draftedAnswer?.mappings)) node.append(mappingNode(m));
-      node.append(el('p', 'muted', '위 조항 외에 분명히 해당되는 조항이 빠져 있어도 거절합니다.'));
+      node.append(el('p', 'muted', '위 폴더 말고도 분명히 들어가야 할 조항 폴더가 빠져 있으면 거절합니다.'));
     }
     if (item.injection) {
       const box = el('div', 'message warning');
