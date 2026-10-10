@@ -107,7 +107,7 @@ test('base mode needs the minimum precision as well as the rules-only comparison
 
 test('shakedown: derived rows only, labelled shakedown, refused by the candidate trainer and the other way round', () => {
   const rows = shakedownRows(dataset);
-  assert.equal(rows.length, 249 + 35);
+  assert.equal(rows.length, 194 + 35);
   assert.ok(rows.every(r => r.runMode === 'shakedown' && r.labelSource === 'derived_mapping_table' && r.split !== 'test'));
   assert.throws(() => shakedownRows(dataset.map(r => (r.labelSource === 'derived_mapping_table' ? {...r, truth: {...r.truth, abstain: !r.truth.abstain}} : r))),
     /governance_shakedown_rows_invalid/);
@@ -117,7 +117,7 @@ test('shakedown: derived rows only, labelled shakedown, refused by the candidate
   mkdirSync('.test-runs', {recursive: true});
   const dir = mkdtempSync(resolve('.test-runs/governance-shakedown-')), file = join(dir, 'shakedown.jsonl');
   const written = runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--shakedown', '--out', file]);
-  assert.deepEqual([written.rows, written.runMode], [284, 'shakedown']);
+  assert.deepEqual([written.rows, written.runMode], [229, 'shakedown']);
   assert.equal(readFileSync(file, 'utf8'), toJsonl(rows));
   assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--out', join(dir, 'x.jsonl')]),
     /governance_training_admission_failed/);
@@ -154,7 +154,7 @@ print(json.dumps({name: t.admission(path, shakedown=flag)[1] for name, path, fla
   const r = spawnSync(python, ['-I', '-B', '-c', code, file, candidateFile, mixed], {encoding: 'utf8', timeout: 120000});
   assert.equal(r.status, 0, r.stderr);
   const gates = JSON.parse(r.stdout.trim().split('\n').at(-1));
-  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 249, validation: 35}]);
+  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 194, validation: 35}]);
   assert.ok(gates.asCandidate.reasons.includes('shakedown_rows_in_candidate_run'));
   assert.deepEqual([gates.candidate.admitted, gates.candidate.promotable], [true, true]);
   assert.ok(gates.candidateAsShakedown.reasons.includes('shakedown_requires_derived_shakedown_rows'));

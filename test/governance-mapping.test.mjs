@@ -74,11 +74,7 @@ test('rules decide structured evidence; a model answer for a rule item is refuse
 test('dataset: deterministic, equal to the committed file, drafted rows never marked reviewed, no split leakage', () => {
   assert.equal(canonical(dataset), canonical([...committed].sort((a, b) => (a.id < b.id ? -1 : 1))));
   const derived = dataset.filter(r => r.labelSource === 'derived_mapping_table'), drafted = dataset.filter(r => r.labelSource === 'claude_drafted');
-  assert.equal(derived.length, 343);
-  // 55 catalog-meaning rows (one per requirement, labelled with itself) are tune only: they teach, never measure.
-  const meaning = derived.filter(r => r.derivation.rule === 'catalog-meaning');
-  assert.equal(meaning.length, 55);
-  assert.ok(meaning.every(r => r.split === 'tune' && r.truth.mappings.length === 1 && r.truth.mappings[0].requirementId === r.derivation.ref));
+  assert.equal(derived.length, 288);
   assert.equal(drafted.length, 219);
   assert.ok(drafted.every(r => r.humanReviewed === false && r.reviewStatus === 'UNREVIEWED' && r.reviewerId === null && r.synthetic === true));
   assert.ok(derived.every(r => r.reviewStatus === 'NOT_REQUIRED_DERIVED' && r.humanReviewed === false && rowEligibility(r).basis === 'derived'));
@@ -99,7 +95,7 @@ test('dataset: deterministic, equal to the committed file, drafted rows never ma
   assert.equal(admission.admitted, false);
   assert.ok(!admission.reasons.some(x => /leakage/.test(x)));
   assert.deepEqual(Object.fromEntries(Object.entries(admission.counts).map(([s, c]) => [s, [c.eligible, c.excludedUnreviewed]])),
-    {tune: [249, 147], validation: [35, 15], test: [59, 57]});
+    {tune: [194, 147], validation: [35, 15], test: [59, 57]});
   assert.throws(() => trainingRows(dataset), /governance_training_admission_failed/);
 });
 
@@ -173,7 +169,6 @@ test('examples: the bank is the derived tune split; a row never sees itself; can
   assert.ok(!train.examples.some(e => e.text === own.prompt));
   assert.equal(JSON.parse(buildMappingRequest(item, {variant: 'candidate', examples: bank}).messages[1].content).examples[0].text, own.prompt);
   const ids = train.candidates.map(c => c.id);
-  assert.ok(train.candidates.every(c => typeof c.asks === 'string' && c.asks.length > 0 && [...c.asks].length <= LIMITS.meaningChars));
   assert.deepEqual(ids, [...ids].sort());
   for (const e of train.examples) if (Array.isArray(e.answer)) for (const id of e.answer) assert.ok(ids.includes(id));
   const r = dataset.find(x => x.split === 'test' && !x.truth.abstain && x.labelSource === 'derived_mapping_table');

@@ -14,9 +14,7 @@ export const MODEL_KINDS = Object.freeze(['document_excerpt', 'registry_entry', 
 export const RULE_KIND = 'structured';
 export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
 export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 3,
-  exampleChars: 100, meaningChars: 56});
-// What a requirement asks, without its title and citation (the catalog text is title + citation + measures).
-export const requirementMeaning = e => e.text.replace(e.title.ko, '').replace(e.citation, '').replace(/\s+/g, ' ').trim();
+  exampleChars: 160});
 const STRUCTURED_TYPES = ['record', 'eventKind', 'checkType', 'finding', 'integrityCheck', 'api', 'file'];
 const LOCATOR = /^[a-z][a-z0-9-]{0,30}:[A-Za-z0-9._:@/#-]{1,200}$/;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -230,9 +228,9 @@ const SYSTEM = [
 ].join(' ');
 const clip = (s, n) => { const chars = [...String(s ?? '')]; return chars.length > n ? chars.slice(0, n - 1).join('') + '…' : chars.join(''); };
 // examples (optional, see nearestExamples): with them the user message carries the nearest labelled examples, the requirements those
-// examples were filed under join the candidates ahead of the retrieved ones, candidates are listed in id order so their position
-// says nothing (the pilot adapter picked the first-listed candidate in 24 of 45 answers) and each says what it asks, not only its
-// title. excludeId keeps a training row out of its own examples.
+// examples were filed under join the candidates ahead of the retrieved ones, and candidates are listed in id order so their position
+// says nothing (the pilot adapter picked the first-listed candidate in 24 of 45 answers). excludeId keeps a training row out of its
+// own examples.
 export function buildMappingRequest(input, {variant, catalog = governanceCatalog(), examples = null, excludeId = null} = {}) {
   if (!VARIANTS.includes(variant)) throw mappingError('mapping_variant_unknown');
   const item = normalizeMappingItem(input);
@@ -246,10 +244,7 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
     candidates = [...new Set([...fromExamples, ...retrieveRequirements(item.text, {catalog}).map(c => c.id)])].slice(0, LIMITS.candidates);
     if (examples) candidates.sort();
     user = {evidence, candidates: candidates.map(id => {
-       const e = catalog.byId.get(id), title = clip(e.title.ko, LIMITS.snippetChars);
-       // With examples the label (a citation, up to 40 characters for KR items) gives way to what the item asks, so the prompt
-       // stays within what the 12 GB card trains under its memory cap (an 'asks' line beside the label ran out of memory).
-       return examples ? {id, title, asks: clip(requirementMeaning(e), LIMITS.meaningChars)} : {id, label: e.label, title}; })};
+       const e = catalog.byId.get(id); return {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars)}; })};
     if (examples) user.examples = near.map(n => ({text: clip(n.example.text, LIMITS.exampleChars),
       answer: n.example.abstain ? 'abstain' : n.example.requirementIds}));
   }

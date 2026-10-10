@@ -8,7 +8,7 @@ import {readFileSync} from 'node:fs';
 import {canonical} from './crypto.mjs';
 import {krGovernanceCheckDefinitions} from './kr-governance-evidence.mjs';
 import {modelPolicy} from './model-policy.mjs';
-import {MODEL_KINDS, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, outputMatchesTruth, requirementMeaning} from './governance-mapping.mjs';
+import {MODEL_KINDS, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, outputMatchesTruth} from './governance-mapping.mjs';
 import {exportHumanReviewPacket, importHumanReviews, recordHash, reviewedPayloadHash} from '../scripts/model-training-data.mjs';
 
 export const ROLE_ID = 'governance-assistant';
@@ -93,12 +93,6 @@ export function derivedItems(catalog = governanceCatalog()) {
   // EU references the EU table names as not mapped.
   const eu = JSON.parse(readFileSync(new URL('../data/evidence-pack-mappings/eu-ai-act-logging-v2.json', import.meta.url), 'utf8'));
   for (const n of eu.notMapped) add('eu-not-mapped', 'eu-ai-act-logging', n.ref, 'document_excerpt', `EU AI Act ${n.ref}`, []);
-  // What each catalog requirement asks, labelled with that requirement: the model learns what the items mean, not only how the
-  // shipped tables file evidence. Tautological, so always tune: they would only inflate a measurement.
-  for (const e of catalog.entries) {
-    add('catalog-meaning', e.framework, e.id, 'document_excerpt', `${e.title.ko}: ${requirementMeaning(e)}`.slice(0, 600), [e.id]);
-    items[items.length - 1].split = 'tune';
-  }
   return stratify(items);
 }
 // Derived rows are split by evidence text, stratified by their first requirement, so every requirement with enough rows is both
@@ -109,7 +103,7 @@ export function derivedItems(catalog = governanceCatalog()) {
 function stratify(items) {
   const groups = new Map();
   for (const i of items) {
-    if (i.truth.abstain || i.split) continue;
+    if (i.truth.abstain) continue;
     const key = i.truth.mappings[0].requirementId;
     groups.set(key, [...(groups.get(key) || []), i]);
   }
