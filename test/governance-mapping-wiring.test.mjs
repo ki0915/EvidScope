@@ -9,7 +9,7 @@ import {createPrimaryInference} from '../src/isolated-inference-client.mjs';
 import {primaryModelPolicy} from '../src/model-policy.mjs';
 import {governanceModelStatus, provenanceOf} from '../src/governance-model.mjs';
 import {CONTAINER, TRAINER_FILES, createDockerTrainingLauncher, dockerCreateArgs, isolationProblems, trainingSpec} from '../src/governance-training.mjs';
-import {runGovernanceTraining} from '../scripts/governance-mapping-train.mjs';
+import {COOLING, latestSealedCheckpoint, runGovernanceTraining} from '../scripts/governance-mapping-train.mjs';
 
 const model = primaryModelPolicy().model;
 const evaluation = {version: 2, status: 'evaluated', authority: 'matched_at_event_time', findings: [], coverage: {totalFindings: 0, truncated: false}};
@@ -216,4 +216,36 @@ test('training launcher: offline, read-only container verified before start; sto
   const idle = await runGovernanceTraining(['--image', spec.image, '--base-dir', spec.baseDir, '--base-revision', spec.baseRevision, '--data', spec.dataFile,
     '--checkpoints-dir', spec.checkpointsDir, '--work-dir', spec.workDir, '--check-only', '--idle-only'], {probe: async () => { throw Error('no host'); }});
   assert.equal(idle.policy, 'idle_only');
+});
+
+test('training runner: a run stopped for GPU heat resumes from its newest sealed checkpoint once the GPU cools; idle-only does not', async () => {
+  const spec = trainingSpec(trainingFixture()), run = join(spec.checkpointsDir, 'governance-mapping', 'run');
+  assert.equal(latestSealedCheckpoint(spec), null);
+  for (const [step, sealed] of [[5, true], [40, true], [45, false]]) {
+    mkdirSync(join(run, `checkpoint-${step}`), {recursive: true});
+    if (sealed) writeFileSync(join(run, `checkpoint-${step}`, 'checkpoint-complete.json'), '{}');
+  }
+  assert.equal(latestSealedCheckpoint(spec), 'governance-mapping/run/checkpoint-40');
+  const argv = ['--image', spec.image, '--base-dir', spec.baseDir, '--base-revision', spec.baseRevision, '--data', spec.dataFile,
+    '--checkpoints-dir', spec.checkpointsDir, '--work-dir', spec.workDir];
+  const heat = {state: 'stopped_for_host_activity', reason: 'gpu_temperature_high', reasons: ['gpu_temperature_high'], terminationConfirmed: true};
+  const temps = [82, 75, 70], waits = [], launched = [];
+  const results = [heat, {state: 'stopped', reason: 'completed', terminationConfirmed: true}];
+  const deps = {probe: async () => ({gpu: {temperatureC: temps.shift()}}), wait: async ms => { waits.push(ms); },
+    launcherFor: ({spec: s}) => { launched.push(s.resumeCheckpoint); return {}; }, guardFor: () => ({run: async () => results.shift()})};
+  const out = await runGovernanceTraining(argv, deps);
+  assert.equal(out.result.reason, 'completed');
+  assert.deepEqual(out.resumedAfter, ['gpu_temperature_high']);
+  assert.deepEqual(launched, [null, 'governance-mapping/run/checkpoint-40']);
+  assert.deepEqual(waits, [COOLING.pollMs, COOLING.pollMs]);
+
+  const idleLaunched = [], idle = await runGovernanceTraining([...argv, '--idle-only'], {...deps, guardFor: () => ({run: async () => heat}),
+    launcherFor: ({spec: s}) => { idleLaunched.push(s.resumeCheckpoint); return {}; }});
+  assert.equal(idle.result.reason, 'gpu_temperature_high');
+  assert.deepEqual(idleLaunched, [null]);
+  let tries = 0;
+  const capped = await runGovernanceTraining(argv, {...deps, probe: async () => ({gpu: {temperatureC: 60}}),
+    guardFor: () => ({run: async () => { tries++; return heat; }})});
+  assert.equal(capped.resumedAfter.length, COOLING.maxResumes);
+  assert.equal(tries, COOLING.maxResumes + 1);
 });

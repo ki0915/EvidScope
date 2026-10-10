@@ -8,18 +8,42 @@
 // By the owner's choice (2026-10-10) training runs while the PC is in use (TRAINING_ACTIVE_USE_POLICY): it needs only enough free
 // VRAM and a safe GPU temperature, and stops with a checkpoint on memory pressure, overheating or after one hour.
 // --idle-only restores the earlier rule (start only on an idle PC, stop when it is used).
+// Under the active-use policy a run stopped for GPU heat or the one-hour limit is resumed from its newest sealed checkpoint
+// once the GPU is at or below 70 C (at most six resumes, waiting at most 30 minutes each time).
 import {pathToFileURL, fileURLToPath} from 'node:url';
-import {dirname} from 'node:path';
+import {existsSync, readdirSync} from 'node:fs';
+import {dirname, join} from 'node:path';
 import {TRAINING_ACTIVE_USE_POLICY, TRAINING_RESOURCE_POLICY, createIdleTrainingGuard, trainingStartDecision} from '../src/training-resource-guard.mjs';
-import {createDockerTrainingLauncher, dockerCreateArgs, trainingSpec} from '../src/governance-training.mjs';
+import {RUN_DIRS, createDockerTrainingLauncher, dockerCreateArgs, trainingSpec} from '../src/governance-training.mjs';
 import {probeWindowsHostResources} from './training-host-check.mjs';
 import {QA_IMAGE} from './public-qa-workload.mjs';
+
+export const COOLING = Object.freeze({resumeAtOrBelowC: 70, pollMs: 30000, maxWaitMs: 1800000, maxResumes: 6});
+const RESUMABLE = new Set(['gpu_temperature_high', 'runtime_deadline']);
+
+// Newest checkpoint the trainer sealed (checkpoint-complete.json) for this run mode, as a path relative to the checkpoints directory.
+export function latestSealedCheckpoint(spec) {
+  const dir = RUN_DIRS[spec.runMode ?? 'candidate'], root = join(spec.checkpointsDir, dir);
+  if (!existsSync(root)) return null;
+  const steps = readdirSync(root).filter(n => /^checkpoint-[1-9][0-9]*$/.test(n) && existsSync(join(root, n, 'checkpoint-complete.json')))
+    .map(n => Number(n.slice('checkpoint-'.length)));
+  return steps.length ? `${dir}/checkpoint-${Math.max(...steps)}` : null;
+}
+
+async function cooled(probe, wait, signal) {
+  for (let waited = 0; waited <= COOLING.maxWaitMs; waited += COOLING.pollMs) {
+    if (signal?.aborted) return false;
+    try { if ((await probe()).gpu.temperatureC <= COOLING.resumeAtOrBelowC) return true; } catch {}
+    await wait(COOLING.pollMs);
+  }
+  return false;
+}
 
 const KEYS = {'--image': 'image', '--base-dir': 'baseDir', '--base-revision': 'baseRevision', '--data': 'dataFile', '--checkpoints-dir': 'checkpointsDir',
   '--work-dir': 'workDir', '--resume': 'resumeCheckpoint'};
 
 export async function runGovernanceTraining(argv, {probe = () => probeWindowsHostResources(), launcherFor = createDockerTrainingLauncher,
-  guardFor = createIdleTrainingGuard, signal} = {}) {
+  guardFor = createIdleTrainingGuard, wait = ms => new Promise(r => setTimeout(r, ms)), signal} = {}) {
   const options = {scriptsDir: dirname(fileURLToPath(import.meta.url))};
   let checkOnly = false, policy = TRAINING_ACTIVE_USE_POLICY;
   for (let i = 0; i < argv.length; i++) {
@@ -32,15 +56,23 @@ export async function runGovernanceTraining(argv, {probe = () => probeWindowsHos
     }
     options[key] = argv[++i];
   }
-  const spec = trainingSpec({image: QA_IMAGE, ...options});
+  let spec = trainingSpec({image: QA_IMAGE, ...options});
   if (checkOnly) {
     let decision;
     try { decision = trainingStartDecision(await probe(), {policy}); } catch { decision = {allowed: false, reasons: ['host_resource_probe_unavailable']}; }
     const dockerArgs = dockerCreateArgs(spec, 'evidscope-governance-train-00000000-0000-0000-0000-000000000000');
     return {mode: 'check-only', policy: policy.mode, spec, dockerArgs, decision};
   }
-  const result = await guardFor({probe, launcher: launcherFor({spec}), policy}).run({signal});
-  return {mode: 'execution', policy: policy.mode, spec, result};
+  const stops = [];
+  for (;;) {
+    const result = await guardFor({probe, launcher: launcherFor({spec}), policy}).run({signal});
+    const why = result.reason ?? result.reasons?.find(r => RESUMABLE.has(r));
+    if (policy !== TRAINING_ACTIVE_USE_POLICY || !RESUMABLE.has(why) || stops.length >= COOLING.maxResumes || !await cooled(probe, wait, signal)) {
+      return {mode: 'execution', policy: policy.mode, spec, result, resumedAfter: stops};
+    }
+    stops.push(why);
+    spec = trainingSpec({image: QA_IMAGE, ...options, resumeCheckpoint: latestSealedCheckpoint(spec) ?? spec.resumeCheckpoint});
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

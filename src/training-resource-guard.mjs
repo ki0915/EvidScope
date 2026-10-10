@@ -2,7 +2,9 @@ export const TRAINING_RESOURCE_POLICY=Object.freeze({mode:'idle_only',receiptMax
 // Owner's choice (2026-10-10): governance-mapping training may run while the PC is in use. Only checks that protect the
 // machine itself remain: enough free VRAM for the run's 0.65 cap at start, GPU temperature, and host/GPU memory headroom
 // while running. Interactive use, CPU and other GPU work no longer block or stop a run.
-export const TRAINING_ACTIVE_USE_POLICY=Object.freeze({...TRAINING_RESOURCE_POLICY,mode:'active_use',minStartGpuFreeMiB:8448,minContinueFreeMemoryGiB:2,minContinueGpuFreeMiB:256});
+// An RTX 3080 boosts up to about 83 C under a full load; stop above 84 C and let the runner resume once it cools (scripts/governance-mapping-train.mjs).
+export const TRAINING_ACTIVE_USE_POLICY=Object.freeze({...TRAINING_RESOURCE_POLICY,mode:'active_use',minStartGpuFreeMiB:8448,minContinueFreeMemoryGiB:2,minContinueGpuFreeMiB:256,
+ maxGpuTemperatureC:84});
 const activeUse=p=>p.mode==='active_use';
 const number=(value,min,max)=>typeof value==='number'&&Number.isFinite(value)&&value>=min&&value<=max;
 
