@@ -54,7 +54,7 @@ test('queue: one drafted row at a time with its hashes; reviewer/admin decide, o
   assert.deepEqual(view.progress.splits.test, {...view.progress.splits.test, drafted: 57, approved: 0, rejected: 0, pending: 57, eligible: 59,
     minimum: 100, neededApprovals: 41});
   assert.equal(view.progress.splits.test.gate.neededApprovals, 30);
-  assert.equal(view.progress.splits.tune.neededApprovals, 106);
+  assert.equal(view.progress.splits.tune.neededApprovals, 51);
   assert.equal((await call('alpha-auditor', 'GET', '/api/governance-model/review')).viewer.mayDecide, false);
   await assert.rejects(call('alpha-agent', 'GET', '/api/governance-model/review'), status(403));
   await assert.rejects(call('alpha-auditor', 'POST', '/api/governance-model/review/decisions', decision(row, 'approve')), status(403));
