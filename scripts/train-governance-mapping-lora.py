@@ -30,7 +30,7 @@ RELATIONS = {"supports", "contradicts", "context_only"}
 CONFIDENCE = {"low", "medium", "high"}
 # r=8 on every linear projection; with completion-only logits this is sized for the 12 GB card under the 0.65 memory fraction.
 RECIPE = {"rank": 8, "alpha": 16, "dropout": 0.05, "targetModules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-          "sequenceLength": 1536, "batchSize": 1, "gradientAccumulationSteps": 8, "epochs": 1, "learningRatePerMillion": 200, "warmupStepsPer1000": 30,
+          "sequenceLength": 2048, "batchSize": 1, "gradientAccumulationSteps": 8, "epochs": 1, "learningRatePerMillion": 200, "warmupStepsPer1000": 30,
           "seed": 42, "saveSteps": 5}
 
 

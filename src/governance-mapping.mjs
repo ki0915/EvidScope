@@ -13,7 +13,7 @@ export const CONFIDENCE = Object.freeze(['low', 'medium', 'high']);
 export const MODEL_KINDS = Object.freeze(['document_excerpt', 'registry_entry', 'record_summary', 'finding_note']);
 export const RULE_KIND = 'structured';
 export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
-export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 3,
+export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 5,
   exampleChars: 160});
 const STRUCTURED_TYPES = ['record', 'eventKind', 'checkType', 'finding', 'integrityCheck', 'api', 'file'];
 const LOCATOR = /^[a-z][a-z0-9-]{0,30}:[A-Za-z0-9._:@/#-]{1,200}$/;
