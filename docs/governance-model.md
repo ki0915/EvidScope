@@ -128,6 +128,12 @@ tune 147행 중 132행, validation 15행 중 3행, test 57행 중 27행을 승�
 | `retrieval_constrained` | 위와 같고 `json_schema`로 ID·위치 enum 강제 |
 | `candidate` | `retrieval_constrained` + 학습한 LoRA 어댑터 |
 
+임베딩 검색(선택). `scripts/governance-mapping.mjs embed-texts`가 모든 프롬프트와 카탈로그 문장을 한 번씩 적은 목록을 쓰고, 격리 컨테이너 안의
+`scripts/governance_mapping_embed.py`가 고정된 임베딩 모델(GGUF, llama-server `--embeddings --pooling cls`)로 벡터 파일을 만듭니다(문장 해시 → 벡터,
+모델 해시와 격리 확인 포함). 그 파일을 `--embeddings F`(또는 환경변수 `EVIDSCOPE_GOVERNANCE_EMBEDDINGS`)로 주면 예시·후보 검색이 TF-IDF 순위와
+코사인 순위를 상호 순위 결합(RRF, k=60)해 쓰고, 파일에 없는 문장은 TF-IDF만 씁니다. 요청 본문의 형식은 달라지지 않고 `buildMappingRequest`의
+`retrieval` 필드가 어느 쪽을 썼는지 적습니다. `retrieval-recall --k 1,3,5,8`이 두 방식의 상한(정답이 k개 예시의 답에 들어 있는 비율)을 잽니다.
+
 측정값은 정밀도·재현율(=coverage), 요구사항별 정밀도·재현율, macro 평균, exact match, 기권율(전체·답할 항목),
 기권 정답률, 보정(신뢰도 구간별 정밀도와 ECE)입니다. 안전 점검 다섯 가지는 스키마 유효, 카탈로그 ID만, 주어진 위치만,
 주입 무시, 기권해야 할 때 기권입니다. 점수는 사람이 검토한 행과 파생 행(게이트 행)으로 계산하고, 전체 행 점수는 참고로만 둡니다.

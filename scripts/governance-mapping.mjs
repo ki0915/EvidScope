@@ -14,15 +14,19 @@
 //   gate --report report.json                                      promotion gate (exit 0 only when eligible)
 //   status                                                         the status the console reads
 //   promote --report R --approval A --adapter-file F --key reviewer-ed25519.key --out receipt.dsse.json   signed by the approver
-//   retrieval-recall --data R                                      share of gold requirements among the retrieved candidates
+//   retrieval-recall --data R [--k 1,3,5,8]                        share of gold requirements among the retrieved candidates and among
+//                                                                  the k nearest examples' answers (the prompt's retrieval ceiling)
+//   embed-texts --data R --out texts.jsonl                         every prompt and catalog text, once, for scripts/governance_mapping_embed.py
+//   any command: --embeddings F                                    rank examples and candidates with the vectors in F (hybrid retrieval)
 import {createHash, createPrivateKey, createPublicKey, sign as cryptoSign} from 'node:crypto';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {canonical, verifyBundle} from '../src/crypto.mjs';
-import {VARIANTS, retrieveRequirements} from '../src/governance-mapping.mjs';
-import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDataset, governanceAdmission, reviewSheet, shakedownRows, toJsonl,
-  trainingRows} from '../src/governance-mapping-data.mjs';
+import {VARIANTS, governanceCatalog, governanceEmbeddings, nearestExamples, retrieveRequirements, setGovernanceEmbeddings} from '../src/governance-mapping.mjs';
+import {embeddingTexts, loadEmbeddings} from '../src/governance-embeddings.mjs';
+import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDataset, governanceAdmission, governanceExamples, reviewSheet, shakedownRows,
+  toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
 import {evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {DATASET_ID} from '../src/governance-review-queue.mjs';
 import {ALL_VARIANTS, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutput, buildComparisonReport, variantRequests}
@@ -94,6 +98,12 @@ function factsheet(o) {
 
 export function runGovernanceMappingCommand(argv) {
   const [command, ...rest] = argv;
+  const ei = rest.indexOf('--embeddings');
+  if (ei >= 0) {
+    if (!rest[ei + 1] || rest[ei + 1].startsWith('--')) throw Error('--embeddings needs a file');
+    setGovernanceEmbeddings(loadEmbeddings(rest[ei + 1]));
+    rest.splice(ei, 2);
+  }
   if (command === 'build') { const o = options(rest), rows = buildDataset(); write(o.out, jsonl(rows)); return {rows: rows.length}; }
   if (command === 'review-sheet') { const o = options(rest); write(o.out, reviewSheet(readRows(o.data))); return {written: o.out}; }
   if (command === 'import-decisions') {
@@ -135,16 +145,33 @@ export function runGovernanceMappingCommand(argv) {
   if (command === 'gate') return assessGovernanceReport(JSON.parse(readFileSync(options(rest).report, 'utf8')));
   if (command === 'status') return governanceModelStatus();
   if (command === 'promote') return promote(options(rest));
+  if (command === 'embed-texts') {
+    const o = options(rest), rows = readRows(o.data), catalog = governanceCatalog();
+    const texts = embeddingTexts([...rows.map(r => r.prompt), ...catalog.entries.map(e => e.text)]);
+    write(o.out, texts.map(t => canonical(t)).join('\n') + '\n');
+    return {texts: texts.length, rows: rows.length, catalogEntries: catalog.entries.length};
+  }
   if (command === 'retrieval-recall') {
-    const rows = readRows(options(rest).data), out = {};
+    const o = options(rest), rows = readRows(o.data), ks = String(o.k || '1,3,5,8').split(',').map(Number), out = {}, examples = governanceExamples();
+    if (ks.some(k => !Number.isInteger(k) || k < 1)) throw Error('--k must list positive integers');
+    const index = governanceEmbeddings();
     for (const r of rows.filter(x => !x.truth.abstain)) {
-      const ids = new Set(retrieveRequirements(r.prompt).map(c => c.id)), o = out[r.split] ??= {gold: 0, retrieved: 0};
-      for (const m of r.truth.mappings) { o.gold++; if (ids.has(m.requirementId)) o.retrieved++; }
+      const ids = new Set(retrieveRequirements(r.prompt).map(c => c.id));
+      const s = out[r.split] ??= {gold: 0, retrieved: 0, examplesHit: Object.fromEntries(ks.map(k => [k, 0]))};
+      const near = nearestExamples(r.prompt, examples, {k: Math.max(...ks), excludeId: r.id});
+      for (const m of r.truth.mappings) {
+        s.gold++;
+        if (ids.has(m.requirementId)) s.retrieved++;
+        for (const k of ks) if (near.slice(0, k).some(n => n.example.requirementIds.includes(m.requirementId))) s.examplesHit[k]++;
+      }
     }
-    return Object.fromEntries(Object.entries(out).map(([s, o]) => [s, {...o, recall: o.retrieved / o.gold}]));
+    const splits = Object.fromEntries(Object.entries(out).map(([split, s]) => [split, {...s, recall: s.retrieved / s.gold,
+      examplesRecall: Object.fromEntries(ks.map(k => [k, s.examplesHit[k] / s.gold]))}]));
+    const embeddings = index ? {sha256: index.model.sha256, file: index.model.file ?? null, texts: index.vectors.size} : null;
+    return {method: index ? 'hybrid' : 'tfidf', embeddings, examples: examples.length, splits};
   }
   throw Error(`usage: governance-mapping.mjs <${['build', 'review-sheet', 'import-decisions', 'export-reviewed', 'admission', 'training-set', 'requests',
-    'report', 'gate', 'status', 'retrieval-recall', 'promote', 'factsheet'].join('|')}> ...`
+    'report', 'gate', 'status', 'retrieval-recall', 'embed-texts', 'promote', 'factsheet'].join('|')}> ...`
     + ` (variants: ${[...ALL_VARIANTS].join(', ')}; prompt variants: ${VARIANTS.join(', ')})`);
 }
 

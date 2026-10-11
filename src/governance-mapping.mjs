@@ -5,6 +5,7 @@
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {canonical, digest} from './crypto.mjs';
+import {EMBEDDING_FILE_ENV, cosine, loadEmbeddings, rrfFuse, vectorFor} from './governance-embeddings.mjs';
 import {FRAMEWORKS, MAPPING_VERSION, shippedMapping} from './evidence-pack-frameworks.mjs';
 
 export const TASK = 'governance-mapping', TASK_VERSION = 1;
@@ -196,22 +197,41 @@ export function exampleIndex(examples) {
   exampleIndexes.set(examples, index);
   return index;
 }
-// The k examples closest to text, best first; an example with excludeId (the row being trained on) is never its own example.
-export function nearestExamples(text, examples, {k = LIMITS.examples, excludeId = null} = {}) {
-  const index = exampleIndex(examples), query = index.vector(terms(text));
-  return index.docs.filter(d => d.example.id !== excludeId).map(d => {
-    let dot = 0;
-    for (const [t, w] of query.v) { const x = d.v.get(t); if (x) dot += w * x; }
-    return {example: d.example, score: dot / (d.norm * query.norm)}; })
-    .sort((a, b) => b.score - a.score || (a.example.id < b.example.id ? -1 : 1)).slice(0, k);
+// ---------- optional embedding retrieval (src/governance-embeddings.mjs) ----------
+// With an embeddings file (computed offline on the PC by scripts/governance_mapping_embed.py), example and candidate retrieval
+// fuse the TF-IDF ranking with the cosine ranking by reciprocal rank fusion. A text the file does not cover ranks by TF-IDF alone,
+// and buildMappingRequest reports which happened. Set by the command line (--embeddings F) or EVIDSCOPE_GOVERNANCE_EMBEDDINGS.
+let embeddingIndex = null, embeddingsResolved = false;
+export function setGovernanceEmbeddings(index) { embeddingIndex = index ?? null; embeddingsResolved = true; return embeddingIndex; }
+export function governanceEmbeddings() {
+  if (!embeddingsResolved) { embeddingsResolved = true; if (process.env[EMBEDDING_FILE_ENV]) embeddingIndex = loadEmbeddings(process.env[EMBEDDING_FILE_ENV]); }
+  return embeddingIndex;
 }
-export function retrieveRequirements(text, {catalog = governanceCatalog(), k = LIMITS.candidates} = {}) {
+export const retrievalMethod = (text, {embeddings = governanceEmbeddings()} = {}) => (embeddings && vectorFor(embeddings, text) ? 'hybrid' : 'tfidf');
+// lexical: [{id, score}] best first over the candidates; the semantic ranking covers the candidates the file has vectors for.
+function fuseRankings(lexical, candidates, text, embeddings, textOf, idOf) {
+  const q = embeddings ? vectorFor(embeddings, text) : null;
+  if (!q) return lexical;
+  const semantic = candidates.map(c => ({id: idOf(c), vector: vectorFor(embeddings, textOf(c))})).filter(c => c.vector)
+    .map(c => ({id: c.id, score: cosine(q, c.vector)})).sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
+  return semantic.length ? rrfFuse([lexical, semantic]) : lexical;
+}
+const lexicalRanking = (docs, query, idOf) => docs.map(d => {
+  let dot = 0;
+  for (const [t, w] of query.v) { const x = d.v.get(t); if (x) dot += w * x; }
+  return {id: idOf(d), score: dot / (d.norm * query.norm)}; })
+  .sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
+// The k examples closest to text, best first; an example with excludeId (the row being trained on) is never its own example.
+export function nearestExamples(text, examples, {k = LIMITS.examples, excludeId = null, embeddings = governanceEmbeddings()} = {}) {
+  const index = exampleIndex(examples), query = index.vector(terms(text)), docs = index.docs.filter(d => d.example.id !== excludeId);
+  const byId = new Map(docs.map(d => [d.example.id, d.example]));
+  const ranked = fuseRankings(lexicalRanking(docs, query, d => d.example.id), docs.map(d => d.example), text, embeddings, e => e.text, e => e.id);
+  return ranked.slice(0, k).map(r => ({example: byId.get(r.id), score: r.score}));
+}
+export function retrieveRequirements(text, {catalog = governanceCatalog(), k = LIMITS.candidates, embeddings = governanceEmbeddings()} = {}) {
   const index = retrievalIndex(catalog), query = index.vector(terms(text));
-  return index.docs.map(d => {
-    let dot = 0;
-    for (const [t, w] of query.v) { const x = d.v.get(t); if (x) dot += w * x; }
-    return {id: d.id, score: dot / (d.norm * query.norm)}; })
-    .sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1)).slice(0, k);
+  const ranked = fuseRankings(lexicalRanking(index.docs, query, d => d.id), catalog.entries, text, embeddings, e => e.text, e => e.id);
+  return ranked.slice(0, k).map(r => ({id: r.id, score: r.score}));
 }
 
 // ---------- prompts: one builder for evaluation, training rows and the runtime ----------
@@ -231,7 +251,8 @@ const clip = (s, n) => { const chars = [...String(s ?? '')]; return chars.length
 // examples were filed under join the candidates ahead of the retrieved ones, and candidates are listed in id order so their position
 // says nothing (the pilot adapter picked the first-listed candidate in 24 of 45 answers). excludeId keeps a training row out of its
 // own examples.
-export function buildMappingRequest(input, {variant, catalog = governanceCatalog(), examples = null, excludeId = null} = {}) {
+export function buildMappingRequest(input, {variant, catalog = governanceCatalog(), examples = null, excludeId = null,
+  embeddings = governanceEmbeddings()} = {}) {
   if (!VARIANTS.includes(variant)) throw mappingError('mapping_variant_unknown');
   const item = normalizeMappingItem(input);
   if (item.kind === RULE_KIND) throw mappingError('rule_determined_item');
@@ -239,9 +260,9 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
   let user, candidates = null;
   if (variant === 'zero_shot') user = {evidence, catalogIds: catalog.ids};
   else {
-    const near = examples ? nearestExamples(item.text, examples, {excludeId}) : [];
+    const near = examples ? nearestExamples(item.text, examples, {excludeId, embeddings}) : [];
     const fromExamples = near.flatMap(n => n.example.requirementIds).filter(id => catalog.byId.has(id));
-    candidates = [...new Set([...fromExamples, ...retrieveRequirements(item.text, {catalog}).map(c => c.id)])].slice(0, LIMITS.candidates);
+    candidates = [...new Set([...fromExamples, ...retrieveRequirements(item.text, {catalog, embeddings}).map(c => c.id)])].slice(0, LIMITS.candidates);
     if (examples) candidates.sort();
     user = {evidence, candidates: candidates.map(id => {
        const e = catalog.byId.get(id); return {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars)}; })};
@@ -252,7 +273,8 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
   return {variant, messages: [{role: 'system', content: SYSTEM}, {role: 'user', content: JSON.stringify(user)}],
     responseFormat: constrained
       ? {type: 'json_schema', schema: mappingOutputSchema({catalogIds: catalog.ids, locators: item.locators})} : {type: 'json_object'},
-    adapter: variant === 'candidate', candidates, locators: item.locators, catalogDigest: catalog.digest};
+    adapter: variant === 'candidate', candidates, locators: item.locators, catalogDigest: catalog.digest,
+    retrieval: variant === 'zero_shot' ? null : {method: retrievalMethod(item.text, {embeddings}), embeddings: embeddings?.model.sha256 ?? null}};
 }
 
 // Whether an output names exactly the gold mappings (relation and an acceptable locator each), or abstains on an abstain item.
