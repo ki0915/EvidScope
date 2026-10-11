@@ -8,6 +8,7 @@ import {modelPolicy} from './model-policy.mjs';
 import {CONFIDENCE, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, nearestExamples, parseModelContent, ruleIndex, validateMappingOutput}
   from './governance-mapping.mjs';
 import {datasetHash, governanceExamples, itemOf, rowEligibility} from './governance-mapping-data.mjs';
+import {localTablesFor} from './governance-mapping-sources.mjs';
 
 export const BASELINES = Object.freeze(['always_abstain', 'rules_only', 'nearest_example', 'zero_shot', 'retrieval', 'retrieval_constrained']);
 // Baselines computed here without a model; their outputs in a report are recomputed on verification.
@@ -126,10 +127,11 @@ function rulesLexicon(catalog) {
 // nearest_example: the answer of the single closest example in the prompt's example bank, with no model. A trained model that cannot
 // beat copying its nearest training example has not learned anything the bank does not already hold (it did better than the pilot
 // adapters, 2026-10-10).
-export function baselineOutput(variant, row, catalog = governanceCatalog()) {
+// localTables: the local source tables the row set was built with (localTablesFor), so examples match the dataset on any machine.
+export function baselineOutput(variant, row, catalog = governanceCatalog(), {localTables} = {}) {
   if (variant === 'always_abstain') return ABSTAIN;
   if (variant === 'nearest_example') {
-    const [near] = nearestExamples(row.prompt, governanceExamples(), {k: 1, excludeId: row.id});
+    const [near] = nearestExamples(row.prompt, governanceExamples({localTables}), {k: 1, excludeId: row.id});
     if (!near || near.score <= 0 || near.example.abstain) return ABSTAIN;
     const mappings = near.example.requirementIds.filter(id => catalog.byId.has(id)).slice(0, 5).sort()
       .map(requirementId => ({requirementId, relation: 'supports', evidenceLocator: row.evidence[0].id, confidence: 'high'}));
@@ -147,18 +149,23 @@ export function baselineOutput(variant, row, catalog = governanceCatalog()) {
   return JSON.stringify({abstain: mappings.length === 0, mappings});
 }
 
+// The outputs of a deterministic baseline over a row set, with the example bank the rows were built with.
+export const baselineOutputs = (rows, variant, catalog = governanceCatalog()) =>
+  Object.fromEntries(rows.map(r => [r.id, baselineOutput(variant, r, catalog, {localTables: localTablesFor(rows)})]));
+
 // The request a model variant sends for a row; the measurement binds the hash of these requests.
 // llama-server reads a JSON schema only from response_format.json_schema.schema (OpenAI form); a top-level "schema" next to
 // type "json_schema" is ignored and the reply is unconstrained (measured on the PC, 2026-10-10).
 export const llamaResponseFormat = f => (f.type === 'json_schema'
   ? {type: 'json_schema', json_schema: {name: 'evidscope_output', strict: true, schema: f.schema}} : f);
 export function variantRequests(rows, variant, catalog = governanceCatalog()) {
-  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog, examples: governanceExamples(), excludeId: r.id});
+  const examples = governanceExamples({localTables: localTablesFor(rows)});
+  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog, examples, excludeId: r.id});
     return {id: r.id, variant, messages: q.messages, response_format: llamaResponseFormat(q.responseFormat), adapter: q.adapter, ...DECODING}; });
 }
 
 // ---------- comparison report ----------
-const gateRowsOf = (rows, now) => rows.filter(r => rowEligibility(r, {now}).eligible);
+const gateRowsOf = (rows, now, localTables = localTablesFor(rows)) => rows.filter(r => rowEligibility(r, {now, localTables}).eligible);
 const variantNames = variants => (variants.candidate ? ALL_VARIANTS : BASELINES);
 function measured(rows, variants, now, catalog) {
   const gateRows = gateRowsOf(rows, now), metrics = {}, informational = {};
@@ -212,8 +219,8 @@ export function verifyGovernanceReport(report, {now = Date.now(), catalog = gove
     }
     if (MODEL_VARIANTS.includes(v) && run.requestsSha256 !== hashOf(variantRequests(report.rows, v, catalog))) fail('governance_report_requests_changed: ' + v);
   }
-  for (const v of DETERMINISTIC_BASELINES) for (const r of report.rows) {
-    if (report.variants[v].outputs[r.id] !== baselineOutput(v, r, catalog)) fail('governance_report_baseline_output_changed: ' + v);
+  for (const v of DETERMINISTIC_BASELINES) {
+    if (canonical(report.variants[v].outputs) !== canonical(baselineOutputs(report.rows, v, catalog))) fail('governance_report_baseline_output_changed: ' + v);
   }
   const m = measured(report.rows, report.variants, now, catalog);
   if (canonical(m.metrics) !== canonical(report.metrics) || canonical(m.informational) !== canonical(report.informational)

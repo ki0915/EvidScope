@@ -8,6 +8,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {governanceCatalog} from './governance-mapping.mjs';
 import {rowEligibility} from './governance-mapping-data.mjs';
+import {localTablesFor} from './governance-mapping-sources.mjs';
 import {ALL_VARIANTS, MODEL_VARIANTS, SAFETY_CHECKS, assessGovernanceReport, evaluateOutputs, measurementProblem, scoreItem,
   verifyGovernanceReport} from './governance-mapping-eval.mjs';
 import {assessBaselineMode} from './governance-model.mjs';
@@ -36,7 +37,8 @@ export function experimentOf(report, {now = Date.now(), catalog = governanceCata
   const m = verifyGovernanceReport(report, {now, catalog, requireCandidate: false});
   const variants = ALL_VARIANTS.filter(v => report.variants[v]), adapter = report.variants.candidate?.receipt?.adapterSha256 ?? null;
   const shakedown = !!adapter && shakedownAdapters.has(adapter), shown = variants.filter(v => !(shakedown && v === 'candidate'));
-  const basis = new Map(report.rows.map(r => { const e = rowEligibility(r, {now}); return [r.id, e.eligible ? e.basis : 'not_eligible']; }));
+  const localTables = localTablesFor(report.rows);
+  const basis = new Map(report.rows.map(r => { const e = rowEligibility(r, {now, localTables}); return [r.id, e.eligible ? e.basis : 'not_eligible']; }));
   const subset = b => m.gateRows.filter(r => basis.get(r.id) === b);
   const perVariant = {};
   for (const v of shown) {

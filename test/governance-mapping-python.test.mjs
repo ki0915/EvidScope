@@ -7,6 +7,9 @@ import {createHash} from 'node:crypto';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 import {buildComparisonReport, hashOf, measurementProblem, variantRequests} from '../src/governance-mapping-eval.mjs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
 const bundled = resolve('.local/python/python.exe');
 const python = process.env.EVIDSCOPE_PYTHON || (existsSync(bundled) ? bundled : 'python3');
 const run = (args, options = {}) => spawnSync(python, ['-I', '-B', ...args], {encoding: 'utf8', timeout: 120000, ...options});

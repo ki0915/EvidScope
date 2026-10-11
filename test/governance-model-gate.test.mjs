@@ -6,14 +6,16 @@ import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {applyReviewDecisions, buildDataset, rowEligibility, shakedownRows, toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
-import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, compareWithBaseline,
-  hashOf, variantRequests}
-  from '../src/governance-mapping-eval.mjs';
+import {assessGovernanceReport, baselineOutput, baselineOutputs, beats, buildComparisonReport, compareWithBaseline, DECODING, DETERMINISTIC_BASELINES, GATE,
+  hashOf, PINNED_GGUF, variantRequests} from '../src/governance-mapping-eval.mjs';
 import {assessBaselineMode} from '../src/governance-model.mjs';
 import {RUN_DIRS, dockerCreateArgs, trainingSpec} from '../src/governance-training.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 
-const dataset = buildDataset();
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
+const dataset = buildDataset({localTables: false});
 const reviewer = {reviewerId: 'test-reviewer', reviewedAt: '2026-10-01T00:00:00.000Z', piiReviewed: true, sourceConsent: true};
 const testRows = applyReviewDecisions(dataset, dataset.filter(r => r.labelSource === 'claude_drafted').map(r => ({id: r.id, decision: 'approve'})),
   reviewer).rows.filter(r => r.split === 'test');
@@ -28,7 +30,7 @@ function report(variantsOutput) {
     decoding: {...DECODING}, requestsSha256: hashOf(variantRequests(testRows, v)), outputsSha256: hashOf(outputs), count: testRows.length, failures: 0,
     usage: {}, startedAt: 'x', finishedAt: 'y'});
   const variants = {};
-  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: baselineOutputs(testRows, v)};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']) {
     if (!variantsOutput[v]) continue;
     const outputs = Object.fromEntries(testRows.map(r => [r.id, variantsOutput[v](r)]));
@@ -107,7 +109,7 @@ test('base mode needs the minimum precision as well as the rules-only comparison
 
 test('shakedown: derived rows only, labelled shakedown, refused by the candidate trainer and the other way round', () => {
   const rows = shakedownRows(dataset);
-  assert.equal(rows.length, 194 + 35);
+  assert.equal(rows.length, 616 + 67);
   assert.ok(rows.every(r => r.runMode === 'shakedown' && r.labelSource === 'derived_mapping_table' && r.split !== 'test'));
   assert.throws(() => shakedownRows(dataset.map(r => (r.labelSource === 'derived_mapping_table' ? {...r, truth: {...r.truth, abstain: !r.truth.abstain}} : r))),
     /governance_shakedown_rows_invalid/);
@@ -117,10 +119,14 @@ test('shakedown: derived rows only, labelled shakedown, refused by the candidate
   mkdirSync('.test-runs', {recursive: true});
   const dir = mkdtempSync(resolve('.test-runs/governance-shakedown-')), file = join(dir, 'shakedown.jsonl');
   const written = runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--shakedown', '--out', file]);
-  assert.deepEqual([written.rows, written.runMode], [229, 'shakedown']);
+  assert.deepEqual([written.rows, written.runMode], [683, 'shakedown']);
   assert.equal(readFileSync(file, 'utf8'), toJsonl(rows));
-  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--out', join(dir, 'x.jsonl')]),
-    /governance_training_admission_failed/);
+  // Without --shakedown the admitted derived rows train a candidate; the unreviewed drafted rows stay out of it.
+  const candidate = runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--out', join(dir, 'x.jsonl')]);
+  assert.deepEqual([candidate.rows, candidate.runMode], [683, 'candidate']);
+  const small = join(dir, 'small.jsonl');
+  writeFileSync(small, toJsonl(dataset.slice(0, 80)));
+  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', small, '--out', join(dir, 'y.jsonl')]), /governance_training_admission_failed/);
 
   // The Docker launcher: its own output directory and the --shakedown flag; the data file's run mode must match.
   const base = join(dir, 'base'), work = join(dir, 'work'), ckpt = join(dir, 'ckpt');
@@ -154,7 +160,7 @@ print(json.dumps({name: t.admission(path, shakedown=flag)[1] for name, path, fla
   const r = spawnSync(python, ['-I', '-B', '-c', code, file, candidateFile, mixed], {encoding: 'utf8', timeout: 120000});
   assert.equal(r.status, 0, r.stderr);
   const gates = JSON.parse(r.stdout.trim().split('\n').at(-1));
-  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 194, validation: 35}]);
+  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 616, validation: 67}]);
   assert.ok(gates.asCandidate.reasons.includes('shakedown_rows_in_candidate_run'));
   assert.deepEqual([gates.candidate.admitted, gates.candidate.promotable], [true, true]);
   assert.ok(gates.candidateAsShakedown.reasons.includes('shakedown_requires_derived_shakedown_rows'));

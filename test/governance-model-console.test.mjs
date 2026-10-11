@@ -11,15 +11,18 @@ import {createService} from '../src/service.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
 import {QUEUE_DECISION_TYPE, applyReviewDecisions, buildDataset, queueBinding, rowEligibility, shakedownRows, toJsonl}
   from '../src/governance-mapping-data.mjs';
-import {DECODING, DETERMINISTIC_BASELINES, PINNED_GGUF, baselineOutput, buildComparisonReport, hashOf, variantRequests}
+import {baselineOutput, baselineOutputs, buildComparisonReport, DECODING, DETERMINISTIC_BASELINES, hashOf, PINNED_GGUF, variantRequests}
   from '../src/governance-mapping-eval.mjs';
 import {ROLE_DIR, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {buildFactsheet, evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {draftedRows, queueItem, repositoryDataset} from '../src/governance-review-queue.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const dataset = buildDataset(), drafted = dataset.filter(r => r.labelSource === 'claude_drafted');
+const dataset = buildDataset({localTables: false}), drafted = dataset.filter(r => r.labelSource === 'claude_drafted');
 const draftedTest = drafted.filter(r => r.split === 'test');
 function service(t, options = {}) {
   mkdirSync('.test-runs', {recursive: true});
@@ -51,10 +54,10 @@ test('queue: one drafted row at a time with its hashes; reviewer/admin decide, o
     for (const m of [...shown.draftedAnswer.mappings, ...shown.forbidden]) assert.ok(m.plain, `${r.id} ${m.requirementId} explanation`);
     assert.equal(shown.reviewedPayloadHash, queueBinding(r));
   }
-  assert.deepEqual(view.progress.splits.test, {...view.progress.splits.test, drafted: 57, approved: 0, rejected: 0, pending: 57, eligible: 59,
-    minimum: 100, neededApprovals: 41});
+  assert.deepEqual(view.progress.splits.test, {...view.progress.splits.test, drafted: 57, approved: 0, rejected: 0, pending: 57, eligible: 187,
+    minimum: 100, neededApprovals: 0});
   assert.equal(view.progress.splits.test.gate.neededApprovals, 30);
-  assert.equal(view.progress.splits.tune.neededApprovals, 106);
+  assert.equal(view.progress.splits.tune.neededApprovals, 0);
   assert.equal((await call('alpha-auditor', 'GET', '/api/governance-model/review')).viewer.mayDecide, false);
   await assert.rejects(call('alpha-agent', 'GET', '/api/governance-model/review'), status(403));
   await assert.rejects(call('alpha-auditor', 'POST', '/api/governance-model/review/decisions', decision(row, 'approve')), status(403));
@@ -156,7 +159,7 @@ const receipt = (variant, outputs, adapterSha256) => ({schemaVersion: 1, source:
   outputsSha256: hashOf(outputs), count: testRows.length, failures: 0, usage: {}, startedAt: 'x', finishedAt: 'y'});
 export function measuredReport({adapterSha256 = 'c'.repeat(64), candidate = gold, withCandidate = true} = {}) {
   const variants = {};
-  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(testRows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: baselineOutputs(testRows, v)};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', ...(withCandidate ? ['candidate'] : [])]) {
     const outputs = Object.fromEntries(testRows.map(r => [r.id, v === 'candidate' ? candidate(r) : baselineOutput('rules_only', r)]));
     variants[v] = {outputs, receipt: receipt(v, outputs, adapterSha256)};
@@ -196,7 +199,13 @@ test('factsheets: shakedown recorded as never promotable; evaluation numbers rec
     receipt: trainingReceipt(candidateText, 'candidate'), trainingSet: candidateText, adapterGgufSha256: shakedownAdapter})), status(409));
   const candidate = (await call('alpha-reviewer', 'POST', '/api/governance-model/factsheets', trainingFactsheetRequest({
     receipt: trainingReceipt(candidateText, 'candidate'), trainingSet: candidateText}))).factsheet;
-  assert.deepEqual([candidate.runMode, candidate.promotable, candidate.dataset.verification], ['candidate', true, 'operator_reported']);
+  // The admitted derived rows alone rebuild that candidate set (no drafted row is approved); a set the repository cannot rebuild
+  // is only the operator's word.
+  assert.deepEqual([candidate.runMode, candidate.promotable, candidate.dataset.verification], ['candidate', true, 'reproduced_from_signed_decisions']);
+  const partialText = toJsonl(shakedownRows(dataset).slice(1).map(r => ({...r, runMode: 'candidate'})));
+  const partial = (await call('alpha-reviewer', 'POST', '/api/governance-model/factsheets', trainingFactsheetRequest({
+    receipt: trainingReceipt(partialText, 'candidate'), trainingSet: partialText}))).factsheet;
+  assert.equal(partial.dataset.verification, 'operator_reported');
 
   const passing = measuredReport();
   const evaluation = (await call('alpha-reviewer', 'POST', '/api/governance-model/factsheets', evaluationFactsheetRequest(passing))).factsheet;
@@ -214,7 +223,7 @@ test('factsheets: shakedown recorded as never promotable; evaluation numbers rec
 
   const runtime = await call('alpha-auditor', 'GET', '/api/model-runtime');
   assert.equal(runtime.factsheets.status, 'ok');
-  assert.equal(runtime.factsheets.items.length, 4);
+  assert.equal(runtime.factsheets.items.length, 5);
   const modelStatus = await call('alpha-auditor', 'GET', '/api/model-status');
   assert.deepEqual(modelStatus.factsheets.items.map(f => f.id).sort(), runtime.factsheets.items.map(f => f.id).sort());
   assert.equal(modelStatus.training.vaultRecords, 'governance_model_factsheets');
@@ -229,7 +238,7 @@ test('factsheets: shakedown recorded as never promotable; evaluation numbers rec
   assert.equal(byFile['candidate.json'].status, 'verified');
   assert.deepEqual(byFile['candidate.json'].variants, ['always_abstain', 'rules_only', 'nearest_example', 'zero_shot', 'retrieval', 'retrieval_constrained',
     'candidate']);
-  assert.deepEqual(byFile['candidate.json'].rowsByBasis, {human_reviewed: 57, derived: 59, not_eligible: 0});
+  assert.deepEqual(byFile['candidate.json'].rowsByBasis, {human_reviewed: 57, derived: 187, not_eligible: 0});
   assert.equal(byFile['candidate.json'].variantsData.candidate.byBasis.human_reviewed.precision, 1);
   assert.ok(Object.keys(byFile['candidate.json'].variantsData.candidate.byFramework).length >= 2);
   assert.equal(byFile['candidate.json'].verdict.eligible, true);

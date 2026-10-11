@@ -11,6 +11,9 @@ import {governanceModelStatus, provenanceOf} from '../src/governance-model.mjs';
 import {CONTAINER, TRAINER_FILES, createDockerTrainingLauncher, dockerCreateArgs, isolationProblems, trainingSpec} from '../src/governance-training.mjs';
 import {COOLING, latestSealedCheckpoint, runGovernanceTraining} from '../scripts/governance-mapping-train.mjs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
 const model = primaryModelPolicy().model;
 const evaluation = {version: 2, status: 'evaluated', authority: 'matched_at_event_time', findings: [], coverage: {totalFindings: 0, truncated: false}};
 

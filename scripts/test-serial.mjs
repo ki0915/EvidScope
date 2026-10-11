@@ -89,6 +89,8 @@ try {
   if (!files.length) throw Error('No test files found');
   // A parent node:test worker marker can suppress an explicitly new test run.
   delete process.env.NODE_TEST_CONTEXT;
+  // Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+  process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= resolve(repository, '.test-runs', 'no-local-tables');
   const before = await testRunEntries();
   const state = { failed: false, interrupted: false, abort: null };
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { state.interrupted = true; state.abort?.(); });

@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
 class Element {
   constructor(tag) { this.tagName = tag; this.children = []; this.events = {}; this.value = ''; this.ownText = ''; this.className = ''; this.dataset = {}; }
   set textContent(value) { this.ownText = String(value); this.children = []; }

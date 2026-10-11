@@ -10,17 +10,23 @@ import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, nea
   retrieveRequirements, ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
 import {applyReviewDecisions, buildDataset, governanceAdmission, governanceExamples, loadSplits, reviewSheet, rowEligibility, trainingRows}
   from '../src/governance-mapping-data.mjs';
-import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, beats, buildComparisonReport, evaluateOutputs, hashOf,
-  variantRequests} from '../src/governance-mapping-eval.mjs';
+import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, baselineOutputs, beats, buildComparisonReport,
+  evaluateOutputs, hashOf, variantRequests} from '../src/governance-mapping-eval.mjs';
 import {ROLE_DIR, adapterField, governanceModelStatus, modelVersionField, promoteGovernanceCandidate, provenanceOf, verifyPromotion,
   createGovernanceMapper} from '../src/governance-model.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 import {assessGovernanceReport as fromModelEvaluate} from '../scripts/model-evaluate.mjs';
 import {promoteGovernanceCandidate as fromModelPromote} from '../scripts/model-promote.mjs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
+
 const sha256 = text => createHash('sha256').update(text).digest('hex');
 const committed = readFileSync('data/governance-mapping/v1/dataset.jsonl', 'utf8').trim().split('\n').map(line => JSON.parse(line));
-const dataset = buildDataset();
+// The committed dataset holds no local-only (KOGL) table rows, and says so to every reader; a local copy of such a table on this
+// machine must not change what these tests see, so the calls below name the configuration instead of taking the module default.
+const NO_LOCAL = {localTables: false};
+const dataset = buildDataset(NO_LOCAL);
 const reviewer = {reviewerId: 'test-reviewer', reviewedAt: '2026-10-01T00:00:00.000Z', piiReviewed: true, sourceConsent: true};
 // In-memory approvals for exercising the gate. Nothing here is written back: the committed drafted rows stay UNREVIEWED.
 const approveAll = rows => applyReviewDecisions(rows,
@@ -34,7 +40,7 @@ const receipt = (rows, variant, outputs, extra = {}) => ({schemaVersion: 1, sour
   outputsSha256: hashOf(outputs), count: rows.length, failures: 0, usage: {}, startedAt: 'x', finishedAt: 'y', ...extra});
 function report(rows, candidateOutput, {preparedBy = 'operator-a', receiptExtra = {}} = {}) {
   const variants = {};
-  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
+  for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: baselineOutputs(rows, v)};
   for (const v of ['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']) {
     const outputs = Object.fromEntries(rows.map(r => [r.id, v === 'candidate' ? candidateOutput(r) : baselineOutput('rules_only', r)]));
     variants[v] = {outputs, receipt: receipt(rows, v, outputs, v === 'candidate' ? receiptExtra : {})};
@@ -74,10 +80,10 @@ test('rules decide structured evidence; a model answer for a rule item is refuse
 test('dataset: deterministic, equal to the committed file, drafted rows never marked reviewed, no split leakage', () => {
   assert.equal(canonical(dataset), canonical([...committed].sort((a, b) => (a.id < b.id ? -1 : 1))));
   const derived = dataset.filter(r => r.labelSource === 'derived_mapping_table'), drafted = dataset.filter(r => r.labelSource === 'claude_drafted');
-  assert.equal(derived.length, 288);
+  assert.equal(derived.length, 870);
   assert.equal(drafted.length, 219);
   assert.ok(drafted.every(r => r.humanReviewed === false && r.reviewStatus === 'UNREVIEWED' && r.reviewerId === null && r.synthetic === true));
-  assert.ok(derived.every(r => r.reviewStatus === 'NOT_REQUIRED_DERIVED' && r.humanReviewed === false && rowEligibility(r).basis === 'derived'));
+  assert.ok(derived.every(r => r.reviewStatus === 'NOT_REQUIRED_DERIVED' && r.humanReviewed === false && rowEligibility(r, NO_LOCAL).basis === 'derived'));
   // Drafted rows are split by requirement (splits.json); derived rows by text, stratified so each test requirement is also learned.
   const splits = loadSplits();
   for (const r of drafted) for (const m of r.truth.mappings) {
@@ -92,11 +98,13 @@ test('dataset: deterministic, equal to the committed file, drafted rows never ma
   assert.equal(new Set(derived.map(r => r.familyId)).size, derived.length - derived.filter(r => r.truth.abstain).length
     + new Set(derived.filter(r => r.truth.abstain).map(r => r.familyId)).size);
   const admission = governanceAdmission(dataset);
-  assert.equal(admission.admitted, false);
+  assert.equal(admission.admitted, true);
+  assert.equal(admission.qualityClaimAllowed, false);
   assert.ok(!admission.reasons.some(x => /leakage/.test(x)));
   assert.deepEqual(Object.fromEntries(Object.entries(admission.counts).map(([s, c]) => [s, [c.eligible, c.excludedUnreviewed]])),
-    {tune: [194, 147], validation: [35, 15], test: [59, 57]});
-  assert.throws(() => trainingRows(dataset), /governance_training_admission_failed/);
+    {tune: [616, 147], validation: [67, 15], test: [187, 57]});
+  assert.ok(trainingRows(dataset).every(r => r.labelSource === 'derived_mapping_table' && r.split !== 'test'));
+  assert.throws(() => trainingRows(dataset.slice(0, 80)), /governance_training_admission_failed/);
 });
 
 test('review: explicit per-row decisions with the reviewer attestations; rejection drops, silence keeps a row unreviewed', () => {
@@ -107,11 +115,11 @@ test('review: explicit per-row decisions with the reviewer attestations; rejecti
   const result = applyReviewDecisions(rows, [{id: rows[0].id, decision: 'approve'}, {id: rows[1].id, decision: 'reject', note: 'wrong article'}], reviewer);
   assert.equal(result.rows.length, 2);
   const [approved, untouched] = [result.rows.find(r => r.id === rows[0].id), result.rows.find(r => r.id === rows[2].id)];
-  assert.equal(rowEligibility(approved).eligible, true);
+  assert.equal(rowEligibility(approved, NO_LOCAL).eligible, true);
   assert.equal(approved.reviewerId, 'test-reviewer');
-  assert.equal(rowEligibility(untouched).reason, 'not_human_reviewed');
-  assert.equal(rowEligibility({...approved, prompt: approved.prompt + ' changed'}).eligible, false);
-  assert.equal(rowEligibility({...dataset.find(r => r.labelSource === 'derived_mapping_table'), truth: {abstain: true, mappings: []}}).reason,
+  assert.equal(rowEligibility(untouched, NO_LOCAL).reason, 'not_human_reviewed');
+  assert.equal(rowEligibility({...approved, prompt: approved.prompt + ' changed'}, NO_LOCAL).eligible, false);
+  assert.equal(rowEligibility({...dataset.find(r => r.labelSource === 'derived_mapping_table'), truth: {abstain: true, mappings: []}}, NO_LOCAL).reason,
     'derivation_mismatch');
 });
 
@@ -161,7 +169,7 @@ test('baselines: always-abstain abstains; rules-only maps literal table identifi
 });
 
 test('examples: the bank is the derived tune split; a row never sees itself; candidates are listed in id order', () => {
-  const bank = governanceExamples(), byId = new Map(dataset.map(r => [r.id, r]));
+  const bank = governanceExamples(NO_LOCAL), byId = new Map(dataset.map(r => [r.id, r]));
   assert.ok(bank.length > 100 && bank.every(e => byId.get(e.id)?.split === 'tune' && byId.get(e.id).labelSource === 'derived_mapping_table'));
   const own = dataset.find(r => r.id === bank[0].id), item = {kind: own.evidence[0].kind, locators: own.evidence.map(e => e.id), text: own.prompt};
   const train = JSON.parse(buildMappingRequest(item, {variant: 'candidate', examples: bank, excludeId: own.id}).messages[1].content);
@@ -174,7 +182,7 @@ test('examples: the bank is the derived tune split; a row never sees itself; can
   const r = dataset.find(x => x.split === 'test' && !x.truth.abstain && x.labelSource === 'derived_mapping_table');
   const sent = JSON.parse(variantRequests([r], 'retrieval_constrained')[0].messages[1].content);
   assert.ok(sent.examples.every(e => bank.some(b => b.text.startsWith(e.text.replace(/…$/, '')))));
-  const copied = JSON.parse(baselineOutput('nearest_example', r));
+  const copied = JSON.parse(baselineOutput('nearest_example', r, undefined, NO_LOCAL));
   assert.deepEqual(copied.mappings.map(m => m.requirementId), [...nearestExamples(r.prompt, bank, {k: 1})[0].example.requirementIds].sort());
 });
 
@@ -188,7 +196,7 @@ test('gate: a measured candidate that beats every baseline passes; worse precisi
   assert.ok(verdict.gateItems >= GATE.minItems && verdict.reviewedFreeText >= GATE.minReviewedFreeText);
   assert.equal(fromModelEvaluate, assessGovernanceReport);
   // One wrong mapping on an item rules-only answered loses the matched comparison (docs/governance-model.md, gate rule 4).
-  const rulesAnswered = testRows.find(r => JSON.parse(baselineOutput('rules_only', r)).mappings.length > 0 && rowEligibility(r).eligible);
+  const rulesAnswered = testRows.find(r => JSON.parse(baselineOutput('rules_only', r)).mappings.length > 0 && rowEligibility(r, NO_LOCAL).eligible);
   const wrongOnce = report(testRows, r => (r.id !== rulesAnswered.id ? gold(r)
     : JSON.stringify({abstain: false, mappings: [{requirementId: 'KR-33', relation: 'supports', evidenceLocator: r.evidence[0].id, confidence: 'high'}]})));
   assert.ok(assessGovernanceReport(wrongOnce).reasons.includes('does not beat rules_only on precision (matched_coverage: matched_precision_lower)'));

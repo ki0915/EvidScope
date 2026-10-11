@@ -222,11 +222,19 @@ const lexicalRanking = (docs, query, idOf) => docs.map(d => {
   return {id: idOf(d), score: dot / (d.norm * query.norm)}; })
   .sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
 // The k examples closest to text, best first; an example with excludeId (the row being trained on) is never its own example.
+// Results are memoised per example bank: requests, receipts and report verification build the same prompts several times over.
+const nearestMemo = new WeakMap();
 export function nearestExamples(text, examples, {k = LIMITS.examples, excludeId = null, embeddings = governanceEmbeddings()} = {}) {
-  const index = exampleIndex(examples), query = index.vector(terms(text)), docs = index.docs.filter(d => d.example.id !== excludeId);
-  const byId = new Map(docs.map(d => [d.example.id, d.example]));
-  const ranked = fuseRankings(lexicalRanking(docs, query, d => d.example.id), docs.map(d => d.example), text, embeddings, e => e.text, e => e.id);
-  return ranked.slice(0, k).map(r => ({example: byId.get(r.id), score: r.score}));
+  let memo = nearestMemo.get(examples);
+  if (!memo) nearestMemo.set(examples, memo = new Map());
+  const key = `${k}\u0000${excludeId ?? ''}\u0000${embeddings?.digest ?? ''}\u0000${text}`;
+  if (!memo.has(key)) {
+    const index = exampleIndex(examples), query = index.vector(terms(text)), docs = index.docs.filter(d => d.example.id !== excludeId);
+    const byId = new Map(docs.map(d => [d.example.id, d.example]));
+    const ranked = fuseRankings(lexicalRanking(docs, query, d => d.example.id), docs.map(d => d.example), text, embeddings, e => e.text, e => e.id);
+    memo.set(key, ranked.slice(0, k).map(r => ({example: byId.get(r.id), score: r.score})));
+  }
+  return memo.get(key).map(r => ({...r}));
 }
 export function retrieveRequirements(text, {catalog = governanceCatalog(), k = LIMITS.candidates, embeddings = governanceEmbeddings()} = {}) {
   const index = retrievalIndex(catalog), query = index.vector(terms(text));

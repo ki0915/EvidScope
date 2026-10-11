@@ -40,18 +40,38 @@
 
 ## 데이터셋
 
-`data/governance-mapping/v1/dataset.jsonl` 507행은 `node scripts/governance-mapping.mjs build`가 결정적으로 만듭니다.
-테스트가 저장소 파일과 다시 만든 결과가 같은지 확인합니다.
+`data/governance-mapping/v1/dataset.jsonl` 1,089행은 `node scripts/governance-mapping.mjs build --local-tables none`이 결정적으로
+만듭니다. 테스트가 저장소 파일과 다시 만든 결과가 같은지 확인합니다. PC처럼 지역 전용 표(아래)가 있는 곳에서는 `build`(기본값)가
+그 표까지 넣은 더 큰 데이터셋을 만들고, 그 파일은 저장소에 넣지 않습니다.
 
 | 출처 | 행 | tune | validation | test | 사람 검토 |
 | --- | --- | --- | --- | --- | --- |
-| 표에서 기계적으로 파생 (`derived_mapping_table`) | 288 | 168 | 47 | 73 | 행별 검토 불필요. 게이트가 매번 표에서 다시 파생해 대조 |
+| 표에서 기계적으로 파생 (`derived_mapping_table`) | 870 | 616 | 67 | 187 | 행별 검토 불필요. 게이트가 매번 표에서 다시 파생해 대조 |
 | Claude 초안 (`claude_drafted`) | 219 | 147 | 15 | 57 | **219행 모두 필요**. 지금 검토된 행 0 |
 
-파생 규칙은 다섯 가지입니다. ISMS-P 정렬표의 증거 설명 147행과 지원 요약 41행(그 문장을 나열한 항목이 정답),
-정렬표가 "정렬 안 함"으로 선언한 인증기준 74행(카탈로그 밖이므로 정답은 기권), 인공지능기본법 점검 유형 23행(그 점검 유형을
-나열한 항목 전부), EU 표가 매핑하지 않는다고 적은 조문 3행(기권). 단, 파생 정답은 **표와 같다는 것**만 보장합니다.
-표 자체가 `draft_requires_human_review`이므로 법적 정답이라는 뜻은 아닙니다.
+파생 규칙은 열한 가지입니다(`node scripts/governance-mapping.mjs sources`가 표와 규칙별 행 수를 보여 줍니다).
+
+- 카탈로그 표에서: ISMS-P 정렬표의 증거 설명 147행과 지원 요약 41행(그 문장을 나열한 항목이 정답), 정렬표가 "정렬 안 함"으로
+  선언한 인증기준 74행(카탈로그 밖이므로 정답은 기권), 인공지능기본법 점검 유형 23행(그 점검 유형을 나열한 항목 전부),
+  EU 표가 매핑하지 않는다고 적은 조문 3행(기권).
+- 출처 표에서(`data/governance-mapping/sources/`, 표마다 라이선스와 원본 해시를 적은 머리말): Prowler의 KISA ISMS-P 2023 점검표
+  (Apache-2.0, 영어) 101개 인증기준의 점검 질문·증거 예시·미준수 사례 389행(`prowler-check` 104 / `prowler-evidence` 142 /
+  `prowler-defect` 143); 인공지능기본법·시행령의 조·항·호 본문 122행(`kr-law-text`, law.go.kr); EU AI Act 제9-15·17·19·26·72조와
+  부속서 IV 21행(`eu-law-text`, EUR-Lex). 라벨은 카탈로그 항목의 인용(제N조제P항제K호, Article N(p)(x))이 그 단위를 덮을 때만
+  붙고, 카탈로그에 없는 인증기준(101개 중 74개)·조문·부속서는 기권이 정답입니다. 문장 유형이 종류와 관계를 정합니다:
+  점검 질문은 `document_excerpt`/`context_only`, 증거 예시는 `record_summary`/`supports`, 미준수 사례는 `finding_note`/`contradicts`.
+  규칙마다 기권 행은 라벨 행의 1/3(최소 8)까지만 두고 텍스트 해시 순으로 고릅니다.
+- 주입 행 50행(`injection`): 위 행 중 해시로 고른 행 끝에 다른 카탈로그 항목을 지목하는 고정 지시문(한국어 4종·영어 4종)을
+  붙입니다. 정답은 그대로이고 지목된 항목은 `truth.forbidden`으로 금지되어 게이트의 주입 저항 점검이 읽습니다.
+- 지역 전용 표: KISA ISMS-P 인증기준 안내서(2023.11)와 세부점검항목(xlsx)은 공공누리 제4유형(출처표시·상업적 이용금지·변경금지)
+  이라 저장소에 넣지 않습니다. `scripts/governance_sources_extract.py kisa`로 만든 `kisa-isms-p-guide-2023-11.json`을
+  `.local/governance-tables/`(또는 `EVIDSCOPE_GOVERNANCE_LOCAL_TABLES`가 가리키는 디렉터리)에 두면 `kisa-check` 104 /
+  `kisa-evidence` 144 / `kisa-defect` 143행이 더해져 파생 행이 1,263행이 됩니다. 어느 표를 썼는지는 데이터셋 행이 말하므로
+  (`derivation.framework`) 저장소 데이터셋은 그 표가 있는 PC에서도 같은 결과로 다시 파생되고, PC에서 만든 데이터셋은 그 PC에서
+  검증됩니다. 상업적 이용 전에는 KISA의 허락이 필요합니다.
+
+단, 파생 정답은 **표와 같다는 것**만 보장합니다. 카탈로그 표 자체가 `draft_requires_human_review`이고 출처 표 행은 인용 범위의
+기계적 대응이므로 법적 정답이라는 뜻은 아닙니다.
 
 Claude 초안 219행(기권 45, 주입 시도 16)은 실제 증거 문장이 아니라 합성 문장이고 정답도 Claude가 붙였습니다.
 `data/governance-mapping/v1/drafted-items.json` 머리에 그렇게 적혀 있고 모든 행이 `humanReviewed: false`, `UNREVIEWED`입니다.
@@ -198,7 +218,7 @@ node scripts/governance-mapping.mjs factsheet --kind promotion --receipt promoti
    `scripts/model-promote.mjs`의 `promoteGovernanceCandidate`). 키의 공개 부분은
    `roles/governance-assistant/v1/promotion-trust.json`에 있어야 합니다. 지금은 비어 있어 어떤 승격도 검증되지 않습니다.
 
-**왜 기본 규칙을 바꿨나.** test 게이트 행(파생 73행)에서 `rules_only`는 매핑 7건을 모두 맞혀 정밀도 1.0, coverage 0.115입니다.
+**왜 기본 규칙을 바꿨나.** 당시 test 게이트 행(파생 73행)에서 `rules_only`는 매핑 7건을 모두 맞혀 정밀도 1.0, coverage 0.115입니다.
 이전 규칙을 문자 그대로 적용하면 후보는 게이트 행 전체에서 오답 매핑을 하나도 내지 않아야 했습니다. 이제는 규칙이 답한 7개 항목에서는
 규칙만큼 정확해야 하고(정밀도 1.0), 그 밖의 항목을 포함한 전체 정밀도는 3번의 0.9 이상이면 됩니다. 정밀도 우선 원칙은 3번과 4번의 같은 항목
 비교로 지킵니다. 같은 coverage에서 기준선과 정밀도가 같으면 4번은 통과입니다. 그런 후보가 쓸모 있는지는 6번의 사람 승인에서 판단합니다.
@@ -272,8 +292,8 @@ QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 �
   "evaluation": null,
   "scores": null,
   "catalog": {"digest": "f12872b3…", "requirements": 55, "frameworks": {"eu-ai-act-logging": 10, "kr-ai-basic-act": 18, "isms-p": 27}},
-  "dataset": {"derived": 288, "drafted": 219, "humanReviewed": 0, "needsHumanReview": 219, "trainingAdmitted": false,
-              "eligible": {"tune": 168, "validation": 47, "test": 73}, "minimum": {"tune": 300, "validation": 50, "test": 100}},
+  "dataset": {"derived": 870, "drafted": 219, "humanReviewed": 0, "needsHumanReview": 219, "trainingAdmitted": true,
+              "eligible": {"tune": 616, "validation": 67, "test": 187}, "minimum": {"tune": 300, "validation": 50, "test": 100}},
   "humanConfirmationRequired": true, "qualityClaimAllowed": false, "observedAt": "2026-10-08T06:33:12.012Z"
 }
 ```

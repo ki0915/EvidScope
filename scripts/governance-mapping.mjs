@@ -25,11 +25,12 @@ import {pathToFileURL} from 'node:url';
 import {canonical, verifyBundle} from '../src/crypto.mjs';
 import {VARIANTS, governanceCatalog, governanceEmbeddings, nearestExamples, retrieveRequirements, setGovernanceEmbeddings} from '../src/governance-mapping.mjs';
 import {embeddingTexts, loadEmbeddings} from '../src/governance-embeddings.mjs';
-import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDataset, governanceAdmission, governanceExamples, reviewSheet, shakedownRows,
-  toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
+import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDataset, derivedItems, governanceAdmission, governanceExamples, reviewSheet,
+  shakedownRows, toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
+import {localTablesFor, sourceTableStatus} from '../src/governance-mapping-sources.mjs';
 import {evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {DATASET_ID} from '../src/governance-review-queue.mjs';
-import {ALL_VARIANTS, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutput, buildComparisonReport, variantRequests}
+import {ALL_VARIANTS, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutputs, buildComparisonReport, variantRequests}
   from '../src/governance-mapping-eval.mjs';
 import {governanceModelStatus, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
@@ -104,7 +105,22 @@ export function runGovernanceMappingCommand(argv) {
     setGovernanceEmbeddings(loadEmbeddings(rest[ei + 1]));
     rest.splice(ei, 2);
   }
-  if (command === 'build') { const o = options(rest), rows = buildDataset(); write(o.out, jsonl(rows)); return {rows: rows.length}; }
+  if (command === 'build') {
+    // --local-tables DIR|none: where the local-only source tables are (default: the module's directory); the shipped file is built with none.
+    const o = options(rest), localTables = o['local-tables'] === 'none' ? false : o['local-tables'], rows = buildDataset({localTables});
+    write(o.out, jsonl(rows));
+    return {rows: rows.length, derived: rows.filter(r => r.labelSource === 'derived_mapping_table').length, sources: sourceTableStatus({localTables})};
+  }
+  if (command === 'sources') {
+    const o = options(rest), localTables = o['local-tables'] === 'none' ? false : o['local-tables'], rules = {};
+    for (const i of derivedItems(undefined, {localTables})) {
+      const r = rules[i.derivation.rule] ??= {rows: 0, abstain: 0, injection: 0};
+      r.rows++;
+      if (i.truth.abstain) r.abstain++;
+      if (i.injection) r.injection++;
+    }
+    return {tables: sourceTableStatus({localTables}), rules};
+  }
   if (command === 'review-sheet') { const o = options(rest); write(o.out, reviewSheet(readRows(o.data))); return {written: o.out}; }
   if (command === 'import-decisions') {
     const o = options(rest, ['attest-pii-reviewed', 'attest-source-consent']);
@@ -131,7 +147,7 @@ export function runGovernanceMappingCommand(argv) {
   }
   if (command === 'report') {
     const o = options(rest), rows = readRows(o.data).filter(r => r.split === 'test'), variants = {};
-    for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: Object.fromEntries(rows.map(r => [r.id, baselineOutput(v, r)]))};
+    for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: baselineOutputs(rows, v)};
     for (const v of MODEL_VARIANTS) {
       let outputs;
       try { outputs = JSON.parse(readFileSync(join(o.runs, `${v}.outputs.json`), 'utf8')); }
@@ -152,7 +168,8 @@ export function runGovernanceMappingCommand(argv) {
     return {texts: texts.length, rows: rows.length, catalogEntries: catalog.entries.length};
   }
   if (command === 'retrieval-recall') {
-    const o = options(rest), rows = readRows(o.data), ks = String(o.k || '1,3,5,8').split(',').map(Number), out = {}, examples = governanceExamples();
+    const o = options(rest), rows = readRows(o.data), ks = String(o.k || '1,3,5,8').split(',').map(Number), out = {};
+    const examples = governanceExamples({localTables: localTablesFor(rows)});
     if (ks.some(k => !Number.isInteger(k) || k < 1)) throw Error('--k must list positive integers');
     const index = governanceEmbeddings();
     for (const r of rows.filter(x => !x.truth.abstain)) {
@@ -171,7 +188,7 @@ export function runGovernanceMappingCommand(argv) {
     return {method: index ? 'hybrid' : 'tfidf', embeddings, examples: examples.length, splits};
   }
   throw Error(`usage: governance-mapping.mjs <${['build', 'review-sheet', 'import-decisions', 'export-reviewed', 'admission', 'training-set', 'requests',
-    'report', 'gate', 'status', 'retrieval-recall', 'embed-texts', 'promote', 'factsheet'].join('|')}> ...`
+    'report', 'gate', 'status', 'retrieval-recall', 'embed-texts', 'sources', 'promote', 'factsheet'].join('|')}> ...`
     + ` (variants: ${[...ALL_VARIANTS].join(', ')}; prompt variants: ${VARIANTS.join(', ')})`);
 }
 

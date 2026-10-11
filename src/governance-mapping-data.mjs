@@ -9,6 +9,7 @@ import {canonical} from './crypto.mjs';
 import {krGovernanceCheckDefinitions} from './kr-governance-evidence.mjs';
 import {modelPolicy} from './model-policy.mjs';
 import {MODEL_KINDS, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, outputMatchesTruth} from './governance-mapping.mjs';
+import {injectionItems, localTablesFor, sourceItems} from './governance-mapping-sources.mjs';
 import {exportHumanReviewPacket, importHumanReviews, recordHash, reviewedPayloadHash} from '../scripts/model-training-data.mjs';
 
 export const ROLE_ID = 'governance-assistant';
@@ -59,17 +60,23 @@ function row({id, familyId, sourceId, kind, language, locators, text, truth, lab
 }
 
 // ---------- derivation from the shipped tables ----------
-export function derivedItems(catalog = governanceCatalog()) {
-  const items = [], locator = text => `evidence:d-${sha256(text).slice(0, 12)}`;
-  const add = (rule, framework, ref, kind, text, labels, relation = 'supports') => {
-    const truth = labels.length ? {abstain: false, mappings: labels.sort().map(requirementId => ({requirementId, relation, evidenceLocators: [locator(text)]}))}
+// localTables: directory of the local-only source tables (src/governance-mapping-sources.mjs), false for none; default per that module.
+export function derivedItems(catalog = governanceCatalog(), {localTables} = {}) {
+  const items = [], texts = new Set(), locator = text => `evidence:d-${sha256(text).slice(0, 12)}`;
+  const make = (rule, framework, ref, kind, text, labels, relation = 'supports',
+    {tableSha256 = null, split = null, injection = null} = {}) => {
+    const truth = labels.length
+      ? {abstain: false, mappings: [...labels].sort().map(requirementId => ({requirementId, relation, evidenceLocators: [locator(text)]}))}
       : {abstain: true, mappings: []};
     const familyId = labels.length ? `derived:${rule}:${sha256(text).slice(0, 10)}` : `derived:${rule}:${ref}`;
-    items.push({id: `derived-${rule}-${sha256(text).slice(0, 10)}`, familyId, sourceId: `evidscope-${framework}-table`, kind,
+    return {id: `derived-${rule}-${sha256(text).slice(0, 10)}`, familyId, sourceId: `evidscope-${framework}-table`, kind,
       language: /[가-힣]/.test(text) ? 'ko' : 'en',
       locators: [locator(text)], text, truth, labelSource: 'derived_mapping_table',
-      derivation: {rule, framework, tableSha256: catalog.sources[framework]?.sha256 ?? catalog.sources.ismsAlignment.sha256, ref}});
+      derivation: {rule, framework, tableSha256: tableSha256 ?? catalog.sources[framework]?.sha256 ?? catalog.sources.ismsAlignment.sha256, ref},
+      ...(split ? {split} : {}), ...(injection ? {injection} : {})};
   };
+  // One row per distinct text across every rule; the first rule that yields a text keeps it.
+  const add = (...args) => { const key = norm(args[4]); if (texts.has(key)) return; texts.add(key); items.push(make(...args)); };
   // ISMS-P: evidence descriptions ("what") and support summaries ("shows") of the alignment, labelled with the items that list them.
   const alignment = read('data/isms-p-alignment.json'), what = new Map(), shows = new Map();
   for (const al of alignment.alignments) for (const s of al.supports) {
@@ -93,7 +100,14 @@ export function derivedItems(catalog = governanceCatalog()) {
   // EU references the EU table names as not mapped.
   const eu = JSON.parse(readFileSync(new URL('../data/evidence-pack-mappings/eu-ai-act-logging-v2.json', import.meta.url), 'utf8'));
   for (const n of eu.notMapped) add('eu-not-mapped', 'eu-ai-act-logging', n.ref, 'document_excerpt', `EU AI Act ${n.ref}`, []);
-  return stratify(items);
+  // Source tables (src/governance-mapping-sources.mjs): checklist, evidence and defect sentences per ISMS-P item, law text per article.
+  for (const s of sourceItems(catalog, {localTables})) add(s.rule, s.framework, s.ref, s.kind, s.text, s.labels, s.relation, {tableSha256: s.tableSha256});
+  const base = stratify(items);
+  // Injection rows follow the split of the row they extend, so a test text never appears in tune with an instruction appended.
+  const injected = injectionItems(base, catalog).map(({base: b, text, forbidden}) => make('injection', b.derivation.framework, b.familyId, b.kind, text,
+    b.truth.mappings.map(m => m.requirementId), b.truth.mappings[0]?.relation ?? 'supports',
+    {tableSha256: b.derivation.tableSha256, split: b.split ?? hashSplit(b.familyId), injection: {forbidden}}));
+  return [...base, ...injected];
 }
 // Derived rows are split by evidence text, stratified by their first requirement, so every requirement with enough rows is both
 // learned (tune) and measured on texts the trainer never saw (test). Splitting by requirement instead (splits.json, still used for
@@ -123,8 +137,8 @@ export function draftedItems() {
 }
 
 // The full unreviewed dataset: derived rows plus Claude-drafted rows (UNREVIEWED). Deterministic.
-export function buildDataset({catalog = governanceCatalog()} = {}) {
-  const bySplit = loadSplits(catalog), rows = [...derivedItems(catalog), ...draftedItems()].map(i => row(i, bySplit));
+export function buildDataset({catalog = governanceCatalog(), localTables} = {}) {
+  const bySplit = loadSplits(catalog), rows = [...derivedItems(catalog, {localTables}), ...draftedItems()].map(i => row(i, bySplit));
   const ids = new Set(), texts = new Map();
   for (const r of rows) {
     if (ids.has(r.id)) throw Error('governance_dataset_duplicate_id: ' + r.id);
@@ -138,30 +152,38 @@ export function buildDataset({catalog = governanceCatalog()} = {}) {
   }
   return rows.sort((a, b) => (a.id < b.id ? -1 : 1));
 }
-const derivedById = new Map();
-export function rederived(id) {
-  if (!derivedById.size) { const bySplit = loadSplits(); for (const i of derivedItems()) derivedById.set(i.id, row(i, bySplit)); }
-  return derivedById.get(id) ?? null;
+// Re-derived rows per source-table configuration (localTables as derivedItems takes it; undefined = the module default).
+const derivedByConfig = new Map();
+function derivedMap(localTables) {
+  const key = localTables === false ? 'none' : localTables ?? '';
+  if (!derivedByConfig.has(key)) {
+    const bySplit = loadSplits(), map = new Map();
+    for (const i of derivedItems(undefined, {localTables})) map.set(i.id, row(i, bySplit));
+    derivedByConfig.set(key, map);
+  }
+  return derivedByConfig.get(key);
 }
+export function rederived(id, {localTables} = {}) { return derivedMap(localTables).get(id) ?? null; }
 // The example bank the prompt draws on (buildMappingRequest examples): the table-derived rows of the tune split only, so a validation
 // or test row never sees itself or a sibling it is measured against. Derived from the shipped tables, not from dataset.jsonl.
-let examples;
-export function governanceExamples() {
-  if (!examples) {
-    rederived('');
-    examples = Object.freeze([...derivedById.values()].filter(r => r.split === 'tune').map(r => Object.freeze({id: r.id, text: r.prompt,
-      abstain: r.truth.abstain, requirementIds: Object.freeze(r.truth.mappings.map(m => m.requirementId))})));
+const examplesByConfig = new Map();
+export function governanceExamples({localTables} = {}) {
+  const key = localTables === false ? 'none' : localTables ?? '';
+  if (!examplesByConfig.has(key)) {
+    examplesByConfig.set(key, Object.freeze([...derivedMap(localTables).values()].filter(r => r.split === 'tune' && !r.truth.forbidden)
+      .map(r => Object.freeze({id: r.id, text: r.prompt, abstain: r.truth.abstain,
+        requirementIds: Object.freeze(r.truth.mappings.map(m => m.requirementId))}))));
   }
-  return examples;
+  return examplesByConfig.get(key);
 }
 const FIXED = ['id', 'task', 'taskVersion', 'roleId', 'split', 'familyId', 'sourceId', 'language', 'labelSource', 'derivation', 'prompt', 'evidence', 'truth'];
 const fixed = r => Object.fromEntries(FIXED.map(k => [k, r[k] ?? null]));
 
 // Why a row may (or may not) count as a gold label for training or the gate.
-export function rowEligibility(r, {now = Date.now()} = {}) {
+export function rowEligibility(r, {now = Date.now(), localTables} = {}) {
   if (r?.task !== TASK || r.taskVersion !== TASK_VERSION || r.roleId !== ROLE_ID || !SPLITS.includes(r.split)) return {eligible: false, reason: 'row_invalid'};
   if (r.labelSource === 'derived_mapping_table') {
-    const expected = rederived(r.id);
+    const expected = rederived(r.id, {localTables});
     if (!expected || canonical(fixed(expected)) !== canonical(fixed(r)) || r.humanReviewed !== false) return {eligible: false, reason: 'derivation_mismatch'};
     return {eligible: true, basis: 'derived'};
   }
@@ -177,14 +199,14 @@ export function rowEligibility(r, {now = Date.now()} = {}) {
 
 // Training admission for this task: the policy minimums (src/model-policy.mjs) apply to eligible rows; unreviewed drafted rows are
 // left out and counted, never admitted. Leakage across splits is refused at three levels: family, text and requirement.
-export function governanceAdmission(rows, {now = Date.now()} = {}) {
+export function governanceAdmission(rows, {now = Date.now(), localTables = localTablesFor(rows)} = {}) {
   const minimum = modelPolicy.training.minimumReviewed, reasons = [], counts = {}, bySplit = loadSplits();
   for (const split of SPLITS) counts[split] = {eligible: 0, derived: 0, humanReviewed: 0, excludedUnreviewed: 0, excludedInvalid: 0};
   const families = new Map(), texts = new Map(), ids = new Set();
   for (const r of rows) {
     if (ids.has(r?.id)) reasons.push('duplicate_record_id');
     ids.add(r?.id);
-    const verdict = rowEligibility(r, {now}), c = counts[r?.split];
+    const verdict = rowEligibility(r, {now, localTables}), c = counts[r?.split];
     if (!c) { reasons.push('split_invalid'); continue; }
     if (verdict.eligible) { c.eligible++; c[verdict.basis === 'derived' ? 'derived' : 'humanReviewed']++; }
     else if (verdict.reason === 'not_human_reviewed') c.excludedUnreviewed++;
@@ -204,28 +226,28 @@ export function governanceAdmission(rows, {now = Date.now()} = {}) {
 }
 
 // Rows for the trainer: exactly the prompt the runtime sends (variant "candidate") and the gold JSON as the target. Test never leaves.
-const trainerRow = (r, runMode) => {
-  const request = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples(), excludeId: r.id});
+const trainerRow = (r, runMode, localTables) => {
+  const request = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples({localTables}), excludeId: r.id});
   const target = r.labelSource === 'derived_mapping_table' ? r.candidateOutput : r.approvedOutput;
   return {id: r.id, task: TASK, taskVersion: TASK_VERSION, roleId: ROLE_ID, split: r.split, familyId: r.familyId, messages: request.messages,
     target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null,
       catalogDigest: request.catalogDigest, runMode};
 };
-export function trainingRows(rows, {now = Date.now()} = {}) {
-  const gate = governanceAdmission(rows, {now});
+export function trainingRows(rows, {now = Date.now(), localTables = localTablesFor(rows)} = {}) {
+  const gate = governanceAdmission(rows, {now, localTables});
   if (!gate.admitted) throw Object.assign(Error('governance_training_admission_failed'), {admission: gate});
-  return rows.filter(r => r.split !== 'test' && rowEligibility(r, {now}).eligible).map(r => trainerRow(r, 'candidate'));
+  return rows.filter(r => r.split !== 'test' && rowEligibility(r, {now, localTables}).eligible).map(r => trainerRow(r, 'candidate', localTables));
 }
 // Shakedown: the derived tune/validation rows only, to measure VRAM and time on the PC before the human review is done. Every row is
 // labelled runMode "shakedown"; the trainer then writes a shakedown adapter that is never promotable and never a quality result.
 // No reviewed row is used, so the run says nothing about the drafted data either.
-export function shakedownRows(rows, {now = Date.now()} = {}) {
+export function shakedownRows(rows, {now = Date.now(), localTables = localTablesFor(rows)} = {}) {
   const derived = rows.filter(r => r.split !== 'test' && r.labelSource === 'derived_mapping_table');
-  if (!derived.length || derived.some(r => !rowEligibility(r, {now}).eligible)) throw Error('governance_shakedown_rows_invalid');
+  if (!derived.length || derived.some(r => !rowEligibility(r, {now, localTables}).eligible)) throw Error('governance_shakedown_rows_invalid');
   const families = new Map();
   for (const r of derived) { if (!families.has(r.familyId)) families.set(r.familyId, new Set()); families.get(r.familyId).add(r.split); }
   if ([...families.values()].some(splits => splits.size > 1)) throw Error('governance_shakedown_family_split_leakage');
-  return derived.map(r => trainerRow(r, 'shakedown'));
+  return derived.map(r => trainerRow(r, 'shakedown', localTables));
 }
 
 // ---------- human review: a bulk approve/reject pass over the drafted rows ----------
