@@ -139,24 +139,40 @@ export function runGovernanceMappingCommand(argv) {
   }
   if (command === 'factsheet') return factsheet(options(rest));
   if (command === 'requests') {
-    const o = options(rest);
+    // --split validation: the candidate's requests for the abstention calibration (report --validation-runs); default test.
+    const o = options(rest), split = o.split ?? 'test';
     if (!MODEL_VARIANTS.includes(o.variant)) throw Error('variant must be one of ' + MODEL_VARIANTS.join(', '));
-    const requests = variantRequests(readRows(o.data).filter(r => r.split === 'test'), o.variant);
+    if (!['test', 'validation'].includes(split)) throw Error('--split must be test or validation');
+    if (split === 'validation' && o.variant !== 'candidate') throw Error('validation requests are only made for the candidate');
+    const requests = variantRequests(readRows(o.data).filter(r => r.split === split), o.variant);
     write(o.out, requests.map(r => canonical(r)).join('\n') + '\n');
-    return {requests: requests.length, variant: o.variant};
+    return {requests: requests.length, variant: o.variant, split};
   }
   if (command === 'report') {
-    const o = options(rest), rows = readRows(o.data).filter(r => r.split === 'test'), variants = {};
+    // --validation-runs DIR: the candidate's validation-split run (outputs, receipt and logprobs from the batch runner's --logprobs)
+    // together with candidate.logprobs.json in --runs; the report then carries the abstention calibration and the calibrated candidate.
+    const o = options(rest), all = readRows(o.data), rows = all.filter(r => r.split === 'test'), variants = {};
+    const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
     for (const v of DETERMINISTIC_BASELINES) variants[v] = {outputs: baselineOutputs(rows, v)};
     for (const v of MODEL_VARIANTS) {
       let outputs;
-      try { outputs = JSON.parse(readFileSync(join(o.runs, `${v}.outputs.json`), 'utf8')); }
+      try { outputs = readJson(join(o.runs, `${v}.outputs.json`)); }
       catch (error) { if (v === 'candidate' && error.code === 'ENOENT') continue; throw error; }
-      variants[v] = {outputs, receipt: JSON.parse(readFileSync(join(o.runs, `${v}.receipt.json`), 'utf8'))};
+      variants[v] = {outputs, receipt: readJson(join(o.runs, `${v}.receipt.json`))};
     }
-    const report = buildComparisonReport(rows, variants, {preparedBy: o['prepared-by']});
+    let calibration = null;
+    if (o['validation-runs']) {
+      if (!variants.candidate) throw Error('--validation-runs needs the candidate run in --runs');
+      const dir = o['validation-runs'];
+      calibration = {validation: {rows: all.filter(r => r.split === 'validation'), outputs: readJson(join(dir, 'candidate.outputs.json')),
+        logprobs: readJson(join(dir, 'candidate.logprobs.json')), receipt: readJson(join(dir, 'candidate.receipt.json'))},
+      logprobs: readJson(join(o.runs, 'candidate.logprobs.json')), ...(o['min-kept'] ? {minKept: Number(o['min-kept'])} : {})};
+    }
+    const report = buildComparisonReport(rows, variants, {preparedBy: o['prepared-by'], calibration});
     write(o.out, JSON.stringify(report, null, 1) + '\n');
-    return {variants: Object.keys(report.variants), gateItems: report.gateItems, gate: report.variants.candidate ? assessGovernanceReport(report) : null};
+    const c = report.calibration;
+    return {variants: Object.keys(report.variants), gateItems: report.gateItems, gate: report.variants.candidate ? assessGovernanceReport(report) : null,
+      calibration: c ? {threshold: c.threshold, reached: c.reached, chosen: c.chosen} : null};
   }
   if (command === 'gate') return assessGovernanceReport(JSON.parse(readFileSync(options(rest).report, 'utf8')));
   if (command === 'status') return governanceModelStatus();

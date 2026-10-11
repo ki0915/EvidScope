@@ -197,6 +197,18 @@ node scripts/governance-mapping.mjs gate --report "$W\report.json"
 변형마다 130행, 행당 약 2초로 변형당 5분 안팎, 모델 적재 포함 전체 25~30분입니다(추정). 영수증의 `isolation.verified`가
 false이거나 실패가 1건이라도 있으면 그 변형은 측정으로 인정되지 않습니다.
 
+### 5a. 보류 보정 (선택, docs/governance-model.md "보류 보정")
+
+후보 실행에 `--logprobs /runs/candidate.logprobs.json`을 더하고, validation 분할로 후보를 한 번 더 돌린 뒤 보고서에 `--validation-runs`를 줍니다.
+보고서는 검증 행에서 고른 ID 확률 기준값과 `candidate_calibrated` 변형을 담고, 게이트는 그 변형을 판정합니다.
+
+```powershell
+New-Item -ItemType Directory -Force "$W\runs\validation" | Out-Null
+node scripts/governance-mapping.mjs requests --data "$W\reviewed.jsonl" --variant candidate --split validation --out "$W\runs\validation\candidate.requests.jsonl"
+# 후보 test 실행(위 5절)에 --logprobs /runs/candidate.logprobs.json 추가; 검증 실행은 같은 명령에서 경로만 /runs/validation/... 으로
+node scripts/governance-mapping.mjs report --data "$W\reviewed.jsonl" --runs "$W\runs" --validation-runs "$W\runs\validation" --prepared-by <준비자 ID> --out "$W\report.json"
+```
+
 ## 6. 기본 모드 또는 승격
 
 - 기본 모드(어댑터 없음): 보고서를 저장소의 `reports/governance-mapping/` 아래에 두고 `roles/governance-assistant/v1/governance-mapping.json`의

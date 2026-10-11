@@ -5,6 +5,7 @@ import {chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSy
 import {join, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
+import {canonical} from '../src/crypto.mjs';
 import {buildComparisonReport, hashOf, measurementProblem, variantRequests} from '../src/governance-mapping-eval.mjs';
 
 // Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
@@ -31,13 +32,18 @@ class H(BaseHTTPRequestHandler):
         self.reply({"status": "ok"} if self.path == "/health" else {"build_info": "stub"})
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["content-length"])))
-        with open(log, "a") as f: f.write(json.dumps({"lora": body.get("lora"), "argv": sys.argv[1:], "format": body.get("response_format")}) + "\\n")
+        with open(log, "a") as f: f.write(json.dumps({"lora": body.get("lora"), "argv": sys.argv[1:], "format": body.get("response_format"),
+                                                    "logprobs": body.get("logprobs"), "top_logprobs": body.get("top_logprobs")}) + "\\n")
         n = sum(1 for _ in open(log))
         if os.path.exists(sys.argv[0] + ".mixed") and n % 3 == 2:
             self.send_response(500); self.send_header("content-length", "0"); self.end_headers(); return
         finish = "length" if os.path.exists(sys.argv[0] + ".mixed") and n % 3 == 1 else "stop"
-        self.reply({"choices": [{"finish_reason": finish, "message": {"content": "{\\"abstain\\":true,\\"mappings\\":[]}"}}],
-                    "usage": {"prompt_tokens": 9, "completion_tokens": 3}})
+        choice = {"finish_reason": finish, "message": {"content": "{\\"abstain\\":true,\\"mappings\\":[]}"}}
+        if body.get("logprobs"):
+            pieces = ["{\\"", "abstain", "\\":true,\\"", "mappings", "\\":[]}"]
+            choice["logprobs"] = {"content": [{"token": t, "logprob": -0.25 * (i + 1), "bytes": list(t.encode()), "top_logprobs": []}
+                                              for i, t in enumerate(pieces)]}
+        self.reply({"choices": [choice], "usage": {"prompt_tokens": 9, "completion_tokens": 3}})
 HTTPServer(("127.0.0.1", port), H).serve_forever()
 `;
 
@@ -97,6 +103,31 @@ test('batch runner: the candidate run loads the adapter without applying it and 
     const edited = batch(f, 'zero_shot');
     assert.notEqual(edited.status, 0);
     assert.match(edited.stderr, /request_line_not_canonical|variant_mismatch/);
+  });
+
+test('batch runner: --logprobs stores each reply token with its log-probability in micro-nats and binds the file in the receipt',
+  {skip: process.platform === 'win32'}, () => {
+    const f = fixture(), rows = testRows.slice(0, 4), file = join(f.dir, 'candidate.logprobs.json');
+    writeFileSync(join(f.dir, 'candidate.requests.jsonl'), variantRequests(rows, 'candidate').map(r => canonical(r)).join('\n') + '\n');
+    const r = batch(f, 'candidate', ['--lora', join(f.dir, 'adapter.gguf'), '--logprobs', file, '--pause-ratio', '0']);
+    assert.equal(r.status, 0, r.stderr);
+    const logprobs = JSON.parse(readFileSync(file, 'utf8')), receipt = JSON.parse(readFileSync(join(f.dir, 'candidate.receipt.json'), 'utf8'));
+    assert.deepEqual(Object.keys(logprobs).sort(), rows.map(x => x.id).sort());
+    assert.deepEqual(logprobs[rows[0].id], [['{"', -250000], ['abstain', -500000], ['":true,"', -750000], ['mappings', -1000000], ['":[]}', -1250000]]);
+    assert.equal(logprobs[rows[0].id].map(t => t[0]).join(''), '{"abstain":true,"mappings":[]}');
+    assert.equal(receipt.logprobsSha256, hashOf(logprobs));
+    assert.deepEqual(receipt.logprobs, {file: 'candidate.logprobs.json', topLogprobs: 1, scale: 1000000});
+    const log = readFileSync(f.server + '.log', 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    assert.ok(log.every(x => x.logprobs === true && x.top_logprobs === 1));
+    assert.notEqual(batch(f, 'candidate', ['--lora', join(f.dir, 'adapter.gguf'), '--logprobs', file]).status, 0, 'an existing logprobs file is kept');
+    const plain = fixture();
+    writeFileSync(join(plain.dir, 'candidate.requests.jsonl'), readFileSync(join(f.dir, 'candidate.requests.jsonl')));
+    assert.equal(batch(plain, 'candidate', ['--lora', join(plain.dir, 'adapter.gguf'), '--pause-ratio', '0']).status, 0);
+    const without = JSON.parse(readFileSync(join(plain.dir, 'candidate.receipt.json'), 'utf8'));
+    assert.equal(without.logprobsSha256, null);
+    assert.equal(without.logprobs, null);
+    const plainLog = readFileSync(plain.server + '.log', 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    assert.ok(plainLog.every(x => x.logprobs === null));
   });
 
 test('trainer: admission refuses test rows, short datasets and invalid targets; prompt tokens are masked', () => {

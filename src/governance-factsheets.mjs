@@ -10,8 +10,9 @@ import {canonical, digest} from './crypto.mjs';
 import {parseStatement, openEnvelope} from './dsse.mjs';
 import {TASK, TASK_VERSION, governanceCatalog} from './governance-mapping.mjs';
 import {applyQueueDecisions, shakedownRows, toJsonl, trainingRows} from './governance-mapping-data.mjs';
-import {MODEL_VARIANTS, PINNED_GGUF, SAFETY_CHECKS, assessGovernanceReport, hashOf, measurementProblem, scoreSummary, verifyGovernanceReport}
+import {CALIBRATED, MODEL_VARIANTS, PINNED_GGUF, SAFETY_CHECKS, assessGovernanceReport, hashOf, measurementProblem, scoreSummary, verifyGovernanceReport}
   from './governance-mapping-eval.mjs';
+import {calibrationSummary} from './governance-abstention.mjs';
 import {PROMOTION_PREDICATE, assessBaselineMode, readTrust} from './governance-model.mjs';
 import {BASE_REPOSITORY} from './governance-training.mjs';
 
@@ -122,8 +123,8 @@ function evaluationFactsheet(x, {decisions, factsheets, now}) {
   const scores = scoreSummary(m.metrics);
   for (const v of Object.keys(scores)) scores[v].safety = Object.fromEntries(SAFETY_CHECKS.map(k => [k, m.metrics[v].safety[k].rate]));
   if (shakedown) delete scores.candidate;
-  const measurement = Object.fromEntries(MODEL_VARIANTS.filter(v => report.variants[v]).map(v => [v, {problem: measurementProblem(report, v),
-    operator: text(report.variants[v].receipt?.operator, 120)}]));
+  const measurement = Object.fromEntries([...MODEL_VARIANTS, CALIBRATED].filter(v => report.variants[v]).map(v => [v, {problem: measurementProblem(report, v),
+    operator: text((v === CALIBRATED ? report.variants.candidate : report.variants[v]).receipt?.operator, 120)}]));
   return {runMode: shakedown ? 'shakedown' : report.variants.candidate ? 'candidate' : null, label: shakedown ? 'shakedown' : report.variants.candidate
     ? 'candidate_evaluation' : 'baseline_evaluation', promotable: !!report.variants.candidate && !shakedown, promoted: false, qualityResult: !shakedown,
     subjectSha256: hashOf(report),
@@ -132,7 +133,7 @@ function evaluationFactsheet(x, {decisions, factsheets, now}) {
       gateRowsDerived: m.gateRows.filter(r => r.labelSource === 'derived_mapping_table').length, ...reviewedAgainstDecisions(hashes, decisions),
       verification: 'recomputed_from_report'},
     recipe: null, metrics: scores, metricsBasis: shakedown ? 'withheld_shakedown_adapter' : 'gate_rows_recomputed_by_vault', measurement,
-    preparedBy: text(report.preparedBy, 120), reportCreatedAt: text(report.createdAt, 40), gate, approver: null};
+    preparedBy: text(report.preparedBy, 120), reportCreatedAt: text(report.createdAt, 40), gate, calibration: calibrationSummary(report), approver: null};
 }
 function promotionFactsheet(x, {factsheets, now, root}) {
   const trust = readTrust(root);

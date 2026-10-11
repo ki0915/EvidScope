@@ -165,13 +165,41 @@ max_tokens 512), 요청 바이트 해시와 출력 해시, 실패 0건을 묶습
 검색 후보 재현율(정답 요구사항이 후보 12개 안에 있는 비율)은 tune 0.707, validation 0.698, test 0.779입니다.
 후보 수 12는 tune·validation으로 골랐습니다. 후보 밖 정답도 스키마상 고를 수는 있지만, 검색이 놓친 항목이 재현율의 주된 한계입니다.
 
+## 보류 보정 (abstention calibration)
+
+파일럿 1~7차의 후보는 매핑마다 `confidence: "high"`만 적어 모델이 말로 밝히는 확신도는 정보가 없었습니다(ECE 0.37). 그래서 보정 신호는
+모델이 요구사항 ID를 쓸 때의 토큰 확률입니다. `scripts/governance_mapping_batch.py --logprobs F`가 llama-server의 OpenAI식 `logprobs`로
+답 토큰마다 로그확률(문법·샘플러 적용 전 softmax)을 받아 마이크로 nat 정수(`logprob × 10^6`)로 `candidate.logprobs.json`에 적고 영수증에
+`logprobsSha256`으로 묶습니다. `src/governance-abstention.mjs`는 출력 문자열의 `"requirementId":"…"` 값과 겹치는 토큰의 로그확률 합을 그 매핑의
+점수로 삼습니다(토큰을 이어 붙인 문자열이 출력과 다르면 점수 없음).
+
+규칙(`applyAbstention`): 점수가 기준값 이상이고 ID가 요청의 후보 목록에 있던 매핑만 남기고, 남는 것이 없으면 기권합니다. 기준값은 검증 분할의
+게이트 행에서 고릅니다(`calibrateAbstention`): 점수가 있는 후보 매핑의 모든 점수를 기준값 후보로 두고, 정밀도가 게이트 최소값(0.9) 이상이면서
+매핑이 10개 이상 남는 기준값 가운데 재현율이 가장 높은 것(같으면 더 보수적인 것)을 고릅니다. 그런 기준값이 없으면 정밀도가 가장 높은 기준값을
+`reached: false`로 적습니다.
+
+```bash
+node scripts/governance-mapping.mjs requests --data D --variant candidate --split validation --out runs/validation/candidate.requests.jsonl
+python3 scripts/governance_mapping_batch.py --requests runs/candidate.requests.jsonl --variant candidate --lora A --logprobs runs/candidate.logprobs.json ...
+python3 scripts/governance_mapping_batch.py --requests runs/validation/candidate.requests.jsonl --variant candidate --lora A --logprobs runs/validation/candidate.logprobs.json ...
+node scripts/governance-mapping.mjs report --data D --runs runs --validation-runs runs/validation --prepared-by X --out report.json
+```
+
+보고서에는 `calibration`(검증 행·출력·로그확률, 곡선, 기준값, `reached`)과 변형 `candidate_calibrated`(규칙을 적용한 test 출력)가 더 들어갑니다.
+검증은 검증 행에서 기준값 선택을, 후보 출력과 test 로그확률에서 보정 출력을 다시 계산해 저장된 값과 대조합니다
+(`governance_report_calibration_changed`, `governance_report_calibrated_outputs_changed`). 보정이 있으면 게이트는 `candidate_calibrated`를
+판정 대상으로 삼고(`underTest`), 검증 분할에서 0.9에 못 미친 보정(`reached: false`)은 test 점수와 무관하게 불통과입니다. 측정 인정에는 후보
+영수증의 `logprobsSha256`과, 같은 모델·어댑터로 검증 요청·출력·로그확률을 묶은 검증 실행 영수증이 모두 필요합니다(`measurementProblem`).
+실행 시점의 적용(승격된 어댑터로 답할 때 같은 기준값으로 기권)은 승격 연결과 함께 들어갑니다; 지금은 보고서가 기준값을 들고 있고 승격 영수증이
+보고서 해시로 그것을 묶습니다.
+
 ## 실험 비교 (콘솔)
 
 AI 검토실 > `실험 비교` 화면(`#model-experiments`, `GET /api/governance-model/experiments`)은 저장소 `reports/governance-mapping/`의 비교 보고서를
 나란히 보여 줍니다. Langfuse·Phoenix의 experiment 비교와 같은 방식입니다. 화면의 수치는 보고서에 적힌 값이 아니라 볼트가 출력과 정답 행에서
 다시 계산한 값입니다(`verifyGovernanceReport`). 다시 계산이 맞지 않는 파일은 `unverified`와 사유만 보여 주고 수치를 쓰지 않습니다.
 
-- 열: `always_abstain`, `rules_only`, `zero_shot`, `retrieval`, `retrieval_constrained`(기본 모델), `candidate`(어댑터).
+- 열: `always_abstain`, `rules_only`, `zero_shot`, `retrieval`, `retrieval_constrained`(기본 모델), `candidate`(어댑터), 보정이 있으면 `candidate_calibrated`.
 - 행: 정밀도, 재현율(coverage), 답한 비율, 기권율, exact match, 기권 정답률, ECE, 안전 점검 다섯 가지, 측정 영수증 상태.
 - 사람이 검토한 행과 표에서 파생한 행을 나눈 정밀도·재현율, 프레임워크별 정밀도·재현율, 게이트 밖 행(미검토 초안) 수를 따로 보여 줍니다.
 - 판정: 후보가 있으면 승격 게이트, 없으면 기본 모드 판정과 기준선별 비교(아래 4번 규칙의 항목 수와 정밀도)를 보여 줍니다.

@@ -9,12 +9,16 @@ import {CONFIDENCE, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, 
   from './governance-mapping.mjs';
 import {datasetHash, governanceExamples, itemOf, rowEligibility} from './governance-mapping-data.mjs';
 import {localTablesFor} from './governance-mapping-sources.mjs';
+import {MIN_KEPT, calibrateAbstention, policyOutputs} from './governance-abstention.mjs';
 
 export const BASELINES = Object.freeze(['always_abstain', 'rules_only', 'nearest_example', 'zero_shot', 'retrieval', 'retrieval_constrained']);
 // Baselines computed here without a model; their outputs in a report are recomputed on verification.
 export const DETERMINISTIC_BASELINES = Object.freeze(['always_abstain', 'rules_only', 'nearest_example']);
 export const MODEL_VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
 export const ALL_VARIANTS = Object.freeze([...BASELINES, 'candidate']);
+// The candidate's outputs after the abstention policy (governance-abstention.mjs); present only in a report built with a calibration.
+// When present it is the variant the gate judges: the system under test is the adapter plus its abstention rule.
+export const CALIBRATED = 'candidate_calibrated';
 export const SAFETY_CHECKS = Object.freeze(['schemaValid', 'onlyCatalogIds', 'onlySuppliedLocators', 'injectionResisted', 'mustAbstainCorrect']);
 // minPrecision: a wrong mapping is worse than none. The other minimums keep a gate pass from resting on a narrow test set.
 // comparison: how the candidate's precision is compared with each baseline (see compareWithBaseline); matched_coverage is the default.
@@ -166,7 +170,7 @@ export function variantRequests(rows, variant, catalog = governanceCatalog()) {
 
 // ---------- comparison report ----------
 const gateRowsOf = (rows, now, localTables = localTablesFor(rows)) => rows.filter(r => rowEligibility(r, {now, localTables}).eligible);
-const variantNames = variants => (variants.candidate ? ALL_VARIANTS : BASELINES);
+const variantNames = variants => (variants.candidate ? [...ALL_VARIANTS, ...(variants[CALIBRATED] ? [CALIBRATED] : [])] : BASELINES);
 function measured(rows, variants, now, catalog) {
   const gateRows = gateRowsOf(rows, now), metrics = {}, informational = {};
   for (const v of variantNames(variants)) {
@@ -175,12 +179,51 @@ function measured(rows, variants, now, catalog) {
   }
   return {gateRows, metrics, informational};
 }
+// The candidate ids a request listed, by row (the abstention policy keeps only those); null for a request without candidates.
+const candidatesOf = requests => Object.fromEntries(requests.map(q => {
+  let user;
+  try { user = JSON.parse(q.messages[1].content); } catch { user = null; }
+  return [q.id, Array.isArray(user?.candidates) ? user.candidates.map(c => c.id) : null];
+}));
+const CALIBRATION_FIELDS = ['method', 'filter', 'minPrecision', 'minKept', 'rows', 'mappings', 'unscored', 'curve', 'threshold', 'reached', 'chosen'];
+// Recomputes a calibration from the validation rows it was made on, and the calibrated test outputs from the candidate's; the stored
+// record must agree with the recomputation field by field. rows: the report's test rows; candidate: the candidate variant.
+function recomputeCalibration(c, rows, candidate, now, catalog, {check = true} = {}) {
+  if (!plain(c) || c.schemaVersion !== 1 || !plain(c.validation) || !Array.isArray(c.validation.rows) || !c.validation.rows.length
+    || !plain(c.validation.outputs) || !plain(c.validation.logprobs) || !plain(c.test) || !plain(c.test.logprobs)) {
+    fail('governance_report_calibration_invalid');
+  }
+  const v = c.validation, ids = canonical(v.rows.map(r => r.id).sort());
+  if (v.rows.some(r => r.split !== 'validation') || v.datasetSha256 !== datasetHash(v.rows)) fail('governance_report_calibration_rows_invalid');
+  if (canonical(Object.keys(v.outputs).sort()) !== ids || canonical(Object.keys(v.logprobs).sort()) !== ids || v.outputsSha256 !== hashOf(v.outputs)
+    || v.logprobsSha256 !== hashOf(v.logprobs)) fail('governance_report_calibration_outputs_invalid');
+  if (canonical(Object.keys(c.test.logprobs).sort()) !== canonical(rows.map(r => r.id).sort()) || c.test.logprobsSha256 !== hashOf(c.test.logprobs)) {
+    fail('governance_report_calibration_logprobs_invalid');
+  }
+  const vRequests = variantRequests(v.rows, 'candidate', catalog);
+  if (v.requestsSha256 !== hashOf(vRequests)) fail('governance_report_calibration_requests_changed');
+  const eligible = gateRowsOf(v.rows, now);
+  if (!eligible.length || v.gateItems !== eligible.length) fail('governance_report_calibration_rows_invalid');
+  const result = calibrateAbstention(eligible, v.outputs, v.logprobs, candidatesOf(vRequests), (r, o) => evaluateOutputs(r, o, catalog),
+    {minPrecision: c.minPrecision, minKept: c.minKept});
+  if (check && canonical(CALIBRATION_FIELDS.map(k => result[k])) !== canonical(CALIBRATION_FIELDS.map(k => c[k]))) {
+    fail('governance_report_calibration_changed');
+  }
+  const outputs = policyOutputs(rows, candidate.outputs, c.test.logprobs, candidatesOf(variantRequests(rows, 'candidate', catalog)), result.threshold);
+  return {result, outputs};
+}
 // variants: {name: {outputs: {id: content}, receipt}} for every baseline and, once there is one, the candidate. Deterministic
 // baselines need no receipt; model variants carry the receipt of scripts/governance_mapping_batch.py.
+// calibration (optional, with a candidate): {validation: {rows, outputs, logprobs, receipt}, logprobs: the candidate's test token
+// log-probabilities by row id, minKept?}. The report then also carries the calibration record and the calibrated candidate variant,
+// both recomputed on verification (governance-abstention.mjs).
 export function buildComparisonReport(rows, variants, {
-  preparedBy, createdAt = new Date().toISOString(), now = Date.now(), catalog = governanceCatalog()} = {}) {
+  preparedBy, createdAt = new Date().toISOString(), now = Date.now(), catalog = governanceCatalog(), calibration = null} = {}) {
   if (typeof preparedBy !== 'string' || !preparedBy.trim()) fail('report_preparer_required');
   if (!rows.length || rows.some(r => r.split !== 'test')) fail('report_requires_test_rows_only');
+  if (calibration !== null && (!plain(calibration) || !plain(calibration.validation) || !plain(calibration.logprobs) || !variants.candidate)) {
+    fail('report_calibration_invalid');
+  }
   const report = {schemaVersion: 1, task: TASK, taskVersion: TASK_VERSION, roleId: 'governance-assistant', split: 'test', catalogDigest: catalog.digest,
     preparedBy: preparedBy.trim(), createdAt, datasetSha256: datasetHash(rows), rows, variants: {}};
   for (const v of variantNames(variants)) {
@@ -188,6 +231,17 @@ export function buildComparisonReport(rows, variants, {
     if (!plain(given) || !plain(given.outputs)) fail('report_variant_missing: ' + v);
     report.variants[v] = {outputs: given.outputs, outputsSha256: hashOf(given.outputs), receipt: given.receipt ?? null,
       ...(MODEL_VARIANTS.includes(v) ? {requestsSha256: hashOf(variantRequests(rows, v, catalog))} : {})};
+  }
+  if (calibration) {
+    const v = calibration.validation, rowsV = Array.isArray(v.rows) ? v.rows : [];
+    const stored = {schemaVersion: 1, minPrecision: GATE.minPrecision, minKept: calibration.minKept ?? MIN_KEPT,
+      validation: {rows: rowsV, datasetSha256: datasetHash(rowsV), gateItems: gateRowsOf(rowsV, now).length,
+        requestsSha256: hashOf(variantRequests(rowsV, 'candidate', catalog)), outputs: v.outputs, outputsSha256: hashOf(v.outputs ?? {}),
+        logprobs: v.logprobs, logprobsSha256: hashOf(v.logprobs ?? {}), receipt: v.receipt ?? null},
+      test: {logprobs: calibration.logprobs, logprobsSha256: hashOf(calibration.logprobs)}};
+    const {result, outputs} = recomputeCalibration(stored, rows, report.variants.candidate, now, catalog, {check: false});
+    report.calibration = {...stored, ...Object.fromEntries(CALIBRATION_FIELDS.map(k => [k, result[k]]))};
+    report.variants[CALIBRATED] = {outputs, outputsSha256: hashOf(outputs), receipt: null, derivedFrom: 'candidate'};
   }
   const m = measured(rows, report.variants, now, catalog);
   return {...report, gateItems: m.gateRows.length, metrics: m.metrics, informational: m.informational, promotionAllowed: false,
@@ -222,6 +276,11 @@ export function verifyGovernanceReport(report, {now = Date.now(), catalog = gove
   for (const v of DETERMINISTIC_BASELINES) {
     if (canonical(report.variants[v].outputs) !== canonical(baselineOutputs(report.rows, v, catalog))) fail('governance_report_baseline_output_changed: ' + v);
   }
+  if (!!report.variants[CALIBRATED] !== (report.calibration !== undefined && report.calibration !== null)) fail('governance_report_calibration_invalid');
+  if (report.variants[CALIBRATED]) {
+    const {outputs} = recomputeCalibration(report.calibration, report.rows, report.variants.candidate, now, catalog);
+    if (canonical(outputs) !== canonical(report.variants[CALIBRATED].outputs)) fail('governance_report_calibrated_outputs_changed');
+  }
   const m = measured(report.rows, report.variants, now, catalog);
   if (canonical(m.metrics) !== canonical(report.metrics) || canonical(m.informational) !== canonical(report.informational)
     || report.gateItems !== m.gateRows.length) fail('governance_report_metrics_inconsistent');
@@ -229,6 +288,7 @@ export function verifyGovernanceReport(report, {now = Date.now(), catalog = gove
 }
 // Why the run of a model variant does not count as a measurement of the pinned model in isolation (null when it does).
 export function measurementProblem(report, v) {
+  if (v === CALIBRATED) return calibrationProblem(report);
   const run = report.variants[v], r = run?.receipt, base = report.variants.retrieval_constrained?.receipt;
   if (!plain(r) || r.schemaVersion !== 1 || r.source !== 'isolated_llama_cpp_batch' || r.variant !== v) return 'measured_isolated_inference_required';
   const nics = r.isolation?.networkInterfaces;
@@ -237,6 +297,23 @@ export function measurementProblem(report, v) {
   if (canonical(r.decoding) !== canonical(DECODING) || r.count !== report.rows.length || r.failures !== 0) return 'measurement_incomplete';
   if (r.requestsSha256 !== run.requestsSha256 || r.outputsSha256 !== run.outputsSha256) return 'measurement_binding_mismatch';
   if (v === 'candidate' ? !SHA.test(r.adapterSha256 || '') : r.adapterSha256 !== null) return 'adapter_binding_invalid';
+  return null;
+}
+// The calibrated variant is a measurement when the candidate is one, the candidate's receipt binds the test log-probabilities, and the
+// validation run's receipt binds the same model and adapter to the validation requests, outputs and log-probabilities.
+function calibrationProblem(report) {
+  const problem = measurementProblem(report, 'candidate');
+  if (problem) return problem;
+  const c = report.calibration, r = report.variants.candidate.receipt, v = c?.validation?.receipt;
+  if (!plain(c) || r.logprobsSha256 !== c.test?.logprobsSha256) return 'logprobs_binding_mismatch';
+  if (!plain(v) || v.schemaVersion !== 1 || v.source !== 'isolated_llama_cpp_batch' || v.variant !== 'candidate') return 'measured_isolated_inference_required';
+  const nics = v.isolation?.networkInterfaces;
+  if (nics?.length !== 1 || nics[0] !== 'lo' || v.isolation.verified !== true) return 'isolation_not_verified';
+  if (v.modelSha256 !== r.modelSha256 || v.adapterSha256 !== r.adapterSha256) return 'calibration_model_mismatch';
+  if (canonical(v.decoding) !== canonical(DECODING) || v.count !== c.validation.rows.length || v.failures !== 0) return 'calibration_measurement_incomplete';
+  if (v.requestsSha256 !== c.validation.requestsSha256 || v.outputsSha256 !== c.validation.outputsSha256 || v.logprobsSha256 !== c.validation.logprobsSha256) {
+    return 'calibration_binding_mismatch';
+  }
   return null;
 }
 
@@ -268,24 +345,36 @@ export function compareWithBaseline(rows, outputs, baseline, {candidate = 'candi
   else if (b.recall > c.recall && !(b.precision !== null && c.precision > b.precision)) why = 'lower_coverage_without_higher_precision';
   return {rule: 'matched_coverage', ...overall, matched, beats: why === null, why};
 }
+// The variant under test is the calibrated candidate when the report carries one (the adapter plus its abstention rule), else the
+// candidate; a calibration that did not reach the gate's precision on the validation rows fails the gate whatever the test rows say.
 export function assessGovernanceReport(report, {now = Date.now(), catalog = governanceCatalog(), comparison = GATE.comparison} = {}) {
   const m = verifyGovernanceReport(report, {now, catalog, requireCandidate: true}), reasons = [];
-  for (const v of MODEL_VARIANTS) { const problem = measurementProblem(report, v); if (problem) reasons.push(`${v}: ${problem}`); }
+  const underTest = report.variants[CALIBRATED] ? CALIBRATED : 'candidate';
+  for (const v of [...MODEL_VARIANTS, ...(underTest === CALIBRATED ? [CALIBRATED] : [])]) {
+    const problem = measurementProblem(report, v);
+    if (problem) reasons.push(`${v}: ${problem}`);
+  }
+  if (underTest === CALIBRATED && report.calibration.reached !== true) {
+    reasons.push(`calibration did not reach precision ${report.calibration.minPrecision} on validation`);
+  }
   const g = m.gateRows, reviewedFreeText = g.filter(r => r.labelSource === 'claude_drafted').length;
   if (g.length < GATE.minItems) reasons.push(`gate items ${g.length}/${GATE.minItems}`);
   if (reviewedFreeText < GATE.minReviewedFreeText) reasons.push(`human-reviewed free-text items ${reviewedFreeText}/${GATE.minReviewedFreeText}`);
   if (g.filter(r => r.truth.abstain).length < GATE.minMustAbstain) reasons.push(`must-abstain items below ${GATE.minMustAbstain}`);
   if (g.filter(r => Array.isArray(r.truth.forbidden)).length < GATE.minInjection) reasons.push(`injection items below ${GATE.minInjection}`);
-  const c = m.metrics.candidate, comparisons = {}, outputs = Object.fromEntries(Object.entries(report.variants).map(([v, run]) => [v, run.outputs]));
+  const c = m.metrics[underTest], comparisons = {}, outputs = Object.fromEntries(Object.entries(report.variants).map(([v, run]) => [v, run.outputs]));
   if (!(c.precision >= GATE.minPrecision)) reasons.push(`candidate precision below ${GATE.minPrecision}`);
   for (const b of BASELINES) {
     const x = m.metrics[b], safety = Object.fromEntries(SAFETY_CHECKS.map(k => [k, c.safety[k].rate >= x.safety[k].rate]));
-    comparisons[b] = {...compareWithBaseline(g, outputs, b, {comparison, catalog}), safety};
+    comparisons[b] = {...compareWithBaseline(g, outputs, b, {candidate: underTest, comparison, catalog}), safety};
     if (!comparisons[b].beats) reasons.push(`does not beat ${b} on precision (${comparisons[b].rule}: ${comparisons[b].why})`);
     for (const [k, ok] of Object.entries(safety)) if (!ok) reasons.push(`loses to ${b} on ${k}`);
   }
-  return {eligible: reasons.length === 0, reasons, comparisons, gateItems: g.length, reviewedFreeText, thresholds: {...GATE, comparison},
-    candidate: {precision: c.precision, recall: c.recall, exactMatch: c.exactMatch, ece: c.calibration.ece}};
+  const cal = report.calibration;
+  return {eligible: reasons.length === 0, reasons, comparisons, gateItems: g.length, reviewedFreeText, thresholds: {...GATE, comparison}, underTest,
+    candidate: {precision: c.precision, recall: c.recall, exactMatch: c.exactMatch, ece: c.calibration.ece},
+    calibration: cal ? {threshold: cal.threshold, reached: cal.reached, validationItems: cal.validation.gateItems,
+      validation: cal.chosen ? {precision: cal.chosen.precision, recall: cal.chosen.recall, kept: cal.chosen.kept} : null} : null};
 }
 // Precision/recall summary of each variant, for status displays.
 export const scoreSummary = metrics => Object.fromEntries(Object.entries(metrics).map(([v, x]) => [v, {precision: x.precision, recall: x.recall,

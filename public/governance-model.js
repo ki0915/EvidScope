@@ -201,6 +201,13 @@
       const x = data[v]?.byFramework?.[f]; return x ? `${pct(x.precision)} / ${pct(x.recall)}` : '—';
     })]));
   }
+  // The abstention calibration a report carries (candidate_calibrated): the id-probability threshold chosen on validation rows.
+  function calibrationText(c) {
+    const p = typeof c.thresholdProbability === 'number' ? `${(c.thresholdProbability * 100).toFixed(1)}%` : '없음';
+    const chosen = c.chosen
+      ? `검증 ${c.validationItems}행에서 정밀도 ${pct(c.chosen.precision)} · 재현율 ${pct(c.chosen.recall)} · 매핑 ${c.chosen.kept}개 유지` : '검증 행에 매핑 없음';
+    return `ID 확률 ${p} 이상이고 요청 후보 안에 있는 매핑만 유지 (${c.reached ? '검증에서 기준 도달' : `검증에서 정밀도 ${pct(c.minPrecision)} 미달`}; ${chosen})`;
+  }
   function reportCard(report) {
     const panel = card(`${report.file} · ${report.createdAt ? date(report.createdAt) : '시각 없음'}`, report.status === 'verified'
       ? `준비 ${report.preparedBy} · 데이터셋 ${short(report.datasetSha256)} · 파일 ${short(report.sha256)}` : '검증하지 못한 보고서입니다. 수치를 보여 주지 않습니다.');
@@ -212,6 +219,7 @@
         + ` · 게이트 밖(미검토 초안 등) ${report.rowsByBasis?.not_eligible ?? '—'}`],
       ['판정', `${v.kind === 'base_mode' ? '기본 모드' : '승격 게이트'}: ${v.eligible ? '통과' : '불통과'}${list(v.reasons).length ? ` — ${list(v.reasons).join('; ')}` : ''}`],
       ['정밀도 비교 규칙', v.thresholds?.comparison === 'strict' ? '전체 행 엄격 비교' : '같은 항목 비교(matched coverage, 기본)'],
+      ...(report.calibration ? [['보류 보정', calibrationText(report.calibration)]] : []),
     ]));
     panel.append(comparisonTable(report), el('h3', '', '사람 검토 행 / 파생 행'), basisTable(report), el('h3', '', '프레임워크별 정밀도 / 재현율'), frameworkTable(report));
     if (v.comparisons) {

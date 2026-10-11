@@ -9,7 +9,8 @@ import {fileURLToPath} from 'node:url';
 import {governanceCatalog} from './governance-mapping.mjs';
 import {rowEligibility} from './governance-mapping-data.mjs';
 import {localTablesFor} from './governance-mapping-sources.mjs';
-import {ALL_VARIANTS, MODEL_VARIANTS, SAFETY_CHECKS, assessGovernanceReport, evaluateOutputs, measurementProblem, scoreItem,
+import {calibrationSummary} from './governance-abstention.mjs';
+import {ALL_VARIANTS, CALIBRATED, MODEL_VARIANTS, SAFETY_CHECKS, assessGovernanceReport, evaluateOutputs, measurementProblem, scoreItem,
   verifyGovernanceReport} from './governance-mapping-eval.mjs';
 import {assessBaselineMode} from './governance-model.mjs';
 
@@ -17,6 +18,8 @@ export const REPORTS_DIR = fileURLToPath(new URL('../reports/governance-mapping/
 const LIMITS = Object.freeze({files: 30, bytes: 8 * 1024 * 1024, rows: 400});
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const ratio = (a, b) => (b ? a / b : null);
+// The receipt a variant was measured under: the calibrated candidate is the candidate's run plus its abstention rule.
+const receiptOf = (report, v) => (v === CALIBRATED ? report.variants.candidate : report.variants[v])?.receipt ?? null;
 
 // Numbers shown for one variant on one set of rows.
 export const variantNumbers = x => ({items: x.items, tp: x.tp, fp: x.fp, fn: x.fn, precision: x.precision, recall: x.recall, coverage: x.coverage,
@@ -35,8 +38,8 @@ function byFramework(metrics, catalog) {
 // One verified report → the comparison the console shows. shakedownAdapters: adapter hashes of recorded shakedown runs.
 export function experimentOf(report, {now = Date.now(), catalog = governanceCatalog(), shakedownAdapters = new Set()} = {}) {
   const m = verifyGovernanceReport(report, {now, catalog, requireCandidate: false});
-  const variants = ALL_VARIANTS.filter(v => report.variants[v]), adapter = report.variants.candidate?.receipt?.adapterSha256 ?? null;
-  const shakedown = !!adapter && shakedownAdapters.has(adapter), shown = variants.filter(v => !(shakedown && v === 'candidate'));
+  const variants = [...ALL_VARIANTS, CALIBRATED].filter(v => report.variants[v]), adapter = report.variants.candidate?.receipt?.adapterSha256 ?? null;
+  const shakedown = !!adapter && shakedownAdapters.has(adapter), shown = variants.filter(v => !(shakedown && (v === 'candidate' || v === CALIBRATED)));
   const localTables = localTablesFor(report.rows);
   const basis = new Map(report.rows.map(r => { const e = rowEligibility(r, {now, localTables}); return [r.id, e.eligible ? e.basis : 'not_eligible']; }));
   const subset = b => m.gateRows.filter(r => basis.get(r.id) === b);
@@ -46,8 +49,8 @@ export function experimentOf(report, {now = Date.now(), catalog = governanceCata
     perVariant[v] = {gate: variantNumbers(m.metrics[v]), byBasis: Object.fromEntries(['human_reviewed', 'derived'].map(b => [b,
       variantNumbers(evaluateOutputs(subset(b), outputs, catalog))])), byFramework: byFramework(m.metrics[v], catalog),
     allRowsInformational: variantNumbers(m.informational[v]),
-    measurement: MODEL_VARIANTS.includes(v) ? {problem: measurementProblem(report, v), operator: report.variants[v].receipt?.operator ?? null,
-      adapterSha256: report.variants[v].receipt?.adapterSha256 ?? null} : {problem: null, deterministic: true}};
+    measurement: MODEL_VARIANTS.includes(v) || v === CALIBRATED ? {problem: measurementProblem(report, v), operator: receiptOf(report, v)?.operator ?? null,
+      adapterSha256: receiptOf(report, v)?.adapterSha256 ?? null} : {problem: null, deterministic: true}};
   }
   let verdict;
   try {
@@ -69,7 +72,7 @@ export function experimentOf(report, {now = Date.now(), catalog = governanceCata
     rowsByBasis: {human_reviewed: subset('human_reviewed').length, derived: subset('derived').length,
       not_eligible: report.rows.filter(r => basis.get(r.id) === 'not_eligible').length},
     variants: shown, candidateAdapterSha256: adapter, shakedown, variantsData: perVariant, verdict, rows, rowsTruncated: report.rows.length > LIMITS.rows,
-    qualityClaimAllowed: false};
+    calibration: calibrationSummary(report), qualityClaimAllowed: false};
 }
 
 let cache = new Map();

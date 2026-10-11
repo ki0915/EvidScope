@@ -19,6 +19,9 @@ import urllib.error
 import urllib.request
 
 DECODING_KEYS = ("temperature", "top_p", "top_k", "seed", "max_tokens")
+# Token log-probabilities are kept as integers in micro-nats: Python's repr and JavaScript's JSON.stringify disagree on floats, and the
+# receipt and the report (src/governance-mapping-eval.mjs) hash the same canonical JSON.
+LOGPROB_SCALE = 1000000
 REQUEST_KEYS = {"id", "variant", "messages", "response_format", "adapter", *DECODING_KEYS}
 
 
@@ -77,6 +80,21 @@ def read_requests(path):
     return requests, decoding, requests_hash
 
 
+def token_logprobs(choice):
+    """[[token text, logprob in micro-nats], ...] for the reply's tokens, as llama-server's OpenAI-style logprobs.content reports them.
+    A reply without them when they were asked for is a failed measurement of that item, not an output without scores."""
+    content = (choice.get("logprobs") or {}).get("content")
+    if not isinstance(content, list):
+        raise ValueError("logprobs_missing")
+    out = []
+    for entry in content:
+        if not isinstance(entry, dict) or not isinstance(entry.get("token"), str) or isinstance(entry.get("logprob"), bool) \
+                or not isinstance(entry.get("logprob"), (int, float)):
+            raise ValueError("logprobs_invalid")
+        out.append([entry["token"], int(round(float(entry["logprob"]) * LOGPROB_SCALE))])
+    return out
+
+
 def http_json(url, payload=None, timeout=600):
     data = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(url, data=data, method="GET" if payload is None else "POST", headers={"content-type": "application/json"})
@@ -111,8 +129,8 @@ def run(args):
     wants_adapter = {item["adapter"] for item in requests}
     if wants_adapter != {bool(args.lora)}:
         raise ValueError("adapter_flag_mismatch")
-    for path in (args.out, args.receipt):
-        if Path(path).exists():
+    for path in (args.out, args.receipt, args.logprobs):
+        if path and Path(path).exists():
             raise FileExistsError(path)
     model_sha = sha256_file(args.model)
     if args.expected_model_sha256 and model_sha != args.expected_model_sha256:
@@ -126,7 +144,7 @@ def run(args):
         command += ["--lora", args.lora, "--lora-init-without-apply"]
     started = datetime.now(timezone.utc).isoformat()
     outputs, failures, usage = {}, 0, {"promptTokens": 0, "completionTokens": 0, "maxPromptTokens": 0}
-    reasons, truncated = {}, 0
+    reasons, truncated, logprobs = {}, 0, {}
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         base = f"http://127.0.0.1:{port}"
@@ -136,6 +154,11 @@ def run(args):
             body = {"messages": item["messages"], "response_format": item["response_format"], "stream": False, "cache_prompt": False, **decoding}
             if item["adapter"]:
                 body["lora"] = [{"id": 0, "scale": 1.0}]
+            if args.logprobs:
+                # The chosen token's raw log-probability (softmax before the grammar and the sampler); the abstention calibration
+                # (src/governance-abstention.mjs) scores each requirement id by the tokens that spell it.
+                body["logprobs"] = True
+                body["top_logprobs"] = 1
             asked = time.monotonic()
             try:
                 response = http_json(base + "/v1/chat/completions", body, timeout=args.request_timeout)
@@ -146,6 +169,8 @@ def run(args):
                 # A reply cut at max_tokens is the model's answer for this item: it is kept as given and scored (it will not
                 # parse), not dropped as an infrastructure failure.
                 truncated += choice.get("finish_reason") == "length"
+                if args.logprobs:
+                    logprobs[item["id"]] = token_logprobs(choice)
                 outputs[item["id"]] = content
                 tokens = response.get("usage", {})
                 usage["promptTokens"] += int(tokens.get("prompt_tokens", 0))
@@ -166,6 +191,7 @@ def run(args):
             process.kill()
             process.wait()
     outputs_text = canonical(outputs)
+    logprobs_text = canonical(logprobs) if args.logprobs else None
     build = props.get("build_info") if isinstance(props, dict) else None
     receipt = {"schemaVersion": 1, "source": "isolated_llama_cpp_batch", "variant": variant, "operator": args.operator,
                "modelFile": Path(args.model).name, "modelSha256": model_sha, "adapterFile": Path(args.lora).name if args.lora else None,
@@ -174,9 +200,14 @@ def run(args):
                "isolation": {"networkInterfaces": interfaces, "verified": interfaces == ["lo"]},
                "decoding": decoding, "requestsSha256": requests_hash, "outputsSha256": hashlib.sha256(outputs_text.encode("utf-8")).hexdigest(),
                "count": len(requests), "failures": failures, "failureReasons": reasons, "truncated": truncated, "pauseRatio": args.pause_ratio,
-               "usage": usage, "startedAt": started, "finishedAt": datetime.now(timezone.utc).isoformat()}
+               "usage": usage, "startedAt": started, "finishedAt": datetime.now(timezone.utc).isoformat(),
+               "logprobsSha256": hashlib.sha256(logprobs_text.encode("utf-8")).hexdigest() if args.logprobs else None,
+               "logprobs": {"file": Path(args.logprobs).name, "topLogprobs": 1, "scale": LOGPROB_SCALE} if args.logprobs else None}
     with open(args.out, "x", encoding="utf-8") as stream:
         stream.write(outputs_text + "\n")
+    if args.logprobs:
+        with open(args.logprobs, "x", encoding="utf-8") as stream:
+            stream.write(logprobs_text + "\n")
     with open(args.receipt, "x", encoding="utf-8") as stream:
         stream.write(json.dumps(receipt, ensure_ascii=False, indent=1) + "\n")
     return receipt
@@ -200,6 +231,7 @@ def main(argv=None):
     parser.add_argument("--start-timeout", type=int, default=600)
     parser.add_argument("--request-timeout", type=int, default=120)
     parser.add_argument("--pause-ratio", type=float, default=0.5)
+    parser.add_argument("--logprobs", default="", help="also write the reply tokens' log-probabilities to this file (abstention calibration)")
     args = parser.parse_args(argv)
     if not 0 <= args.pause_ratio <= 4:
         parser.error("--pause-ratio must be between 0 and 4")
