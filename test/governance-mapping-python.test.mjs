@@ -232,7 +232,7 @@ print(json.dumps(out))
   assert.deepEqual(out.stopAtStart, [0, [], [], summary({maxTemperatureC: 76})]);
 });
 
-test('trainer: thermal flags are range-checked, the helper is bound into the checkpoint identity and the step callback paces after the rest', () => {
+test('trainer: thermal flags are range-checked, the helper is bound into the checkpoint identity and every micro-batch paces after its rest', () => {
   const f = fixture(), file = join(f.dir, 'train.jsonl');
   writeFileSync(file, '');
   for (const [flags, message] of [[['--thermal-trigger-c', '75'], /target < trigger <= 74/], [['--thermal-target-c', '70'], /target < trigger <= 74/],
@@ -278,10 +278,18 @@ print(json.dumps({"identity": t.identity_for(args, Path(sys.argv[2])), "recipe":
   const flag = src.indexOf('stop = {"requested": False}'), pacerAt = src.indexOf('pacer = ThermalPacer(');
   assert.ok(flag > 0 && flag < pacerAt && src.slice(pacerAt, src.indexOf('\n\n', pacerAt)).includes('should_stop=lambda: stop["requested"]'));
   assert.ok(src.includes('signal.signal(signal.SIGTERM, lambda *_: stop.update(requested=True))'));
+  // Every micro-batch rests, then paces by temperature (on_substep_end for the first ones, on_step_end for the last); the optimizer
+  // step then honours a stop request.
+  const restFn = src.slice(src.indexOf('def rest(self, step):'), src.indexOf('def on_substep_end'));
+  const sleep = restFn.indexOf('* args.pause_ratio)'), pace = restFn.indexOf('pacer.pace(step)');
+  const mark = restFn.indexOf('self.burst_started = time.monotonic()');
+  assert.ok(sleep > 0 && sleep < pace && pace < mark, 'rest sleeps, then paces, then restarts the burst clock');
+  const substep = src.slice(src.indexOf('def on_substep_end'), src.indexOf('def on_step_end'));
+  assert.ok(substep.includes('self.rest(state.global_step)'));
   const callback = src.slice(src.indexOf('def on_step_end'), src.indexOf('def on_save'));
-  const rest = callback.indexOf('* args.pause_ratio)'), pace = callback.indexOf('pacer.pace(state.global_step)');
-  const stop = callback.indexOf('if stop["requested"]:');
-  assert.ok(rest > 0 && rest < pace && pace < stop, 'the step callback rests, then paces by temperature, then honours a stop request');
+  const rest = callback.indexOf('self.rest(state.global_step)'), stop = callback.indexOf('if stop["requested"]:');
+  assert.ok(rest > 0 && rest < stop, 'the step callback rests and paces, then honours a stop request');
+  assert.ok(src.slice(src.indexOf('def on_step_begin'), src.indexOf('def rest(self, step):')).includes('self.burst_started = time.monotonic()'));
   assert.match(src, /"totalSeconds": round\(time\.monotonic\(\) - started, 1\),\s*"thermalPacing": pacer\.summary\(\)\}/);
 });
 

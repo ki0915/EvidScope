@@ -276,20 +276,31 @@ def train(args, rows):
     signal.signal(signal.SIGINT, lambda *_: stop.update(requested=True))
 
     class Checkpoints(TrainerCallback):
-        step_started = None
+        burst_started = None
 
         def on_step_begin(self, arguments, state, control, **_):
-            self.step_started = time.monotonic()
+            self.burst_started = time.monotonic()
+            return control
+
+        def rest(self, step):
+            # Rest the GPU after each micro-batch in proportion to its compute time (operator's choice, 2026-10-10: keep the card
+            # cool rather than finish fastest), then, if it is still hot, cool in place rather than be stopped by the external 75 C
+            # guard (ThermalPacer). Resting once per optimizer step let 8 micro-batches (~14 s at full power) heat the card from
+            # ~62 C to 75 C and cool it again before the pacer read it (pilot 11, 2026-10-12: no wait, then a heat stop); per
+            # micro-batch the same total rest keeps the card near its average and the pacer reads it every ~2 s. Neither changes
+            # what is learned.
+            if self.burst_started is not None and args.pause_ratio > 0:
+                time.sleep((time.monotonic() - self.burst_started) * args.pause_ratio)
+            pacer.pace(step)
+            self.burst_started = time.monotonic()
+
+        def on_substep_end(self, arguments, state, control, **_):
+            self.rest(state.global_step)
             return control
 
         def on_step_end(self, arguments, state, control, **_):
             print(json.dumps({"optimizerStep": state.global_step, "cudaPeakAllocatedMiB": round(torch.cuda.max_memory_allocated() / 1048576)}), flush=True)
-            # Rest the GPU after each optimizer step in proportion to the step's time (operator's choice, 2026-10-10: keep the
-            # card cool rather than finish fastest). The pause does not change what is learned.
-            if self.step_started is not None and args.pause_ratio > 0:
-                time.sleep((time.monotonic() - self.step_started) * args.pause_ratio)
-            # Then, if the GPU is still hot, cool in place rather than be stopped by the external 75 C guard (ThermalPacer).
-            pacer.pace(state.global_step)
+            self.rest(state.global_step)
             if stop["requested"]:
                 control.should_save = True
                 control.should_training_stop = True
