@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
+import {createHash} from 'node:crypto';
 import {initialize} from '../scripts/init.mjs';
 import {createService} from '../src/service.mjs';
 import {runAssistance} from '../src/assistance-runner.mjs';
@@ -180,6 +181,12 @@ test('training launcher: offline, read-only container verified before start; sto
   }
   assert.ok(args.includes('--read-only') && args.includes(`EVIDSCOPE_DATASET_SHA256=${spec.datasetSha256}`));
   assert.equal(args.filter(a => a.startsWith('type=bind') && !a.endsWith(',readonly')).length, 1);
+  // The thermal helper reaches the governance container the way the other helpers do: bind-mounted read-only next to the trainer.
+  assert.ok(TRAINER_FILES.includes('public-qa-thermal.py'));
+  assert.ok(args.includes(`type=bind,source=${join(spec.scriptsDir, 'public-qa-thermal.py')},target=${CONTAINER.app}/public-qa-thermal.py,readonly`));
+  assert.equal(spec.trainerSha256['public-qa-thermal.py'], createHash('sha256').update(readFileSync('scripts/public-qa-thermal.py')).digest('hex'));
+  assert.ok(isolationProblems(inspected(spec, x => { x.Mounts = x.Mounts.filter(m => !m.Destination.endsWith('/public-qa-thermal.py')); return x; }), spec)
+    .includes('mount_set_unexpected'));
   assert.deepEqual(isolationProblems(inspected(spec), spec), []);
   assert.ok(isolationProblems(inspected(spec, x => { x.HostConfig.NetworkMode = 'bridge'; return x; }), spec).includes('network_not_none'));
   assert.ok(isolationProblems(inspected(spec, x => { x.Mounts[0].RW = true; return x; }), spec).includes(`mount_unexpected:${CONTAINER.base}`));

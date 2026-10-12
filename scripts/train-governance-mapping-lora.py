@@ -32,6 +32,8 @@ CONFIDENCE = {"low", "medium", "high"}
 RECIPE = {"rank": 8, "alpha": 16, "dropout": 0.05, "targetModules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
           "sequenceLength": 2048, "batchSize": 1, "gradientAccumulationSteps": 8, "epochs": 1, "learningRatePerMillion": 200, "warmupStepsPer1000": 30,
           "seed": 42, "saveSteps": 5}
+# In-loop thermal pacing defaults (owner's rule, 2026-10-12: GPU at or below 75 C, slower runs accepted). See ThermalPacer.
+THERMAL_PACING = {"triggerC": 70, "targetC": 65, "maxWaitSeconds": 300.0, "pollSeconds": 2.0}
 
 
 def load_helper(name, file_name):
@@ -39,6 +41,61 @@ def load_helper(name, file_name):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class ThermalPacer:
+    """Rests a hot GPU between optimizer steps so the external 75 C guard rarely has to stop the container.
+
+    Each external stop costs a new container and a ~3 minute base-model reload, so cooling in place is faster. Pacing is an
+    optimisation only: the supervisor's 75 C stop (src/training-resource-guard.mjs) stays the hard safety limit. An unreadable
+    sensor (one JSON warning) or a wait that reaches max_wait_seconds therefore never stops training here. Pacing only sleeps;
+    it does not change what is learned.
+    """
+
+    def __init__(self, read_temperature, trigger_c, target_c, max_wait_seconds, should_stop=lambda: False, poll_seconds=THERMAL_PACING["pollSeconds"],
+                 clock=time.monotonic, sleep=time.sleep, emit=lambda record: print(json.dumps(record), flush=True)):
+        self.read_temperature, self.trigger_c, self.target_c, self.max_wait_seconds = read_temperature, trigger_c, target_c, max_wait_seconds
+        self.should_stop, self.poll_seconds, self.clock, self.sleep, self.emit = should_stop, poll_seconds, clock, sleep, emit
+        self.waits, self.wait_seconds, self.max_temperature_c, self.deadline_hits, self.read_failures = 0, 0.0, None, 0, 0
+
+    def read(self):
+        try:
+            value = self.read_temperature()
+        except Exception as error:  # NVML missing or failing: no pacing for this step; the external guard still applies.
+            self.read_failures += 1
+            if self.read_failures == 1:
+                self.emit({"warning": "thermal_pacing_unavailable", "error": f"{type(error).__name__}: {error}"[:200]})
+            return None
+        if self.max_temperature_c is None or value > self.max_temperature_c:
+            self.max_temperature_c = value
+        return value
+
+    def pace(self, step=None):
+        """At or above trigger_c, sleep-poll until at or below target_c, a stop request, or max_wait_seconds; never raises."""
+        if self.max_wait_seconds <= 0:
+            return 0.0
+        temperature = self.read()
+        if temperature is None or temperature < self.trigger_c or self.should_stop():
+            return 0.0
+        started, first = self.clock(), temperature
+        while temperature is not None and temperature > self.target_c and not self.should_stop():
+            elapsed = self.clock() - started
+            if elapsed >= self.max_wait_seconds:
+                self.deadline_hits += 1
+                break
+            self.sleep(min(self.poll_seconds, self.max_wait_seconds - elapsed))
+            temperature = self.read()
+        waited = self.clock() - started
+        self.waits += 1
+        self.wait_seconds += waited
+        self.emit({"thermalWait": {"optimizerStep": step, "fromC": first, "toC": temperature, "seconds": round(waited, 1),
+                                   "reachedTarget": temperature is not None and temperature <= self.target_c}})
+        return waited
+
+    def summary(self):
+        return {"triggerC": self.trigger_c, "targetC": self.target_c, "maxWaitSeconds": self.max_wait_seconds, "waits": self.waits,
+                "waitSeconds": round(self.wait_seconds, 1), "maxTemperatureC": self.max_temperature_c, "deadlineHits": self.deadline_hits,
+                "readFailures": self.read_failures}
 
 
 def valid_target(text):
@@ -143,6 +200,7 @@ def identity_for(args, root):
     return {"task": TASK, "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
             "datasetSha256": sha256_file(args.data), "trainerSha256": sha256_file(here), "artifactHelperSha256": sha256_file(here.with_name("training_artifacts.py")),
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
+            "thermalHelperSha256": sha256_file(here.with_name("public-qa-thermal.py")),
             "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", ""), "gpuMemoryFractionPercent": round(args.gpu_memory_fraction * 100),
             "runMode": "shakedown" if args.shakedown else "candidate", **RECIPE}
 
@@ -180,6 +238,12 @@ def train(args, rows):
     output.mkdir(parents=True, exist_ok=True)
     collate = load_helper("governance_collate", "train-public-qa.py")
     kbit = load_helper("governance_kbit", "public-qa-kbit.py")
+    thermal = load_helper("governance_thermal", "public-qa-thermal.py")
+    stop = {"requested": False}
+    pacer = ThermalPacer(thermal.read_gpu_temperature, args.thermal_trigger_c, args.thermal_target_c, args.thermal_max_wait_seconds,
+                         should_stop=lambda: stop["requested"])
+    if args.thermal_max_wait_seconds > 0:
+        print(json.dumps({"thermalPacing": {**pacer.summary(), "startTemperatureC": pacer.read()}}), flush=True)
     import torch
     # The pinned image has no C compiler, and triton compiles a small driver module on first GPU use, so importing
     # bitsandbytes' optional triton kernels fails. 4-bit QLoRA uses bitsandbytes' CUDA library, not those kernels, so report
@@ -208,7 +272,6 @@ def train(args, rows):
     model = get_peft_model(model, LoraConfig(r=RECIPE["rank"], lora_alpha=RECIPE["alpha"], lora_dropout=RECIPE["dropout"], target_modules=RECIPE["targetModules"],
                                              bias="none", task_type="CAUSAL_LM"))
     model.config.use_cache = False
-    stop = {"requested": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.update(requested=True))
     signal.signal(signal.SIGINT, lambda *_: stop.update(requested=True))
 
@@ -225,6 +288,8 @@ def train(args, rows):
             # card cool rather than finish fastest). The pause does not change what is learned.
             if self.step_started is not None and args.pause_ratio > 0:
                 time.sleep((time.monotonic() - self.step_started) * args.pause_ratio)
+            # Then, if the GPU is still hot, cool in place rather than be stopped by the external 75 C guard (ThermalPacer).
+            pacer.pace(state.global_step)
             if stop["requested"]:
                 control.should_save = True
                 control.should_training_stop = True
@@ -246,6 +311,8 @@ def train(args, rows):
                                                     max_length=RECIPE["sequenceLength"]), callbacks=[Checkpoints()])
     result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint or None)
     if stop["requested"]:
+        # This container's pacing numbers, kept in its log: a resumed run's receipt covers only its last container.
+        print(json.dumps({"thermalPacing": pacer.summary(), "stoppedAtStep": trainer.state.global_step}), flush=True)
         raise SystemExit(75)
     trained = time.monotonic()
     collate.verify_finite_adapter(model, torch)
@@ -254,7 +321,8 @@ def train(args, rows):
     if any(path.name.startswith("model") and path.suffix == ".safetensors" for path in candidate.iterdir()):
         raise RuntimeError("merged_weights_forbidden")
     metrics = {**result.metrics, "cudaPeakAllocatedMiB": round(torch.cuda.max_memory_allocated() / 1048576)}
-    timing = {"loadSeconds": round(loaded - started, 1), "trainSeconds": round(trained - loaded, 1), "totalSeconds": round(time.monotonic() - started, 1)}
+    timing = {"loadSeconds": round(loaded - started, 1), "trainSeconds": round(trained - loaded, 1), "totalSeconds": round(time.monotonic() - started, 1),
+              "thermalPacing": pacer.summary()}
     receipt = {"schemaVersion": 2, "status": "shakedown_not_promotable" if args.shakedown else "trained_candidate", "identity": identity,
                "globalStep": trainer.state.global_step, "trainingMetrics": metrics, "timing": timing,
                "trainingRunCompleted": True, "heldOutTestUsedForTraining": False, "qualityClaimAllowed": False, "promotionAllowed": False,
@@ -277,9 +345,18 @@ def main(argv=None):
     parser.add_argument("--resume-from-checkpoint")
     parser.add_argument("--shakedown", action="store_true")
     parser.add_argument("--pause-ratio", type=float, default=0.5)
+    parser.add_argument("--thermal-trigger-c", type=int, default=THERMAL_PACING["triggerC"])
+    parser.add_argument("--thermal-target-c", type=int, default=THERMAL_PACING["targetC"])
+    parser.add_argument("--thermal-max-wait-seconds", type=float, default=THERMAL_PACING["maxWaitSeconds"])
     args = parser.parse_args(argv)
     if not 0 <= args.pause_ratio <= 4:
         parser.error("--pause-ratio must be between 0 and 4")
+    # The trigger stays below the external guard's 75 C stop; target < trigger gives hysteresis.
+    if not 40 <= args.thermal_target_c < args.thermal_trigger_c <= 74:
+        parser.error("--thermal-target-c and --thermal-trigger-c must satisfy 40 <= target < trigger <= 74")
+    # 0 turns pacing off (no sensor reads); the external guard is unchanged either way.
+    if not 0 <= args.thermal_max_wait_seconds <= 1800:
+        parser.error("--thermal-max-wait-seconds must be between 0 and 1800")
     rows, gate = admission(args.data, shakedown=args.shakedown)
     print(json.dumps(gate), flush=True)
     if not gate["admitted"]:

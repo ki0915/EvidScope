@@ -7,7 +7,10 @@ import {execFileSync, spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {isAbsolute, join, resolve} from 'node:path';
 
-export const TRAINER_FILES = Object.freeze(['train-governance-mapping-lora.py', 'training_artifacts.py', 'train-public-qa.py', 'public-qa-kbit.py']);
+// Each file is bind-mounted read-only next to the trainer, which loads the helpers by file name (load_helper) and records their
+// digests in its checkpoint identity. public-qa-thermal.py reads the GPU temperature for in-loop thermal pacing.
+export const TRAINER_FILES = Object.freeze(['train-governance-mapping-lora.py', 'training_artifacts.py', 'train-public-qa.py', 'public-qa-kbit.py',
+  'public-qa-thermal.py']);
 export const CONTAINER = Object.freeze({user: '10001:10001', memory: 12 * 1024 ** 3, pids: 256, nanoCpus: 2e9, app: '/opt/evidscope',
   base: '/models/base', data: '/dataset/train.jsonl', checkpoints: '/checkpoints', podinfo: '/etc/podinfo'});
 const IMAGE = /^(?:[a-zA-Z0-9./:_-]+@)?sha256:[a-f0-9]{64}$/;

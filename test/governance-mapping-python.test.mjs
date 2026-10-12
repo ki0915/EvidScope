@@ -171,6 +171,116 @@ test('trainer: triton is reported unavailable before transformers or peft import
   assert.ok(off < src.indexOf('from peft import'));
 });
 
+test('trainer: thermal pacing cools in place, is bounded per step, honours a stop request and never stops training itself', () => {
+  const code = `
+import importlib.util, json
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+class Clock:
+    def __init__(self): self.now = 0.0; self.sleeps = []
+    def monotonic(self): return self.now
+    def sleep(self, seconds): self.sleeps.append(seconds); self.now += seconds
+def pacer(temps, max_wait=300.0, stop_after=None):
+    clock, logs, values = Clock(), [], iter(temps)
+    def read():
+        value = next(values)
+        if isinstance(value, Exception): raise value
+        return value
+    stop = (lambda: clock.now >= stop_after) if stop_after is not None else (lambda: False)
+    return t.ThermalPacer(read, 70, 65, max_wait, should_stop=stop, clock=clock.monotonic, sleep=clock.sleep, emit=logs.append), clock, logs
+out = {}
+p, c, logs = pacer([69]); out["cool"] = [p.pace(1), c.sleeps, logs, p.summary()]
+p, c, logs = pacer([72, 70, 67, 65]); out["hot"] = [p.pace(2), c.sleeps, logs, p.summary()]
+p, c, logs = pacer([74] * 50, max_wait=5.0); out["deadline"] = [p.pace(3), c.sleeps, logs, p.summary()]
+p, c, logs = pacer([73] * 50, stop_after=4); out["stop"] = [p.pace(4), c.sleeps, p.summary()]
+p, c, logs = pacer([RuntimeError("thermal_nvml_init_failed:9"), OSError("libnvidia-ml.so.1: cannot open"), 71, RuntimeError("x")])
+out["unreadable"] = [p.pace(5), p.pace(6), p.pace(7), c.sleeps, logs, p.summary()]
+p, c, logs = pacer([], max_wait=0); out["off"] = [p.pace(8), logs, p.summary()]
+p, c, logs = pacer([76], stop_after=0); out["stopAtStart"] = [p.pace(9), c.sleeps, logs, p.summary()]
+print(json.dumps(out))
+`;
+  const r = run(['-c', code]);
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout.trim().split('\n').at(-1));
+  const summary = extra => ({triggerC: 70, targetC: 65, maxWaitSeconds: 300, waits: 0, waitSeconds: 0, maxTemperatureC: null, deadlineHits: 0,
+    readFailures: 0, ...extra});
+  // Below the trigger: no wait, but the reading still counts toward the maximum seen.
+  assert.deepEqual(out.cool, [0, [], [], summary({maxTemperatureC: 69})]);
+  // At or above the trigger: sleep-poll down to the target (hysteresis), one log line per wait.
+  assert.deepEqual(out.hot, [6, [2, 2, 2], [{thermalWait: {optimizerStep: 2, fromC: 72, toC: 65, seconds: 6, reachedTarget: true}}],
+    summary({waits: 1, waitSeconds: 6, maxTemperatureC: 72})]);
+  // A GPU that does not cool is waited on for at most maxWaitSeconds, then training continues (the external 75 C guard is the hard stop).
+  assert.deepEqual(out.deadline, [5, [2, 2, 1], [{thermalWait: {optimizerStep: 3, fromC: 74, toC: 74, seconds: 5, reachedTarget: false}}],
+    summary({maxWaitSeconds: 5, waits: 1, waitSeconds: 5, maxTemperatureC: 74, deadlineHits: 1})]);
+  // A stop request (SIGTERM from the guard) ends the wait so the checkpoint is saved within docker stop's grace period.
+  assert.deepEqual(out.stop, [4, [2, 2], summary({waits: 1, waitSeconds: 4, maxTemperatureC: 73})]);
+  // An unreadable sensor logs one warning and skips pacing; it never raises.
+  const [first, second, third, sleeps, logs, stats] = out.unreadable;
+  assert.deepEqual([first, second, third, sleeps], [0, 0, 2, [2]]);
+  assert.deepEqual(logs.map(l => Object.keys(l)[0]), ['warning', 'thermalWait']);
+  assert.equal(logs[0].warning, 'thermal_pacing_unavailable');
+  assert.match(logs[0].error, /thermal_nvml_init_failed:9/);
+  assert.deepEqual(logs[1].thermalWait, {optimizerStep: 7, fromC: 71, toC: null, seconds: 2, reachedTarget: false});
+  assert.deepEqual(stats, summary({waits: 1, waitSeconds: 2, maxTemperatureC: 71, readFailures: 3}));
+  // --thermal-max-wait-seconds 0 turns pacing off without reading the sensor.
+  assert.deepEqual(out.off, [0, [], summary({maxWaitSeconds: 0})]);
+  // A stop already requested (the guard's SIGTERM on a hot GPU) is not counted or logged as a thermal wait.
+  assert.deepEqual(out.stopAtStart, [0, [], [], summary({maxTemperatureC: 76})]);
+});
+
+test('trainer: thermal flags are range-checked, the helper is bound into the checkpoint identity and the step callback paces after the rest', () => {
+  const f = fixture(), file = join(f.dir, 'train.jsonl');
+  writeFileSync(file, '');
+  for (const [flags, message] of [[['--thermal-trigger-c', '75'], /target < trigger <= 74/], [['--thermal-target-c', '70'], /target < trigger <= 74/],
+    [['--thermal-target-c', '39', '--thermal-trigger-c', '50'], /40 <= target/], [['--thermal-max-wait-seconds', '-1'], /between 0 and 1800/],
+    [['--thermal-max-wait-seconds', '1801'], /between 0 and 1800/], [['--thermal-trigger-c', '72.5'], /invalid int value/]]) {
+    const r = run(['scripts/train-governance-mapping-lora.py', '--data', file, '--check-only', ...flags]);
+    assert.equal(r.status, 2, flags.join(' '));
+    assert.match(r.stderr, message, flags.join(' '));
+  }
+  const accepted = run(['scripts/train-governance-mapping-lora.py', '--data', file, '--check-only', '--thermal-trigger-c', '74', '--thermal-target-c', '60',
+    '--thermal-max-wait-seconds', '0']);
+  assert.equal(accepted.status, 2, 'flags accepted; the empty data file is refused by admission instead');
+  assert.equal(accepted.stderr, '');
+  assert.equal(JSON.parse(accepted.stdout.trim()).admitted, false);
+
+  const base = join(f.dir, 'base');
+  mkdirSync(base);
+  writeFileSync(join(base, 'artifact-lock.json'), '{}');
+  const code = `
+import importlib.util, json, sys
+from pathlib import Path
+from types import SimpleNamespace
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+args = SimpleNamespace(base_revision="a" * 40, data=sys.argv[1], gpu_memory_fraction=0.65, shakedown=False)
+print(json.dumps({"identity": t.identity_for(args, Path(sys.argv[2])), "recipe": t.RECIPE, "defaults": t.THERMAL_PACING}))
+`;
+  const r = run(['-c', code, file, base]);
+  assert.equal(r.status, 0, r.stderr);
+  const {identity, recipe, defaults} = JSON.parse(r.stdout.trim().split('\n').at(-1));
+  const sha = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+  assert.equal(identity.thermalHelperSha256, sha('scripts/public-qa-thermal.py'));
+  assert.equal(identity.kbitHelperSha256, sha('scripts/public-qa-kbit.py'));
+  // Pacing only sleeps: its settings are not part of the identity (like --pause-ratio), so they may differ between resumes.
+  assert.ok(!Object.keys(identity).some(k => /thermal(?!HelperSha256)|pause/i.test(k)));
+  for (const [k, v] of Object.entries(recipe)) assert.deepEqual(identity[k], v);
+  assert.deepEqual(defaults, {triggerC: 70, targetC: 65, maxWaitSeconds: 300, pollSeconds: 2});
+
+  const src = readFileSync('scripts/train-governance-mapping-lora.py', 'utf8');
+  assert.ok(src.includes('thermal = load_helper("governance_thermal", "public-qa-thermal.py")'));
+  assert.ok(src.includes('ThermalPacer(thermal.read_gpu_temperature, args.thermal_trigger_c, args.thermal_target_c, args.thermal_max_wait_seconds'));
+  // The wait ends on the same stop flag the SIGTERM handler sets, so docker stop's grace period still sees a saved checkpoint.
+  const flag = src.indexOf('stop = {"requested": False}'), pacerAt = src.indexOf('pacer = ThermalPacer(');
+  assert.ok(flag > 0 && flag < pacerAt && src.slice(pacerAt, src.indexOf('\n\n', pacerAt)).includes('should_stop=lambda: stop["requested"]'));
+  assert.ok(src.includes('signal.signal(signal.SIGTERM, lambda *_: stop.update(requested=True))'));
+  const callback = src.slice(src.indexOf('def on_step_end'), src.indexOf('def on_save'));
+  const rest = callback.indexOf('* args.pause_ratio)'), pace = callback.indexOf('pacer.pace(state.global_step)');
+  const stop = callback.indexOf('if stop["requested"]:');
+  assert.ok(rest > 0 && rest < pace && pace < stop, 'the step callback rests, then paces by temperature, then honours a stop request');
+  assert.match(src, /"totalSeconds": round\(time\.monotonic\(\) - started, 1\),\s*"thermalPacing": pacer\.summary\(\)\}/);
+});
+
 test('batch runner: constrained requests carry the schema where llama-server reads it; cut replies are scored, errors are counted by reason',
   {skip: process.platform === 'win32'}, () => {
   const [constrained] = variantRequests(testRows.slice(0, 1), 'retrieval_constrained'), [loose] = variantRequests(testRows.slice(0, 1), 'retrieval');

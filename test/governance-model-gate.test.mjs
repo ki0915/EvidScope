@@ -125,16 +125,21 @@ test('shakedown: derived rows only, labelled shakedown, refused by the candidate
   const candidate = runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--out', join(dir, 'x.jsonl')]);
   assert.deepEqual([candidate.rows, candidate.runMode, candidate.abstainWeight, candidate.abstainCopies], [683, 'candidate', 1, 0]);
   // --abstain-weight 3: every tune-split abstain row twice more under a derived id, after the plain rows; ids stay unique.
-  const weighted = runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--abstain-weight', '3', '--out', join(dir, 'w.jsonl')]);
+  const data = 'data/governance-mapping/v1/dataset.jsonl';
+  const weighted = runGovernanceMappingCommand(['training-set', '--data', data, '--abstain-weight', '3', '--out', join(dir, 'w.jsonl')]);
   const wrows = readFileSync(join(dir, 'w.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
   const plain = trainingRows(dataset), tuneAbstain = plain.filter(r => r.split === 'tune' && JSON.parse(r.target).abstain).length;
   assert.ok(tuneAbstain > 0);
-  assert.deepEqual([weighted.rows, weighted.abstainWeight, weighted.abstainCopies, wrows.length], [683 + 2 * tuneAbstain, 3, 2 * tuneAbstain, 683 + 2 * tuneAbstain]);
+  assert.deepEqual([weighted.rows, weighted.abstainWeight, weighted.abstainCopies, wrows.length],
+    [683 + 2 * tuneAbstain, 3, 2 * tuneAbstain, 683 + 2 * tuneAbstain]);
   assert.equal(new Set(wrows.map(r => r.id)).size, wrows.length);
   assert.deepEqual(wrows.slice(0, 683), plain);
-  assert.ok(wrows.slice(683).every(r => /#abstain-weight-[23]$/.test(r.id) && [2, 3].includes(r.weightCopy) && r.split === 'tune' && JSON.parse(r.target).abstain === true));
-  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--abstain-weight', '9', '--out', join(dir, 'z.jsonl')]), /abstain_weight_invalid/);
-  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', 'data/governance-mapping/v1/dataset.jsonl', '--shakedown', '--abstain-weight', '2', '--out', join(dir, 'z2.jsonl')]), /abstain_weight_invalid/);
+  assert.ok(wrows.slice(683).every(r => /#abstain-weight-[23]$/.test(r.id) && [2, 3].includes(r.weightCopy) && r.split === 'tune'
+    && JSON.parse(r.target).abstain === true));
+  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', data, '--abstain-weight', '9', '--out', join(dir, 'z.jsonl')]),
+    /abstain_weight_invalid/);
+  assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', data, '--shakedown', '--abstain-weight', '2',
+    '--out', join(dir, 'z2.jsonl')]), /abstain_weight_invalid/);
   const small = join(dir, 'small.jsonl');
   writeFileSync(small, toJsonl(dataset.slice(0, 80)));
   assert.throws(() => runGovernanceMappingCommand(['training-set', '--data', small, '--out', join(dir, 'y.jsonl')]), /governance_training_admission_failed/);
