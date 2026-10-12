@@ -269,7 +269,7 @@ print(json.dumps({"identity": t.identity_for(args, Path(sys.argv[2])), "recipe":
   // Pacing only sleeps: its settings are not part of the identity (like --pause-ratio), so they may differ between resumes.
   assert.ok(!Object.keys(identity).some(k => /thermal(?!HelperSha256)|pause/i.test(k)));
   for (const [k, v] of Object.entries(recipe)) assert.deepEqual(identity[k], v);
-  assert.deepEqual(defaults, {triggerC: 70, targetC: 65, maxWaitSeconds: 300, pollSeconds: 2});
+  assert.deepEqual(defaults, {triggerC: 68, targetC: 63, maxWaitSeconds: 300, pollSeconds: 2});
 
   const src = readFileSync('scripts/train-governance-mapping-lora.py', 'utf8');
   assert.ok(src.includes('thermal = load_helper("governance_thermal", "public-qa-thermal.py")'));

@@ -33,7 +33,10 @@ RECIPE = {"rank": 8, "alpha": 16, "dropout": 0.05, "targetModules": ["q_proj", "
           "sequenceLength": 2048, "batchSize": 1, "gradientAccumulationSteps": 8, "epochs": 1, "learningRatePerMillion": 200, "warmupStepsPer1000": 30,
           "seed": 42, "saveSteps": 5}
 # In-loop thermal pacing defaults (owner's rule, 2026-10-12: GPU at or below 75 C, slower runs accepted). See ThermalPacer.
-THERMAL_PACING = {"triggerC": 70, "targetC": 65, "maxWaitSeconds": 300.0, "pollSeconds": 2.0}
+# The pacer reads the card after a micro-batch's rest, when it has already dropped 4-6 C from its loaded value (RTX 3080 on the
+# owner's PC: 74-75 C under load read as 69-72 C after the ~1 s rest). 70/65 therefore never fired while loaded peaks reached the
+# guard's 75 C; 68/63 holds the rested reading near 63-68 C, so loaded peaks stay a few degrees under the guard.
+THERMAL_PACING = {"triggerC": 68, "targetC": 63, "maxWaitSeconds": 300.0, "pollSeconds": 2.0}
 
 
 def load_helper(name, file_name):
