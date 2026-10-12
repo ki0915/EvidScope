@@ -144,11 +144,12 @@ tune 147행 중 132행, validation 15행 중 3행, test 57행 중 27행을 승�
 | `always_abstain` | 항상 기권 |
 | `rules_only` | 표에 있는 식별자(밑줄·슬래시가 있는 기록 이름, 발견사항 코드, API·파일 경로)가 문장에 그대로 있으면 그 항목 |
 | `zero_shot` | 기본 모델, 카탈로그 ID 목록만, `json_object` |
-| `retrieval` | 기본 모델 + 후보 12개(글자 bigram·단어 TF-IDF), `json_object` |
+| `retrieval` | 기본 모델 + 후보 12개(글자 bigram·단어 TF-IDF)와 카탈로그 밖 기준 3개(아래 `outOfScope`), `json_object` |
 | `retrieval_constrained` | 위와 같고 `json_schema`로 ID·위치 enum 강제 |
 | `candidate` | `retrieval_constrained` + 학습한 LoRA 어댑터 |
 
-임베딩 검색(선택). `scripts/governance-mapping.mjs embed-texts`가 모든 프롬프트와 카탈로그 문장을 한 번씩 적은 목록을 쓰고, 격리 컨테이너 안의
+임베딩 검색(선택). `scripts/governance-mapping.mjs embed-texts`가 모든 프롬프트, 카탈로그 문장과 카탈로그 밖 기준 문장 74개(데이터셋의 지역 표
+설정 그대로: KISA 안내서가 있으면 인증기준 문장이 붙은 문장)를 한 번씩 적은 목록을 쓰고, 격리 컨테이너 안의
 `scripts/governance_mapping_embed.py`가 고정된 임베딩 모델(GGUF, llama-server `--embeddings --pooling cls`)로 벡터 파일을 만듭니다(문장 해시 → 벡터,
 모델 해시와 격리 확인 포함). 그 파일을 `--embeddings F`(또는 환경변수 `EVIDSCOPE_GOVERNANCE_EMBEDDINGS`)로 주면 예시·후보 검색이 TF-IDF 순위와
 코사인 순위를 상호 순위 결합(RRF, k=60)해 쓰고, 파일에 없는 문장은 TF-IDF만 씁니다. 요청 본문의 형식은 달라지지 않고 `buildMappingRequest`의
@@ -161,9 +162,64 @@ tune 147행 중 132행, validation 15행 중 3행, test 57행 중 27행을 승�
 모델 변형의 출력은 `scripts/governance_mapping_batch.py`의 영수증이 있어야 측정으로 인정합니다. 영수증은 네트워크 인터페이스가
 `lo` 하나뿐인 컨테이너, 고정 GGUF 해시(`5813d725…421ed`), 고정 디코딩(temperature 0.1, top_p 0.9, top_k 20, seed 0,
 max_tokens 512), 요청 바이트 해시와 출력 해시, 실패 0건을 묶습니다. 보고서는 출력에서 모든 지표를 다시 계산해 대조합니다.
+실행기는 제품 런타임과 같은 문맥(`--ctx` 기본 3072)으로 서버를 띄우고, 프롬프트 토큰과 `max_tokens`를 합쳐 문맥을 넘는 요청은 런타임처럼
+`prompt_budget_exceeded` 실패로 셉니다. 게이트는 영수증의 가장 긴 프롬프트(`usage.maxPromptTokens`)가 런타임 한도(3072 − 512)를 넘는 실행을
+측정으로 인정하지 않습니다.
 
 검색 후보 재현율(정답 요구사항이 후보 12개 안에 있는 비율)은 tune 0.707, validation 0.698, test 0.779입니다.
 후보 수 12는 tune·validation으로 골랐습니다. 후보 밖 정답도 스키마상 고를 수는 있지만, 검색이 놓친 항목이 재현율의 주된 한계입니다.
+
+### 카탈로그 밖 기준 (`outOfScope`, 2026-10-12)
+
+9차 파일럿의 오답 매핑 중 약 40~45%는 기권해야 할 행의 답이었고, test 기권 행 77개 중 72개는 ISMS-P 정렬표가 "정렬 안 함"으로 둔
+인증기준(74개)의 증거였습니다. 모델은 같은 장(82%)의 정렬된 비슷한 항목을 골랐습니다. 프롬프트 후보가 카탈로그 항목뿐이라 경계가 보이지
+않았기 때문입니다. 그래서 `retrieval`·`retrieval_constrained`·`candidate` 요청과 학습 행에 다음을 더했습니다(`src/governance-mapping.mjs`).
+
+- `outOfScope`: 카탈로그 후보 12개 뒤에, 증거와 가장 가까운 카탈로그 밖 인증기준을 최대 3개(`LIMITS.outOfScope`) 번호 순으로 적습니다.
+  항목은 `{"criterion": "ISMS-P 2.2.4", "title": "인식제고 및 교육훈련"}`(제목은 정렬표 `officialItems`)입니다. `id` 키도, 카탈로그 id 꼴
+  (`ISMS-P-2.2.4`)도 쓰지 않습니다. 제약 변형에서 `requirementId`는 카탈로그 id의 `json_schema` enum이라, 모델이 목록의 id를 베끼기 시작하면
+  문법이 같은 절의 정렬된 항목(2.2.2나 2.2.5)으로 완성해 버리고, 그 답은 `onlyCatalogIds`를 통과하는 보통의 오답으로만 보이기 때문입니다.
+  `ISMS-P-x.y.z` 꼴은 내부(요청의 `outOfScope` 필드, `outOfScopePool`, `validateMappingOutput`)에만 둡니다.
+- 검색 문장(`outOfScopePool`)은 그 제목에 Prowler 표(Apache-2.0)의 같은 번호 영어 이름과 설명을 붙인 것이고, 지역 전용 KISA 안내서 표가
+  있으면 그 항목의 한국어 인증기준 문장(`criterion`)도 붙입니다. 어느 것도 프롬프트에는 나오지 않습니다(프롬프트 길이 그대로). 한국어 제목만으로는
+  영어 증거가 거의 찾히지 않았고, KISA 문장 기권 행도 2~6단어 제목만으로는 101행 중 59행만 자기 기준을 목록에 올렸습니다(문장을 붙이면 79행).
+  풀은 예시 은행과 같은 지역 표 설정(`localTablesFor(rows)`, 런타임은 기본 디렉터리)으로 만들고 캐시와 `digest`가 안내서 해시를 따르므로,
+  학습 행·요청·런타임이 같은 풀을 씁니다. Prowler·KISA의 점검 질문·증거 예시·미준수 사례는 데이터셋 행이므로 넣지 않습니다. 순위는 카탈로그 후보와 같은 방식(TF-IDF, 임베딩
+  파일이 있으면 RRF 결합)이지만 색인이 따로라서 카탈로그 후보는 하나도 바뀌지 않습니다(저장소 1,089행·지역 표 포함 1,482행 모두 후보와 예시가
+  이전과 같음을 확인).
+- 시스템 프롬프트에 한 문장(`retrieval`·`retrieval_constrained`·`candidate`만): `outOfScope` 항목은 `requirementId`가 될 수 없고, 그 기준의
+  증거는 본문이 카탈로그 후보도 정하지 않는 한 기권한다. 표의 한 문장이 정렬된 항목과 정렬 안 한 항목에 함께 실린 경우(저장소 데이터셋 8행)는
+  정렬된 항목이 정답이므로 단서를 붙였습니다. 목록이 없는 `zero_shot`의 시스템 프롬프트와 요청은 이전과 바이트까지 같습니다.
+- 예시: 기권 예시가 정렬 안 한 인증기준에서 나왔으면(`isms-not-aligned`, `prowler-*`·`kisa-*` 기권 행, 주입 행은 원래 행 기준;
+  `src/governance-mapping-data.mjs` `outOfScopeSources`) `"answer": "abstain"` 옆에 `"outOfScope": {criterion, title}`을 붙입니다. 예시 문장은 그대로
+  160자에서 자릅니다.
+- 출력 형식과 정답은 그대로입니다. 기권 행의 학습 정답도 기권입니다. 카탈로그 밖 id는 카탈로그 id가 아니므로 `json_schema` enum에 없고,
+  `validateMappingOutput`은 `mapping_requirement_out_of_scope`로 거부합니다(런타임은 그 답으로 실패하고 아무것도 보여 주지 않음). 채점에서는
+  다른 미지의 id와 같이 오답 매핑이며 `onlyCatalogIds`가 실패하고, 기권해야 할 행이면 `mustAbstainCorrect`도 실패합니다. 기권으로 치지 않습니다.
+  보류 보정은 요청의 `candidates`에 있는 id만 남기므로 이 id를 버립니다(`not_candidate`).
+- 진단: `report` 명령의 출력 `outOfScopeSiblings`가 모델 변형마다, 기권해야 할 행에서 프롬프트가 `outOfScope`로 적은 기준과 같은 절
+  (`ISMS-P-2.2.`)의 카탈로그 id로 답한 행·매핑 수(`rowsWithSibling`, `siblingMappings`)와 적힌 기준 자체를 답한 매핑 수(`outOfScopeMappings`)를
+  셉니다(`outOfScopeSiblingAnswers`). 보고서 본문에는 들어가지 않습니다. 10차에서 문법 완성으로 생긴 비슷한 항목 오답이 있는지 이 값으로 봅니다.
+- 버전 표시: 요청 형식에 따로 붙는 버전 값은 없습니다. `retrieval`·`retrieval_constrained`·`candidate`의 요청 해시가 달라지므로 그 변형의 이전
+  출력·영수증은 새 요청과 맞지 않아 다시 실행합니다. `zero_shot` 요청 해시는 같으므로(테스트가 고정) 같은 데이터셋의 이전 `zero_shot` 실행은
+  다시 쓸 수 있습니다. 추가분(시스템 문장, `outOfScope` 목록, 예시 표시)을 빼면 세 변형의 요청도 이전 해시와 같아집니다(후보·예시·증거 불변, 테스트가 고정).
+- 오프라인 대리 지표(GPU 없이, TF-IDF): `retrieval-recall`의 `outOfScope`는 정렬 안 한 인증기준에서 나온 기권 행에서 그 기준이 프롬프트 목록에
+  든 비율(`listed`, k=3)과 가까운 k개 안에 든 비율(`recallAtK`)을 split·언어·행 종류별로 셉니다. 제목 행(`title`, `isms-not-aligned`)은 본문이
+  "ISMS-P 인증기준 <번호> <제목>"으로 풀 항목의 말 그대로라 당연히 맞으므로, 표의 문장 행(`sentence`, `prowler-*`·`kisa-*`)이 실제 지표입니다.
+  지역 KISA 표를 넣은 PC 데이터셋 test의 문장 행은 k=3에서 45/57(0.79: 한국어 24/28, 영어 21/29), k=5에서 49/57(0.86)입니다(안내서 문장을 붙이기
+  전에는 k=3에서 40/57, 0.70). 같은 데이터셋 tune·validation의 한국어 문장 행은 36/52, 19/21입니다. 저장소 데이터셋에는 한국어 문장 행이 없고
+  (한국어 기권 행 16개는 모두 제목 행) 영어 문장 행이 test 21/30(0.70), k=5에서 25/30입니다. 이전 프롬프트에서는 0이었습니다. 같은 명령의
+  `promptRecall`(정답이 프롬프트 후보에 든 비율)은 변하지 않았습니다(저장소 test 166/187).
+- 길이(Llama 3 토크나이저와 Llama 3.1 채팅 틀로 잼): 프롬프트가 평균 468자·149토큰 늘었습니다(시스템 문장 53, 목록 약 72, 예시 표시 약 19).
+  학습 행 최대는 1,691에서 1,824토큰으로 학습 길이 2048 안입니다. 요청 프롬프트 최대는 1,506에서 1,639토큰(PC 데이터셋 1,631)으로, 이전
+  런타임 문맥(2048 − 응답 512 = 1,536)을 가장 긴 한국어 법령 행 8개(test 2, validation 1, tune 5)가 넘었습니다. 그래서 같은 변경에서 런타임 문맥을
+  3072로 올렸습니다: `src/model-policy.mjs`(`contextTokens`, `numCtx`), `src/isolated-inference-client.mjs`(사용량 상한도 정책 값),
+  `deploy/model-runtime/render.mjs`(`--ctx-size`가 정책 값), `scripts/governance_mapping_batch.py`(`--ctx` 기본값). 프롬프트 한도는 2,560토큰이고
+  Llama 3.1 8B(GQA, f16)의 KV 캐시는 토큰당 128 KiB라 384 MiB(128 MiB 증가)로 7,936 MiB Pod 안에 듭니다. 배치 실행기는 이제 `prompt_tokens +
+  max_tokens`가 `--ctx`를 넘는 요청을 `prompt_budget_exceeded` 실패로 세고, 게이트는 영수증의 `usage.maxPromptTokens`가 런타임 한도를 넘으면
+  그 변형을 측정으로 인정하지 않습니다(`prompt_over_runtime_budget`). 테스트가 데이터셋 모든 요청의 바이트 수에 보정한 토큰 비율(바이트당 0.36토큰,
+  측정 최대 0.353)을 곱해 이 한도 안임을 확인합니다. 런타임 정책이 바뀌었으므로 테넌트의 지원 프로필은 다음 조회 때 자동 서명 업그레이드되고,
+  이전 정책으로 준비한 패키지는 조회 전용입니다(다시 준비).
 
 ## 보류 보정 (abstention calibration)
 

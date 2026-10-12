@@ -4,10 +4,12 @@ import {spawnSync} from 'node:child_process';
 import {chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {EMBEDDINGS_SCHEMA_VERSION, cosine, embeddingTexts, parseEmbeddings, rrfFuse, textDigest} from '../src/governance-embeddings.mjs';
-import {LIMITS, buildMappingRequest, governanceCatalog, nearestExamples, retrievalMethod, retrieveRequirements, setGovernanceEmbeddings}
-  from '../src/governance-mapping.mjs';
+import {LIMITS, buildMappingRequest, governanceCatalog, nearestExamples, outOfScopePool, outOfScopeRetrievalMethod, retrievalMethod,
+  retrieveOutOfScope, retrieveRequirements, setGovernanceEmbeddings} from '../src/governance-mapping.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 
+// Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
+process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
 const dataset = 'data/governance-mapping/v1/dataset.jsonl';
 const bank = Object.freeze([
   {id: 'ex-a', text: '접근권한 검토 이력과 계정 목록을 분기마다 확인한 기록', requirementIds: ['ISMS-P-2.5.6'], abstain: false},
@@ -69,20 +71,52 @@ test('requirement candidates fuse the same way, and the request records which re
   const hybrid = retrieveRequirements(query, {embeddings: index});
   assert.equal(hybrid[0].id, last, 'the one entry with a matching vector rises to the top');
   const item = {kind: 'document_excerpt', text: query, locators: ['doc:1']};
-  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: index}).retrieval, {method: 'hybrid', embeddings: 'a'.repeat(64)});
-  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: null}).retrieval, {method: 'tfidf', embeddings: null});
+  // The file has no out-of-scope pool text (as every file made before the pool): that ranking degrades to TF-IDF and says so.
+  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: index}).retrieval,
+    {method: 'hybrid', embeddings: 'a'.repeat(64), outOfScope: 'tfidf'});
+  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: null}).retrieval, {method: 'tfidf', embeddings: null, outOfScope: 'tfidf'});
+  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: index}).outOfScope,
+    buildMappingRequest(item, {variant: 'retrieval', embeddings: null}).outOfScope);
   assert.equal(buildMappingRequest(item, {variant: 'zero_shot', embeddings: index}).retrieval, null);
   assert.ok(buildMappingRequest(item, {variant: 'retrieval', embeddings: index}).candidates.includes(last));
 });
 
-test('embed-texts lists every prompt and catalog text once in digest order; retrieval-recall reports the example ceiling per k', () => {
+test('out-of-scope criteria fuse the same way when the file covers pool texts; the catalog ranking is untouched by them', () => {
+  const pool = outOfScopePool(), lexical = retrieveOutOfScope(query, {embeddings: null});
+  assert.equal(lexical.length, LIMITS.outOfScope);
+  const outsider = pool.entries.find(e => !lexical.some(x => x.id === e.id));
+  const index = parseEmbeddings(file(Object.fromEntries([vec(query, [1, 0, 0]), vec(outsider.text, [1, 0, 0])])));
+  const hybrid = retrieveOutOfScope(query, {embeddings: index});
+  // Fusion: the outsider scores 1/61 (semantic rank 1) plus its lexical share, above the lexical first (1/61) and second (1/62).
+  assert.deepEqual(hybrid.map(x => x.id), [outsider.id, ...lexical.slice(0, LIMITS.outOfScope - 1).map(x => x.id)]);
+  assert.equal(outOfScopeRetrievalMethod(query, {embeddings: index}), 'hybrid');
+  assert.equal(outOfScopeRetrievalMethod('a text the file never saw', {embeddings: index}), 'tfidf');
+  const item = {kind: 'document_excerpt', text: query, locators: ['doc:1']}, request = buildMappingRequest(item, {variant: 'retrieval', embeddings: index});
+  assert.deepEqual(request.retrieval, {method: 'hybrid', embeddings: 'a'.repeat(64), outOfScope: 'hybrid'});
+  assert.ok(request.outOfScope.includes(outsider.id));
+  assert.deepEqual(request.candidates, buildMappingRequest(item, {variant: 'retrieval', embeddings: parseEmbeddings(file(
+    Object.fromEntries([vec(query, [1, 0, 0])])))}).candidates, 'pool vectors never move a catalog candidate');
+});
+
+test('embed-texts lists every prompt, catalog and out-of-scope text once in digest order; retrieval-recall reports the ceilings', () => {
   mkdirSync('.test-runs', {recursive: true});
   const dir = mkdtempSync(resolve('.test-runs/governance-embed-'));
   const out = runGovernanceMappingCommand(['embed-texts', '--data', dataset, '--out', join(dir, 'texts.jsonl')]);
   const lines = readFileSync(join(dir, 'texts.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l));
   assert.equal(lines.length, out.texts);
-  assert.ok(out.texts >= out.catalogEntries && out.texts <= out.rows + out.catalogEntries);
+  assert.equal(out.outOfScopeEntries, 74);
+  assert.deepEqual([out.missingFromEmbeddings, out.outOfScopeMissingFromEmbeddings], [null, null]);
+  assert.ok(out.texts >= out.catalogEntries + out.outOfScopeEntries && out.texts <= out.rows + out.catalogEntries + out.outOfScopeEntries);
+  const listed = new Set(lines.map(l => l.text));
+  assert.ok(outOfScopePool().entries.every(e => listed.has(e.text)), 'every pool text is listed for the embed script');
   assert.ok(lines.every((l, i) => l.digest === textDigest(l.text) && (i === 0 || lines[i - 1].digest < l.digest)));
+  // A file made from the list before the pool existed: the pool texts are exactly what it lacks.
+  const old = lines.filter(l => !outOfScopePool().entries.some(e => e.text === l.text));
+  writeFileSync(join(dir, 'old-embeddings.json'), JSON.stringify(file(Object.fromEntries(old.map(l => [l.digest, [1, 0, 0]])))));
+  const missing = runGovernanceMappingCommand(['embed-texts', '--embeddings', join(dir, 'old-embeddings.json'), '--data', dataset,
+    '--out', join(dir, 'texts-again.jsonl')]);
+  setGovernanceEmbeddings(null);
+  assert.deepEqual([missing.missingFromEmbeddings, missing.outOfScopeMissingFromEmbeddings], [74, 74]);
   assert.deepEqual(embeddingTexts(['b', 'a', 'b', '']), embeddingTexts(['a', 'b']));
   const recall = runGovernanceMappingCommand(['retrieval-recall', '--data', dataset, '--k', '1,5']);
   assert.equal(recall.method, 'tfidf');
@@ -91,7 +125,23 @@ test('embed-texts lists every prompt and catalog text once in digest order; retr
   for (const split of ['tune', 'validation', 'test']) {
     const s = recall.splits[split];
     assert.ok(s.gold > 0 && s.retrieved <= s.gold && s.examplesHit[1] <= s.examplesHit[5] && s.examplesHit[5] <= s.gold);
+    assert.ok(s.retrieved <= s.inPrompt && s.inPrompt <= s.gold);
     assert.equal(s.examplesRecall[5], s.examplesHit[5] / s.gold);
+  }
+  // Offline proxy of the outOfScope list on the committed dataset (TF-IDF). Its Korean must-abstain rows are all title rows
+  // ("ISMS-P 인증기준 <number> <title>", the pool entry's own words), listed by construction; the source-table sentence rows are the
+  // English Prowler ones, which match their criterion through the English alias in 7 of 10 (8 of 10 among the 5 closest).
+  const oos = recall.outOfScope, {ko, en} = oos.splits.test;
+  assert.deepEqual([oos.k, oos.method, oos.embeddedPoolTexts, oos.kisaGuide], [LIMITS.outOfScope, 'tfidf', 0, false]);
+  assert.deepEqual([ko.rows, ko.listed, ko.title.rows, ko.title.listed, ko.sentence.rows, ko.sentence.recall], [16, 16, 16, 16, 0, null]);
+  assert.deepEqual([en.rows, en.listed, en.recall, en.title.rows, en.sentence.rows, en.sentence.listed], [30, 21, 0.7, 0, 30, 21]);
+  assert.deepEqual(en.sentence.recallAtK, {1: 19 / 30, 5: 25 / 30});
+  for (const byLanguage of Object.values(oos.splits)) {
+    for (const s of Object.values(byLanguage)) {
+      assert.equal(s.rows, s.title.rows + s.sentence.rows);
+      assert.equal(s.listed, s.title.listed + s.sentence.listed);
+      assert.ok(s.recallAtK[1] <= s.recallAtK[5]);
+    }
   }
   const first = lines.find(l => l.text === lines[0].text);
   writeFileSync(join(dir, 'embeddings.json'), JSON.stringify(file({[first.digest]: [1, 0, 0]})));

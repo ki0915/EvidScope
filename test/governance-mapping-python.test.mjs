@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
 import {canonical} from '../src/crypto.mjs';
 import {buildComparisonReport, hashOf, measurementProblem, variantRequests} from '../src/governance-mapping-eval.mjs';
+import {primaryModelPolicy} from '../src/model-policy.mjs';
 
 // Governance-mapping tests see only the shipped source tables; a local-only (KOGL) table on this machine must not change them.
 process.env.EVIDSCOPE_GOVERNANCE_LOCAL_TABLES ??= '.test-runs/no-local-tables';
@@ -43,7 +44,10 @@ class H(BaseHTTPRequestHandler):
             pieces = ["{\\"", "abstain", "\\":true,\\"", "mappings", "\\":[]}"]
             choice["logprobs"] = {"content": [{"token": t, "logprob": -0.25 * (i + 1), "bytes": list(t.encode()), "top_logprobs": []}
                                               for i, t in enumerate(pieces)]}
-        self.reply({"choices": [choice], "usage": {"prompt_tokens": 9, "completion_tokens": 3}})
+        prompt = 9
+        if os.path.exists(sys.argv[0] + ".long"):
+            prompt = int(sys.argv[sys.argv.index("-c") + 1]) - body["max_tokens"] + (1 if n % 4 == 0 else 0)
+        self.reply({"choices": [choice], "usage": {"prompt_tokens": prompt, "completion_tokens": 3}})
 HTTPServer(("127.0.0.1", port), H).serve_forever()
 `;
 
@@ -305,4 +309,23 @@ test('batch runner: constrained requests carry the schema where llama-server rea
   const log = readFileSync(f.server + '.log', 'utf8').trim().split('\n').map(l => JSON.parse(l));
   assert.ok(log.every(x => x.format.json_schema.schema.type === 'object'));
   assert.equal(batch(f, 'retrieval_constrained', ['--pause-ratio', '9']).status, 2);
+});
+
+test('batch runner: measures at the runtime context; a prompt leaving less than max_tokens of it fails as the runtime refuses it',
+  {skip: process.platform === 'win32'}, () => {
+  const {numCtx, numPredict} = primaryModelPolicy().generation, f = fixture();
+  writeFileSync(f.server + '.long', '');
+  runGovernanceMappingCommand(['requests', '--data', dataset, '--variant', 'retrieval', '--out', join(f.dir, 'retrieval.requests.jsonl')]);
+  const r = batch(f, 'retrieval', ['--pause-ratio', '0']);
+  assert.equal(r.status, 2);
+  const receipt = JSON.parse(readFileSync(join(f.dir, 'retrieval.receipt.json'), 'utf8'));
+  const outputs = JSON.parse(readFileSync(join(f.dir, 'retrieval.outputs.json'), 'utf8'));
+  // The stub reports numCtx - max_tokens prompt tokens (exactly the budget) and one more on every fourth request.
+  const over = testRows.filter((_, i) => (i + 1) % 4 === 0).length;
+  assert.equal(receipt.server.contextTokens, numCtx);
+  assert.deepEqual([receipt.failures, receipt.failureReasons, receipt.truncated], [over, {prompt_budget_exceeded: over}, 0]);
+  assert.equal(receipt.usage.maxPromptTokens, numCtx - numPredict + 1);
+  assert.equal(Object.values(outputs).filter(o => o === '').length, over);
+  const log = readFileSync(f.server + '.log', 'utf8').trim().split('\n').map(l => JSON.parse(l));
+  assert.ok(log.every(x => x.argv[x.argv.indexOf('-c') + 1] === String(numCtx)), 'the default --ctx is the runtime context');
 });

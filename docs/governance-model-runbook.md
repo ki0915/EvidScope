@@ -116,6 +116,37 @@ node scripts/governance-mapping-train.mjs --base-dir $BASE --base-revision $REV 
 - 학습기 자체가 확인합니다: 셰이크다운 모드는 `runMode: "shakedown"`인 파생 행만, 후보 모드는 셰이크다운 행을 하나라도 받지 않습니다.
 - 팩트시트를 남깁니다(7절, `--kind training`). 볼트가 학습 파일을 저장소에서 다시 만들어 바이트를 비교합니다.
 
+## 2-2. 카탈로그 밖 기준이 들어간 프롬프트 (2026-10-12, 10차부터)
+
+`retrieval`·`retrieval_constrained`·`candidate` 요청과 학습 행의 프롬프트에 카탈로그 밖 ISMS-P 인증기준 목록(`outOfScope`, 최대 3개,
+`{"criterion": "ISMS-P 2.2.4", "title": …}`), 시스템 프롬프트 한 문장, 기권 예시의 출처 기준 표시가 더해졌습니다([거버넌스 매핑 로컬 모델](governance-model.md)의
+"카탈로그 밖 기준"). `zero_shot` 요청, 출력 형식, 정답, 분할, 보정 코드는 그대로입니다. 같은 변경에서 제품 런타임 문맥을 3072로 올렸습니다.
+
+- 데이터셋은 다시 만들 필요가 없습니다. 행·정답·분할이 같으므로 저장소 `dataset.jsonl`, PC에서 지역 표로 만든 데이터셋, `reviewed.jsonl`과 검토 결정이 그대로 유효합니다.
+- 학습 파일은 다시 만듭니다(`training-set`, 같은 `--abstain-weight`). 프롬프트가 행당 평균 약 149토큰 길어져 추정 최대가 1,824토큰(PC 데이터셋 1,816)입니다.
+  학습 전 3절의 `--token-check`로 `maxTokens`가 2048 이하인지 확인합니다.
+- 평가 요청은 네 변형 모두 다시 만들고(`requests`, 후보의 `--split validation` 포함) `retrieval`·`retrieval_constrained`·`candidate`를 다시 실행합니다.
+  `zero_shot` 요청은 바이트까지 같으므로, 새 `zero_shot.requests.jsonl`의 해시가 이전 영수증의 `requestsSha256`과 같으면 이전 `zero_shot` 출력·영수증을
+  그대로 둡니다(다르면 다시 실행). 가장 긴 요청은 약 1,640토큰입니다. 배치 실행기의 `--ctx` 기본값이 런타임과 같은 3072가 되었고, 프롬프트와
+  `max_tokens` 512를 합쳐 이를 넘는 요청은 런타임처럼 `prompt_budget_exceeded` 실패로 셉니다(지금 데이터셋에는 없음). 다른 `--ctx`를 쓰지 않습니다.
+- 임베딩: `embed-texts`가 이제 카탈로그 밖 기준 문장 74개를 더 적습니다. PC 데이터셋(지역 KISA 표)이면 그 문장에 안내서의 인증기준 문장이 붙으므로
+  저장소 데이터셋용 파일로는 덮이지 않습니다. 새 목록으로 임베딩 파일을 다시 만듭니다(전체 재계산, 1절 이후의 `scripts/governance_mapping_embed.py` 그대로).
+  이전 파일을 계속 쓰면 카탈로그 후보·예시는 그대로 결합 검색이고 카탈로그 밖 목록만 TF-IDF로 고릅니다(`buildMappingRequest`의
+  `retrieval.outOfScope`가 `tfidf`). `embed-texts --embeddings <이전 파일> ...`의 `outOfScopeMissingFromEmbeddings: 74`가 빠진 문장 수를 보여 줍니다.
+  학습 파일, 요청, 보고서는 같은 임베딩 파일(또는 모두 없음)로 만듭니다.
+- 런타임: `deploy/model-runtime/render.mjs`가 `--ctx-size 3072`를 씁니다(KV 캐시 약 128 MiB 증가, 7,936 MiB Pod 안). 런타임 정책이 바뀌었으므로
+  테넌트의 지원 프로필은 다음 조회 때 자동으로 새 서명 버전이 되고, 이전 정책으로 준비한 매핑 패키지는 다시 준비합니다.
+
+```powershell
+node scripts/governance-mapping.mjs embed-texts --data C:\evidscope-work\reviewed.jsonl --out C:\evidscope-work\texts.jsonl
+node scripts/governance-mapping.mjs retrieval-recall --data C:\evidscope-work\reviewed.jsonl --embeddings C:\evidscope-work\embeddings.json
+```
+
+`retrieval-recall`의 `outOfScope.splits`가 기권 행의 원래 인증기준이 프롬프트 목록에 든 비율(`listed`)과 가까운 k개 안에 든 비율(`recallAtK`)을
+언어·행 종류별로, `splits.*.promptRecall`이 카탈로그 정답이 프롬프트 후보에 든 비율을 보여 줍니다. 제목 행(`title`)은 당연히 맞으므로 문장 행
+(`sentence`)을 봅니다. GPU 없이 TF-IDF로 잰 PC 데이터셋 test 문장 행은 0.79(한국어 24/28, 영어 21/29), k=5에서 0.86입니다.
+10차 보고서를 만든 뒤 `report` 출력의 `outOfScopeSiblings`(기권해야 할 행에서 목록의 기준과 같은 절의 카탈로그 항목으로 답한 수)를 함께 기록합니다.
+
 ## 3. 학습
 
 학습 이미지는 공개 QA 학습에 쓴 고정 이미지입니다. 먼저 PC의 이미지가 그 digest인지 확인합니다.
@@ -136,7 +167,7 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
   /opt/evidscope/train-governance-mapping-lora.py --data /dataset/train.jsonl --model-dir /models/base --token-check
 ```
 
-`maxTokens`가 1536을 넘으면 학습기가 그 행을 거부합니다. 그때는 진행하지 말고 기록합니다(길이를 늘리면 VRAM 추정이 바뀝니다).
+`maxTokens`가 2048(`RECIPE.sequenceLength`)을 넘으면 학습기가 그 행을 거부합니다(자르지 않음). 그때는 진행하지 말고 기록합니다(길이를 늘리면 VRAM 추정이 바뀝니다).
 
 ```powershell
 New-Item -ItemType Directory -Force "$W\checkpoints","$W\work" | Out-Null
@@ -195,7 +226,7 @@ foreach ($v in @("zero_shot","retrieval","retrieval_constrained","candidate")) {
     --mount "type=bind,source=$PWD\scripts,target=/opt/evidscope,readonly" --mount "type=bind,source=$W\runs,target=/runs" `
     --entrypoint python3 $LCPP /opt/evidscope/governance_mapping_batch.py --requests /runs/$v.requests.jsonl --variant $v `
     --out /runs/$v.outputs.json --receipt /runs/$v.receipt.json --operator <실행자 ID> --server-bin /app/llama-server `
-    --model /models/gguf/foundation-sec-1.1-8b-instruct-q4_k_m.gguf `
+    --model /models/gguf/foundation-sec-1.1-8b-instruct-q4_k_m.gguf --ctx 3072 `
     --expected-model-sha256 5813d725b38f0da1eac34486e44b70b0f728c2e2881c96873def69e76f8421ed @lora
 }
 node scripts/governance-mapping.mjs report --data "$W\reviewed.jsonl" --runs "$W\runs" --prepared-by <준비자 ID> --out "$W\report.json"
@@ -203,7 +234,9 @@ node scripts/governance-mapping.mjs gate --report "$W\report.json"
 ```
 
 변형마다 130행, 행당 약 2초로 변형당 5분 안팎, 모델 적재 포함 전체 25~30분입니다(추정). 영수증의 `isolation.verified`가
-false이거나 실패가 1건이라도 있으면 그 변형은 측정으로 인정되지 않습니다.
+false이거나 실패가 1건이라도 있으면 그 변형은 측정으로 인정되지 않습니다. `--ctx 3072`는 제품 런타임의 문맥이고(기본값과 같음), 프롬프트와
+응답 한도 512를 합쳐 이를 넘는 요청은 `prompt_budget_exceeded` 실패로 셉니다. 영수증의 `usage.maxPromptTokens`가 2,560을 넘는 실행은 게이트가
+측정으로 인정하지 않습니다(`prompt_over_runtime_budget`).
 
 ### 5a. 보류 보정 (선택, docs/governance-model.md "보류 보정")
 
@@ -213,7 +246,7 @@ false이거나 실패가 1건이라도 있으면 그 변형은 측정으로 인�
 ```powershell
 New-Item -ItemType Directory -Force "$W\runs\validation" | Out-Null
 node scripts/governance-mapping.mjs requests --data "$W\reviewed.jsonl" --variant candidate --split validation --out "$W\runs\validation\candidate.requests.jsonl"
-# 후보 test 실행(위 5절)에 --logprobs /runs/candidate.logprobs.json 추가; 검증 실행은 같은 명령에서 경로만 /runs/validation/... 으로
+# 후보 test 실행(위 5절, --ctx 3072 포함)에 --logprobs /runs/candidate.logprobs.json 추가; 검증 실행은 같은 명령에서 경로만 /runs/validation/... 으로
 node scripts/governance-mapping.mjs report --data "$W\reviewed.jsonl" --runs "$W\runs" --validation-runs "$W\runs\validation" --prepared-by <준비자 ID> --out "$W\report.json"
 ```
 

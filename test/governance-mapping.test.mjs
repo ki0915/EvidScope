@@ -6,12 +6,16 @@ import {join, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {canonical} from '../src/crypto.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
-import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, nearestExamples, outputMatchesTruth, resolveMapping,
-  retrieveRequirements, ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
-import {applyReviewDecisions, buildDataset, governanceAdmission, governanceExamples, loadSplits, reviewSheet, rowEligibility, trainingRows}
-  from '../src/governance-mapping-data.mjs';
-import {DECODING, DETERMINISTIC_BASELINES, GATE, PINNED_GGUF, assessGovernanceReport, baselineOutput, baselineOutputs, beats, buildComparisonReport,
-  evaluateOutputs, hashOf, variantRequests} from '../src/governance-mapping-eval.mjs';
+import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, nearestExamples, outOfScopePool, outOfScopeShown, outputMatchesTruth,
+  resolveMapping, retrieveOutOfScope, retrieveRequirements, ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
+import {applyReviewDecisions, baseDerivation, buildDataset, governanceAdmission, governanceExamples, itemOf, loadSplits, outOfScopeSources, reviewSheet,
+  rowEligibility, trainingRows} from '../src/governance-mapping-data.mjs';
+import {DECODING, DETERMINISTIC_BASELINES, GATE, MODEL_VARIANTS, PINNED_GGUF, RUNTIME_PROMPT_TOKENS, assessGovernanceReport, baselineOutput,
+  baselineOutputs, beats, buildComparisonReport, evaluateOutputs, hashOf, outOfScopeSiblingAnswers, scoreItem, variantRequests}
+  from '../src/governance-mapping-eval.mjs';
+import {primaryModelPolicy} from '../src/model-policy.mjs';
+import {ABSTAIN_OUTPUT, applyAbstention} from '../src/governance-abstention.mjs';
+import {mappingDraft} from '../src/governance-mapping-assist.mjs';
 import {ROLE_DIR, adapterField, governanceModelStatus, modelVersionField, promoteGovernanceCandidate, provenanceOf, verifyPromotion,
   createGovernanceMapper} from '../src/governance-model.mjs';
 import {runGovernanceMappingCommand} from '../scripts/governance-mapping.mjs';
@@ -186,6 +190,225 @@ test('examples: the bank is the derived tune split; a row never sees itself; can
   assert.deepEqual(copied.mappings.map(m => m.requirementId), [...nearestExamples(r.prompt, bank, {k: 1})[0].example.requirementIds].sort());
 });
 
+test('out of scope: the not-aligned ISMS-P criteria, Korean title in the prompt and Prowler English name for retrieval only', () => {
+  const pool = outOfScopePool(NO_LOCAL), catalog = governanceCatalog();
+  const alignment = JSON.parse(readFileSync('data/isms-p-alignment.json', 'utf8'));
+  const prowler = new Map(JSON.parse(readFileSync('data/governance-mapping/sources/prowler/kisa_isms_p_2023_aws.json', 'utf8')).Requirements
+    .map(r => [r.Id, r]));
+  assert.equal(pool.entries.length, 74);
+  assert.deepEqual(pool.ids, alignment.notAligned.map(n => `ISMS-P-${n.item}`));
+  assert.ok(pool.ids.every(id => /^ISMS-P-\d+\.\d+\.\d+$/.test(id) && !catalog.byId.has(id)), 'never a catalog id');
+  assert.ok(!mappingOutputSchema({locators: ['doc:a']}).properties.mappings.items.properties.requirementId.enum.some(id => pool.byId.has(id)));
+  for (const e of pool.entries) {
+    const official = alignment.officialItems.find(i => i.number === e.number), en = prowler.get(e.number);
+    assert.equal(e.title, official.title);
+    assert.equal(e.alias, en.Name);
+    assert.equal(e.text, `ISMS-P ${e.number} ${e.title} ${en.Name}. ${en.Description.replace(/\s+/g, ' ').trim()}`);
+    // The Prowler sentences that are dataset rows never enter the retrieval text.
+    for (const s of en.Attributes.flatMap(a => [...(a.AuditChecklist ?? []), ...(a.AuditEvidence ?? [])])) assert.ok(!e.text.includes(s), e.id);
+    // The prompt shows the number in the label form and the title: no id key, never the catalog's id form a grammar could complete.
+    const shown = outOfScopeShown(e);
+    assert.deepEqual(shown, {criterion: `ISMS-P ${e.number}`, title: e.title});
+    assert.doesNotMatch(JSON.stringify(shown), /ISMS-P-/);
+  }
+  assert.match(pool.digest, /^[a-f0-9]{64}$/);
+  assert.equal(pool.sources.kisaGuide, undefined);
+  // Korean evidence finds the criterion by its title, English evidence by the Prowler name.
+  assert.equal(retrieveOutOfScope('ISMS-P 인증기준 2.2.4 인식제고 및 교육훈련', {embeddings: null, ...NO_LOCAL})[0].id, 'ISMS-P-2.2.4');
+  assert.ok(retrieveOutOfScope(prowler.get('2.4.1').Name, {embeddings: null, ...NO_LOCAL}).some(x => x.id === 'ISMS-P-2.4.1'));
+  assert.equal(retrieveOutOfScope('정보보호 교육 계획', {embeddings: null, ...NO_LOCAL}).length, LIMITS.outOfScope);
+});
+
+test('out of scope: with the local KISA guide the retrieval text also carries the Korean criterion sentence, never the prompt', () => {
+  mkdirSync('.test-runs', {recursive: true});
+  const dir = mkdtempSync(resolve('.test-runs/governance-oos-guide-'));
+  // A stand-in for the KOGL guide (not its text): one criterion sentence that shares no words with the title or the Prowler entry.
+  const criterion = '분기마다 모의 피싱 메일 대응 훈련을 실시하고   그 결과를 기록하여야 한다.';
+  const bytes = JSON.stringify({schemaVersion: 1, id: 'kisa-isms-p-guide-2023-11', items: [{number: '2.2.4', title: '인식제고 및 교육훈련', criterion},
+    {number: '2.2.2', title: '직무 분리', criterion: '카탈로그에 있는 항목의 문장은 쓰이지 않는다.'}, {number: '9.9.9', criterion: 7}]});
+  writeFileSync(join(dir, 'kisa-isms-p-guide-2023-11.json'), bytes);
+  const plainPool = outOfScopePool(NO_LOCAL), guided = outOfScopePool({localTables: dir});
+  assert.equal(outOfScopePool({localTables: dir}), guided, 'cached per guide hash');
+  assert.deepEqual(guided.sources.kisaGuide, {id: 'kisa-isms-p-guide-2023-11', sha256: sha256(bytes)});
+  assert.notEqual(guided.digest, plainPool.digest);
+  assert.deepEqual(guided.ids, plainPool.ids);
+  for (const e of guided.entries) {
+    const before = plainPool.byId.get(e.id);
+    const added = e.id === 'ISMS-P-2.2.4' ? ' 분기마다 모의 피싱 메일 대응 훈련을 실시하고 그 결과를 기록하여야 한다.' : '';
+    assert.equal(e.text, before.text + added, 'the whitespace-normalized criterion follows the shipped retrieval text');
+    assert.deepEqual(outOfScopeShown(e), outOfScopeShown(before), 'the prompt shows the same entry either way');
+  }
+  const query = '모의 피싱 메일 대응 결과';
+  assert.equal(retrieveOutOfScope(query, {embeddings: null, localTables: dir})[0].id, 'ISMS-P-2.2.4');
+  assert.ok(!retrieveOutOfScope(query, {embeddings: null, k: 8, ...NO_LOCAL}).some(x => x.id === 'ISMS-P-2.2.4'), 'the title alone misses it');
+  const item = {kind: 'document_excerpt', text: query, locators: ['doc:1']};
+  const guidedRequest = buildMappingRequest(item, {variant: 'retrieval', embeddings: null, localTables: dir});
+  assert.ok(guidedRequest.outOfScope.includes('ISMS-P-2.2.4'));
+  assert.ok(!guidedRequest.messages[1].content.includes('기록하여야'), 'the criterion sentence never enters the prompt');
+  assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: null, ...NO_LOCAL}).candidates, guidedRequest.candidates);
+});
+
+test('out of scope: listed after the 12 catalog candidates, marked, explained; the source criterion annotates abstain examples', () => {
+  const bank = governanceExamples(NO_LOCAL), pool = outOfScopePool(NO_LOCAL);
+  // Source criteria of must-abstain rows: from the rule's ref, an injection row from the row it extends; nothing for other rows.
+  const bySource = rows => rows.filter(r => outOfScopeSources(r).length);
+  assert.equal(bySource(dataset).length, 184);
+  assert.equal(bySource(dataset.filter(r => r.split === 'test')).length, 46);
+  for (const r of dataset) {
+    const sources = outOfScopeSources(r), rule = r.derivation?.rule;
+    if (r.truth.abstain && /^(isms-not-aligned|prowler-(check|evidence|defect))$/.test(rule ?? '')) assert.ok(sources.length > 0, r.id);
+    if (!r.truth.abstain || r.labelSource !== 'derived_mapping_table' || /^(kr|eu)-/.test(rule)) assert.deepEqual(sources, [], r.id);
+    if (rule === 'isms-not-aligned') assert.deepEqual(sources, [`ISMS-P-${r.derivation.ref}`]);
+  }
+  const injected = dataset.find(r => r.derivation?.rule === 'injection' && r.truth.abstain && r.derivation.ref.startsWith('derived:prowler-'));
+  assert.deepEqual(outOfScopeSources(injected), [`ISMS-P-${injected.derivation.ref.split(':').at(-1)}`]);
+  assert.deepEqual(baseDerivation(injected).rule, injected.derivation.ref.split(':')[1]);
+  assert.ok(bank.every(e => (e.outOfScope === null) || (e.abstain && pool.byId.has(e.outOfScope))));
+  assert.ok(bank.filter(e => e.outOfScope).length > 100);
+
+  const row = dataset.find(r => r.split === 'test' && r.derivation?.rule === 'isms-not-aligned'), [own] = outOfScopeSources(row);
+  const shownOwn = outOfScopeShown(pool.byId.get(own)), idOf = shown => `ISMS-P-${shown.criterion.slice('ISMS-P '.length)}`;
+  // zero_shot carries no outOfScope list and keeps the system prompt it was measured with; the other three explain the list.
+  const zeroShot = buildMappingRequest(itemOf(row), {variant: 'zero_shot'});
+  assert.doesNotMatch(zeroShot.messages[0].content, /outOfScope/);
+  assert.equal(JSON.parse(zeroShot.messages[1].content).outOfScope, undefined);
+  const system = buildMappingRequest(itemOf(row), {variant: 'retrieval', ...NO_LOCAL}).messages[0].content;
+  assert.match(system, /outOfScope lists ISMS-P criteria that are not in the catalog/);
+  assert.match(system, /never a requirementId, and evidence of one of them is answered with abstain/);
+  assert.equal(system.replace(/ outOfScope lists [^]*?determines a candidate\./, ''), zeroShot.messages[0].content);
+  for (const variant of ['retrieval', 'retrieval_constrained', 'candidate']) {
+    const q = buildMappingRequest(itemOf(row), {variant, examples: bank, excludeId: row.id, ...NO_LOCAL}), user = JSON.parse(q.messages[1].content);
+    assert.equal(q.messages[0].content, system, 'one system prompt for the variants that list outOfScope');
+    assert.deepEqual(Object.keys(user), ['evidence', 'candidates', 'outOfScope', 'examples']);
+    assert.equal(user.candidates.length, LIMITS.candidates);
+    assert.ok(user.candidates.every(c => governanceCatalog().byId.has(c.id)), 'the catalog candidates are untouched');
+    assert.ok(user.outOfScope.every(o => canonical(Object.keys(o)) === canonical(['criterion', 'title'])));
+    assert.doesNotMatch(JSON.stringify(user.outOfScope), /ISMS-P-/, 'nothing in the list has the form of a requirementId');
+    assert.deepEqual(user.outOfScope.map(idOf), q.outOfScope);
+    assert.deepEqual(q.outOfScope, [...q.outOfScope].sort());
+    assert.ok(q.outOfScope.length <= LIMITS.outOfScope && q.outOfScope.includes(own), 'the row names its own criterion');
+    assert.deepEqual(user.outOfScope.find(o => o.criterion === shownOwn.criterion), shownOwn);
+    if (q.responseFormat.type === 'json_schema') {
+      assert.ok(!q.responseFormat.schema.properties.mappings.items.properties.requirementId.enum.some(id => pool.byId.has(id)));
+    }
+    const notes = user.examples.filter(e => e.outOfScope);
+    assert.ok(notes.length > 0);
+    for (const e of user.examples) {
+      assert.ok([...e.text].length <= LIMITS.exampleChars);
+      const source = bank.find(b => b.text === e.text || b.text.startsWith(e.text.replace(/…$/, '')));
+      if (e.outOfScope) {
+        assert.equal(e.answer, 'abstain');
+        assert.deepEqual(e.outOfScope, outOfScopeShown(pool.byId.get(source.outOfScope)));
+      } else assert.ok(!source || source.outOfScope === null);
+    }
+  }
+  // Training rows carry the same prompt; the target of a must-abstain row stays an abstention.
+  const trained = trainingRows(dataset, NO_LOCAL).filter(t => outOfScopeSources(dataset.find(r => r.id === t.id)).length);
+  assert.ok(trained.length > 50);
+  for (const t of trained) {
+    assert.deepEqual(JSON.parse(t.target), {abstain: true, mappings: []});
+    assert.ok(JSON.parse(t.messages[1].content).outOfScope.length > 0);
+  }
+});
+
+test('out of scope: never a mapping target; scored as a wrong mapping, refused at runtime, dropped by the abstention policy', async () => {
+  const row = dataset.find(r => r.split === 'test' && r.derivation?.rule === 'isms-not-aligned'), [own] = outOfScopeSources(row);
+  const locator = row.evidence[0].id, shownOwn = outOfScopeShown(outOfScopePool(NO_LOCAL).byId.get(own));
+  const content = JSON.stringify({abstain: false, mappings: [{requirementId: own, relation: 'supports', evidenceLocator: locator, confidence: 'high'}]});
+  const scored = scoreItem(row, content);
+  assert.deepEqual([scored.tp, scored.fp, scored.abstained, scored.exact], [0, 1, false, false]);
+  assert.deepEqual(scored.checks, {schemaValid: false, onlyCatalogIds: false, onlySuppliedLocators: true, injectionResisted: null, mustAbstainCorrect: false});
+  const answerable = dataset.find(r => r.split === 'test' && !r.truth.abstain && r.labelSource === 'derived_mapping_table');
+  const g = answerable.truth.mappings[0], both = JSON.stringify({abstain: false, mappings: [
+    {requirementId: g.requirementId, relation: g.relation, evidenceLocator: g.evidenceLocators[0], confidence: 'high'},
+    {requirementId: own, relation: 'supports', evidenceLocator: g.evidenceLocators[0], confidence: 'high'}]});
+  assert.deepEqual([scoreItem(answerable, both).tp, scoreItem(answerable, both).fp, scoreItem(answerable, both).checks.onlyCatalogIds], [1, 1, false]);
+  assert.throws(() => validateMappingOutput(JSON.parse(content), {locators: [locator]}), e => e.code === 'mapping_requirement_out_of_scope');
+  const spaced = JSON.parse(content.replace(own, shownOwn.criterion));
+  assert.throws(() => validateMappingOutput(spaced, {locators: [locator]}), e => e.code === 'mapping_requirement_out_of_scope', 'the shown form');
+  assert.throws(() => resolveMapping(itemOf(row), JSON.parse(content)), e => e.code === 'mapping_requirement_out_of_scope');
+  assert.equal(outputMatchesTruth(row.truth, JSON.parse(content), {locators: [locator]}), false);
+  assert.throws(() => mappingDraft(content, {item: itemOf(row), provenance: {source: 'model'}}), e => e.code === 'mapping_requirement_out_of_scope');
+  // The runtime mapper never surfaces it: the request lists it as out of scope, the schema cannot name it, a reply naming it fails.
+  const status = {...governanceModelStatus(), mode: 'base_retrieval_constrained'};
+  const mapper = createGovernanceMapper({status, infer: async q => {
+    assert.ok(JSON.parse(q.messages[1].content).outOfScope.some(o => o.criterion === shownOwn.criterion));
+    assert.ok(!q.schema.properties.mappings.items.properties.requirementId.enum.includes(own));
+    return {content};
+  }});
+  await assert.rejects(mapper(itemOf(row)), e => e.code === 'mapping_requirement_out_of_scope');
+  // The abstention policy keeps listed catalog candidates only: an out-of-scope id is dropped even at a passing score.
+  const request = buildMappingRequest(itemOf(row), {variant: 'candidate', examples: governanceExamples(NO_LOCAL), excludeId: row.id, ...NO_LOCAL});
+  const policy = applyAbstention(content, [[content, 0]], {threshold: -1, candidates: request.candidates});
+  assert.deepEqual([policy.content, policy.dropped.map(d => d.why)], [ABSTAIN_OUTPUT, ['not_candidate']]);
+});
+
+test('out of scope: the report command counts must-abstain answers beside a listed criterion (same section, or the criterion itself)', () => {
+  const rows = dataset.filter(r => r.split === 'test'), catalog = governanceCatalog(), requests = variantRequests(rows, 'candidate');
+  const byId = new Map(requests.map(q => [q.id, q]));
+  const abstain = JSON.stringify({abstain: true, mappings: []}), outputs = Object.fromEntries(rows.map(r => [r.id, abstain]));
+  // A must-abstain row whose listed criterion has an aligned sibling in the catalog, the shape a grammar-completed copy takes.
+  let sibling, copied;
+  for (const r of rows.filter(x => x.truth.abstain)) {
+    const listed = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples(NO_LOCAL), excludeId: r.id, ...NO_LOCAL}).outOfScope;
+    const pair = listed.map(id => [id, catalog.ids.find(c => c.startsWith(id.slice(0, id.lastIndexOf('.') + 1)))]).find(([, c]) => c);
+    if (!sibling && pair) sibling = {row: r, id: pair[1]};
+    else if (sibling && !copied && listed.length) copied = {row: r, id: listed[0]};
+  }
+  assert.ok(sibling && copied && JSON.parse(byId.get(sibling.row.id).messages[1].content).outOfScope.length);
+  const answer = (r, id) => JSON.stringify({abstain: false, mappings: [{requirementId: id, relation: 'supports', evidenceLocator: r.evidence[0].id,
+    confidence: 'high'}]});
+  outputs[sibling.row.id] = answer(sibling.row, sibling.id);
+  outputs[copied.row.id] = answer(copied.row, copied.id);
+  const answerable = rows.find(r => !r.truth.abstain);
+  outputs[answerable.id] = answer(answerable, sibling.id);
+  const mustAbstain = rows.filter(r => r.truth.abstain).length;
+  const counts = outOfScopeSiblingAnswers(rows, outputs, requests);
+  assert.deepEqual(counts, {mustAbstain, listing: counts.listing, rowsWithSibling: 1, siblingMappings: 1, outOfScopeMappings: 1});
+  assert.ok(counts.listing > mustAbstain / 2 && counts.listing <= mustAbstain);
+  // A copy in the form the prompt shows ("ISMS-P 2.2.4", unconstrained variants) names the criterion as well.
+  outputs[copied.row.id] = answer(copied.row, copied.id.replace(/^ISMS-P-/, 'ISMS-P '));
+  assert.deepEqual(outOfScopeSiblingAnswers(rows, outputs, requests), counts);
+  assert.deepEqual(outOfScopeSiblingAnswers(rows, outputs, variantRequests(rows, 'zero_shot')),
+    {mustAbstain, listing: 0, rowsWithSibling: 0, siblingMappings: 0, outOfScopeMappings: 0}, 'zero_shot lists nothing');
+});
+
+test('requests: only the outOfScope additions changed, and zero_shot not at all; every dataset request fits the runtime budget', () => {
+  // Hashes of the test-split requests (committed dataset, TF-IDF) as built before the outOfScope field and system sentence. Taking
+  // the additions out again (the system sentence, the user outOfScope list, the examples' outOfScope notes) gives those bytes back:
+  // candidates, examples and evidence are unchanged. zero_shot never had any of them.
+  const before = {zero_shot: '58f9d8047e76332276c1ba2de9cd2bcf3f1b1acafa1297a2fe5e3e8f4ad4e207',
+    retrieval: '6c7466207b71e6879d70c4357c935bf1ff6d55f71941e3cf0d44e2a89dc994f4',
+    retrieval_constrained: 'c1ee9d5dd0f6d0182bf3ddba5d1c5dc2c300fd67943a3213a4d25ac71b17cb08',
+    candidate: 'aad49a0edddb1d1504afb92a3e9569c4344f72bb175b3c0390aa9f8a97af0fd3'};
+  const withoutOutOfScope = q => {
+    const user = JSON.parse(q.messages[1].content);
+    delete user.outOfScope;
+    for (const e of user.examples ?? []) delete e.outOfScope;
+    return {...q, messages: [{...q.messages[0], content: q.messages[0].content.replace(/ outOfScope lists [^]*?determines a candidate\./, '')},
+      {...q.messages[1], content: JSON.stringify(user)}]};
+  };
+  const rows = dataset.filter(r => r.split === 'test');
+  for (const v of MODEL_VARIANTS) {
+    const requests = variantRequests(rows, v);
+    if (v === 'zero_shot') assert.equal(hashOf(requests), before[v], 'zero_shot requests are byte-identical');
+    else assert.notEqual(hashOf(requests), before[v], v);
+    assert.equal(hashOf(requests.map(withoutOutOfScope)), before[v], v);
+  }
+  // The runtime refuses a prompt with more than numCtx - numPredict tokens (src/isolated-inference-client.mjs) and more than
+  // maxPromptBytes bytes. Calibration, 2026-10-12: the Llama 3 tokenizer with the Llama 3.1 chat template over every request of the
+  // shipped dataset and of a build with the local KISA guide, all four variants, gave at most 0.353 prompt tokens per byte of the
+  // JSON messages (zero_shot's id list; 0.293 for the retrieval prompts) and a longest prompt of 1,639 tokens (6,380 bytes), which
+  // the 2048-token context of before (1,536 for the prompt) did not hold. A request of B bytes is taken as at most 0.36 B tokens.
+  const {numCtx, numPredict, maxPromptBytes} = primaryModelPolicy().generation, TOKENS_PER_BYTE = 0.36;
+  for (const v of MODEL_VARIANTS) {
+    const longest = Math.max(...variantRequests(dataset, v).map(q => Buffer.byteLength(JSON.stringify(q.messages))));
+    assert.ok(longest <= maxPromptBytes, `${v}: ${longest} bytes`);
+    assert.ok(Math.ceil(longest * TOKENS_PER_BYTE) + numPredict <= numCtx, `${v}: ${longest} bytes may exceed the runtime prompt budget`);
+  }
+  assert.equal(RUNTIME_PROMPT_TOKENS, numCtx - numPredict);
+});
+
 const testRows = approveAll(dataset).filter(r => r.split === 'test');
 const passing = report(testRows, gold);
 
@@ -204,6 +427,10 @@ test('gate: a measured candidate that beats every baseline passes; worse precisi
   assert.equal(assessGovernanceReport(silent).eligible, false);
   assert.ok(assessGovernanceReport(report(testRows, gold, {receiptExtra: {isolation: {networkInterfaces: ['lo', 'eth0'], verified: false}}}))
     .reasons.includes('candidate: isolation_not_verified'));
+  // A run that scored a prompt longer than the runtime serves (numCtx - numPredict) does not describe the product.
+  const longest = n => assessGovernanceReport(report(testRows, gold, {receiptExtra: {usage: {maxPromptTokens: n}}})).reasons;
+  assert.ok(longest(RUNTIME_PROMPT_TOKENS + 1).includes('candidate: prompt_over_runtime_budget'));
+  assert.ok(!longest(RUNTIME_PROMPT_TOKENS).some(x => /prompt_over_runtime_budget/.test(x)));
   const tampered = structuredClone(passing);
   tampered.variants.candidate.outputs[testRows[0].id] = '{}';
   assert.throws(() => assessGovernanceReport(tampered), /governance_report_outputs_invalid/);

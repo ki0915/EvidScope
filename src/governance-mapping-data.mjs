@@ -8,7 +8,7 @@ import {readFileSync} from 'node:fs';
 import {canonical} from './crypto.mjs';
 import {krGovernanceCheckDefinitions} from './kr-governance-evidence.mjs';
 import {modelPolicy} from './model-policy.mjs';
-import {MODEL_KINDS, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, outputMatchesTruth} from './governance-mapping.mjs';
+import {MODEL_KINDS, TASK, TASK_VERSION, buildMappingRequest, governanceCatalog, outOfScopePool, outputMatchesTruth} from './governance-mapping.mjs';
 import {injectionItems, localTablesFor, sourceItems} from './governance-mapping-sources.mjs';
 import {exportHumanReviewPacket, importHumanReviews, recordHash, reviewedPayloadHash} from '../scripts/model-training-data.mjs';
 
@@ -152,7 +152,7 @@ export function buildDataset({catalog = governanceCatalog(), localTables} = {}) 
     const f = fingerprint(r);
     if (texts.has(f)) throw Error(`governance_dataset_duplicate_text: ${r.id} ${texts.get(f)}`);
     texts.set(f, r.id);
-    buildMappingRequest(itemOf(r), {variant: 'candidate', catalog});
+    buildMappingRequest(itemOf(r), {variant: 'candidate', catalog, localTables});
   }
   return rows.sort((a, b) => (a.id < b.id ? -1 : 1));
 }
@@ -168,15 +168,37 @@ function derivedMap(localTables) {
   return derivedByConfig.get(key);
 }
 export function rederived(id, {localTables} = {}) { return derivedMap(localTables).get(id) ?? null; }
+// The not-aligned ISMS-P criteria (outOfScopePool ids, sorted) a derived must-abstain row came from: the criterion of an
+// isms-not-aligned row, the item numbers of a source-table sentence no catalog item lists (derivation.ref joins them with '+'), and
+// for an injection row those of the row it extends (its ref is that row's familyId). Empty for every other row: labelled rows, law
+// text the catalog does not cite, drafted rows.
+const OUT_OF_SCOPE_RULES = /^(isms-not-aligned|(prowler|kisa)-(check|evidence|defect))$/;
+// The rule and ref a derived row was made by; an injection row resolves to the row it extends (its ref is 'derived:<rule>:<ref>').
+export function baseDerivation(row) {
+  let rule = row?.derivation?.rule, ref = String(row?.derivation?.ref ?? '');
+  if (rule === 'injection') {
+    const m = /^derived:([a-z-]+):(.+)$/.exec(ref);
+    if (!m) return null;
+    [, rule, ref] = m;
+  }
+  return typeof rule === 'string' ? {rule, ref} : null;
+}
+export function outOfScopeSources(row, pool = outOfScopePool({localTables: false})) {
+  if (row?.truth?.abstain !== true || row.labelSource !== 'derived_mapping_table') return [];
+  const base = baseDerivation(row);
+  if (!base || !OUT_OF_SCOPE_RULES.test(base.rule)) return [];
+  return [...new Set(base.ref.split('+').map(n => `ISMS-P-${n}`).filter(id => pool.byId.has(id)))].sort();
+}
 // The example bank the prompt draws on (buildMappingRequest examples): the table-derived rows of the tune split only, so a validation
 // or test row never sees itself or a sibling it is measured against. Derived from the shipped tables, not from dataset.jsonl.
+// outOfScope: for an abstain example, the not-aligned criterion its text came from (the first of outOfScopeSources), else null.
 const examplesByConfig = new Map();
 export function governanceExamples({localTables} = {}) {
   const key = localTables === false ? 'none' : localTables ?? '';
   if (!examplesByConfig.has(key)) {
     examplesByConfig.set(key, Object.freeze([...derivedMap(localTables).values()].filter(r => r.split === 'tune' && !r.truth.forbidden)
       .map(r => Object.freeze({id: r.id, text: r.prompt, abstain: r.truth.abstain,
-        requirementIds: Object.freeze(r.truth.mappings.map(m => m.requirementId))}))));
+        requirementIds: Object.freeze(r.truth.mappings.map(m => m.requirementId)), outOfScope: outOfScopeSources(r)[0] ?? null}))));
   }
   return examplesByConfig.get(key);
 }
@@ -231,7 +253,7 @@ export function governanceAdmission(rows, {now = Date.now(), localTables = local
 
 // Rows for the trainer: exactly the prompt the runtime sends (variant "candidate") and the gold JSON as the target. Test never leaves.
 const trainerRow = (r, runMode, localTables) => {
-  const request = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples({localTables}), excludeId: r.id});
+  const request = buildMappingRequest(itemOf(r), {variant: 'candidate', examples: governanceExamples({localTables}), excludeId: r.id, localTables});
   const target = r.labelSource === 'derived_mapping_table' ? r.candidateOutput : r.approvedOutput;
   return {id: r.id, task: TASK, taskVersion: TASK_VERSION, roleId: ROLE_ID, split: r.split, familyId: r.familyId, messages: request.messages,
     target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null,

@@ -41,12 +41,13 @@ export function createPrimaryInference(tls,{transport=createModelTransport(tls)}
    const tokens=await transport('primary','/tokenize',{content:rendered.prompt,add_special:false,parse_special:true},{signal:combined,maxBytes:128000});
    if(!Array.isArray(tokens.tokens)||tokens.tokens.some(n=>!Number.isSafeInteger(n)||n<0))throw failure('model_tokenizer_invalid');
    if(tokens.tokens.length+policy.generation.numPredict>policy.generation.numCtx)throw failure('prompt_budget_exceeded');
-   const body={model:policy.model,messages,stream:false,max_tokens:512,temperature:0.1,top_p:0.9,top_k:20,response_format:{type:'json_schema',json_schema:{name:'evidscope_output',strict:true,schema}},seed:0,cache_prompt:false};
+   const body={model:policy.model,messages,stream:false,max_tokens:policy.generation.numPredict,temperature:0.1,top_p:0.9,top_k:20,response_format:{type:'json_schema',json_schema:{name:'evidscope_output',strict:true,schema}},seed:0,cache_prompt:false};
    if(adapter===true)body.lora=[{id:0,scale:1}];
    const response=await transport('primary','/v1/chat/completions',body,{signal:combined});
    if(response.model!==policy.model||response.choices?.length!==1||response.choices[0].message?.tool_calls||typeof response.choices[0].message?.content!=='string')throw failure('provider_model_or_output_mismatch');
    if(response.choices[0].finish_reason!=='stop')throw failure('model_output_incomplete');
-   const usage=response.usage||{};if(!Number.isSafeInteger(usage.prompt_tokens)||!Number.isSafeInteger(usage.completion_tokens)||usage.prompt_tokens<0||usage.completion_tokens<0||usage.completion_tokens>512||usage.prompt_tokens+usage.completion_tokens>2048)throw failure('model_usage_invalid');
+   const usage=response.usage||{};if(!Number.isSafeInteger(usage.prompt_tokens)||!Number.isSafeInteger(usage.completion_tokens)||usage.prompt_tokens<0||usage.completion_tokens<0||usage.completion_tokens>policy.generation.numPredict
+    ||usage.prompt_tokens+usage.completion_tokens>policy.generation.numCtx)throw failure('model_usage_invalid');
    return {content:response.choices[0].message.content,providerReport:{model:response.model,modelDigest:null,quantizationLevel:null,inputTokens:usage.prompt_tokens,outputTokens:usage.completion_tokens,totalDurationNs:Math.round((performance.now()-started)*1e6)}};
   }finally{busy=false;}
  };

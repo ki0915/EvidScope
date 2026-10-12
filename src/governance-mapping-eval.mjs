@@ -36,7 +36,9 @@ const fail = code => { throw Object.assign(Error(code), {code}); };
 
 // ---------- one output against one gold row ----------
 // Lenient reading for scoring: an unparsable output counts as an abstention and fails schemaValid; unknown IDs and locators are
-// scored as wrong mappings and fail their safety checks.
+// scored as wrong mappings and fail their safety checks. An out-of-scope id (outOfScopePool, listed in prompts so the model can
+// abstain on it) is an unknown id like any other: a wrong mapping that fails onlyCatalogIds, and on a must-abstain row an answer
+// that fails mustAbstainCorrect. It never counts as an abstention.
 export function interpretOutput(content, row, catalog = governanceCatalog()) {
   const locators = row.evidence.map(e => e.id);
   let parsed;
@@ -163,9 +165,39 @@ export const baselineOutputs = (rows, variant, catalog = governanceCatalog()) =>
 export const llamaResponseFormat = f => (f.type === 'json_schema'
   ? {type: 'json_schema', json_schema: {name: 'evidscope_output', strict: true, schema: f.schema}} : f);
 export function variantRequests(rows, variant, catalog = governanceCatalog()) {
-  const examples = governanceExamples({localTables: localTablesFor(rows)});
-  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog, examples, excludeId: r.id});
+  const localTables = localTablesFor(rows), examples = governanceExamples({localTables});
+  return rows.map(r => { const q = buildMappingRequest(itemOf(r), {variant, catalog, examples, excludeId: r.id, localTables});
     return {id: r.id, variant, messages: q.messages, response_format: llamaResponseFormat(q.responseFormat), adapter: q.adapter, ...DECODING}; });
+}
+
+// ---------- diagnostic: answers beside a listed out-of-scope criterion ----------
+// On the must-abstain rows: mappings to a catalog ISMS-P id of the same section ("ISMS-P-2.2.") as a criterion the row's prompt
+// listed under outOfScope, and mappings naming a listed criterion itself. A copied out-of-scope id that a json_schema grammar
+// completed into an aligned sibling is scored as an ordinary catalog false positive; this count is how a pilot sees whether that
+// happens. Read from the requests as sent (outOfScopeShown); a request without outOfScope (zero_shot) lists nothing. Informational.
+const SHOWN_CRITERION = /^ISMS-P (\d+\.\d+)\.(\d+)$/;
+export function outOfScopeSiblingAnswers(rows, outputs, requests, catalog = governanceCatalog()) {
+  const listed = new Map(requests.map(q => {
+    let user;
+    try { user = JSON.parse(q.messages[1].content); } catch { user = null; }
+    const shown = (Array.isArray(user?.outOfScope) ? user.outOfScope : []).map(o => SHOWN_CRITERION.exec(o?.criterion ?? '')).filter(Boolean);
+    return [q.id, shown.map(([, section, item]) => ({id: `ISMS-P-${section}.${item}`, section: `ISMS-P-${section}.`}))];
+  }));
+  const out = {mustAbstain: 0, listing: 0, rowsWithSibling: 0, siblingMappings: 0, outOfScopeMappings: 0};
+  for (const r of rows.filter(x => x.truth.abstain === true)) {
+    const shown = listed.get(r.id) ?? [];
+    out.mustAbstain++;
+    if (!shown.length) continue;
+    out.listing++;
+    const ids = interpretOutput(outputs[r.id], r, catalog).mappings.map(m => m.requirementId);
+    const siblings = ids.filter(id => catalog.byId.has(id) && shown.some(o => id.startsWith(o.section))).length;
+    out.siblingMappings += siblings;
+    out.rowsWithSibling += siblings > 0 ? 1 : 0;
+    // A copy in the shown form ("ISMS-P 2.2.4", possible where the output is not constrained) names the criterion too.
+    const named = id => String(id).replace(/^ISMS-P (\d+\.\d+\.\d+)$/, 'ISMS-P-$1');
+    out.outOfScopeMappings += ids.filter(id => shown.some(o => o.id === named(id))).length;
+  }
+  return out;
 }
 
 // ---------- comparison report ----------
@@ -180,6 +212,7 @@ function measured(rows, variants, now, catalog) {
   return {gateRows, metrics, informational};
 }
 // The candidate ids a request listed, by row (the abstention policy keeps only those); null for a request without candidates.
+// The outOfScope list is not read: an out-of-scope id is never a candidate, so the policy drops it (not_candidate).
 const candidatesOf = requests => Object.fromEntries(requests.map(q => {
   let user;
   try { user = JSON.parse(q.messages[1].content); } catch { user = null; }
@@ -256,6 +289,13 @@ if (runtimeLock?.repository !== modelPolicy.primary.artifactRepository || runtim
   || !SHA.test(runtimeLock.sha256 || '')) throw Error('Runtime artifact lock does not match the model policy');
 export const PINNED_GGUF = Object.freeze({repository: runtimeLock.repository, revision: runtimeLock.revision, file: runtimeLock.files[0].path,
   sha256: runtimeLock.sha256});
+// The longest prompt the runtime serves (src/isolated-inference-client.mjs refuses prompt tokens + numPredict > numCtx). A run whose
+// receipt records a longer one (usage.maxPromptTokens, scripts/governance_mapping_batch.py) scored inputs the product refuses.
+export const RUNTIME_PROMPT_TOKENS = modelPolicy.primary.contextTokens - modelPolicy.primary.outputTokens;
+const overRuntimeBudget = receipt => {
+  const longest = receipt.usage?.maxPromptTokens;
+  return longest !== undefined && !(Number.isSafeInteger(longest) && longest <= RUNTIME_PROMPT_TOKENS);
+};
 
 // Recomputes everything a report claims from its outputs and gold rows; throws when the report is not internally consistent.
 export function verifyGovernanceReport(report, {now = Date.now(), catalog = governanceCatalog(), requireCandidate = true} = {}) {
@@ -295,6 +335,7 @@ export function measurementProblem(report, v) {
   if (nics?.length !== 1 || nics[0] !== 'lo' || r.isolation.verified !== true) return 'isolation_not_verified';
   if (r.modelSha256 !== PINNED_GGUF.sha256 || r.modelSha256 !== base?.modelSha256) return 'base_model_mismatch';
   if (canonical(r.decoding) !== canonical(DECODING) || r.count !== report.rows.length || r.failures !== 0) return 'measurement_incomplete';
+  if (overRuntimeBudget(r)) return 'prompt_over_runtime_budget';
   if (r.requestsSha256 !== run.requestsSha256 || r.outputsSha256 !== run.outputsSha256) return 'measurement_binding_mismatch';
   if (v === 'candidate' ? !SHA.test(r.adapterSha256 || '') : r.adapterSha256 !== null) return 'adapter_binding_invalid';
   return null;
@@ -311,6 +352,7 @@ function calibrationProblem(report) {
   if (nics?.length !== 1 || nics[0] !== 'lo' || v.isolation.verified !== true) return 'isolation_not_verified';
   if (v.modelSha256 !== r.modelSha256 || v.adapterSha256 !== r.adapterSha256) return 'calibration_model_mismatch';
   if (canonical(v.decoding) !== canonical(DECODING) || v.count !== c.validation.rows.length || v.failures !== 0) return 'calibration_measurement_incomplete';
+  if (overRuntimeBudget(v)) return 'calibration_prompt_over_runtime_budget';
   if (v.requestsSha256 !== c.validation.requestsSha256 || v.outputsSha256 !== c.validation.outputsSha256 || v.logprobsSha256 !== c.validation.logprobsSha256) {
     return 'calibration_binding_mismatch';
   }

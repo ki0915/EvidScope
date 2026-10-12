@@ -23,6 +23,9 @@ DECODING_KEYS = ("temperature", "top_p", "top_k", "seed", "max_tokens")
 # receipt and the report (src/governance-mapping-eval.mjs) hash the same canonical JSON.
 LOGPROB_SCALE = 1000000
 REQUEST_KEYS = {"id", "variant", "messages", "response_format", "adapter", *DECODING_KEYS}
+# The product runtime's context (src/model-policy.mjs primary contextTokens, deploy/model-runtime/render.mjs --ctx-size).
+RUNTIME_CONTEXT_TOKENS = 3072
+BUDGET_EXCEEDED = "prompt_budget_exceeded"
 
 
 def sha256_file(path):
@@ -166,20 +169,27 @@ def run(args):
                 content = choice["message"].get("content")
                 if not isinstance(content, str) or choice.get("finish_reason") not in ("stop", "length"):
                     raise ValueError("finish_" + str(choice.get("finish_reason")))
+                tokens = response.get("usage", {})
+                prompt_tokens = int(tokens.get("prompt_tokens", 0))
+                usage["maxPromptTokens"] = max(usage["maxPromptTokens"], prompt_tokens)
+                # The product runtime (src/isolated-inference-client.mjs) refuses a prompt that leaves less than max_tokens of its
+                # context for the reply. Measured with --ctx equal to the runtime context (the default), such an item fails here too
+                # instead of being scored as an answer the product could never give.
+                if prompt_tokens + decoding["max_tokens"] > args.ctx:
+                    raise ValueError(BUDGET_EXCEEDED)
                 # A reply cut at max_tokens is the model's answer for this item: it is kept as given and scored (it will not
                 # parse), not dropped as an infrastructure failure.
                 truncated += choice.get("finish_reason") == "length"
                 if args.logprobs:
                     logprobs[item["id"]] = token_logprobs(choice)
                 outputs[item["id"]] = content
-                tokens = response.get("usage", {})
-                usage["promptTokens"] += int(tokens.get("prompt_tokens", 0))
+                usage["promptTokens"] += prompt_tokens
                 usage["completionTokens"] += int(tokens.get("completion_tokens", 0))
-                usage["maxPromptTokens"] = max(usage["maxPromptTokens"], int(tokens.get("prompt_tokens", 0)))
             except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError) as error:
                 outputs[item["id"]] = ""
                 failures += 1
-                reason = str(error) if isinstance(error, ValueError) and str(error).startswith("finish_") else type(error).__name__
+                named = isinstance(error, ValueError) and (str(error).startswith("finish_") or str(error) == BUDGET_EXCEEDED)
+                reason = str(error) if named else type(error).__name__
                 reasons[reason] = reasons.get(reason, 0) + 1
             # Rest the GPU between requests in proportion to the time the request took (operator's choice, 2026-10-10).
             time.sleep((time.monotonic() - asked) * args.pause_ratio)
@@ -225,7 +235,7 @@ def main(argv=None):
     parser.add_argument("--expected-model-sha256", default="")
     parser.add_argument("--lora")
     parser.add_argument("--port", type=int, default=0)
-    parser.add_argument("--ctx", type=int, default=2048)
+    parser.add_argument("--ctx", type=int, default=RUNTIME_CONTEXT_TOKENS)
     parser.add_argument("--gpu-layers", type=int, default=99)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--start-timeout", type=int, default=600)

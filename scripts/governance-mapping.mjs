@@ -14,24 +14,29 @@
 //   gate --report report.json                                      promotion gate (exit 0 only when eligible)
 //   status                                                         the status the console reads
 //   promote --report R --approval A --adapter-file F --key reviewer-ed25519.key --out receipt.dsse.json   signed by the approver
-//   retrieval-recall --data R [--k 1,3,5,8]                        share of gold requirements among the retrieved candidates and among
-//                                                                  the k nearest examples' answers (the prompt's retrieval ceiling)
-//   embed-texts --data R --out texts.jsonl                         every prompt and catalog text, once, for scripts/governance_mapping_embed.py
+//   retrieval-recall --data R [--k 1,3,5,8]                        share of gold requirements among the retrieved candidates, the prompt's
+//                                                                  candidates and the k nearest examples' answers (the prompt's retrieval
+//                                                                  ceiling); for must-abstain rows from a not-aligned ISMS-P criterion, how
+//                                                                  often the prompt's outOfScope list (or the k closest) names it, by
+//                                                                  split, language and kind (title rows, source-table sentence rows)
+//   embed-texts --data R --out texts.jsonl                         every prompt, catalog and out-of-scope pool text, once, for
+//                                                                  scripts/governance_mapping_embed.py (with --embeddings F: how many F lacks)
 //   any command: --embeddings F                                    rank examples and candidates with the vectors in F (hybrid retrieval)
 import {createHash, createPrivateKey, createPublicKey, sign as cryptoSign} from 'node:crypto';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {canonical, verifyBundle} from '../src/crypto.mjs';
-import {VARIANTS, governanceCatalog, governanceEmbeddings, nearestExamples, retrieveRequirements, setGovernanceEmbeddings} from '../src/governance-mapping.mjs';
-import {embeddingTexts, loadEmbeddings} from '../src/governance-embeddings.mjs';
-import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, buildDataset, derivedItems, governanceAdmission, governanceExamples, reviewSheet,
-  shakedownRows, toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
+import {LIMITS, VARIANTS, buildMappingRequest, governanceCatalog, governanceEmbeddings, nearestExamples, normalizeMappingItem, outOfScopePool,
+  retrieveOutOfScope, retrieveRequirements, setGovernanceEmbeddings} from '../src/governance-mapping.mjs';
+import {embeddingTexts, loadEmbeddings, vectorFor} from '../src/governance-embeddings.mjs';
+import {QUEUE_DECISION_TYPE, applyQueueDecisions, applyReviewDecisions, baseDerivation, buildDataset, derivedItems, governanceAdmission,
+  governanceExamples, itemOf, outOfScopeSources, reviewSheet, shakedownRows, toJsonl, trainingRows} from '../src/governance-mapping-data.mjs';
 import {localTablesFor, sourceTableStatus} from '../src/governance-mapping-sources.mjs';
 import {evaluationFactsheetRequest, promotionFactsheetRequest, trainingFactsheetRequest} from '../src/governance-factsheets.mjs';
 import {DATASET_ID} from '../src/governance-review-queue.mjs';
-import {ALL_VARIANTS, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutputs, buildComparisonReport, variantRequests}
-  from '../src/governance-mapping-eval.mjs';
+import {ALL_VARIANTS, CALIBRATED, DETERMINISTIC_BASELINES, MODEL_VARIANTS, assessGovernanceReport, baselineOutputs, buildComparisonReport,
+  outOfScopeSiblingAnswers, variantRequests} from '../src/governance-mapping-eval.mjs';
 import {governanceModelStatus, promoteGovernanceCandidate} from '../src/governance-model.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
 
@@ -174,37 +179,71 @@ export function runGovernanceMappingCommand(argv) {
     const report = buildComparisonReport(rows, variants, {preparedBy: o['prepared-by'], calibration});
     write(o.out, JSON.stringify(report, null, 1) + '\n');
     const c = report.calibration;
+    // Informational, not part of the report: per model variant, must-abstain answers beside a listed out-of-scope criterion.
+    const siblings = Object.fromEntries(Object.keys(report.variants).filter(v => MODEL_VARIANTS.includes(v) || v === CALIBRATED)
+      .map(v => [v, outOfScopeSiblingAnswers(rows, report.variants[v].outputs, variantRequests(rows, v === CALIBRATED ? 'candidate' : v))]));
     return {variants: Object.keys(report.variants), gateItems: report.gateItems, gate: report.variants.candidate ? assessGovernanceReport(report) : null,
-      calibration: c ? {threshold: c.threshold, reached: c.reached, chosen: c.chosen} : null};
+      calibration: c ? {threshold: c.threshold, reached: c.reached, chosen: c.chosen} : null, outOfScopeSiblings: siblings};
   }
   if (command === 'gate') return assessGovernanceReport(JSON.parse(readFileSync(options(rest).report, 'utf8')));
   if (command === 'status') return governanceModelStatus();
   if (command === 'promote') return promote(options(rest));
   if (command === 'embed-texts') {
-    const o = options(rest), rows = readRows(o.data), catalog = governanceCatalog();
-    const texts = embeddingTexts([...rows.map(r => r.prompt), ...catalog.entries.map(e => e.text)]);
+    // The out-of-scope pool texts (74) joined the list with the outOfScope prompt field; a file made before then lacks them, and the
+    // out-of-scope ranking stays TF-IDF until the file is remade from this list. The pool is the one the dataset's requests use: with
+    // the local KISA guide its texts carry the Korean criterion sentences, so a file made for the shipped dataset does not cover them.
+    const o = options(rest), rows = readRows(o.data), catalog = governanceCatalog(), index = governanceEmbeddings();
+    const pool = outOfScopePool({catalog, localTables: localTablesFor(rows)});
+    const texts = embeddingTexts([...rows.map(r => r.prompt), ...catalog.entries.map(e => e.text), ...pool.entries.map(e => e.text)]);
     write(o.out, texts.map(t => canonical(t)).join('\n') + '\n');
-    return {texts: texts.length, rows: rows.length, catalogEntries: catalog.entries.length};
+    return {texts: texts.length, rows: rows.length, catalogEntries: catalog.entries.length, outOfScopeEntries: pool.entries.length,
+      missingFromEmbeddings: index ? texts.filter(t => !vectorFor(index, t.text)).length : null,
+      outOfScopeMissingFromEmbeddings: index ? pool.entries.filter(e => !vectorFor(index, e.text)).length : null};
   }
   if (command === 'retrieval-recall') {
-    const o = options(rest), rows = readRows(o.data), ks = String(o.k || '1,3,5,8').split(',').map(Number), out = {};
-    const examples = governanceExamples({localTables: localTablesFor(rows)});
+    const o = options(rest), rows = readRows(o.data), ks = String(o.k || '1,3,5,8').split(',').map(Number), out = {}, outside = {};
+    const localTables = localTablesFor(rows), examples = governanceExamples({localTables});
     if (ks.some(k => !Number.isInteger(k) || k < 1)) throw Error('--k must list positive integers');
     const index = governanceEmbeddings();
+    const request = r => buildMappingRequest(itemOf(r), {variant: 'candidate', examples, excludeId: r.id, localTables});
     for (const r of rows.filter(x => !x.truth.abstain)) {
-      const ids = new Set(retrieveRequirements(r.prompt).map(c => c.id));
-      const s = out[r.split] ??= {gold: 0, retrieved: 0, examplesHit: Object.fromEntries(ks.map(k => [k, 0]))};
+      const ids = new Set(retrieveRequirements(r.prompt).map(c => c.id)), listed = new Set(request(r).candidates);
+      const s = out[r.split] ??= {gold: 0, retrieved: 0, inPrompt: 0, examplesHit: Object.fromEntries(ks.map(k => [k, 0]))};
       const near = nearestExamples(r.prompt, examples, {k: Math.max(...ks), excludeId: r.id});
       for (const m of r.truth.mappings) {
         s.gold++;
         if (ids.has(m.requirementId)) s.retrieved++;
+        if (listed.has(m.requirementId)) s.inPrompt++;
         for (const k of ks) if (near.slice(0, k).some(n => n.example.requirementIds.includes(m.requirementId))) s.examplesHit[k]++;
       }
     }
+    // Offline proxy for the outOfScope list: the source criterion of a must-abstain row is among the LIMITS.outOfScope the prompt
+    // lists (listed), or among the k closest (atK, the same ranking). Counted by language and by the kind of row (the base rule, an
+    // injection resolved to the row it extends): title rows (isms-not-aligned) are "ISMS-P 인증기준 <number> <title>", the pool entry's
+    // own words, and hit by construction; sentence rows (prowler-*, kisa-*) are the source tables' checklist, evidence and defect text.
+    const cell = () => ({rows: 0, listed: 0, atK: Object.fromEntries(ks.map(k => [k, 0]))});
+    for (const r of rows) {
+      const sources = outOfScopeSources(r);
+      if (!sources.length) continue;
+      const kind = baseDerivation(r).rule === 'isms-not-aligned' ? 'title' : 'sentence';
+      const listed = request(r).outOfScope, byLanguage = (outside[r.split] ??= {})[r.language] ??= {all: cell(), title: cell(), sentence: cell()};
+      const ranked = retrieveOutOfScope(normalizeMappingItem(itemOf(r)).text, {k: Math.max(...ks), localTables}).map(x => x.id);
+      for (const s of [byLanguage.all, byLanguage[kind]]) {
+        s.rows++;
+        if (sources.some(id => listed.includes(id))) s.listed++;
+        for (const k of ks) if (sources.some(id => ranked.slice(0, k).includes(id))) s.atK[k]++;
+      }
+    }
+    const share = s => ({rows: s.rows, listed: s.listed, recall: s.rows ? s.listed / s.rows : null,
+      recallAtK: Object.fromEntries(ks.map(k => [k, s.rows ? s.atK[k] / s.rows : null]))});
     const splits = Object.fromEntries(Object.entries(out).map(([split, s]) => [split, {...s, recall: s.retrieved / s.gold,
-      examplesRecall: Object.fromEntries(ks.map(k => [k, s.examplesHit[k] / s.gold]))}]));
+      promptRecall: s.inPrompt / s.gold, examplesRecall: Object.fromEntries(ks.map(k => [k, s.examplesHit[k] / s.gold]))}]));
     const embeddings = index ? {sha256: index.model.sha256, file: index.model.file ?? null, texts: index.vectors.size} : null;
-    return {method: index ? 'hybrid' : 'tfidf', embeddings, examples: examples.length, splits};
+    const pool = outOfScopePool({localTables}), covered = index ? pool.entries.filter(e => vectorFor(index, e.text)).length : 0;
+    const outOfScope = {k: LIMITS.outOfScope, method: covered ? 'hybrid' : 'tfidf', embeddedPoolTexts: covered, kisaGuide: !!pool.sources.kisaGuide,
+      splits: Object.fromEntries(Object.entries(outside).map(([split, byLanguage]) => [split, Object.fromEntries(Object.entries(byLanguage)
+        .map(([language, s]) => [language, {...share(s.all), title: share(s.title), sentence: share(s.sentence)}]))]))};
+    return {method: index ? 'hybrid' : 'tfidf', embeddings, examples: examples.length, splits, outOfScope};
   }
   throw Error(`usage: governance-mapping.mjs <${['build', 'review-sheet', 'import-decisions', 'export-reviewed', 'admission', 'training-set', 'requests',
     'report', 'gate', 'status', 'retrieval-recall', 'embed-texts', 'sources', 'promote', 'factsheet'].join('|')}> ...`

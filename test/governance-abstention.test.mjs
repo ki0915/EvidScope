@@ -223,6 +223,11 @@ test('cli: validation requests and report --validation-runs round-trip the batch
     '--out', join(dir, 'report.json')]);
   assert.ok(result.variants.includes(CALIBRATED));
   assert.equal(result.calibration.reached, true);
+  // Informational, per model variant: must-abstain answers beside a criterion the prompt listed as out of scope (zero_shot lists none).
+  const siblings = result.outOfScopeSiblings, mustAbstain = testRows.filter(r => r.truth.abstain).length;
+  assert.deepEqual(Object.keys(siblings), ['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate', CALIBRATED]);
+  assert.ok(Object.values(siblings).every(x => x.mustAbstain === mustAbstain && x.listing <= mustAbstain));
+  assert.deepEqual([siblings.zero_shot.listing, siblings.candidate.listing > 0], [0, true]);
   assert.equal(result.gate.underTest, CALIBRATED);
   const written = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8'));
   assert.equal(measurementProblem(written, CALIBRATED), null);
