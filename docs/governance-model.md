@@ -46,7 +46,7 @@
 
 | 출처 | 행 | tune | validation | test | 사람 검토 |
 | --- | --- | --- | --- | --- | --- |
-| 표에서 기계적으로 파생 (`derived_mapping_table`) | 870 | 616 | 67 | 187 | 행별 검토 불필요. 게이트가 매번 표에서 다시 파생해 대조 |
+| 표에서 기계적으로 파생 (`derived_mapping_table`) | 870 | 559 | 124 | 187 | 행별 검토 불필요. 게이트가 매번 표에서 다시 파생해 대조 |
 | Claude 초안 (`claude_drafted`) | 219 | 147 | 15 | 57 | **219행 모두 필요**. 지금 검토된 행 0 |
 
 파생 규칙은 열한 가지입니다(`node scripts/governance-mapping.mjs sources`가 표와 규칙별 행 수를 보여 줍니다).
@@ -321,7 +321,7 @@ QLoRA 어댑터만 학습합니다. 어댑터가 런타임 모델과 맞아야 �
   "scores": null,
   "catalog": {"digest": "f12872b3…", "requirements": 55, "frameworks": {"eu-ai-act-logging": 10, "kr-ai-basic-act": 18, "isms-p": 27}},
   "dataset": {"derived": 870, "drafted": 219, "humanReviewed": 0, "needsHumanReview": 219, "trainingAdmitted": true,
-              "eligible": {"tune": 616, "validation": 67, "test": 187}, "minimum": {"tune": 300, "validation": 50, "test": 100}},
+              "eligible": {"tune": 559, "validation": 124, "test": 187}, "minimum": {"tune": 300, "validation": 50, "test": 100}},
   "humanConfirmationRequired": true, "qualityClaimAllowed": false, "observedAt": "2026-10-08T06:33:12.012Z"
 }
 ```

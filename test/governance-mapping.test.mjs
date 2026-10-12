@@ -102,7 +102,7 @@ test('dataset: deterministic, equal to the committed file, drafted rows never ma
   assert.equal(admission.qualityClaimAllowed, false);
   assert.ok(!admission.reasons.some(x => /leakage/.test(x)));
   assert.deepEqual(Object.fromEntries(Object.entries(admission.counts).map(([s, c]) => [s, [c.eligible, c.excludedUnreviewed]])),
-    {tune: [616, 147], validation: [67, 15], test: [187, 57]});
+    {tune: [559, 147], validation: [124, 15], test: [187, 57]});
   assert.ok(trainingRows(dataset).every(r => r.labelSource === 'derived_mapping_table' && r.split !== 'test'));
   assert.throws(() => trainingRows(dataset.slice(0, 80)), /governance_training_admission_failed/);
 });

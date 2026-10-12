@@ -112,8 +112,12 @@ export function derivedItems(catalog = governanceCatalog(), {localTables} = {}) 
 // Derived rows are split by evidence text, stratified by their first requirement, so every requirement with enough rows is both
 // learned (tune) and measured on texts the trainer never saw (test). Splitting by requirement instead (splits.json, still used for
 // drafted rows) puts whole requirements out of training, which a model cannot learn. A requirement with n rows gives
-// round(n/5) (at least 1 when n >= 2) to test and 1 to validation when n >= 5; a requirement with a single row stays in tune.
-// Order within a requirement is by sha256 of the text, so the split is deterministic and independent of table order.
+// round(n/5) (at least 1 when n >= 2) to test and round(3n/20) (at least 1) to validation when n >= 5; a requirement with a single
+// row stays in tune. Order within a requirement is by sha256 of the text, so the split is deterministic and independent of table order.
+// Validation takes 15% of each requirement's rows, the share hashSplit gives abstain rows, so the abstention calibration sees the same
+// mix of answerable and must-abstain rows as the test split. Until 2026-10-12 it took one row per requirement (about 5%), which made
+// validation ~55% must-abstain against ~28% in test and the calibrated threshold far too strict (pilots 8 and 9). The test rows of a
+// requirement are the same under both rules (the first round(n/5) by hash); only tune rows moved to validation.
 function stratify(items) {
   const groups = new Map();
   for (const i of items) {
@@ -124,7 +128,7 @@ function stratify(items) {
   const split = new Map();
   for (const group of groups.values()) {
     const ordered = group.map(i => [sha256(`governance-mapping-v1-text:${i.text}`), i]).sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(x => x[1]);
-    const n = ordered.length, test = n >= 2 ? Math.max(1, Math.round(n / 5)) : 0, validation = n >= 5 ? 1 : 0;
+    const n = ordered.length, test = n >= 2 ? Math.max(1, Math.round(n / 5)) : 0, validation = n >= 5 ? Math.max(1, Math.round(n * 3 / 20)) : 0;
     ordered.forEach((i, k) => split.set(i, k < test ? 'test' : k < test + validation ? 'validation' : 'tune'));
   }
   return items.map(i => split.has(i) ? {...i, split: split.get(i)} : i);

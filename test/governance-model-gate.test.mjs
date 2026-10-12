@@ -109,7 +109,7 @@ test('base mode needs the minimum precision as well as the rules-only comparison
 
 test('shakedown: derived rows only, labelled shakedown, refused by the candidate trainer and the other way round', () => {
   const rows = shakedownRows(dataset);
-  assert.equal(rows.length, 616 + 67);
+  assert.equal(rows.length, 559 + 124);
   assert.ok(rows.every(r => r.runMode === 'shakedown' && r.labelSource === 'derived_mapping_table' && r.split !== 'test'));
   assert.throws(() => shakedownRows(dataset.map(r => (r.labelSource === 'derived_mapping_table' ? {...r, truth: {...r.truth, abstain: !r.truth.abstain}} : r))),
     /governance_shakedown_rows_invalid/);
@@ -171,7 +171,7 @@ print(json.dumps({name: t.admission(path, shakedown=flag)[1] for name, path, fla
   const r = spawnSync(python, ['-I', '-B', '-c', code, file, candidateFile, mixed], {encoding: 'utf8', timeout: 120000});
   assert.equal(r.status, 0, r.stderr);
   const gates = JSON.parse(r.stdout.trim().split('\n').at(-1));
-  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 616, validation: 67}]);
+  assert.deepEqual([gates.shakedown.admitted, gates.shakedown.promotable, gates.shakedown.counts], [true, false, {tune: 559, validation: 124}]);
   assert.ok(gates.asCandidate.reasons.includes('shakedown_rows_in_candidate_run'));
   assert.deepEqual([gates.candidate.admitted, gates.candidate.promotable], [true, true]);
   assert.ok(gates.candidateAsShakedown.reasons.includes('shakedown_requires_derived_shakedown_rows'));
