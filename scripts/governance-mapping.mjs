@@ -4,7 +4,7 @@
 //   import-decisions --data D --sheet filled.tsv --reviewer ID --reviewed-at ISO --attest-pii-reviewed --attest-source-consent --out R
 //   export-reviewed --data D --bundle export.json --trust-anchor vault.pem --out R   apply the console's signed review decisions
 //   admission --data R                                             training admission for this task
-//   training-set --data R --out train.jsonl [--shakedown]          tune/validation rows in the runtime prompt format; --shakedown:
+//   training-set --data R --out train.jsonl [--shakedown] [--abstain-weight N]  tune/validation rows in the runtime prompt format; --shakedown:
 //                                                                  derived rows only, for a never-promotable VRAM/time run
 //   factsheet --kind training --receipt training-receipt.json --training-set train.jsonl [--adapter-gguf F] --out F
 //   factsheet --kind evaluation --report report.json --out F       a factsheet request to record in the console (실험 비교)
@@ -132,9 +132,12 @@ export function runGovernanceMappingCommand(argv) {
   if (command === 'export-reviewed') return exportReviewed(options(rest));
   if (command === 'admission') return governanceAdmission(readRows(options(rest).data));
   if (command === 'training-set') {
-    const o = options(rest, ['shakedown']), rows = o.shakedown ? shakedownRows(readRows(o.data)) : trainingRows(readRows(o.data));
+    // --abstain-weight N (candidate mode only): tune-split abstain rows repeated N-1 more times, see trainingRows.
+    const o = options(rest, ['shakedown']), abstainWeight = o['abstain-weight'] === undefined ? 1 : Number(o['abstain-weight']);
+    if (o.shakedown && o['abstain-weight'] !== undefined) throw Error('abstain_weight_invalid');
+    const rows = o.shakedown ? shakedownRows(readRows(o.data)) : trainingRows(readRows(o.data), {abstainWeight});
     write(o.out, jsonl(rows));
-    return {rows: rows.length, runMode: o.shakedown ? 'shakedown' : 'candidate',
+    return {rows: rows.length, runMode: o.shakedown ? 'shakedown' : 'candidate', abstainWeight, abstainCopies: rows.filter(r => r.weightCopy).length,
       ...(o.shakedown ? {notice: 'shakedown: derived rows only; the adapter is never promotable and is not a quality result'} : {})};
   }
   if (command === 'factsheet') return factsheet(options(rest));

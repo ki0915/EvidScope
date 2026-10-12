@@ -233,10 +233,18 @@ const trainerRow = (r, runMode, localTables) => {
     target: JSON.stringify(target), labelSource: r.labelSource, reviewedPayloadHash: r.reviewedPayloadHash ?? null,
       catalogDigest: request.catalogDigest, runMode};
 };
-export function trainingRows(rows, {now = Date.now(), localTables = localTablesFor(rows)} = {}) {
+// abstainWeight N (training-set --abstain-weight): every tune-split abstain row is written N-1 more times (id `<id>#abstain-weight-k`,
+// weightCopy k) so abstention carries more of the loss; validation rows and the dataset are unchanged. Pilot 8 (2026-10-12) answered
+// 47 of 77 must-abstain test items although their items had abstain rows in training.
+export function trainingRows(rows, {now = Date.now(), localTables = localTablesFor(rows), abstainWeight = 1} = {}) {
+  if (!(Number.isInteger(abstainWeight) && abstainWeight >= 1 && abstainWeight <= 5)) throw Error('abstain_weight_invalid');
   const gate = governanceAdmission(rows, {now, localTables});
   if (!gate.admitted) throw Object.assign(Error('governance_training_admission_failed'), {admission: gate});
-  return rows.filter(r => r.split !== 'test' && rowEligibility(r, {now, localTables}).eligible).map(r => trainerRow(r, 'candidate', localTables));
+  const eligible = rows.filter(r => r.split !== 'test' && rowEligibility(r, {now, localTables}).eligible);
+  const out = eligible.map(r => trainerRow(r, 'candidate', localTables));
+  const abstain = out.filter((row, i) => eligible[i].split === 'tune' && eligible[i].truth.abstain);
+  for (let k = 2; k <= abstainWeight; k++) out.push(...abstain.map(row => ({...row, id: `${row.id}#abstain-weight-${k}`, weightCopy: k})));
+  return out;
 }
 // Shakedown: the derived tune/validation rows only, to measure VRAM and time on the PC before the human review is done. Every row is
 // labelled runMode "shakedown"; the trainer then writes a shakedown adapter that is never promotable and never a quality result.

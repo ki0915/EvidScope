@@ -85,6 +85,8 @@ node scripts/governance-mapping.mjs admission --data C:\evidscope-work\reviewed.
 node scripts/governance-mapping.mjs training-set --data C:\evidscope-work\reviewed.jsonl --out C:\evidscope-work\train.jsonl
 ```
 
+`training-set`에 `--abstain-weight N`(2~5)을 주면 tune 분할의 "해당 없음" 행을 N-1번 더 복사해(id `<id>#abstain-weight-k`, `weightCopy` 필드) 보류를 더 무겁게 학습한다. 검증 분할과 데이터셋은 그대로이고, 복사 수는 명령 결과의 `abstainCopies`와 factsheet에 남는 학습 파일 해시로 확인한다(8차 분석 뒤 9차부터 사용).
+
 `admission`이 `admitted: true`가 아니면 여기서 멈춥니다(종료 코드 2).
 
 ## 2-1. 셰이크다운 (검토 전 VRAM·시간 측정)
