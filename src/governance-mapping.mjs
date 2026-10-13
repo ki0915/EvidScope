@@ -16,8 +16,13 @@ export const MODEL_KINDS = Object.freeze(['document_excerpt', 'registry_entry', 
 export const RULE_KIND = 'structured';
 export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_constrained', 'candidate']);
 // outOfScope: how many not-aligned ISMS-P criteria (outOfScopePool) a prompt lists next to its catalog candidates.
+// descriptionChars: how much of a catalog candidate's requirement sentence (candidateDescriptions) a prompt shows, shortened in
+// steps (DESCRIPTION_STEPS) for a request whose user message would otherwise exceed descriptionBudgetBytes. Measured 2026-10-13 with
+// the base tokenizer over the local training set: 80 characters added ~450 tokens on average and the longest rows (Korean law text
+// with law-text examples) reached 2,183 tokens, past the trainer's 2,048-token sequence; at 5,600 bytes the longest is 1,979.
 export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 5,
-  exampleChars: 160, outOfScope: 3});
+  exampleChars: 160, outOfScope: 3, descriptionChars: 80, descriptionBudgetBytes: 5600});
+const DESCRIPTION_STEPS = Object.freeze([LIMITS.descriptionChars, 60, 40, 20]);
 // Source tables (src/governance-mapping-sources.mjs) the out-of-scope pool reads: the shipped Prowler KISA ISMS-P table (English names
 // of the ISMS-P criteria) and the local-only KISA guide (the official Korean criterion sentences).
 const PROWLER_ISMS_P = 'prowler-kisa-isms-p-2023-aws', KISA_GUIDE = 'kisa-isms-p-guide-2023-11';
@@ -111,6 +116,40 @@ export function outOfScopePool({catalog = governanceCatalog(), localTables} = {}
 // "ISMS-P-2.2.4" would be completed by the grammar into an aligned sibling of the same section (2.2.2 or 2.2.5): the look-alike
 // answer the list is there to prevent, and one that would pass onlyCatalogIds unseen.
 export const outOfScopeShown = entry => ({criterion: `ISMS-P ${entry.number}`, title: clip(entry.title, LIMITS.snippetChars)});
+
+// ---------- candidate descriptions: what each catalog requirement asks, in one sentence ----------
+// The prompt used to show a candidate as {id, label, title} only, and an ISMS-P title is two to four words ("사용자 인증"). In
+// pilots 10 and 11 more than half of the wrong mappings were another catalog requirement, and about 9 in 10 of those were the label
+// of one of the retrieved examples, often the first-listed: with nothing but titles the adapter learned to copy the nearest example's answer rather
+// than to tell siblings apart (2.5.1 사용자 계정 관리 vs 2.5.2 사용자 식별). Each candidate now carries the requirement sentence:
+//  - ISMS-P: the official criterion sentence of the local-only KISA guide when present (the 인증기준 of the notice's annex 7),
+//    else the English description of the same item in the shipped Prowler table, so a build without local tables still shows one;
+//  - AI 기본법 items: the catalog requirement text of data/requirements.json;
+//  - EU AI Act items: the English title of the shipped mapping table.
+// Retrieval texts are unchanged; descriptions only reach the prompt. Cached per catalog and guide hash like outOfScopePool.
+const descriptionMaps = new WeakMap();
+export function candidateDescriptions({catalog = governanceCatalog(), localTables} = {}) {
+  const tables = loadSourceTables({localTables}), prowler = tables.find(t => t.id === PROWLER_ISMS_P);
+  const guide = tables.find(t => t.id === KISA_GUIDE && t.present) ?? null, key = guide?.sha256 ?? 'none';
+  if (!descriptionMaps.has(catalog)) descriptionMaps.set(catalog, new Map());
+  const byTables = descriptionMaps.get(catalog);
+  if (byTables.has(key)) return byTables.get(key);
+  const flat = s => String(s).replace(/\s+/g, ' ').trim();
+  const criteria = new Map((Array.isArray(guide?.data?.items) ? guide.data.items : [])
+    .filter(i => typeof i?.number === 'string' && typeof i.criterion === 'string' && i.criterion.trim()).map(i => [i.number, flat(i.criterion)]));
+  const english = new Map(prowler.data.Requirements.map(r => [r.Id, r]));
+  const requirements = new Map(JSON.parse(data('requirements.json')).map(r => [r.id, r]));
+  const map = new Map(catalog.entries.map(e => {
+    let text = null;
+    if (e.framework === 'isms-p') { const n = e.id.slice('ISMS-P-'.length); text = criteria.get(n) ?? flat(english.get(n)?.Description ?? ''); }
+    else if (e.framework === 'kr-ai-basic-act') text = flat(requirements.get(e.id)?.requirement ?? '');
+    else text = flat(e.title.en ?? '');
+    if (!text) throw Error('candidate_description_missing: ' + e.id);
+    return [e.id, text];
+  }));
+  byTables.set(key, map);
+  return map;
+}
 
 // ---------- rules: what the shipped tables already answer ----------
 // Identity of one structured evidence entry (a table entry or an input item), without descriptive text.
@@ -358,11 +397,19 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
     if (examples) candidates.sort();
     const pool = outOfScopePool({catalog, localTables}), outside = id => outOfScopeShown(pool.byId.get(id));
     outOfScope = retrieveOutOfScope(item.text, {catalog, embeddings, localTables}).map(o => o.id).sort();
-    user = {evidence, candidates: candidates.map(id => {
-       const e = catalog.byId.get(id); return {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars)}; }), outOfScope: outOfScope.map(outside)};
+    const described = candidateDescriptions({catalog, localTables});
+    const shown = chars => candidates.map(id => {
+      const e = catalog.byId.get(id); return {id, label: e.label, title: clip(e.title.ko, LIMITS.snippetChars),
+        ...(chars ? {description: clip(described.get(id), chars)} : {})}; });
+    user = {evidence, candidates: shown(0), outOfScope: outOfScope.map(outside)};
     if (examples) user.examples = near.map(n => ({text: clip(n.example.text, LIMITS.exampleChars),
       answer: n.example.abstain ? 'abstain' : n.example.requirementIds,
       ...(n.example.abstain && pool.byId.has(n.example.outOfScope) ? {outOfScope: outside(n.example.outOfScope)} : {})}));
+    // The longest description length that keeps the user message within descriptionBudgetBytes (none if even 20 does not fit).
+    for (const chars of DESCRIPTION_STEPS) {
+      const candidate = {...user, candidates: shown(chars)};
+      if (Buffer.byteLength(JSON.stringify(candidate)) <= LIMITS.descriptionBudgetBytes) { user = candidate; break; }
+    }
   }
   const constrained = variant === 'retrieval_constrained' || variant === 'candidate';
   const system = variant === 'zero_shot' ? SYSTEM_PROMPTS.plain : SYSTEM_PROMPTS.outOfScope;

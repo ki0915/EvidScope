@@ -6,7 +6,8 @@ import {join, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {canonical} from '../src/crypto.mjs';
 import {keyFingerprint} from '../src/dsse.mjs';
-import {LIMITS, buildMappingRequest, governanceCatalog, mappingOutputSchema, nearestExamples, outOfScopePool, outOfScopeShown, outputMatchesTruth,
+import {LIMITS, buildMappingRequest, candidateDescriptions, governanceCatalog, mappingOutputSchema, nearestExamples, outOfScopePool,
+  outOfScopeShown, outputMatchesTruth,
   resolveMapping, retrieveOutOfScope, retrieveRequirements, ruleMapping, validateMappingOutput} from '../src/governance-mapping.mjs';
 import {applyReviewDecisions, baseDerivation, buildDataset, governanceAdmission, governanceExamples, itemOf, loadSplits, outOfScopeSources, reviewSheet,
   rowEligibility, trainingRows} from '../src/governance-mapping-data.mjs';
@@ -373,10 +374,11 @@ test('out of scope: the report command counts must-abstain answers beside a list
     {mustAbstain, listing: 0, rowsWithSibling: 0, siblingMappings: 0, outOfScopeMappings: 0}, 'zero_shot lists nothing');
 });
 
-test('requests: only the outOfScope additions changed, and zero_shot not at all; every dataset request fits the runtime budget', () => {
-  // Hashes of the test-split requests (committed dataset, TF-IDF) as built before the outOfScope field and system sentence. Taking
-  // the additions out again (the system sentence, the user outOfScope list, the examples' outOfScope notes) gives those bytes back:
-  // candidates, examples and evidence are unchanged. zero_shot never had any of them.
+test('requests: only the outOfScope and description additions changed, and zero_shot not at all; every dataset request fits the runtime budget', () => {
+  // Hashes of the test-split requests (committed dataset, TF-IDF) as built before the outOfScope field, the system sentence and the
+  // candidate descriptions. Taking the additions out again (the system sentence, the user outOfScope list, the examples' outOfScope
+  // notes, each candidate's description) gives those bytes back: candidates, examples and evidence are unchanged. zero_shot never had
+  // any of them.
   const before = {zero_shot: '58f9d8047e76332276c1ba2de9cd2bcf3f1b1acafa1297a2fe5e3e8f4ad4e207',
     retrieval: '6c7466207b71e6879d70c4357c935bf1ff6d55f71941e3cf0d44e2a89dc994f4',
     retrieval_constrained: 'c1ee9d5dd0f6d0182bf3ddba5d1c5dc2c300fd67943a3213a4d25ac71b17cb08',
@@ -385,6 +387,7 @@ test('requests: only the outOfScope additions changed, and zero_shot not at all;
     const user = JSON.parse(q.messages[1].content);
     delete user.outOfScope;
     for (const e of user.examples ?? []) delete e.outOfScope;
+    for (const c of user.candidates ?? []) delete c.description;
     return {...q, messages: [{...q.messages[0], content: q.messages[0].content.replace(/ outOfScope lists [^]*?determines a candidate\./, '')},
       {...q.messages[1], content: JSON.stringify(user)}]};
   };
@@ -399,14 +402,55 @@ test('requests: only the outOfScope additions changed, and zero_shot not at all;
   // maxPromptBytes bytes. Calibration, 2026-10-12: the Llama 3 tokenizer with the Llama 3.1 chat template over every request of the
   // shipped dataset and of a build with the local KISA guide, all four variants, gave at most 0.353 prompt tokens per byte of the
   // JSON messages (zero_shot's id list; 0.293 for the retrieval prompts) and a longest prompt of 1,639 tokens (6,380 bytes), which
-  // the 2048-token context of before (1,536 for the prompt) did not hold. A request of B bytes is taken as at most 0.36 B tokens.
-  const {numCtx, numPredict, maxPromptBytes} = primaryModelPolicy().generation, TOKENS_PER_BYTE = 0.36;
+  // the 2048-token context of before (1,536 for the prompt) did not hold. Again 2026-10-13 with the candidate descriptions: at most
+  // 0.342 for zero_shot and 0.268 for the other variants, longest 1,861 tokens (7,212 bytes). A request of B bytes is taken as at
+  // most 0.36 B tokens for zero_shot and 0.30 B for the others.
+  const {numCtx, numPredict, maxPromptBytes} = primaryModelPolicy().generation;
   for (const v of MODEL_VARIANTS) {
+    const tokensPerByte = v === 'zero_shot' ? 0.36 : 0.30;
     const longest = Math.max(...variantRequests(dataset, v).map(q => Buffer.byteLength(JSON.stringify(q.messages))));
     assert.ok(longest <= maxPromptBytes, `${v}: ${longest} bytes`);
-    assert.ok(Math.ceil(longest * TOKENS_PER_BYTE) + numPredict <= numCtx, `${v}: ${longest} bytes may exceed the runtime prompt budget`);
+    assert.ok(Math.ceil(longest * tokensPerByte) + numPredict <= numCtx, `${v}: ${longest} bytes may exceed the runtime prompt budget`);
   }
   assert.equal(RUNTIME_PROMPT_TOKENS, numCtx - numPredict);
+});
+
+test('candidate descriptions: every catalog requirement has one, ISMS-P from the local guide or else Prowler, and long prompts shorten them', () => {
+  const catalog = governanceCatalog(), plainMap = candidateDescriptions(NO_LOCAL);
+  assert.deepEqual([...plainMap.keys()], catalog.ids);
+  assert.ok([...plainMap.values()].every(t => typeof t === 'string' && t.trim() === t && t.length > 0));
+  const prowler = new Map(JSON.parse(readFileSync('data/governance-mapping/sources/prowler/kisa_isms_p_2023_aws.json', 'utf8')).Requirements
+    .map(r => [r.Id, r.Description.replace(/\s+/g, ' ').trim()]));
+  assert.equal(plainMap.get('ISMS-P-2.5.2'), prowler.get('2.5.2'), 'no local guide: the shipped English description');
+  const requirements = new Map(JSON.parse(readFileSync('data/requirements.json', 'utf8')).map(r => [r.id, r.requirement]));
+  assert.equal(plainMap.get('KR-31-1'), requirements.get('KR-31-1'));
+  assert.equal(plainMap.get('EU-AIA-12-1'), catalog.byId.get('EU-AIA-12-1').title.en);
+  mkdirSync('.test-runs', {recursive: true});
+  const dir = mkdtempSync(resolve('.test-runs/governance-desc-guide-'));
+  // A stand-in for the KOGL guide (not its text).
+  writeFileSync(join(dir, 'kisa-isms-p-guide-2023-11.json'), JSON.stringify({schemaVersion: 1, id: 'kisa-isms-p-guide-2023-11',
+    items: [{number: '2.5.2', title: '사용자 식별', criterion: '계정마다   고유한 식별자를 두고 공유 계정은 승인받아야 한다.'}]}));
+  const guided = candidateDescriptions({localTables: dir});
+  assert.equal(candidateDescriptions({localTables: dir}), guided, 'cached per guide hash');
+  assert.equal(guided.get('ISMS-P-2.5.2'), '계정마다 고유한 식별자를 두고 공유 계정은 승인받아야 한다.');
+  assert.equal(guided.get('ISMS-P-2.5.1'), plainMap.get('ISMS-P-2.5.1'), 'an item the guide lacks keeps the Prowler description');
+  // The prompt shows each candidate's description, clipped, next to its title; zero_shot shows none.
+  const examples = governanceExamples(NO_LOCAL);
+  const item = {kind: 'document_excerpt', locators: ['evidence:x'], text: 'Developers share one personal information processing account'};
+  const user = JSON.parse(buildMappingRequest(item, {variant: 'candidate', examples, embeddings: null, ...NO_LOCAL}).messages[1].content);
+  assert.ok(user.candidates.length > 0);
+  for (const c of user.candidates) {
+    assert.deepEqual(Object.keys(c), ['id', 'label', 'title', 'description']);
+    assert.ok([...c.description].length <= LIMITS.descriptionChars);
+    assert.ok(plainMap.get(c.id).startsWith(c.description.replace(/…$/, '')));
+  }
+  assert.equal(JSON.parse(buildMappingRequest(item, {variant: 'zero_shot', embeddings: null, ...NO_LOCAL}).messages[1].content).candidates, undefined);
+  // A long evidence text with long examples: descriptions shorten (or drop) so the user message stays within the byte budget.
+  const long = {...item, text: '고영향 인공지능 사업자는 위험관리 방안을 수립·운영하여야 한다. '.repeat(16)};
+  const longUser = JSON.parse(buildMappingRequest(long, {variant: 'candidate', examples, embeddings: null, ...NO_LOCAL}).messages[1].content);
+  const bytes = Buffer.byteLength(JSON.stringify(longUser)), lengths = longUser.candidates.map(c => [...(c.description ?? '')].length);
+  assert.ok(bytes <= LIMITS.descriptionBudgetBytes || lengths.every(n => n === 0), `${bytes} bytes`);
+  assert.ok(lengths.every(n => n === lengths[0]), 'one description length per request');
 });
 
 const testRows = approveAll(dataset).filter(r => r.split === 'test');
