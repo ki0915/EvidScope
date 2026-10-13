@@ -24,14 +24,18 @@ const fileSha = path => createHash('sha256').update(readFileSync(path)).digest('
 // runMode "shakedown" trains on the derived rows only (training-set --shakedown) into its own output directory; the trainer then
 // writes a shakedown adapter that is never promotable (docs/governance-model-runbook.md).
 export const RUN_DIRS = Object.freeze({candidate: 'governance-mapping/run', shakedown: 'governance-mapping/shakedown'});
+// The trainer's share of the 12 GB card (torch per-process cap). 0.65 until 2026-10-13: with candidate descriptions (pilot 12) the
+// longest rows needed ~7.9 GiB and every try ran out of memory at the 7.8 GiB cap while ~3 GiB of the card stayed free; 0.72 (8.6
+// GiB) leaves ~3.4 GiB for the desktop. The active-use guard's start check (TRAINING_ACTIVE_USE_POLICY.minStartGpuFreeMiB) follows.
+export const GPU_MEMORY_FRACTION = 0.72;
 // Every input is an absolute host path; the digests the trainer re-checks are computed here from the same bytes.
-export function trainingSpec({image, baseDir, baseRevision, dataFile, checkpointsDir, scriptsDir, workDir, resumeCheckpoint = null, gpuMemoryFraction = 0.65,
-  runMode = 'candidate'}) {
+export function trainingSpec({image, baseDir, baseRevision, dataFile, checkpointsDir, scriptsDir, workDir, resumeCheckpoint = null,
+  gpuMemoryFraction = GPU_MEMORY_FRACTION, runMode = 'candidate'}) {
   if (!IMAGE.test(image || '')) fail('training_image_digest_required');
   if (!REVISION.test(baseRevision || '')) fail('base_revision_required');
   if (!Object.hasOwn(RUN_DIRS, runMode)) fail('run_mode_invalid');
   for (const p of [baseDir, dataFile, checkpointsDir, scriptsDir, workDir]) if (typeof p !== 'string' || !isAbsolute(p)) fail('absolute_paths_required');
-  if (!(gpuMemoryFraction >= 0.1 && gpuMemoryFraction <= 0.65)) fail('gpu_memory_fraction_invalid');
+  if (!(gpuMemoryFraction >= 0.1 && gpuMemoryFraction <= GPU_MEMORY_FRACTION)) fail('gpu_memory_fraction_invalid');
   if (resumeCheckpoint !== null && !(typeof resumeCheckpoint === 'string' && resumeCheckpoint.startsWith(RUN_DIRS[runMode] + '/')
     && /^checkpoint-[1-9][0-9]*$/.test(resumeCheckpoint.slice(RUN_DIRS[runMode].length + 1)))) fail('checkpoint_path_invalid');
   const modes = new Set(readFileSync(dataFile, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line).runMode ?? 'candidate'));

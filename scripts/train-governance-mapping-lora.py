@@ -28,7 +28,8 @@ BASE_REPOSITORY = "fdtn-ai/Foundation-Sec-1.1-8B-Instruct"
 TASK = "governance-mapping"
 RELATIONS = {"supports", "contradicts", "context_only"}
 CONFIDENCE = {"low", "medium", "high"}
-# r=8 on every linear projection; with completion-only logits this is sized for the 12 GB card under the 0.65 memory fraction.
+# r=8 on every linear projection; with completion-only logits this is sized for the 12 GB card under the 0.72 memory fraction
+# (0.65 until 2026-10-13, when prompts with candidate descriptions ran out of memory; src/governance-training.mjs GPU_MEMORY_FRACTION).
 RECIPE = {"rank": 8, "alpha": 16, "dropout": 0.05, "targetModules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
           "sequenceLength": 2048, "batchSize": 1, "gradientAccumulationSteps": 8, "epochs": 1, "learningRatePerMillion": 200, "warmupStepsPer1000": 30,
           "seed": 42, "saveSteps": 5}
@@ -227,7 +228,7 @@ def train(args, rows):
     started = time.monotonic()
     if os.name != "posix" or os.environ.get("EVIDSCOPE_ISOLATED") != "1" or not Path("/etc/podinfo/uid").is_file():
         raise RuntimeError("isolated_training_job_required")
-    if not 0.1 <= args.gpu_memory_fraction <= 0.65:
+    if not 0.1 <= args.gpu_memory_fraction <= 0.72:
         raise RuntimeError("gpu_memory_fraction_invalid")
     os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", WANDB_DISABLED="true", TOKENIZERS_PARALLELISM="false")
     root = verify_bindings(args)
@@ -355,7 +356,7 @@ def main(argv=None):
     parser.add_argument("--model-dir", default="/models/base")
     parser.add_argument("--base-revision", default="")
     parser.add_argument("--output", default="/checkpoints/governance-mapping/run")
-    parser.add_argument("--gpu-memory-fraction", type=float, default=0.65)
+    parser.add_argument("--gpu-memory-fraction", type=float, default=0.72)
     parser.add_argument("--resume-from-checkpoint")
     parser.add_argument("--shakedown", action="store_true")
     parser.add_argument("--pause-ratio", type=float, default=0.5)
