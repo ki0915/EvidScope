@@ -19,9 +19,11 @@ export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_cons
 // descriptionChars: how much of a catalog candidate's requirement sentence (candidateDescriptions) a prompt shows, shortened in
 // steps (DESCRIPTION_STEPS) for a request whose user message would otherwise exceed descriptionBudgetBytes. Measured 2026-10-13 with
 // the base tokenizer over the local training set: 80 characters added ~450 tokens on average and the longest rows (Korean law text
-// with law-text examples) reached 2,183 tokens, past the trainer's 2,048-token sequence; at 5,600 bytes the longest is 1,979.
+// with law-text examples) reached 2,183 tokens, past the trainer's 2,048-token sequence. At 5,600 bytes (longest 1,979) the first
+// pilot 12 try ran out of GPU memory under the 0.65 cap on its second step; at 5,000 bytes the longest row is 1,800 tokens, the
+// length pilot 11 trained with (peak 7,381 MiB), and 1,040 of 1,378 rows keep the full 80 characters.
 export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 5,
-  exampleChars: 160, outOfScope: 3, descriptionChars: 80, descriptionBudgetBytes: 5600});
+  exampleChars: 160, outOfScope: 3, descriptionChars: 80, descriptionBudgetBytes: 5000});
 const DESCRIPTION_STEPS = Object.freeze([LIMITS.descriptionChars, 60, 40, 20]);
 // Source tables (src/governance-mapping-sources.mjs) the out-of-scope pool reads: the shipped Prowler KISA ISMS-P table (English names
 // of the ISMS-P criteria) and the local-only KISA guide (the official Korean criterion sentences).
