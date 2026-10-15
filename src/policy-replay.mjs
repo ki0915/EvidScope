@@ -12,7 +12,8 @@
 // Engine v5 adds the risky steps of the same actor in other actions (src/sequence-rules.mjs). They come from records every engine
 // read (intents and tenant rules), so the input is rebuilt only for evaluations that name v5; once a v5 evaluation is in the ledger,
 // an earlier engine named for an action with a risky step is a mismatch (the vault builds the input for every such action).
-import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine, matches as ruleMatches} from './model.mjs';
+import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine, matches as ruleMatches}
+  from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
@@ -32,9 +33,13 @@ const ref = event => `${event.source}/${event.id}`;
 const eventOrder = (a, b) => a.receivedAt.localeCompare(b.receivedAt) || a.source.localeCompare(b.source) || a.id.localeCompare(b.id);
 const findingKey = finding => `${finding.code}|${(finding.evidence || []).join(',')}`;
 
+// The engines whose snapshots carry the related risky steps of the same actor (src/sequence-rules.mjs).
+const STEP_ENGINES = [EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6];
+
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
-    exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map(), stepsSince: undefined};
+    exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map(), stepsSince: undefined,
+    replaySince: undefined};
 }
 
 function addEvent(state, event) {
@@ -72,13 +77,14 @@ function apply(state, row, disclosures) {
       if (!ids.includes(payload.id)) state.approvalActions.set(payload.actionId, [...ids, payload.id]);
     }
   }
-  if (row.type === 'evaluation' && payload.replay?.engine === EVALUATION_ENGINE_V5) state.stepsSince ??= row.seq;
+  if (row.type === 'evaluation' && STEP_ENGINES.includes(payload.replay?.engine)) state.stepsSince ??= row.seq;
+  if (row.type === 'evaluation' && payload.replay) state.replaySince ??= row.seq;
   if (REGISTRY_INPUT_TYPES.includes(row.type) || row.type === STOP_ORDER_TYPE) {
     state.registryRows.push({seq: row.seq, type: row.type, recordedAt: row.recordedAt, hash: row.hash, payload});
   }
 }
 
-// steps: whether the evaluation names engine v5, whose input (relatedSteps) earlier engines never had.
+// steps: whether the evaluation names engine v5 or v6, whose input (relatedSteps) earlier engines never had.
 function snapshot(state, actionId, {steps = false} = {}) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
@@ -161,10 +167,10 @@ function replayOne(state, row, engines) {
   const notReplayable = (reason, extra = {}) => ({...base, status: 'not_replayable', reason, ...extra});
   if (typeof evaluation.actionId !== 'string') return notReplayable('invalid_record');
   if (recordedEngine !== undefined && !engines.includes(recordedEngine)) return notReplayable('engine_unavailable');
-  const data = snapshot(state, evaluation.actionId, {steps: recordedEngine === EVALUATION_ENGINE_V5});
-  const downgraded = recordedEngine !== EVALUATION_ENGINE_V5 && state.stepsSince !== undefined
+  const data = snapshot(state, evaluation.actionId, {steps: STEP_ENGINES.includes(recordedEngine)});
+  const downgraded = !STEP_ENGINES.includes(recordedEngine) && state.stepsSince !== undefined
     && relatedStepInput(data.events, state.events.values(), data.rules, ruleMatches) !== undefined;
-  const downgrade = downgraded ? {engine: {recorded: recordedEngine ?? 'unrecorded', replayed: EVALUATION_ENGINE_V5}} : null;
+  const downgrade = downgraded ? {engine: {recorded: recordedEngine ?? 'unrecorded', replayed: evaluationEngine({...data, relatedSteps: []})}} : null;
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
   // Related denies of other actions erased since the evaluation cannot be re-examined either.
@@ -201,6 +207,10 @@ function replayOne(state, row, engines) {
     approvalRecordedAfterExecution: order.some(o => o.authorityRecordedAfter.some(a => a.kind === 'human_approval'))};
   if (matches) {
     const basis = evaluation.replay ? 'recorded_inputs' : 'snapshot_hash_engine_assumed';
+    // A record from before the ledger's first evaluation with replay metadata does not name the code that wrote it, so a difference
+    // there can be that older code rather than a rewrite: reported with its diff, not as a mismatch. A record that lacks the metadata
+    // after one that has it is not legacy and still fails.
+    if (diff && !evaluation.replay && state.replaySince === undefined) return notReplayable('legacy_engine_unrecorded', {inputs: report.inputs, diff});
     return diff ? {...report, status: 'mismatch', basis, diff} : {...report, status: 'replayed', basis, findings: replayed.findings.length};
   }
   if (evaluation.replay) {

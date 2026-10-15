@@ -11,10 +11,11 @@ import {createService} from '../src/service.mjs';
 import * as T from '../src/tlog.mjs';
 import {assertTransparencyAnchors, bootstrapPin, headsRow, normalizeTransparencyConfig, probeTransparency, transparencyPinPath} from '../src/transparency.mjs';
 import {BASE, principals, replaceDatabase, snapshot, tamper, transparencyFixture} from './support/transparency-fixture.mjs';
+import {fileURLToPath} from 'node:url';
 
 const requirements = JSON.parse(readFileSync(new URL('../data/requirements.json', import.meta.url), 'utf8'));
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const run = (script, args) => new Promise(r => execFile(process.execPath, [script, ...args], {cwd: ROOT},
   (error, out, err) => r({code: error ? error.code : 0, out, err})));
 const keyFile = f => {

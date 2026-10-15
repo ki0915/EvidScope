@@ -172,7 +172,7 @@ async function api(path, method = 'GET', body) {
     const data = await response.json().catch(() => ({}));
     if (requestToken !== token || requestAuthEpoch !== authEpoch) throw new Error('접속 상태가 변경되어 이전 응답을 표시하지 않습니다.');
     if (!response.ok) {
-      if (response.status === 401) { clearAuth(); throw Object.assign(new Error('인증이 만료되었거나 접근 자격이 회수되었습니다. 다시 접속하세요.'), {status:401}); }
+      if (response.status === 401) { const signedIn = authMode === 'oidc' || Boolean(token) && $('#auth-toggle').textContent !== '접속'; clearAuth(); throw Object.assign(new Error(signedIn ? '인증이 만료되었거나 접근 자격이 회수되었습니다. 다시 접속하세요.' : '토큰이 맞지 않습니다. 로컬 설정의 감사자 또는 검토자 토큰을 확인하세요.'), {status:401}); }
       if (response.status === 403) throw Object.assign(new Error(`접근 거부: ${stringify(data.error || data.message || '현재 계정에 이 작업의 권한이 없습니다.')}`), {status:403});
       if (response.status === 409) { const error = new Error(`현재 기록과 충돌했습니다: ${stringify(data.error || data.message || '최신 근거를 다시 조회하세요.')}`); error.status = 409; throw error; }
       throw new Error(`요청 실패 (${response.status}): ${stringify(data.error || data.message || '서버 응답을 확인하세요.')}`);
@@ -678,6 +678,7 @@ async function rulesView() {
   const [data, exceptions] = await Promise.all([api('/api/rules'), api('/api/exceptions')]); const node = el('div');
   const list = card('탐지 룰 버전', '시험 결과를 확인한 뒤 다른 검토자가 승인합니다. 자유 코드나 외부 조회를 실행하지 않습니다.');
   list.querySelector('.card-header').append(button('+ 룰 작성', () => ruleEditor(), 'primary small'));
+  list.classList.add('rules-card');
   list.append(table(['룰 / 버전', '제목', '조건', '중요도', '상태', '검토'], data.items.map((rule) => {
     const actions = el('div', 'actions'); actions.append(button('새 버전', () => ruleEditor(rule), 'small'), button('시험', async () => inspect('룰 시험 · 기존 증거의 일치 결과', await api(`/api/rules/${encodeURIComponent(rule.id)}/test`, 'POST', { version: rule.version })), 'small'), button('승인', async () => { await api(`/api/rules/${encodeURIComponent(rule.id)}/approve`, 'POST', { version: rule.version }); await navigate('rules'); notice('룰 버전을 승인했습니다. 과거 평가 이력은 보존됩니다.'); }, 'small'));
     return [`${rule.id} / v${rule.version}`, rule.title, `${rule.field} ${rule.op} ${stringify(rule.value)}`, badge(rule.severity), badge(rule.status), actions];
@@ -691,7 +692,7 @@ function ruleEditor(rule = {}) {
   node.append(form([
     field('룰 ID', 'id', { required: true, value: rule.id || '' }), field('제목', 'title', { required: true, value: rule.title || '' }),
     field('대상 필드', 'field', { choices: ['actor', 'tool', 'action', 'resource', 'destination', 'kind', 'status', 'note'], value: rule.field || 'destination' }),
-    field('연산자', 'op', { choices: [{ value: 'eq', label: '같음 (eq)' }, { value: 'neq', label: '다름 (neq)' }, { value: 'contains', label: '포함 (contains)' }], value: rule.op || 'eq' }),
+    field('연산자', 'op', { choices: [{ value: 'eq', label: '같음 (eq)' }, { value: 'neq', label: '다름 (neq)' }, { value: 'contains', label: '포함 (contains)' }, { value: 'words', label: '단어 순서 (words)' }], value: rule.op || 'eq' }),
     field('비교 값', 'value', { required: true, value: rule.value || '' }), field('중요도', 'severity', { choices: ['low', 'medium', 'high'], value: rule.severity || 'medium' }),
   ], '초안 저장', async (values) => {
     await api('/api/rules', 'POST', values); $('#detail-dialog').close(); await navigate('rules'); notice('룰 초안을 저장했습니다. 시험 결과와 근거를 확인한 뒤 검토자가 승인하세요.');

@@ -8,13 +8,14 @@ import {existsSync, readFileSync} from 'node:fs';
 import {createServer} from 'node:net';
 import {join} from 'node:path';
 import {harness} from './harness.mjs';
+import {fileURLToPath} from 'node:url';
 
 const otelcol = process.env.EVIDSCOPE_OTELCOL_BIN, jsDir = process.env.EVIDSCOPE_OTEL_JS_DIR;
 const collectorSkip = !otelcol ? 'EVIDSCOPE_OTELCOL_BIN not set' : !existsSync(otelcol) ? 'EVIDSCOPE_OTELCOL_BIN does not exist' : false;
 const sdkSkip = !jsDir ? 'EVIDSCOPE_OTEL_JS_DIR not set' : !existsSync(join(jsDir, 'node_modules', '@opentelemetry',
   'exporter-trace-otlp-proto')) ? 'EVIDSCOPE_OTEL_JS_DIR lacks OTel exporters' : false;
-const config = new URL('../deploy/otel-collector/evidscope-collector.yaml', import.meta.url).pathname;
-const sender = new URL('./fixtures/otlp/send-genai-trace.cjs', import.meta.url).pathname;
+const config = fileURLToPath(new URL('../deploy/otel-collector/evidscope-collector.yaml', import.meta.url));
+const sender = fileURLToPath(new URL('./fixtures/otlp/send-genai-trace.cjs', import.meta.url));
 const fixture = name => readFileSync(new URL(`./fixtures/otlp/${name}`, import.meta.url));
 const CANARIES = ['CANARY', 'Weather in Paris', 'weather API timed out', 'Plans trips', 'Get current weather', '123-45-6789', 'sk-live', 'secret'];
 

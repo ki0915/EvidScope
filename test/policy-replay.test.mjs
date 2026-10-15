@@ -154,6 +154,22 @@ test('a rule approved after an evaluation is not applied retroactively; legacy a
   const bareReport = replayEvaluations(resign(bare, vaultKey(h)));
   assert.equal(bareReport.valid, true);
   assert.deepEqual(bareReport.summary.notReplayableReasons, {legacy_record_lacks_inputs: bareReport.summary.evaluations});
+  // A legacy record (before the ledger's first evaluation with replay metadata) names no engine, so a difference is reported with its
+  // diff as not_replayable; the same rewrite of a record that lacks the metadata after one that has it is still a mismatch.
+  const addCustom = (copy, seq) => { const r = copy.records.find(x => x.seq === seq);
+    r.payload.findings = [...r.payload.findings, after.payload.findings.find(f => f.code.startsWith('CUSTOM:'))];
+    r.payload.coverage = {...r.payload.coverage, totalFindings: r.payload.findings.length, returnedFindings: r.payload.findings.length}; return copy; };
+  const olderEntry = byId(replayEvaluations(resign(addCustom(structuredClone(legacy), before.seq), vaultKey(h))), before.payload.id);
+  assert.equal(olderEntry.status, 'not_replayable');
+  assert.equal(olderEntry.reason, 'legacy_engine_unrecorded');
+  assert.deepEqual(olderEntry.diff.findings.recordedOnly.map(f => f.code), ['CUSTOM:external-destination:v1']);
+  const stripped = structuredClone(bundle), strippedRow = stripped.records.find(r => r.seq === after.seq);
+  delete strippedRow.payload.replay;
+  strippedRow.payload.findings = strippedRow.payload.findings.filter(f => !f.code.startsWith('CUSTOM:'));
+  strippedRow.payload.coverage = {...strippedRow.payload.coverage, totalFindings: strippedRow.payload.findings.length,
+    returnedFindings: strippedRow.payload.findings.length};
+  const strippedEntry = byId(replayEvaluations(resign(stripped, vaultKey(h))), after.payload.id);
+  assert.equal(strippedEntry.status, 'mismatch', 'dropping replay metadata from a later record does not make it legacy');
   const foreign = replayEvaluations(bundle, {engine: 'evidscope-evaluate-v0'});
   assert.deepEqual(foreign.summary.notReplayableReasons, {engine_unavailable: foreign.summary.evaluations});
   assert.equal(foreign.valid, true, 'a different engine is not_replayable, never a silent pass or a false mismatch');

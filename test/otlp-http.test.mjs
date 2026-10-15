@@ -10,6 +10,7 @@ import {mac} from '../src/crypto.mjs';
 import {createOtlpHttp, tokenGate, OtlpHttpError, OTLP_AUTH_PROBE} from '../src/otlp-http.mjs';
 import {decodeTraceRequest, mapTraceRequest} from '../src/otlp.mjs';
 import {CIPHER_MODEL} from '../src/content-screening.mjs';
+import {fileURLToPath} from 'node:url';
 
 const fixture = name => readFileSync(new URL(`./fixtures/otlp/${name}`, import.meta.url));
 const TRACE = '4bf92f3577b34da6a3ce929d0e0e4736';
@@ -195,7 +196,7 @@ test('replay client posts saved OTLP exports; the stdin collector no longer acce
   writeFileSync(gz, zlib.gzipSync(fixture('collector-genai.pb')));
   const replay = (files, env) => spawnSync(process.execPath, ['scripts/replay-otlp.mjs', `${h.ingress.url}/v1/traces`, ...files],
     {env: {...process.env, ...env}, encoding: 'utf8'});
-  const ok = replay([new URL('./fixtures/otlp/sdk-genai.json', import.meta.url).pathname, lines, gz], {EVIDSCOPE_OTLP_TOKEN: h.principal('otlp').token});
+  const ok = replay([fileURLToPath(new URL('./fixtures/otlp/sdk-genai.json', import.meta.url)), lines, gz], {EVIDSCOPE_OTLP_TOKEN: h.principal('otlp').token});
   assert.equal(ok.status, 0, ok.stderr);
   assert.deepEqual(JSON.parse(ok.stdout), {requests: 4, delivered: 4, rejectedSpans: 1, failed: 0, statuses: {200: 4}});
   assert.equal((await events(h)).total, 5);

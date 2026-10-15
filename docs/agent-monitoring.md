@@ -16,7 +16,8 @@ EvidScope에 보냅니다.
 
 - Codex의 셸 도구는 `Bash`(명령이 인자 목록이면 공백으로 이어 붙임), 파일 수정은 `apply_patch`입니다. `apply_patch`는 패치에
   적힌 파일 경로(`*** Add File:`·`Update File:`·`Delete File:`·`Move to:`)만 대상으로 싣고, 패치 내용은 기록하지 않습니다.
-- 대상은 소문자·`/` 구분자로 정규화합니다. 규칙 DSL(`src/model.mjs` `matches()`)이 대소문자를 구분하는 `contains`이기 때문입니다.
+- 대상(`resource`)은 소문자·`/` 구분자로 정규화해 256자까지, 메모(`note`, `[도구] 명령 또는 경로`)는 원래 대소문자 그대로 1024자까지
+  싣습니다. 위험 규칙(팩 버전 2)은 메모를 `words` 연산자로 읽습니다.
 - 명령 속 비밀번호·토큰·`Authorization` 헤더·URL 사용자 정보·잘 알려진 키 형식(`sk-`, `ghp_`, `AKIA` 등)은 `<redacted>`로 가립니다.
   최선 노력이며, 기록은 이 PC의 EvidScope에만 저장됩니다.
 - hook은 도구 호출을 막거나 바꾸지 않습니다. 아무것도 출력하지 않고 항상 0으로 끝납니다. EvidScope가 꺼져 있으면 기록을
@@ -26,8 +27,20 @@ EvidScope에 보냅니다.
 
 ## 위험 규칙
 
-`data/risk-rules/ai-agent-baseline.json`의 56개 규칙을 테넌트 규칙으로 올립니다. 모두 `resource contains <값>` 형식이며 일치는
-검토 신호이지 판정이 아닙니다.
+`data/risk-rules/ai-agent-baseline.json`의 60개 규칙을 테넌트 규칙으로 올립니다. 모두 `note words <패턴>` 형식(평가 엔진 v6,
+`src/rule-words.mjs`)이며 일치는 검토 신호이지 판정이 아닙니다.
+
+- 패턴은 공백으로 나눈 단어를 **순서대로** 찾습니다. 사이에 다른 단어가 있어도 됩니다(`curl -d`는 `curl -s -X POST -d @f`에도 걸림).
+- `*`는 아무 글자, `|`는 대안, `"…"`는 글자 그대로(`rm -rf "/*"`), `!`로 시작하는 단어는 명령 어디에도 없어야 합니다. 그래서 이 PC
+  자신(`localhost`, `127.*`)으로 보내는 `curl -d`는 외부 전송으로 보지 않습니다.
+- 대문자가 든 단어만 대소문자를 구분합니다(`curl -F` 업로드와 `curl -f` 실패 옵션을 가름). 역슬래시는 `/`로 읽습니다.
+- 정규식을 만들지 않고 단어를 한 번 훑으므로 규칙이 분석을 멈추게 할 수 없습니다.
+- 실행 후 기록(`self_report`)은 실행 전 기록과 메모가 같으므로 `words` 규칙은 호출당 한 번, 실행 전 기록에만 겁니다. 실행 전 기록이
+  없을 때(PreToolUse hook이 꺼진 경우)는 실행 후 기록을 읽습니다.
+- 팩 버전 1(`resource contains`)은 플래그 순서가 바뀐 명령(`curl -X POST -d`, `rm -r -f /`, `git push origin main --force`),
+  256자를 넘는 명령의 뒷부분을 놓쳤고, `.env.example`, 공개 인증서 `.pem`, `--force-with-lease`, 이 PC로 보내는 `curl -d`를 잘못
+  걸었습니다. 버전 2는 이를 고쳤고 Firefox 저장 비밀번호, `Set-NetFirewallProfile -Enabled False`, `Clear-History`,
+  순서가 바뀐 `Remove-Item -Force -Recurse`를 더했습니다.
 
 | 묶음 | 예 |
 |---|---|
@@ -38,8 +51,11 @@ EvidScope에 보냅니다.
 | 보안 설정 변경 | Defender·방화벽·iptables·SELinux 변경, 이벤트 로그 삭제, `history -c`, `chmod 777` |
 | 감시 우회 | `~/.evidscope/` 수집 설정, `~/.claude/settings`·`~/.codex/hooks.json`·`~/.codex/config.toml` hook 설정 접근 |
 
-규칙 하나를 바꾸거나 더하려면 파일을 고치고 설치 스크립트를 다시 실행합니다. 같은 값·등급의 활성 규칙은 그대로 두고, 달라진
-규칙만 새 버전(검토자 작성·시험, 관리자 승인)으로 올립니다.
+규칙 하나를 바꾸거나 더하려면 파일을 고치고 설치 스크립트를 다시 실행합니다. 필드·연산자·값·등급·제목이 같은 활성 규칙은 그대로
+두고, 달라진 규칙만 새 버전(검토자 작성·시험, 관리자 승인)으로 올립니다.
+
+평가 엔진 v6은 테넌트 규칙에 `words` 규칙이 있을 때만 평가에 적힙니다. 그 밖의 평가는 v1~v5와 결과가 같고, v6을 모르는 검증기는
+v6 평가를 `contains`로 잘못 읽지 않고 `engine_unavailable`로 밝힙니다.
 
 ## 여러 행동을 엮은 이상 징후 (평가 엔진 v5)
 

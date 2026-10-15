@@ -15,7 +15,9 @@ import {EVALUATION_ENGINE, EVALUATION_ENGINE_V4, EVALUATION_ENGINE_V5, EVALUATIO
 import {SEQUENCE, STEP_CLASSES, relatedStepInput} from '../src/sequence-rules.mjs';
 import {replayEvaluations, verifyAndReplay} from '../src/policy-replay.mjs';
 
-const pack = JSON.parse(readFileSync(new URL('../data/risk-rules/ai-agent-baseline.json', import.meta.url), 'utf8'));
+// Engine v5 with the substring rules of pack version 1 (field resource, operator contains), kept as a fixture; version 2 of the pack
+// uses the words operator of engine v6 (test/rule-words.test.mjs).
+const pack = JSON.parse(readFileSync(new URL('./fixtures/ai-agent-baseline-v1.json', import.meta.url), 'utf8'));
 const rule = r => ({...validateRule({id: r.id, title: r.title, field: 'resource', op: 'contains', value: r.value, severity: r.severity},
   {id: 'alpha-reviewer'}, 1), status: 'active'});
 const rules = pack.rules.map(rule);
@@ -120,7 +122,7 @@ test('engine v5 names only snapshots that carry related steps; with no other ste
   assert.equal(evaluationEngine({events: [], stopOrders: {orders: [], activations: []}, relatedSteps: []}), EVALUATION_ENGINE_V5);
   assert.equal(evaluationEngine({events: [], stopOrders: {orders: [], activations: []}}), EVALUATION_ENGINE_V4);
   assert.equal(evaluationEngine({events: []}), EVALUATION_ENGINE);
-  assert.equal(EVALUATION_ENGINES.at(-1), EVALUATION_ENGINE_V5);
+  assert.equal(EVALUATION_ENGINES.at(-2), EVALUATION_ENGINE_V5);
   const out = send('send', 1), without = evaluate([out], [], rules, [], T0 + 3600e3);
   assert.deepEqual(evaluate([out], [], rules, [], T0 + 3600e3, {relatedSteps: []}), without);
   assert.ok(without.findings.some(f => f.code === 'CUSTOM:risk.out.curl-data:v1'), 'the single-call rule fires on its own');

@@ -17,8 +17,9 @@ import {packageVerifier, tarGz} from '../scripts/package-verifier.mjs';
 import {caseFor} from './support/receipt-fixture.mjs';
 import {BASE, transparencyFixture} from './support/transparency-fixture.mjs';
 import {tempDir} from './temp-dir.mjs';
+import {fileURLToPath} from 'node:url';
 
-const repo = new URL('..', import.meta.url).pathname;
+const repo = fileURLToPath(new URL('..', import.meta.url));
 // Written by commit 8b3af6c, before evidence packages existed (test/fixtures/make-pack-export-fixture.mjs).
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/pack-export-8b3af6c.json', import.meta.url), 'utf8'));
 const vaultKey = fixture.publicKeyPem, exportBytes = Buffer.from(JSON.stringify(fixture.exportBundle));

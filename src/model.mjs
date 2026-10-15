@@ -7,6 +7,7 @@ import {DECISION_FIELDS,DECISION_KINDS,DECISIONS,decisionFindings} from './decis
 import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs';
 import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
 import {sequenceFindings} from './sequence-rules.mjs';
+import {parseWords,matchesWords} from './rule-words.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
 export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
@@ -71,11 +72,14 @@ export function validateEvent(raw,p) {
  return {...e,tenant:p.tenant,source:p.id,sourceKind:p.kind,receivedAt:new Date().toISOString(),fingerprint:digest(raw),assurance:p.kind==='agent'?'authenticated_self_report':p.kind==='otlp'?'authenticated_telemetry_report':'authenticated_service_record',late:Date.now()-Date.parse(e.occurredAt)>300000,payload:{minimization:'allowlist_metadata_only',originalContentStored:false}};
 }
 export const ruleFields=['kind','tool','action','resource','destination','status','actor','note'];
+// words (src/rule-words.mjs) is evaluation engine v6: words in order, for commands an AI agent runs.
+export const RULE_OPS=Object.freeze(['eq','contains','neq','words']);
 export function validateRule(x,p,version) {
- identifier(x.id);cleanText(x.title,200);if(!ruleFields.includes(x.field)||!['eq','contains','neq'].includes(x.op)||!['low','medium','high'].includes(x.severity))fail(400,'제한된 룰 DSL만 허용됩니다');cleanText(x.value,200);
+ identifier(x.id);cleanText(x.title,200);if(!ruleFields.includes(x.field)||!RULE_OPS.includes(x.op)||!['low','medium','high'].includes(x.severity))fail(400,'제한된 룰 DSL만 허용됩니다');cleanText(x.value,200);
+ if(x.op==='words'&&!parseWords(x.value))fail(400,'words 룰은 공백 하나로 나눈 최대 12개 항목(대안은 |, 임의 문자는 *, 없어야 할 항목은 !)만 허용됩니다');
  return {id:x.id,title:x.title,field:x.field,op:x.op,value:x.value,severity:x.severity,version,status:'draft',author:p.id,createdAt:new Date().toISOString()};
 }
-export function matches(rule,event){const v=String(event[rule.field]??'');return rule.op==='eq'?v===rule.value:rule.op==='neq'?v!==rule.value:v.includes(rule.value);}
+export function matches(rule,event){const v=String(event[rule.field]??'');return rule.op==='eq'?v===rule.value:rule.op==='neq'?v!==rule.value:rule.op==='words'?matchesWords(rule.value,v):v.includes(rule.value);}
 
 // Missing legacy clock bounds retain source-claimed ordering, never trusted time.
 const clockBound=e=>e.clockUncertaintyMs==='unknown'?Infinity:(e.clockUncertaintyMs??0);
@@ -104,8 +108,14 @@ export const EVALUATION_ENGINE_V4='evidscope-evaluate-v4';
 // the earlier inputs it comes from records older engines also read (intents and tenant rules), so src/policy-replay.mjs rebuilds it
 // only for evaluations that name v5.
 export const EVALUATION_ENGINE_V5='evidscope-evaluate-v5';
-export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5]);
-export const evaluationEngine=data=>data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
+// v6 adds the words rule operator (src/rule-words.mjs). Only a snapshot whose tenant rules include a words rule can differ, and an
+// evaluation names v6 only then, so a verifier without v6 reports it as engine_unavailable instead of reading the rule as contains.
+// v6 includes v5: src/policy-replay.mjs rebuilds the related steps for it too.
+export const EVALUATION_ENGINE_V6='evidscope-evaluate-v6';
+export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5,
+ EVALUATION_ENGINE_V6]);
+export const evaluationEngine=data=>(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
+ :data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
  :data.approvals!==undefined?EVALUATION_ENGINE_V3
  :data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
 // The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
@@ -166,11 +176,14 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
   if(request.kind==='block_registered'&&successes.length)add('BLOCK_SUCCESS_CONFLICT','high','같은 시도·모델·대상에 차단 등록과 이후 성공 결과가 함께 있습니다. 실제 차단 효력과 진행 중 작업 여부를 검토하세요',[request,...successes]);
   if(continued.length)add('EXECUTION_AFTER_STOP_REQUEST','high','중단 요청 이후 동일 대상의 실행 기록이 관측되었습니다. 중단 전 시작된 작업의 결과인지 확인하세요',[request,...continued]);
  }
+ // An agent's after-record repeats its intent's note (src/agent-hook-events.mjs): a words rule (engine v6) flags the call once, on the
+ // intent, and reads an after-record only when no intent of the action carries the same note.
+ const repeatsIntent=e=>e.kind==='self_report'&&events.some(x=>x.kind==='intent'&&x.actionId===e.actionId&&x.note===e.note);
  for(const e of events){
   if(e.kind==='gap')add('COLLECTION_GAP','high','수집 출처가 관측 공백을 보고했습니다',[e]);
   if(e.late)add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
   if(/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i.test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
-  for(const r of rules)if(matches(r,e))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
+  for(const r of rules)if(matches(r,e)&&!(r.op==='words'&&repeatsIntent(e)))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
  registryFindings(events,registry,{add,clockBound});
  decisionFindings(events,{add,order,validity,approvals,related:relatedDecisions,enforcedTools:e=>enforcedToolsAt(registry,e),

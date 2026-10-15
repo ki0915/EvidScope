@@ -25,6 +25,7 @@ import {packageVerifier} from '../scripts/package-verifier.mjs';
 import {caseFor} from './support/receipt-fixture.mjs';
 import {BASE, transparencyFixture} from './support/transparency-fixture.mjs';
 import {tempDir} from './temp-dir.mjs';
+import {fileURLToPath} from 'node:url';
 
 const pause = ms => new Promise(done => setTimeout(done, ms));
 const builder = generateKeyPairSync('ed25519'), signer = attestationSigner(builder.privateKey);
@@ -254,7 +255,7 @@ test('whole-ledger packages bundle the receipt of every cited record, regenerate
 });
 
 test('packages built by d7413a0 verify unchanged against the mapping version they name; unknown versions stay refused', async () => {
-  const dir = new URL('./fixtures/pack-d7413a0/', import.meta.url).pathname, key = name => readFileSync(join(dir, name), 'utf8');
+  const dir = fileURLToPath(new URL('./fixtures/pack-d7413a0/', import.meta.url)), key = name => readFileSync(join(dir, name), 'utf8');
   for (const name of ['eu-whole.tar.gz', 'kr-period.tar.gz']) {
     const files = P.readPack(join(dir, name)), r = P.verifyPack(files, {publicKey: key('vault-public.spki.txt'), packKey: key('builder-public.spki.txt')});
     assert.deepEqual([r.valid, r.packageScope, r.mapping.version, r.mapping.source, json(files, P.FILES.index).format], [true, 'ledger', 1, 'verifier',

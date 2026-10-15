@@ -8,15 +8,17 @@ import {join} from 'node:path';
 import {hookEvent, hookAction, normalizeTarget, redact, HOOK_TOOL, HOOK_AGENTS} from '../src/agent-hook-events.mjs';
 import {runHook} from '../src/agent-hook-runner.mjs';
 import {validateEvent, validateRule, matches, evaluate} from '../src/model.mjs';
+import {parseWords} from '../src/rule-words.mjs';
 
 const pack = JSON.parse(readFileSync(new URL('../data/risk-rules/ai-agent-baseline.json', import.meta.url), 'utf8'));
 const actor = 'claude-code@test-pc', now = new Date();
 const agentSource = {id: 'alpha-agent', tenant: 'alpha', kind: 'agent'};
 const hook = (name, tool_name, tool_input, extra = {}) => ({hook_event_name: name, session_id: 'b1f0c2d4-1111-2222-3333-444455556666',
   tool_use_id: 'toolu_01ABC', tool_name, tool_input, ...extra});
-const rules = pack.rules.map((r, i) => ({...validateRule({id: r.id, title: r.title, field: 'resource', op: 'contains', value: r.value, severity: r.severity},
+const rules = pack.rules.map((r, i) => ({...validateRule({id: r.id, title: r.title, field: r.field, op: r.op, value: r.value, severity: r.severity},
   {id: 'alpha-reviewer'}, 1), status: 'active'}));
-const hits = event => pack.rules.filter(r => matches({field: 'resource', op: 'contains', value: r.value}, event)).map(r => r.id);
+// The rules an intent raises (a words rule reads the note an after-record repeats; evaluate() flags the call once, on the intent).
+const hits = event => pack.rules.filter(r => event.kind === 'intent' && matches(r, event)).map(r => r.id);
 
 test('PreToolUse Bash reading /etc/shadow becomes a valid agent intent the shadow rule matches', () => {
   const event = hookEvent(hook('PreToolUse', 'Bash', {command: 'sudo cat /etc/shadow | head -3'}), {actor, now});
@@ -53,7 +55,7 @@ test('targets, destinations and action categories per tool', () => {
 });
 
 test('no tool_use_id: a stable id from the call itself; odd ids are made safe', () => {
-  const raw = {hook_event_name: 'PreToolUse', session_id: 'sess with spaces/ü', tool_name: 'Bash', tool_input: {command: 'rm -rf ~/x'}};
+  const raw = {hook_event_name: 'PreToolUse', session_id: 'sess with spaces/ü', tool_name: 'Bash', tool_input: {command: 'rm -rf ~/'}};
   const a = hookEvent(raw, {actor, now}), b = hookEvent(raw, {actor, now});
   assert.equal(a.id, b.id); assert.match(a.actionId, /^call-[0-9a-f]{16}$/); assert.match(a.traceId, /^[a-zA-Z0-9._:@/-]+$/);
   validateEvent(a, agentSource);
@@ -87,7 +89,7 @@ test('ordinary development commands raise no risk rule', () => {
 test('the rule pack is valid restricted DSL with unique ids, and evaluate() reports the matches as custom findings', () => {
   assert.equal(new Set(pack.rules.map(r => r.id)).size, pack.rules.length);
   assert.ok(pack.rules.length <= 100);
-  for (const r of pack.rules) assert.equal(r.value, r.value.toLowerCase(), r.id);
+  for (const r of pack.rules) assert.ok(r.field === 'note' && r.op === 'words' && parseWords(r.value), r.id);
   const policyVersion = 'claude-code-monitoring-v1', context = {actor, now, policyVersion};
   const assets = [{actor, tool: HOOK_TOOL, policyVersion, validFrom: '2026-01-01T00:00:00.000Z', destinations: []}];
   const run = (...raws) => evaluate(raws.map(r => validateEvent(hookEvent(r, context), agentSource)), assets, rules, [], now.getTime()).findings;

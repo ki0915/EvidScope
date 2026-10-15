@@ -3,7 +3,7 @@
 // default) or Codex CLI (--agent codex):
 //  1. registers the agent as an asset (actor <agent>@<host>, tool <agent>) so its records are not "unregistered";
 //  2. loads data/risk-rules/ai-agent-baseline.json as tenant rules: a reviewer drafts and tests each one, an admin approves it
-//     (the rule API's four-eyes rule); rules already active with the same value and severity are left alone;
+//     (the rule API's four-eyes rule); rules already active with the same field, operator, value, severity and title are left alone;
 //  3. writes the hook config (~/.evidscope/<agent>-hook.json) with the tenant's agent source credentials;
 //  4. with --claude-settings (Claude Code) adds the PreToolUse/PostToolUse hook to ~/.claude/settings.json, with --codex-hooks (Codex)
 //     to ~/.codex/hooks.json ($CODEX_HOME when set); a copy of the old file is kept next to it. Codex runs a new hook only after the
@@ -57,9 +57,11 @@ if (!assets.some(a => a.actor === actor && a.tool === agent && a.policyVersion =
 const active = new Map(((await api(reviewer, 'GET', '/api/rules')).items || []).filter(v => v.status === 'active').map(v => [v.id, v]));
 for (const rule of pack.rules) {
   const current = active.get(rule.id);
-  if (current && current.value === rule.value && current.severity === rule.severity && current.field === 'resource') { summary.rules.unchanged++; continue; }
-  const draft = await api(reviewer, 'POST', '/api/rules',
-    {id: rule.id, title: rule.title, field: 'resource', op: 'contains', value: rule.value, severity: rule.severity});
+  // Pack version 1 rules name no field or operator: a substring of the resource.
+  const field = rule.field || 'resource', op = rule.op || 'contains';
+  if (current && current.value === rule.value && current.severity === rule.severity && current.field === field && current.op === op
+    && current.title === rule.title) { summary.rules.unchanged++; continue; }
+  const draft = await api(reviewer, 'POST', '/api/rules', {id: rule.id, title: rule.title, field, op, value: rule.value, severity: rule.severity});
   await api(reviewer, 'POST', `/api/rules/${rule.id}/test`, {version: draft.version});
   await api(admin, 'POST', `/api/rules/${rule.id}/approve`, {version: draft.version});
   summary.rules.added++;
