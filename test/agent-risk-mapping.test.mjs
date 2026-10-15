@@ -1,9 +1,12 @@
 // Mapping version 3: the findings of the AI agent risk rules (data/risk-rules/ai-agent-baseline.json) as evidence of
-// AI 기본법, ISMS-P and EU AI Act items, by code prefix (docs/agent-monitoring.md).
+// AI 기본법, ISMS-P and EU AI Act items, by code prefix (docs/agent-monitoring.md). Version 4 adds the sequence findings of
+// evaluation engine v5 (src/sequence-rules.mjs) by code.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {AGENT_RISK, FRAMEWORKS, MAPPING_VERSION, checkMapping, frameworkMapping, shippedMapping} from '../src/evidence-pack-frameworks.mjs';
+import {AGENT_RISK, AGENT_SEQUENCE, FRAMEWORKS, MAPPING_VERSION, checkMapping, frameworkMapping, shippedMapping}
+  from '../src/evidence-pack-frameworks.mjs';
+import {SEQUENCE_CODES} from '../src/sequence-rules.mjs';
 import {findingMatches, measure} from '../src/evidence-inventory.mjs';
 import {findingRequirements, presence} from '../src/home-service.mjs';
 import {CATALOG_MAPPING_VERSION, governanceCatalog} from '../src/governance-mapping.mjs';
@@ -14,8 +17,7 @@ const prefixEntries = FRAMEWORKS.flatMap(id => frameworkMapping(id).items.flatMa
   .filter(e => e.type === 'finding' && e.codePrefix !== undefined).map(e => ({framework: id, item: item.id, ...e}))));
 const itemsFor = code => findingRequirements().links.filter(l => findingMatches(l.match, {code})).flatMap(l => l.items.map(i => i.id));
 
-test('version 3 is the shipped current mapping and only adds agent risk prefixes to version 2', () => {
-  assert.equal(MAPPING_VERSION, 3);
+test('version 3 only adds agent risk prefixes to version 2', () => {
   for (const id of FRAMEWORKS) {
     const v2 = JSON.parse(shippedMapping(id, 2)), v3 = JSON.parse(shippedMapping(id, 3));
     assert.deepEqual(v3.items.map(i => i.id), v2.items.map(i => i.id), id);
@@ -25,6 +27,32 @@ test('version 3 is the shipped current mapping and only adds agent risk prefixes
       for (const e of added) assert.match(e.codePrefix, /^CUSTOM:risk\./);
     }
   }
+});
+
+test('version 4 is the shipped current mapping and only adds the sequence codes to version 3', () => {
+  assert.equal(MAPPING_VERSION, 4);
+  const codes = new Set(SEQUENCE_CODES);
+  assert.deepEqual(Object.values(AGENT_SEQUENCE).map(e => e.code), SEQUENCE_CODES, 'one entry per code the engine emits');
+  for (const id of FRAMEWORKS) {
+    const v3 = JSON.parse(shippedMapping(id, 3)), v4 = JSON.parse(shippedMapping(id, 4));
+    assert.deepEqual(JSON.parse(JSON.stringify(frameworkMapping(id))), v4, `${id}: the builder writes version 4`);
+    assert.deepEqual(v4.items.map(i => i.id), v3.items.map(i => i.id), id);
+    for (const [n, item] of v4.items.entries()) {
+      assert.deepEqual(item.evidence.filter(e => !codes.has(e.code)), v3.items[n].evidence, `${id} ${item.id} keeps its version 3 evidence`);
+      if (item.supports) assert.deepEqual(item.supports.filter(s => !/^같은 AI 에이전트/.test(s.shows)), v3.items[n].supports, `${id} ${item.id}`);
+    }
+  }
+});
+
+test('each sequence finding counts for the items of its pattern', () => {
+  const all = ['ISMS-P-2.11.3', 'KR-32-MONITOR', 'KR-34-RISK', 'EU-AIA-12-2-A', 'EU-AIA-14-4-A'], narrow = ['ISMS-P-2.6.7', 'ISMS-P-2.9.4', 'ISMS-P-2.10.1'];
+  const expected = {SEQ_SENSITIVE_THEN_OUTBOUND: 'ISMS-P-2.6.7', SEQ_RISK_THEN_TAMPER: 'ISMS-P-2.9.4', SEQ_DEFENSE_OFF_THEN_ACTION: 'ISMS-P-2.10.1'};
+  for (const code of SEQUENCE_CODES) {
+    const items = itemsFor(code);
+    for (const must of all) assert.ok(items.includes(must), `${code} -> ${must}`);
+    assert.deepEqual(narrow.filter(item => items.includes(item)), expected[code] ? [expected[code]] : [], code);
+  }
+  assert.deepEqual(itemsFor('SEQ_UNKNOWN'), []);
 });
 
 test('every prefix names rules of the pack, and every rule counts for 2.11.3, KR-32-MONITOR and EU 12(2)(a)', () => {

@@ -37,17 +37,39 @@ const SECURITY_TOOL_CHANGES = [agentRule('risk.defense.defender', 'AI 에이전�
 const LOG_TAMPERING = [agentRule('risk.defense.clear-eventlog', 'AI 에이전트의 Windows 이벤트 로그 삭제 명령'),
   agentRule('risk.defense.clear-eventlog-ps', 'AI 에이전트의 PowerShell 이벤트 로그 삭제 명령'),
   agentRule('risk.defense.history-clear', 'AI 에이전트의 셸 명령 기록 삭제'), AGENT_RISK.audit];
+// ---------- AI agent sequence findings (mapping version 4) ----------
+// Evaluation engine v5 (src/sequence-rules.mjs) reads one agent's risky tool calls together and flags the pattern they make with
+// built-in codes: a chain (credential access then an outbound transfer, a defence switched off then a risky call, a risky call then
+// logs or monitoring settings touched) or a count (many credential targets, repeated destructive commands). Like the single-call
+// findings they show that the actions were analysed and flagged, never that an item is met.
+const agentSequence = (code, what) => ({type: 'finding', code, what});
+export const AGENT_SEQUENCE = Object.freeze({
+  exfil: agentSequence('SEQ_SENSITIVE_THEN_OUTBOUND', 'AI 에이전트가 자격증명·비밀 파일에 접근한 뒤 외부 전송을 이어서 한 패턴 탐지'),
+  defenseOff: agentSequence('SEQ_DEFENSE_OFF_THEN_ACTION', 'AI 에이전트가 보안 기능을 끈 뒤 위험 행동을 한 패턴 탐지'),
+  tamper: agentSequence('SEQ_RISK_THEN_TAMPER', 'AI 에이전트가 위험 행동 뒤 기록 삭제나 감시 설정 접근을 한 패턴 탐지'),
+  bulk: agentSequence('SEQ_BULK_SENSITIVE', 'AI 에이전트가 짧은 시간에 여러 자격증명·비밀 대상에 접근한 패턴 탐지'),
+  destructive: agentSequence('SEQ_REPEATED_DESTRUCTIVE', 'AI 에이전트가 짧은 시간에 파괴적 명령을 반복한 패턴 탐지'),
+});
+const AGENT_SEQUENCE_ALL = Object.values(AGENT_SEQUENCE);
 // ISMS-P supports added to data/isms-p-alignment.json's, kept out of that file: its evidence texts are also inputs of the
 // governance-mapping dataset (src/governance-mapping-data.mjs), which must not change under a trained model.
 const AGENT_RISK_ISMS = {
   '2.6.7': [{checkItems: [2], evidence: [AGENT_RISK.out],
-    shows: 'AI 에이전트 명령 중 데이터 외부 전송(curl 본문·업로드, scp, netcat, 붙여넣기 사이트)을 발견사항으로 표시(탐지만 하며 차단하지 않음)'}],
+    shows: 'AI 에이전트 명령 중 데이터 외부 전송(curl 본문·업로드, scp, netcat, 붙여넣기 사이트)을 발견사항으로 표시(탐지만 하며 차단하지 않음)'},
+  {checkItems: [2], evidence: [AGENT_SEQUENCE.exfil],
+    shows: '같은 AI 에이전트가 자격증명·비밀 파일에 접근한 뒤 30분 안에 외부 전송을 하면 두 행동을 묶어 유출 의심 패턴으로 표시'}],
   '2.9.4': [{checkItems: [2], evidence: LOG_TAMPERING,
-    shows: 'AI 에이전트가 이벤트 로그·명령 기록을 지우거나 EvidScope 수집·hook 설정에 접근하면 발견사항으로 표시'}],
+    shows: 'AI 에이전트가 이벤트 로그·명령 기록을 지우거나 EvidScope 수집·hook 설정에 접근하면 발견사항으로 표시'},
+  {checkItems: [2], evidence: [AGENT_SEQUENCE.tamper],
+    shows: '같은 AI 에이전트가 위험 행동 뒤 30분 안에 로그·명령 기록을 지우거나 수집·hook 설정에 접근하면 흔적 지우기 의심 패턴으로 표시'}],
   '2.10.1': [{checkItems: [3], evidence: SECURITY_TOOL_CHANGES,
-    shows: 'AI 에이전트가 공식 절차 밖에서 백신·방화벽·iptables·SELinux 설정을 바꾸는 명령을 발견사항으로 표시'}],
+    shows: 'AI 에이전트가 공식 절차 밖에서 백신·방화벽·iptables·SELinux 설정을 바꾸는 명령을 발견사항으로 표시'},
+  {checkItems: [3], evidence: [AGENT_SEQUENCE.defenseOff],
+    shows: '같은 AI 에이전트가 백신·방화벽 등을 끈 뒤 30분 안에 자격증명 접근·외부 전송·파괴 명령을 하면 방어 해제 후 행동 패턴으로 표시'}],
   '2.11.3': [{checkItems: [1], evidence: AGENT_RISK_ALL,
-    shows: 'AI 에이전트의 도구 호출(명령·파일·URL)을 승인된 위험 규칙으로 분석해 자격증명 접근·파괴 명령·외부 전송·보안 설정 변경·감시 우회를 발견사항으로 표시'}],
+    shows: 'AI 에이전트의 도구 호출(명령·파일·URL)을 승인된 위험 규칙으로 분석해 자격증명 접근·파괴 명령·외부 전송·보안 설정 변경·감시 우회를 발견사항으로 표시'},
+  {checkItems: [1], evidence: AGENT_SEQUENCE_ALL,
+    shows: '같은 AI 에이전트의 여러 도구 호출을 시간순으로 묶어 유출·방어 해제·흔적 지우기 연쇄와 대량 자격증명 접근·반복 파괴 명령을 이상행위로 표시'}],
 };
 
 // ---------- EU AI Act (Regulation (EU) 2024/1689), logging and oversight articles ----------
@@ -68,7 +90,7 @@ function euMapping() {
       eu('EU-AIA-12-2-A', 'Article 12(2)(a)', AMENDED, 'Events relevant for identifying risk situations (Article 79(1)) or a substantial modification',
         '위험 상황(제79조제1항) 또는 실질적 변경을 식별하는 데 관련된 이벤트',
         [record('evaluation'), record('agent_registry'), record('agent_transition'), kind('safety_alert', 'safety'), record('agent_stop_order'),
-          ...AGENT_RISK_ALL]),
+          ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL]),
       eu('EU-AIA-12-2-B', 'Article 12(2)(b)', AMENDED, 'Events relevant for post-market monitoring (Article 72)', '시판 후 모니터링(제72조)에 관련된 이벤트',
         [record('evaluation'), kind('heartbeat', 'telemetry'), kind('gap', 'telemetry'), finding('COLLECTION_GAP')]),
       eu('EU-AIA-12-2-C', 'Article 12(2)(c)', AMENDED, 'Events relevant for monitoring the operation (Article 26(5))', '운영 모니터링(제26조제5항)에 관련된 이벤트',
@@ -82,7 +104,7 @@ function euMapping() {
         '시판 후 모니터링: 성능 자료의 수집·문서화·분석', [record('evaluation'), record('case'), record('case_decision'), kind('safety_alert', 'safety')]),
       eu('EU-AIA-14-4-A', 'Article 14(4)(a)', READ, 'Overseers monitor the operation and detect anomalies, dysfunctions and unexpected performance',
         '감독자가 운영을 모니터링하고 이상·오작동·예상 밖 성능을 탐지',
-        [record('case'), record('case_decision'), kind('human_oversight_review', 'authority'), ...AGENT_RISK_ALL]),
+        [record('case'), record('case_decision'), kind('human_oversight_review', 'authority'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL]),
       eu('EU-AIA-14-4-D', 'Article 14(4)(d)', READ, 'Overseers decide not to use, or disregard, override or reverse the output',
         '감독자가 사용하지 않거나 출력을 무시·무효화·되돌리기로 결정', OVERSIGHT),
       eu('EU-AIA-14-4-E', 'Article 14(4)(e)', READ, 'Overseers intervene or interrupt the system through a stop button or similar procedure',
@@ -104,8 +126,9 @@ function euMapping() {
 // ---------- Korean AI Basic Act: the requirements already registered in data/requirements.json ----------
 const KR_EXTRA = {
   'KR-32-RISK': [record('evaluation'), record('agent_registry_policy')],
-  'KR-32-MONITOR': [record('evaluation'), record('case'), record('case_decision'), kind('safety_alert', 'safety'), ...AGENT_RISK_ALL],
-  'KR-34-RISK': [record('evaluation'), record('agent_registry_policy'), ...AGENT_RISK_ALL],
+  'KR-32-MONITOR': [record('evaluation'), record('case'), record('case_decision'), kind('safety_alert', 'safety'), ...AGENT_RISK_ALL,
+    ...AGENT_SEQUENCE_ALL],
+  'KR-34-RISK': [record('evaluation'), record('agent_registry_policy'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL],
   'KR-34-OVERSIGHT': [...OVERSIGHT, ...STOP.slice(0, 1)],
   'KR-34-DOCUMENT': [record('governance_document'), record('retention_policy'), LEDGER],
   'KR-40-ORDER': [...STOP.slice(0, 4)],
@@ -153,15 +176,20 @@ const BUILDERS = {'eu-ai-act-logging': euMapping, 'kr-ai-basic-act': krMapping, 
 // packages that name the version (version 1: the mappings of round 6, which carry no version field). A package verifies against the
 // version it names; a version this verifier does not ship is refused unless the auditor accepts the package's own mapping.
 // Version 3 (2026-10-15) adds the AI agent risk findings (AGENT_RISK) to EU 12(2)(a) and 14(4)(a), KR-32-MONITOR and KR-34-RISK, and
-// ISMS-P 2.6.7, 2.9.4, 2.10.1 and 2.11.3.
-export const MAPPING_VERSION = 3;
+// ISMS-P 2.6.7, 2.9.4, 2.10.1 and 2.11.3. Version 4 (2026-10-15) adds the sequence findings of engine v5 (AGENT_SEQUENCE) to the same
+// items: all five to 2.11.3, EU 12(2)(a) and 14(4)(a), KR-32-MONITOR and KR-34-RISK; the exfiltration chain to 2.6.7, the tampering
+// chain to 2.9.4, the defence-off chain to 2.10.1.
+export const MAPPING_VERSION = 4;
 export const MAPPING_VERSIONS = {
   'eu-ai-act-logging': {1: '54b474415247708702aa4a0df6079cd3447794269ffeceb0a0c6a2a4717e4b5f',
-    2: 'e9e4a7305536ec7e09cfbaa2ab07a145b1a7a3a2e031654620283c40da77d0fc', 3: 'ae76367e216bd4fac78a47dacb73417cd471bbbb40087f9e1720969821474a1f'},
+    2: 'e9e4a7305536ec7e09cfbaa2ab07a145b1a7a3a2e031654620283c40da77d0fc', 3: 'ae76367e216bd4fac78a47dacb73417cd471bbbb40087f9e1720969821474a1f',
+    4: '709e23caab7c24daf5afe9bb3720fe71181cdb916adab7d364070e92a22df4a9'},
   'kr-ai-basic-act': {1: '0a3bcb097f605a65393996242d13a6a251b3258b08257d2de46b87da32c49d93',
-    2: '0b34923d153fe0fb80cd103efdbd75425b8b6d332621645691a5dcad48f29b6c', 3: 'b6c9f49b5ea0f21659524e6825e4980f447d0b8e8ccd231e0828797d8ba3100e'},
+    2: '0b34923d153fe0fb80cd103efdbd75425b8b6d332621645691a5dcad48f29b6c', 3: 'b6c9f49b5ea0f21659524e6825e4980f447d0b8e8ccd231e0828797d8ba3100e',
+    4: 'a687aa299a1516effec2e2c59999bdd23710b418737b93c01a9631d3ed698cad'},
   'isms-p': {1: '2276885b8d3e3a4cbfce6884ddb3411b32dc79167b5e278234172453841b7aaa',
-    2: '4bd27ad7a29c036f2f2074e8deca3ff9c72cd5cf9fbf453c25ac88b9d2fdfd21', 3: 'd9539ec10a89c753cc283eb68cc167280ed5331d59359a01b5444f1a7b1de8ce'},
+    2: '4bd27ad7a29c036f2f2074e8deca3ff9c72cd5cf9fbf453c25ac88b9d2fdfd21', 3: 'd9539ec10a89c753cc283eb68cc167280ed5331d59359a01b5444f1a7b1de8ce',
+    4: '4c4239fef2679a9b4a22ace122cf2e44fbe91ada7151c7616bbe95c86f9548ab'},
 };
 export const mappingVersionFile = (id, version) => `data/evidence-pack-mappings/${id}-v${version}.json`;
 // The shipped bytes of a mapping version, or null when this verifier does not ship it.

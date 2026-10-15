@@ -14,9 +14,10 @@ import {checkEvaluationProjection} from './evaluation-integrity.mjs';
 import {applyGovernanceDocumentRecord,checkGovernanceDocumentRows} from './governance-documents.mjs';
 import {REGISTRY_INPUT_TYPES,REGISTRY_TYPES,registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
+import {relatedStepInput} from './sequence-rules.mjs';
 import {STOP_ORDER_TYPE,stopOrderAnalysisInput} from './stop-orders.mjs';
 import {APPROVAL_TYPE,approvalAnalysisInput} from './approvals.mjs';
-import {evaluationEngine} from './model.mjs';
+import {evaluationEngine,matches} from './model.mjs';
 import {types} from 'node:util';
 import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,frontierRoot,logVkey,noteVerifier,openNote,parseCheckpoint,peaksToBlob,recordLeaf,rootsAtSizes,signNote,tenantOrigin,validateOriginBase} from './tlog.mjs';
 
@@ -395,7 +396,10 @@ export class Store {
   const approvals=actionId===null?undefined:approvalAnalysisInput(this._approvalValues(state,actionId).map(value=>value.payload));
   // Stop orders (docs/kill-switch.md) join only when the tenant has one; their activations come from every retained event.
   const stopOrders=stopOrderAnalysisInput(state.registryRows,state.eventsBySequence.values());
-  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{})};
+  // Risky steps of the same actor in other actions (engine v5, src/sequence-rules.mjs) join only when this action has a risky step.
+  const relatedSteps=actionId===null?undefined:relatedStepInput(events,state.eventsBySequence.values(),rules,matches);
+  const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{}),
+   ...(relatedSteps?{relatedSteps}:{})};
   const extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
   const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');

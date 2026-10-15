@@ -9,10 +9,14 @@
 // other actions; both are present only when the prefix holds them, exactly as in the vault's snapshot. Engine v3 adds the
 // action's approval requests (latest version of each, in the order they were opened under the action; src/approvals.mjs).
 // Engine v4 adds the stop orders with the first activation per order and covering enforcement point (src/stop-orders.mjs).
-import {EVALUATION_ENGINE, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine} from './model.mjs';
+// Engine v5 adds the risky steps of the same actor in other actions (src/sequence-rules.mjs). They come from records every engine
+// read (intents and tenant rules), so the input is rebuilt only for evaluations that name v5; once a v5 evaluation is in the ledger,
+// an earlier engine named for an action with a risky step is a mismatch (the vault builds the input for every such action).
+import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine, matches as ruleMatches} from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
+import {relatedStepInput} from './sequence-rules.mjs';
 import {STOP_ORDER_TYPE, stopOrderAnalysisInput} from './stop-orders.mjs';
 import {APPROVAL_TYPE, approvalAnalysisInput} from './approvals.mjs';
 
@@ -30,7 +34,7 @@ const findingKey = finding => `${finding.code}|${(finding.evidence || []).join('
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
-    exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map()};
+    exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map(), stepsSince: undefined};
 }
 
 function addEvent(state, event) {
@@ -68,30 +72,35 @@ function apply(state, row, disclosures) {
       if (!ids.includes(payload.id)) state.approvalActions.set(payload.actionId, [...ids, payload.id]);
     }
   }
+  if (row.type === 'evaluation' && payload.replay?.engine === EVALUATION_ENGINE_V5) state.stepsSince ??= row.seq;
   if (REGISTRY_INPUT_TYPES.includes(row.type) || row.type === STOP_ORDER_TYPE) {
     state.registryRows.push({seq: row.seq, type: row.type, recordedAt: row.recordedAt, hash: row.hash, payload});
   }
 }
 
-function snapshot(state, actionId) {
+// steps: whether the evaluation names engine v5, whose input (relatedSteps) earlier engines never had.
+function snapshot(state, actionId, {steps = false} = {}) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
   const approvals = approvalAnalysisInput((state.approvalActions.get(actionId) || []).map(id => state.approvals.get(id)));
   const stopOrders = stopOrderAnalysisInput(state.registryRows, state.events.values());
+  const rules = [...state.rules.values()].flatMap(rule => (rule.versions || []).filter(version => version.status === 'active'));
+  const relatedSteps = steps ? relatedStepInput(events, state.events.values(), rules, ruleMatches) : undefined;
   return {
     events: events.sort(eventOrder),
     assets: [...state.assets.values()],
-    rules: [...state.rules.values()].flatMap(rule => (rule.versions || []).filter(version => version.status === 'active')),
+    rules,
     exceptions: [...state.exceptions.values()],
     ...(registry ? {registry} : {}),
     ...(relatedDecisions ? {relatedDecisions} : {}),
     ...(approvals ? {approvals} : {}),
     ...(stopOrders ? {stopOrders} : {}),
+    ...(relatedSteps ? {relatedSteps} : {}),
   };
 }
-const extraBytes = data => (data.registry || data.relatedDecisions || data.approvals || data.stopOrders
-  ? bytes({...(data.registry ? {registry: data.registry} : {}), ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions} : {}),
-    ...(data.approvals ? {approvals: data.approvals} : {}), ...(data.stopOrders ? {stopOrders: data.stopOrders} : {})}) + 1 : 0);
+const EXTRA_INPUTS = ['registry', 'relatedDecisions', 'approvals', 'stopOrders', 'relatedSteps'];
+const extraBytes = data => (EXTRA_INPUTS.some(name => data[name])
+  ? bytes(Object.fromEntries(EXTRA_INPUTS.filter(name => data[name]).map(name => [name, data[name]]))) + 1 : 0);
 
 // Mirrors Store.cachedAnalysisSnapshot resource checks followed by the claim-time size check in src/analysis.mjs.
 function quarantineReason(data, limits) {
@@ -141,6 +150,7 @@ function inputSummary(data, matches) {
     ...(data.relatedDecisions ? {relatedDecisions: data.relatedDecisions.map(d => d.seq)} : {}),
     ...(data.approvals ? {approvals: data.approvals.map(a => ({id: a.id, version: a.version}))} : {}),
     ...(data.stopOrders ? {stopOrders: {orders: data.stopOrders.orders.length, activations: data.stopOrders.activations.map(a => a.seq)}} : {}),
+    ...(data.relatedSteps ? {relatedSteps: data.relatedSteps.map(s => s.seq)} : {}),
     snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 
@@ -151,20 +161,27 @@ function replayOne(state, row, engines) {
   const notReplayable = (reason, extra = {}) => ({...base, status: 'not_replayable', reason, ...extra});
   if (typeof evaluation.actionId !== 'string') return notReplayable('invalid_record');
   if (recordedEngine !== undefined && !engines.includes(recordedEngine)) return notReplayable('engine_unavailable');
-  const data = snapshot(state, evaluation.actionId);
+  const data = snapshot(state, evaluation.actionId, {steps: recordedEngine === EVALUATION_ENGINE_V5});
+  const downgraded = recordedEngine !== EVALUATION_ENGINE_V5 && state.stepsSince !== undefined
+    && relatedStepInput(data.events, state.events.values(), data.rules, ruleMatches) !== undefined;
+  const downgrade = downgraded ? {engine: {recorded: recordedEngine ?? 'unrecorded', replayed: EVALUATION_ENGINE_V5}} : null;
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
   // Related denies of other actions erased since the evaluation cannot be re-examined either.
-  // So are stop-order activation reports of other actions.
+  // So are stop-order activation reports and risky steps of other actions.
   const related = [...(Array.isArray(evaluation.replay?.inputs?.relatedDecisions) ? evaluation.replay.inputs.relatedDecisions : []),
-    ...(Array.isArray(evaluation.replay?.inputs?.stopOrders?.activations) ? evaluation.replay.inputs.stopOrders.activations : [])];
+    ...(Array.isArray(evaluation.replay?.inputs?.stopOrders?.activations) ? evaluation.replay.inputs.stopOrders.activations : []),
+    ...(Array.isArray(evaluation.replay?.inputs?.relatedSteps) ? evaluation.replay.inputs.relatedSteps : [])];
   const erased = [...(recordedSeqs ? recordedSeqs.filter(seq => hidden.includes(seq)) : hidden),
     ...related.filter(seq => Number.isSafeInteger(seq) && !state.events.has(seq) && !hidden.includes(seq))];
   if (evaluation.status === 'quarantined_resource_limit') {
     if (erased.length) return notReplayable('erased_input', {erasedEvents: erased});
     const expected = quarantineReason(data, {...LEGACY_ANALYSIS_LIMITS, ...evaluation.replay?.limits});
-    if (expected === evaluation.coverage?.reason) return notReplayable('resource_limit', {quarantineConfirmed: true, coverage: evaluation.coverage});
-    return {...base, status: 'mismatch', diff: {quarantine: {recorded: evaluation.coverage?.reason ?? null, replayed: expected}}};
+    if (expected === evaluation.coverage?.reason && !downgrade) {
+      return notReplayable('resource_limit', {quarantineConfirmed: true, coverage: evaluation.coverage});
+    }
+    const quarantine = expected === evaluation.coverage?.reason ? {} : {quarantine: {recorded: evaluation.coverage?.reason ?? null, replayed: expected}};
+    return {...base, status: 'mismatch', diff: {...quarantine, ...downgrade}};
   }
   if (evaluation.status !== 'evaluated') return notReplayable('unknown_status');
   if (typeof evaluation.snapshotHash !== 'string' || !Number.isFinite(Date.parse(evaluation.analysisTime))) {
@@ -178,6 +195,7 @@ function replayOne(state, row, engines) {
   // The engine an evaluation names must be the one its inputs call for (v1 snapshots never name v2, and the reverse).
   const expectedEngine = evaluationEngine(data);
   if (recordedEngine !== undefined && recordedEngine !== expectedEngine) diff = {...diff, engine: {recorded: recordedEngine, replayed: expectedEngine}};
+  if (downgrade) diff = {...diff, ...downgrade};
   const order = ordering(data.events);
   const report = {...base, inputs: inputSummary(data, matches), ordering: order,
     approvalRecordedAfterExecution: order.some(o => o.authorityRecordedAfter.some(a => a.kind === 'human_approval'))};

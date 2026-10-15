@@ -6,6 +6,7 @@ import {registryFindings,enforcedToolsAt} from './agent-registry.mjs';
 import {DECISION_FIELDS,DECISION_KINDS,DECISIONS,decisionFindings} from './decision-rules.mjs';
 import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs';
 import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
+import {sequenceFindings} from './sequence-rules.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
 export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
@@ -98,15 +99,21 @@ export const EVALUATION_ENGINE_V3='evidscope-evaluate-v3';
 // any snapshot without one v4 returns the v1/v2/v3 output; a verifier without v4 reports v4 evaluations as engine_unavailable.
 // A snapshot with both inputs names the highest engine.
 export const EVALUATION_ENGINE_V4='evidscope-evaluate-v4';
-export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4]);
-export const evaluationEngine=data=>data.stopOrders!==undefined?EVALUATION_ENGINE_V4:data.approvals!==undefined?EVALUATION_ENGINE_V3
+// v5 adds the multi-action rules of AI agents (src/sequence-rules.mjs). Their input (risky steps of the same actor in other actions)
+// occurs only in the snapshot of an action with a risky step, and for any snapshot without it v5 returns the v1-v4 output. Unlike
+// the earlier inputs it comes from records older engines also read (intents and tenant rules), so src/policy-replay.mjs rebuilds it
+// only for evaluations that name v5.
+export const EVALUATION_ENGINE_V5='evidscope-evaluate-v5';
+export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5]);
+export const evaluationEngine=data=>data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
+ :data.approvals!==undefined?EVALUATION_ENGINE_V3
  :data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
 // The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
 // recorded for the same action and rule. The vault applies the same predicate to worker results.
 export function suppressingException(exceptions,finding,actionId,now){
  return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
 }
-export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders}={}) {
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -170,6 +177,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
   ...(queue?{vaultApproved:e=>approvalSatisfied(queue,e,clockBound),requested:(d,e)=>approvalRequested(queue,d,e)}:{})});
  approvalFindings(events,queue,{add,clockBound});
  stopOrderFindings(events,stopOrders,{add,clockBound});
+ sequenceFindings(events,relatedSteps,{add,rules,matches});
  const unique=[...new Map(findings.map(f=>[f.code+'|'+f.evidence.join(','),f])).values()];
  for(const f of unique){
   const exception=suppressingException(exceptions,f,events[0]?.actionId,now);
@@ -181,7 +189,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
 // The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
 export function boundedEvaluation(input,limits){
  const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions,
-  approvals:input.approvals,stopOrders:input.stopOrders});
+  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps});
  const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
  const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
  result.coverage=coverage();
