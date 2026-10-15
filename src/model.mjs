@@ -8,7 +8,7 @@ import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs
 import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
 import {sequenceFindings} from './sequence-rules.mjs';
 import {parseWords,matchesWords} from './rule-words.mjs';
-import {HOOK_AGENTS} from './agent-hook-events.mjs';
+import {HISTORY_IMPORT,HOOK_AGENTS} from './agent-hook-events.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
 export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
@@ -22,7 +22,9 @@ export const date=s=>{if(typeof s!=='string'||!/^\d{4}-\d\d-\d\dT/.test(s)||!Num
 const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check'],otlp:['notice','self_report'],enforcement:['policy_decision','guardrail_decision','bundle_activation']};
 // Bundle activations (docs/kill-switch.md): an enforcement point reports which bundle revision it activated and when.
 const ACTIVATION_FIELDS=['bundleName','bundleRevision'];
-const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs',...DECISION_FIELDS,...ACTIVATION_FIELDS];
+// collection: how an agent record was collected when not by the live hook (HISTORY_IMPORT: read later from the agent's own transcript by
+// scripts/import-agent-history.mjs). Only that value, only from an agent source.
+const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs','collection',...DECISION_FIELDS,...ACTIVATION_FIELDS];
 export function validateReference(ref){
  if(!ref||Array.isArray(ref)||typeof ref!=='object'||Object.keys(ref).some(k=>!['id','kind','version','hash','role','locator','description'].includes(k)))fail(400,'참고 데이터는 허용된 참조 메타데이터만 제출할 수 있습니다');
  if(!['document','dataset','record','retrieval','artifact'].includes(ref.kind)||!['input','retrieved','output'].includes(ref.role))fail(400,'참고 데이터 종류 또는 역할 오류');
@@ -40,7 +42,8 @@ export function validateEvent(raw,p) {
  if(raw.kind===ACTIVATION_KIND&&['decision','policyId','decisionId','latencyMs','recordedBeforeExecution','actor','tool','action','resource'].some(k=>Object.hasOwn(raw,k)))
   fail(400,'묶음 활성화 기록에는 결정·대상 필드를 쓸 수 없습니다');
  const e={};for(const [k,v] of Object.entries(raw)){
-  if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
+  if(k==='collection'){if(v!==HISTORY_IMPORT||p.kind!=='agent')fail(400,'수집 경로 표시는 agent 출처의 history_import만 허용됩니다');e[k]=v;}
+  else if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
   else if(k==='aiObservation')e[k]=validateAIObservation(v);
   else if(k==='decision'){if(!DECISIONS.includes(v))fail(400,'정책 결정은 allow, deny, require_approval, modify 중 하나입니다');e[k]=v;}
   else if(k==='latencyMs'){if(!Number.isSafeInteger(v)||v<0||v>3600000)fail(400,'결정 지연은 0~3600000ms 정수');e[k]=v;}
@@ -118,9 +121,15 @@ export const EVALUATION_ENGINE_V6='evidscope-evaluate-v6';
 // v5 the input comes from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v7.
 // v7 includes v5 and v6.
 export const EVALUATION_ENGINE_V7='evidscope-evaluate-v7';
+// v8 reads the AI agent records imported later from the agent's own transcript (collection 'history_import', historyImportInput):
+// they are late by nature, so each adds no LATE_EVIDENCE finding of its own (its `late` stays on the event). Its input occurs only in
+// the snapshot of an action with such a record, and for any other snapshot v8 returns the v1-v7 output; like v5 and v7 the input comes
+// from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v8. v8 includes v5-v7.
+export const EVALUATION_ENGINE_V8='evidscope-evaluate-v8';
 export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5,
- EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7]);
-export const evaluationEngine=data=>data.agentCommands!==undefined?EVALUATION_ENGINE_V7:(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
+ EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7,EVALUATION_ENGINE_V8]);
+export const evaluationEngine=data=>data.historyImports!==undefined?EVALUATION_ENGINE_V8:data.agentCommands!==undefined?EVALUATION_ENGINE_V7
+ :(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
  :data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
  :data.approvals!==undefined?EVALUATION_ENGINE_V3
  :data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
@@ -136,12 +145,20 @@ export function agentCommandInput(events){
  const seqs=events.filter(e=>agentCommand(e)&&Number.isSafeInteger(e.seq)&&INJECTION_TEXT.test(e.note||'')&&!INSTRUCTION_TEXT.test(e.note||'')).map(e=>e.seq);
  return seqs.length?seqs.sort((a,b)=>a-b):undefined;
 }
+// Engine v8 input: the ledger sequences of the action's agent records marked as imported from the agent's transcript. Undefined when
+// there is none, so every other snapshot stays as it was. The mark is the source's claim (validateEvent allows it on agent records
+// only): an agent source can only quiet the lateness finding of its own records, and the record still reads as late.
+const historyImport=e=>e.sourceKind==='agent'&&e.collection===HISTORY_IMPORT;
+export function historyImportInput(events){
+ const seqs=events.filter(e=>historyImport(e)&&Number.isSafeInteger(e.seq)).map(e=>e.seq);
+ return seqs.length?seqs.sort((a,b)=>a-b):undefined;
+}
 // The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
 // recorded for the same action and rule. The vault applies the same predicate to worker results.
 export function suppressingException(exceptions,finding,actionId,now){
  return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
 }
-export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands}={}) {
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands,historyImports}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -197,10 +214,10 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
  // An agent's after-record repeats its intent's note (src/agent-hook-events.mjs): a words rule (engine v6) flags the call once, on the
  // intent, and reads an after-record only when no intent of the action carries the same note.
  const repeatsIntent=e=>e.kind==='self_report'&&events.some(x=>x.kind==='intent'&&x.actionId===e.actionId&&x.note===e.note);
- const commands=new Set(agentCommands||[]);
+ const commands=new Set(agentCommands||[]),imported=new Set(historyImports||[]);
  for(const e of events){
   if(e.kind==='gap')add('COLLECTION_GAP','high','수집 출처가 관측 공백을 보고했습니다',[e]);
-  if(e.late)add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
+  if(e.late&&!(imported.has(e.seq)&&historyImport(e)))add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
   if((commands.has(e.seq)&&agentCommand(e)?INSTRUCTION_TEXT:INJECTION_TEXT).test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
   for(const r of rules)if(matches(r,e)&&!(r.op==='words'&&repeatsIntent(e)))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
@@ -221,7 +238,8 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
 // The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
 export function boundedEvaluation(input,limits){
  const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions,
-  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps,agentCommands:input.agentCommands});
+  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps,agentCommands:input.agentCommands,
+  historyImports:input.historyImports});
  const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
  const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
  result.coverage=coverage();

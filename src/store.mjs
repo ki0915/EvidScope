@@ -17,7 +17,7 @@ import {relatedDenyInput} from './decision-rules.mjs';
 import {relatedStepInput} from './sequence-rules.mjs';
 import {STOP_ORDER_TYPE,stopOrderAnalysisInput} from './stop-orders.mjs';
 import {APPROVAL_TYPE,approvalAnalysisInput} from './approvals.mjs';
-import {agentCommandInput,evaluationEngine,matches} from './model.mjs';
+import {agentCommandInput,evaluationEngine,historyImportInput,matches} from './model.mjs';
 import {types} from 'node:util';
 import {EMPTY_ROOT,blobToPeaks,ed25519RawPublic,formatCheckpoint,frontierAppend,frontierRoot,logVkey,noteVerifier,openNote,parseCheckpoint,peaksToBlob,recordLeaf,rootsAtSizes,signNote,tenantOrigin,validateOriginBase} from './tlog.mjs';
 
@@ -400,8 +400,10 @@ export class Store {
   const relatedSteps=actionId===null?undefined:relatedStepInput(events,state.eventsBySequence.values(),rules,matches);
   // AI coding agent commands whose injection-shaped text is only code markup (engine v7) join only when the action has one.
   const agentCommands=actionId===null?undefined:agentCommandInput(events);
+  // Agent records imported later from the agent's transcript (engine v8) join only when the action has one.
+  const historyImports=actionId===null?undefined:historyImportInput(events);
   const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{}),
-   ...(relatedSteps?{relatedSteps}:{}),...(agentCommands?{agentCommands}:{})};
+   ...(relatedSteps?{relatedSteps}:{}),...(agentCommands?{agentCommands}:{}),...(historyImports?{historyImports}:{})};
   const extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
   const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');

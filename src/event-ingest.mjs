@@ -65,6 +65,10 @@ export function endIngestBatch(store, results) {
   store.count('accepted', results.length - duplicates); store.count('duplicates', duplicates);
 }
 const ACCEPTED = Object.freeze({durability: 'sqlite_full_commit', analysis: 'asynchronous', externalSeal: false});
+// The 409 answers to an event id the source already used with other content, or whose earlier content can no longer be compared.
+// scripts/import-agent-history.mjs reads both as "this call is already stored" (by the live hook, or by an earlier import).
+export const INGEST_ID_CONFLICT = Object.freeze({content: '동일 출처 이벤트 ID의 내용 충돌',
+  erased: '동일 출처 이벤트 ID의 이전 접수 지문 키가 파기되어 내용을 비교할 수 없습니다'});
 // One authenticated, validated source event inside its batch savepoint (POST /api/ingest).
 export function ingestSourceEvent(store, context, p, nonce, e) {
   const tenantState = context.tenants.get(p.tenant);
@@ -74,8 +78,8 @@ export function ingestSourceEvent(store, context, p, nonce, e) {
   if (store.cachedStatement('SELECT 1 FROM nonces WHERE source=? AND nonce=?').get(p.id, nonce)) fail(409, '이미 사용한 nonce입니다');
   const prev = receiptMatch(store, p.tenant, p.id, e.id, e.fingerprint);
   if (prev) {
-    if (prev === 'unverifiable') fail(409, '동일 출처 이벤트 ID의 이전 접수 지문 키가 파기되어 내용을 비교할 수 없습니다');
-    if (prev !== 'same') fail(409, '동일 출처 이벤트 ID의 내용 충돌');
+    if (prev === 'unverifiable') fail(409, INGEST_ID_CONFLICT.erased);
+    if (prev !== 'same') fail(409, INGEST_ID_CONFLICT.content);
     store.cachedStatement('INSERT INTO nonces VALUES(?,?,?)').run(p.id, nonce, Date.now() + 600000);
     return {accepted: true, duplicate: true, ...ACCEPTED};
   }

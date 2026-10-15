@@ -7,6 +7,7 @@
 // "actor":"<agent>@pc","policyVersion":"<agent>-monitoring-v1"}: the url is the ingest gateway (local launcher port base + 1), the
 // credentials an `agent` source's. Only node built-ins and ./agent-hook-events.mjs are imported, so the installer can copy the hook
 // to a plain ASCII path: a Korean or spaced user folder in a hook command line is fragile across the shells agents run hooks with.
+// scripts/import-agent-history.mjs reuses the config, actor and signed request below to send past tool calls the same way.
 import {readFileSync, appendFileSync, renameSync, statSync, mkdirSync, existsSync, unlinkSync} from 'node:fs';
 import {createHmac, randomUUID} from 'node:crypto';
 import {homedir, hostname} from 'node:os';
@@ -15,26 +16,31 @@ import {HOOK_AGENTS, hookEvent} from './agent-hook-events.mjs';
 
 const SPOOL_MAX_BYTES = 5 * 1024 * 1024, FLUSH_MAX = 20, TIMEOUT_MS = 1000;
 
+export const hookConfigPath = (agent, env = process.env) => env.EVIDSCOPE_HOOK_CONFIG || join(homedir(), '.evidscope', `${agent}-hook.json`);
+// The spool of records the hook could not send yet (next to its config).
+export const hookSpoolPath = (agent, configPath) => join(dirname(configPath), `${agent}-spool.jsonl`);
+export const hookActor = (agent, config = {}) => config.actor || `${agent}@${hostname().toLowerCase().replace(/[^a-z0-9.-]/g, '-')}`;
+
 // The signed ingest request of docs/contract.md (same as src/client.mjs submit()): HMAC-SHA256 over `${timestamp}.${nonce}.${body}`.
-async function post(config, event) {
+// Resolves the HTTP status and the response text (the 202 receipt or the error); a network failure or timeout rejects.
+export async function postEvent(config, event, {timeoutMs = TIMEOUT_MS} = {}) {
   const body = JSON.stringify(event), timestamp = String(Date.now()), nonce = randomUUID();
   const signature = createHmac('sha256', Buffer.from(config.hmacSecret, 'utf8')).update(`${timestamp}.${nonce}.${body}`).digest('hex');
-  const response = await fetch(new URL('/api/ingest', config.url), {method: 'POST', body, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS),
+  const response = await fetch(new URL('/api/ingest', config.url), {method: 'POST', body, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs),
     headers: {'content-type': 'application/json', authorization: `Bearer ${config.token}`, 'x-evid-timestamp': timestamp, 'x-evid-nonce': nonce,
       'x-evid-signature': signature}});
-  await response.arrayBuffer();
-  return response.status;
+  return {status: response.status, text: await response.text()};
 }
 
 // agent: one of HOOK_AGENTS; it names the config, spool and log files and the event's tool. input: the hook's stdin (tests pass it).
 export async function runHook(agent, {input = null, env = process.env} = {}) {
   if (!HOOK_AGENTS.includes(agent)) return;
-  const configPath = env.EVIDSCOPE_HOOK_CONFIG || join(homedir(), '.evidscope', `${agent}-hook.json`);
-  const dir = dirname(configPath), spool = join(dir, `${agent}-spool.jsonl`), log = join(dir, `${agent}-hook.log`);
+  const configPath = hookConfigPath(agent, env);
+  const dir = dirname(configPath), spool = hookSpoolPath(agent, configPath), log = join(dir, `${agent}-hook.log`);
   const note = message => { try { appendFileSync(log, `${new Date().toISOString()} ${message}\n`); } catch {} };
   async function send(config, event) {
     try {
-      const status = await post(config, event);
+      const {status} = await postEvent(config, event);
       if (status === 202 || status === 409) return 'done';
       if (status >= 400 && status < 500 && status !== 408 && status !== 429) { note(`dropped ${event.id}: HTTP ${status}`); return 'done'; }
       return 'retry';
@@ -60,8 +66,7 @@ export async function runHook(agent, {input = null, env = process.env} = {}) {
     mkdirSync(dir, {recursive: true});
     let raw;
     try { raw = JSON.parse(input ?? readFileSync(0, 'utf8')); } catch { return; }
-    const actor = config.actor || `${agent}@${hostname().toLowerCase().replace(/[^a-z0-9.-]/g, '-')}`;
-    const event = hookEvent(raw, {actor, policyVersion: config.policyVersion, tool: agent});
+    const event = hookEvent(raw, {actor: hookActor(agent, config), policyVersion: config.policyVersion, tool: agent});
     if (!event) return;
     if (await send(config, event) === 'retry') { keep([event]); return; }
     const backlog = claimSpool(), rest = [];

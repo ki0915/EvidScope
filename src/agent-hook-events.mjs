@@ -11,6 +11,8 @@ export const HOOK_TOOL = 'claude-code';
 // The agents whose hooks this module reads; each one's events carry it as `tool`.
 export const HOOK_AGENTS = Object.freeze(['claude-code', 'codex']);
 export const HOOK_LIMITS = Object.freeze({resourceChars: 256, noteChars: 1024, idChars: 120});
+// The `collection` of a record built from the agent's transcript after the fact (src/agent-history.mjs) instead of by the live hook.
+export const HISTORY_IMPORT = 'history_import';
 // Tool name -> action category. MCP tools are mcp__<server>__<tool>. Codex names its shell tool Bash in hooks (older builds
 // exec_command, shell or local_shell) and its file edits apply_patch.
 const ACTIONS = Object.freeze({Bash: 'shell_exec', PowerShell: 'shell_exec', Read: 'file_read', Write: 'file_write', Edit: 'file_write',

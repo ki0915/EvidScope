@@ -61,6 +61,7 @@ v6 평가를 `contains`로 잘못 읽지 않고 `engine_unavailable`로 밝힙�
 보지 않습니다. 코드를 쓰는 일이기 때문입니다. 감사자에게 지시하는 문장(`ignore ... instructions`, 감사 룰 변경 요구)은 그대로
 잡고, 코딩 도구가 아닌 기록의 표기도 그대로 잡습니다. 그런 명령이 있는 행동의 평가에만 v7이 적히고(입력 `agentCommands`), 재생은
 v7 평가에만 이 입력을 다시 만듭니다. 원장에 v7 평가가 생긴 뒤에 같은 종류의 행동을 이전 엔진으로 적은 평가는 `mismatch`입니다.
+평가 엔진 v8은 대화 기록에서 사후에 가져온 기록을 다룹니다(아래 "지난 행동 가져오기").
 
 ## 여러 행동을 엮은 이상 징후 (평가 엔진 v5)
 
@@ -136,6 +137,60 @@ node scripts/install-agent-monitoring.mjs --agent codex --local-dir <EVIDSCOPE_L
 `/hooks`를 열어 EvidScope hook을 신뢰합니다(hook 파일이 바뀌면 다시 신뢰). 신뢰한 뒤에도 두 항목이 모두 켜져 있는지 확인합니다.
 `PreToolUse`가 꺼져 있으면(`config.toml`의 해당 `hooks.state` 항목에 `enabled = false`) 결과 기록(`self_report`)만 오고 대상이 없어
 위험 규칙이 걸리지 않습니다(2026-10-15 실제로 확인). 되돌리려면 설정 파일에서 두 hook 항목을 지우거나 백업 파일로 바꿉니다.
+
+## 지난 행동 가져오기 (hook 설치 전 기록)
+
+> 2026-10-15 추가(`scripts/import-agent-history.mjs`, `src/agent-history.mjs`).
+
+hook은 설치 뒤의 도구 호출만 봅니다. 그 전에 한 행동은 AI 도구가 이 PC에 남긴 대화 기록에서 읽어 사후에 넣을 수 있습니다.
+
+| 에이전트 | 읽는 곳 | 도구 호출 / 결과 |
+|---|---|---|
+| Claude Code | `~/.claude/projects/<프로젝트>/<세션>.jsonl` (`CLAUDE_CONFIG_DIR`이 있으면 그 아래 `projects`) | assistant의 `tool_use` / 뒤따르는 `tool_result`(`is_error`) |
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` (`CODEX_HOME`이 있으면 그 아래 `sessions`) | `function_call`·`custom_tool_call`·`local_shell_call` / `*_output`(종료 코드) |
+
+- 도구 호출마다 hook이 만들었을 기록과 같은 것을 보냅니다. 실행 전 기록(`intent`)과, 결과가 대화 기록에 있으면 실행 후
+  기록(`self_report`, 성공·실패만)입니다. 담는 것은 도구 이름과 대상(명령·경로·URL, 비밀 형식은 `<redacted>`)뿐입니다. 프롬프트,
+  AI의 답, 도구 출력, 파일 내용, 패치 본문은 보내지 않습니다. 시각은 대화 기록의 시각이고, 세션 id와 호출 id도 대화 기록의 것이라
+  같은 호출을 hook이 이미 보냈다면 기록 id가 같습니다.
+- 가져온 기록에는 `collection: "history_import"`가 붙습니다(`agent` 출처만, 이 값만 허용). 콘솔은 이 표시로 "사후 수집"을 구분할 수
+  있습니다. 이 기록은 hook이 그때 보낸 기록보다 약한 증거입니다. 에이전트가 쓰고 사용자가 고칠 수 있는 파일을 나중에 읽은 것이고,
+  행동 시각보다 늦게 접수되므로 기록마다 `late: true`입니다.
+- 평가 엔진 v8: 가져온 기록은 원래 늦으므로 기록마다 "늦게 접수된 증거"(`LATE_EVIDENCE`) 경보를 따로 내지 않습니다. 늦었다는 사실은
+  기록의 `late`에 그대로 남습니다. 위험 규칙, 여러 행동 이상 징후, v7의 명령 표기 처리는 그대로 걸리고, 가져온 기록이 아닌 늦은
+  기록은 여전히 `LATE_EVIDENCE`입니다. 가져온 기록이 있는 행동의 평가에만 v8이 적히고(입력 `historyImports`), 재생은 v8 평가에만 이
+  입력을 다시 만듭니다. 원장에 v8 평가가 생긴 뒤에 그런 행동을 이전 엔진으로 적은 평가는 `mismatch`이고, v8을 모르는 검증기는
+  `engine_unavailable`로 밝힙니다.
+- 중복: 수집 기록은 출처와 기록 id로 한 번만 저장됩니다. 같은 내용을 다시 보내면 중복(`present.duplicate`, 이전 가져오기), hook이 이미
+  보낸 기록은 내용(시각·표시)이 달라 409 충돌(`present.conflict`)이고, 둘 다 "이미 있음"으로 셉니다. hook이 보낸 기록은 바뀌지
+  않습니다. hook의 대기열(`~/.evidscope/<에이전트>-spool.jsonl`)에 있는 기록은 보내지 않습니다(`present.queued`, hook이 다음 호출 때
+  보냄). 그래서 여러 번 실행해도 안전하고, 두 번째 실행은 새로 저장하는 것이 없습니다.
+- 하위 에이전트(Claude Code의 sidechain, `<세션>/subagents/`) 호출은 기본으로 건너뛰고 수만 셉니다. `--include-sidechains`로 넣습니다.
+  같은 호출이 여러 대화 기록에 있으면(이어서 시작한 세션) 처음 읽은 것 하나만 보냅니다.
+
+EvidScope를 켜고 설치(위 "설치", `~/.evidscope/<에이전트>-hook.json`)를 마친 뒤 EvidScope 폴더에서 실행합니다. 먼저 `--dry-run`으로
+프로젝트·세션별 호출 수와 보낼 기록 몇 개를 확인합니다. 이때는 아무것도 보내지 않습니다.
+
+```powershell
+node scripts/import-agent-history.mjs --dry-run
+node scripts/import-agent-history.mjs
+node scripts/import-agent-history.mjs --agent codex --dry-run
+node scripts/import-agent-history.mjs --agent codex
+```
+
+`--since 2026-09-01T00:00:00+09:00`·`--until <ISO 시각>`(호출 시각 범위), `--limit <n>`(오래된 것부터 n개 호출), `--dir <폴더>`,
+`--config <hook 설정 파일>`을 쓸 수 있습니다. 마지막에 요약을 출력합니다: 읽은 파일, 찾은 호출(`toolCalls`)과 건너뛴 이유,
+보낸 기록(`records.sent`), 새로 저장(`accepted`), 이미 있음(`alreadyPresent`), 거부(`rejected`, 이유별 수). 토큰과 서명 비밀은
+출력하지 않습니다. 기록이 많아 분석 적체 한도(행동 10,000개)를 넘으면 EvidScope가 503으로 답하고, 가져오기는 분석이 따라잡을
+때까지 기다렸다가(기록 하나당 최대 약 18분) 이어서 보냅니다. 종료 코드는 실행할 수 없을 때(대화 기록 폴더·hook 설정 없음)나
+EvidScope가 기록을 받지 않을 때(꺼져 있음, 503이 계속됨, 401·403)만 1입니다. 그 경우 다시 실행하면 이미 저장된 기록은 "이미
+있음"으로 세고 나머지를 보냅니다.
+
+- 대화 기록이 남아 있는 범위까지만 가져옵니다. Claude Code는 오래된 대화 기록을 지웁니다(설정 `cleanupPeriodDays`, 기본 30일).
+- 자산 등록(설치) 전 시점의 호출이 외부 목적지를 쓰면 "행동 시점의 목적지 정책 미확인"(`POLICY_CONTEXT_UNVERIFIED`)이 표시될 수
+  있습니다. 그때는 등록된 정책이 없었기 때문입니다.
+- Codex 형식은 공개된 rollout 구조를 본뜬 합성 시험 자료로만 확인했습니다. 시각이 없는 옛 rollout의 호출은 보내지 않고
+  `skipped.noTime`으로 셉니다. 모르는 항목(`web_search_call` 등)은 `skipped.unknown`으로 셉니다.
 
 ## 한계
 
