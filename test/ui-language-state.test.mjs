@@ -118,10 +118,10 @@ test('human adopted drafts and sequential changes preserve machine original and 
   assert.match(helpers.reviewHistory([...edits, { action: 'accept', draft: second }], original).textContent, /직전 저장 초안과 변경점/);
 });
 
-test('six primary task groups retain all existing destinations and local-only assets', () => {
+test('eight primary task groups (dashboard, logs and signals added) retain all existing destinations and local-only assets', () => {
   const html = readFileSync('public/index.html', 'utf8'), source = readFileSync('public/console.js', 'utf8');
-  assert.equal((html.match(/data-section=/g) || []).length, 6);
-  for (const route of ['agents', 'graphs', 'investigations', 'overview', 'events', 'alerts', 'cases', 'rules', 'governance', 'retention', 'health', 'team', 'assistance']) assert.ok(source.includes(`['${route}',`), route);
+  assert.equal((html.match(/data-section=/g) || []).length, 8);
+  for (const route of ['dashboard', 'logs', 'agents', 'graphs', 'investigations', 'overview', 'events', 'alerts', 'cases', 'rules', 'governance', 'retention', 'health', 'team', 'assistance']) assert.ok(source.includes(`['${route}',`), route);
   assert.doesNotMatch(html, /(?:src|href)="https?:\/\//);
   assert.match(readFileSync('public/console.css', 'utf8'), /prefers-reduced-motion/);
 });

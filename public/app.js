@@ -381,7 +381,14 @@ function actionEvidenceSummary(data) {
   ); node.append(comparison);
   const references = Array.isArray(data.references) ? data.references : events.flatMap((event) => (event.dataRefs || []).map((ref) => ({ ...ref, source: event.source, eventId: event.id, assurance: event.assurance, observedAt: event.occurredAt, verification: event.sourceKind === 'agent' ? 'self_reported_reference' : 'service_reported_reference' })));
   const referenceCard = card('참고 데이터 · 출처와 버전', '자료 원문을 저장하지 않고 식별자·버전·해시 메타데이터를 연결합니다. 담당자는 접근 권한이 있는 외부 실물과 직접 대조하세요.');
-  if (!references.length) referenceCard.append(el('div', 'message warning', '참고 데이터 출처 미수집 / 모델이 무엇을 참고했는지 확인할 수 없음'));
+  const session = data.sessionReferences;
+  if (!references.length && session?.items?.length) {
+    // No submitted reference: what the agent itself reported reading or searching earlier in the same session.
+    referenceCard.append(el('p', 'muted', `제출된 참조는 없습니다. ${session.scope}`));
+    referenceCard.append(table(['시각', '도구', '읽거나 검색한 대상'], session.items.map((item) => [date(item.occurredAt), item.toolName || label(item.action),
+      el('span', 'mono wrap', item.target || '—')])));
+    if (session.total > session.items.length) referenceCard.append(el('p', 'muted', `최근 ${session.items.length}건만 표시 · 전체 ${session.total}건`));
+  } else if (!references.length) referenceCard.append(el('div', 'message warning', '참고 데이터 출처 미수집 / 모델이 무엇을 참고했는지 확인할 수 없음'));
   else {
     referenceCard.append(el('p', 'muted', '참조 기록은 실제 열람·사용이나 원문 일치를 자동 증명하지 않습니다. 위치는 텍스트로만 표시하며 자동 접속하거나 자료를 가져오지 않습니다.'));
     const refs = el('div', 'evidence-comparison');
@@ -616,7 +623,11 @@ function reportMarkdown(report) {
   lines.push('## 행동과 관측 근거', '');
   for (const event of action.events || []) lines.push(`### ${md(event.source)}/${md(event.id)}`, '', `- 종류 / 출처 보장: ${md(label(event.kind))} / ${md(label(event.assurance))}`, `- 발생 / 접수: ${md(event.occurredAt)} / ${md(event.receivedAt)}`, `- 보고된 행위자 / 모델: ${md(event.actor)} / ${md(event.model)}`, `- 도구 / 행동 / 결과: ${md(event.tool)} / ${md(event.action)} / ${md(label(event.status))}`, `- 대상 / 목적지: ${md(event.resource)} / ${md(event.destination)}`, `- 사용 목적 / 데이터 범주: ${md(event.purpose)} / ${md(event.dataCategories)}`, `- 당시 정책 버전: ${md(event.policyVersion)}`, '');
   lines.push('## 참고 자료', '', '자료 원문과 실제 사용 여부는 이 참조 기록만으로 검증되지 않습니다. 자료 위치를 자동으로 조회하지 않습니다.', '');
-  if (!(action.references || []).length) lines.push('참고 데이터 출처 미수집: 모델이 무엇을 참고했는지 확인할 수 없음.', '');
+  if (!(action.references || []).length && action.sessionReferences?.items?.length) {
+    lines.push(`제출된 참조 없음. ${md(action.sessionReferences.scope)}`, '');
+    for (const item of action.sessionReferences.items) lines.push(`- ${md(item.occurredAt)} · ${md(item.toolName || item.action)} · ${md(item.target)}`);
+    lines.push('');
+  } else if (!(action.references || []).length) lines.push('참고 데이터 출처 미수집: 모델이 무엇을 참고했는지 확인할 수 없음.', '');
   for (const reference of action.references || []) lines.push(`- ${md(reference.id)} · ${md(label(reference.kind))} · ${md(label(reference.role))}`, `  - 버전 / 해시: ${md(reference.version)} / ${md(reference.hash)}`, `  - 제출 출처 / 이벤트: ${md(reference.source)} / ${md(reference.eventId)}`, `  - 참조 보장: ${md(label(reference.verification))} · ${md(label(reference.assurance))}`, `  - 관측 시각: ${md(reference.observedAt)}`, `  - 자료 위치: ${md(reference.locator)}`, '');
   lines.push('## 기술 평가', '');
   lines.push(`- 현재 관측 결과: ${md(label(observedOutcome(action.events)))}`, `- 현재 분석 대기: ${action.analysis?.pending === true ? '있음 · 아래 기존 평가는 새 증거를 반영하지 않았을 수 있습니다.' : action.analysis?.pending === false ? '없음' : '미확인'}`, '');
@@ -1356,7 +1367,7 @@ async function navigate(view) {
   finally { if (epoch === renderEpoch) $('#content').removeAttribute('aria-busy'); }
 }
 document.querySelectorAll('[data-view]').forEach((node) => node.addEventListener('click', () => navigate(node.dataset.view)));
-$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('home'); });
+$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('dashboard'); });
 $('#refresh').addEventListener('click', () => navigate(activeView));
 $('#auth-close').addEventListener('click', () => $('#auth-dialog').close());
 $('#detail-close').addEventListener('click', () => { detailEpoch++; $('#detail-dialog').close(); });

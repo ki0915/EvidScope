@@ -129,7 +129,7 @@ async function route(req,res){
   }
   if(mode==='audit'&&req.method==='GET'&&['/','/index.html','/app.js','/style.css','/live-graphs.js','/graphs.css','/k8s-chart-data.js','/k8s-evidence.js',
    '/k8s-evidence.css','/team-support.js','/team-support.css','/console.js','/console.css','/registry.js','/approvals.js','/home.js',
-   '/governance-model.js'].includes(url.pathname)){
+   '/governance-model.js','/theme-dark-base.css','/theme-dark.css','/ops.css','/ops.js'].includes(url.pathname)){
    const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(join(root,'public',file)));return;
   }
   const enforcementPath=enforcementRoute(req.method,url.pathname);

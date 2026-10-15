@@ -8,6 +8,7 @@ import {createRetention} from './retention.mjs';
 import {createAnalysis,workerTenantScopes} from './analysis.mjs';
 import {createAuditWorkbench} from './audit-workbench.mjs';
 import {monitoring,SOURCE_LAST_SEEN_SQL} from './monitoring.mjs';
+import {RANGES,SEVERITY_RANK,dashboardView,exploreLogs,sessionReferences} from './log-explorer.mjs';
 import {agentInventory} from './agent-inventory.mjs';
 import {createAssistance} from './assistance.mjs';
 import {createDevelopmentRuns} from './development-runs.mjs';
@@ -395,7 +396,26 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
    return store.transaction(()=>{verifiedActions(p);const actionId=decodeURIComponent(path.slice(13)),evaluations=verifiedEvaluations(p,{actionId}).reverse(),events=store.events(p.tenant,actionId);
    const references=events.flatMap(e=>(e.dataRefs||[]).map(ref=>({...ref,source:e.source,eventId:e.id,assurance:e.assurance,observedAt:e.occurredAt,verification:e.sourceKind==='agent'?'self_reported_reference':'service_reported_reference'})));
    const business=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind)),v=store.db.prepare('SELECT version,analyzed FROM actions WHERE tenant=? AND id=?').get(p.tenant,actionId);
-   return {events,references,traceLinks:traceLinks(linkTemplates,eventTraceIds(events)),analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?['참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
+   // What the agent read or searched earlier in the same session (its own reports), for actions that carry no submitted reference.
+   const trace=events.find(e=>e.sourceKind==='agent'&&e.traceId)?.traceId,session=trace?sessionReferences(store.db.prepare('SELECT body FROM events WHERE tenant=? AND trace_id=?').all(p.tenant,trace).map(row=>JSON.parse(row.body)),events):null;
+   return {events,references,...(session?{sessionReferences:session}:{}),traceLinks:traceLinks(linkTemplates,eventTraceIds(events)),analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?[session?.total?`제출된 참고 데이터 참조는 없습니다. 같은 세션에서 먼저 읽거나 검색했다고 보고한 자료 ${session.total}건을 함께 보여 줍니다(에이전트 자기보고)`:'참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
+  }
+  // Log explorer, live tail and dashboard (src/log-explorer.mjs): the verified event projection with each action's latest open findings.
+  if((path==='/api/logs'||path==='/api/dashboard')&&method==='GET'){
+   return store.transaction(()=>{verifiedEvents(p);verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),synthetic=syntheticActionIds(p),now=Date.now();
+    const risks=new Map(),findings=[];
+    for(const [actionId,ev] of evaluations){const open=(ev.findings||[]).filter(f=>!f.suppressedBy);
+     for(const f of ev.findings||[])findings.push({code:f.code,severity:f.severity,message:f.message,actionId,state:f.suppressedBy?'suppressed':'open',synthetic:synthetic.has(actionId)});
+     if(open.length){const top=open.reduce((a,b)=>(SEVERITY_RANK[b.severity]||0)>(SEVERITY_RANK[a.severity]||0)?b:a);risks.set(actionId,{severity:top.severity,codes:[...new Set(open.map(f=>f.code))].slice(0,5)});}}
+    const after=url.searchParams.get('after'),range=url.searchParams.get('range')||'24h',from=url.searchParams.get('from');
+    // Rows received before the window can still carry a later reported time only within the 5-minute future allowance.
+    const since=after!==null||range==='all'?null:from?Date.parse(from):RANGES[range]?now-RANGES[range]:null;
+    const afterSeq=after!==null&&Number.isSafeInteger(Number(after))?Number(after):null;
+    const rows=afterSeq!==null?store.db.prepare("SELECT body FROM events WHERE tenant=? AND json_extract(body,'$.seq')>?").all(p.tenant,afterSeq)
+     :since===null||!Number.isFinite(since)?store.db.prepare('SELECT body FROM events WHERE tenant=?').all(p.tenant)
+     :store.db.prepare('SELECT body FROM events WHERE tenant=? AND received>=?').all(p.tenant,new Date(since-300000).toISOString());
+    const events=rows.map(row=>JSON.parse(row.body)),options={params:url.searchParams,risks,synthetic,now};
+    return path==='/api/logs'?exploreLogs(events,options):dashboardView(events,{...options,findings});});
   }
   if(path==='/api/alerts'&&method==='GET'){
    const windowed=listWindow(url.searchParams),severity=url.searchParams.get('severity'),state=url.searchParams.get('state'),data=url.searchParams.get('data');
