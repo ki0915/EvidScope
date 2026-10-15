@@ -2,7 +2,7 @@
   "format": "evidscope-risk-rules-v1",
   "id": "ai-agent-baseline",
   "version": 1,
-  "about": "Risk rules for AI coding agents (Claude Code, Codex) collected by scripts/claude-code-hook.mjs. Each rule is one restricted-DSL rule of src/model.mjs (field contains value, case-sensitive); the collector lower-cases the resource and turns backslashes into slashes, so values are lower-case with forward slashes. A match is a signal for review, not a verdict.",
+  "about": "Risk rules for AI coding agents (Claude Code, Codex) collected by scripts/claude-code-hook.mjs and scripts/codex-hook.mjs. Each rule is one restricted-DSL rule of src/model.mjs (field contains value, case-sensitive); the collector lower-cases the resource and turns backslashes into slashes, so values are lower-case with forward slashes. A match is a signal for review, not a verdict.",
   "rules": [
     {"id": "risk.cred.etc-shadow", "group": "credential_file", "severity": "high", "value": "/etc/shadow", "title": "AI가 계정 비밀번호 해시 파일(/etc/shadow)에 접근했습니다"},
     {"id": "risk.cred.etc-gshadow", "group": "credential_file", "severity": "high", "value": "/etc/gshadow", "title": "AI가 그룹 비밀번호 파일(/etc/gshadow)에 접근했습니다"},
@@ -39,6 +39,10 @@
     {"id": "risk.out.curl-data", "group": "outbound_transfer", "severity": "medium", "value": "curl -d", "title": "AI가 curl로 데이터를 외부에 전송하려 했습니다"},
     {"id": "risk.out.curl-data-long", "group": "outbound_transfer", "severity": "medium", "value": "--data ", "title": "AI가 명령으로 데이터를 외부에 전송하려 했습니다"},
     {"id": "risk.out.curl-upload", "group": "outbound_transfer", "severity": "medium", "value": "--upload-file", "title": "AI가 파일을 외부로 업로드하려 했습니다"},
+    {"id": "risk.out.curl-upload-short", "group": "outbound_transfer", "severity": "medium", "value": "curl -t ", "title": "AI가 curl -T로 파일을 외부로 업로드하려 했습니다"},
+    {"id": "risk.out.form-upload", "group": "outbound_transfer", "severity": "medium", "value": "--form ", "title": "AI가 폼 업로드로 파일을 외부에 보내려 했습니다"},
+    {"id": "risk.out.wget-post", "group": "outbound_transfer", "severity": "medium", "value": "--post-file", "title": "AI가 wget으로 파일을 외부에 전송하려 했습니다"},
+    {"id": "risk.out.ps-infile", "group": "outbound_transfer", "severity": "medium", "value": "-infile ", "title": "AI가 PowerShell로 파일을 외부에 업로드하려 했습니다"},
     {"id": "risk.out.iwr-post", "group": "outbound_transfer", "severity": "medium", "value": "-method post", "title": "AI가 PowerShell로 데이터를 외부에 전송하려 했습니다"},
     {"id": "risk.out.scp", "group": "outbound_transfer", "severity": "medium", "value": "scp ", "title": "AI가 scp로 파일을 다른 장비로 복사하려 했습니다"},
     {"id": "risk.out.netcat", "group": "outbound_transfer", "severity": "high", "value": " nc -", "title": "AI가 netcat으로 원격 연결을 열려 했습니다"},
@@ -53,6 +57,8 @@
     {"id": "risk.defense.history-clear", "group": "defense_tampering", "severity": "medium", "value": "history -c", "title": "AI가 명령 기록을 지우려 했습니다"},
     {"id": "risk.defense.chmod-777", "group": "defense_tampering", "severity": "medium", "value": "chmod 777", "title": "AI가 파일을 누구나 쓸 수 있게 권한을 풀었습니다"},
     {"id": "risk.audit.evidscope-config", "group": "audit_tampering", "severity": "high", "value": ".evidscope/", "title": "AI가 EvidScope 수집 설정에 접근했습니다(감시 우회 가능성)"},
-    {"id": "risk.audit.claude-settings", "group": "audit_tampering", "severity": "high", "value": ".claude/settings", "title": "AI가 자기 hook·권한 설정 파일에 접근했습니다(감시 우회 가능성)"}
+    {"id": "risk.audit.claude-settings", "group": "audit_tampering", "severity": "high", "value": ".claude/settings", "title": "AI가 자기 hook·권한 설정 파일에 접근했습니다(감시 우회 가능성)"},
+    {"id": "risk.audit.codex-hooks", "group": "audit_tampering", "severity": "high", "value": ".codex/hooks.json", "title": "AI가 Codex hook 설정 파일에 접근했습니다(감시 우회 가능성)"},
+    {"id": "risk.audit.codex-config", "group": "audit_tampering", "severity": "high", "value": ".codex/config.toml", "title": "AI가 Codex 설정 파일에 접근했습니다(hook 끄기 등 감시 우회 가능성)"}
   ]
 }

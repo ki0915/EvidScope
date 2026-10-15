@@ -1,17 +1,23 @@
-// Claude Code hook input (PreToolUse / PostToolUse, https://code.claude.com/docs/en/hooks) -> EvidScope ingest events for an
-// `agent` source (docs/agent-monitoring.md). Unlike src/development-collectors.mjs (allowlist metadata only: tool kind, no target),
-// these events carry the target of each tool call (file path, command, URL) so the risk rules (data/risk-rules) can see what the
-// AI touched: reading /etc/shadow, deleting a tree, posting data out. Commands keep their text with common secret forms redacted.
+// Claude Code and Codex CLI hook input (PreToolUse / PostToolUse: https://code.claude.com/docs/en/hooks; Codex reads the same
+// format from ~/.codex/hooks.json) -> EvidScope ingest events for an `agent` source (docs/agent-monitoring.md). Unlike
+// src/development-collectors.mjs (allowlist metadata only: tool kind, no target), these events carry the target of each tool call
+// (file path, command, URL) so the risk rules (data/risk-rules) can see what the AI touched: reading /etc/shadow, deleting a tree,
+// posting data out. Commands keep their text with common secret forms redacted.
 // The events are agent-source records (intent before the call, self_report after it): the hook runs inside the AI tool itself,
 // so they are the tool's own account of what it did, not an independent execution record.
 import {createHash} from 'node:crypto';
 
 export const HOOK_TOOL = 'claude-code';
+// The agents whose hooks this module reads; each one's events carry it as `tool`.
+export const HOOK_AGENTS = Object.freeze(['claude-code', 'codex']);
 export const HOOK_LIMITS = Object.freeze({resourceChars: 256, noteChars: 1024, idChars: 120});
-// Tool name -> action category. MCP tools are mcp__<server>__<tool>.
+// Tool name -> action category. MCP tools are mcp__<server>__<tool>. Codex names its shell tool Bash in hooks (older builds
+// exec_command, shell or local_shell) and its file edits apply_patch.
 const ACTIONS = Object.freeze({Bash: 'shell_exec', PowerShell: 'shell_exec', Read: 'file_read', Write: 'file_write', Edit: 'file_write',
   MultiEdit: 'file_write', NotebookEdit: 'file_write', NotebookRead: 'file_read', Glob: 'file_search', Grep: 'file_search', LS: 'file_search',
-  WebFetch: 'web_fetch', WebSearch: 'web_search', Task: 'subagent', Agent: 'subagent'});
+  WebFetch: 'web_fetch', WebSearch: 'web_search', Task: 'subagent', Agent: 'subagent',
+  exec_command: 'shell_exec', shell: 'shell_exec', local_shell: 'shell_exec', apply_patch: 'file_write', view_image: 'file_read',
+  web_search: 'web_search'});
 export const hookAction = name => typeof name === 'string' && name.startsWith('mcp__') ? 'mcp_call' : ACTIONS[name] || 'tool_call';
 
 // Control characters other than tab/newline/carriage return, and bidi overrides, are rejected by the ingest validator.
@@ -45,13 +51,21 @@ function urlParts(raw) {
 }
 // The first http(s) host a shell command names: curl/wget/Invoke-WebRequest targets, used as the event destination.
 const commandHost = command => { const m = /https?:\/\/([a-z0-9.-]+)/i.exec(command); return m ? m[1].toLowerCase() : undefined; };
+// A command as text: Codex may pass argv (["bash", "-lc", "rm -rf build"]).
+const commandText = command => Array.isArray(command) ? command.map(String).join(' ') : String(command ?? '');
+// The files an apply_patch edit names (*** Add File: / Update File: / Delete File: / Move to:). Only the paths are recorded, never
+// the patch body, which can hold anything the agent wrote.
+export const patchFiles = patch => [...String(patch ?? '').matchAll(/^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/gm)]
+  .map(m => m[1].trim()).filter(Boolean);
 
 // What the call acts on, plus the original text for the note.
 export function hookTarget(name, input = {}) {
   const i = input && typeof input === 'object' ? input : {};
   const action = hookAction(name);
-  if (action === 'shell_exec') { const command = String(i.command ?? ''); const host = commandHost(command);
+  if (action === 'shell_exec') { const command = commandText(i.command ?? i.cmd); const host = commandHost(command);
     return {resource: normalizeTarget(command), ...(host ? {destination: host} : {}), text: command}; }
+  if (name === 'apply_patch') { const files = patchFiles(i.command ?? i.patch ?? i.input).join(' ');
+    return {resource: normalizeTarget(files), text: `patch ${files}`}; }
   if (['file_read', 'file_write'].includes(action)) { const path = String(i.file_path ?? i.notebook_path ?? i.path ?? '');
     return {resource: normalizeTarget(path), text: path}; }
   if (action === 'file_search') { const where = [i.path, i.pattern, i.glob].filter(v => typeof v === 'string' && v).join(' ');
@@ -64,24 +78,27 @@ export function hookTarget(name, input = {}) {
 
 function failed(response) {
   if (!response || typeof response !== 'object') return false;
+  const exit = response.exit_code ?? response.exitCode;
   return response.is_error === true || response.success === false || response.interrupted === true
-    || typeof response.error === 'string' && response.error !== '';
+    || typeof response.error === 'string' && response.error !== '' || Number.isInteger(exit) && exit !== 0;
 }
 
-// raw: the hook's stdin JSON. context: {actor, policyVersion?, now?}. Returns null for hook events this collector does not record.
+// raw: the hook's stdin JSON. context: {actor, policyVersion?, tool?, now?}; tool is the agent (HOOK_AGENTS, default Claude Code).
+// Returns null for hook events this collector does not record.
 // Only the PreToolUse intent carries the target (resource, destination): the PostToolUse self_report records the outcome under the
 // same actionId, so a risk rule fires once per tool call, not twice. policyVersion names the asset registration the installer made
 // (scripts/install-agent-monitoring.mjs); without it a call with a destination reads as "policy context unverified".
-export function hookEvent(raw, {actor, policyVersion, now = new Date()} = {}) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+export function hookEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = new Date()} = {}) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !HOOK_AGENTS.includes(tool)) return null;
   const phase = raw.hook_event_name === 'PreToolUse' ? 'pre' : raw.hook_event_name === 'PostToolUse' ? 'post' : null;
   if (!phase || typeof raw.tool_name !== 'string' || !raw.tool_name) return null;
   const session = safeId(raw.session_id) || 'unknown-session';
   const call = safeId(raw.tool_use_id) || `call-${shortHash(JSON.stringify([raw.session_id, raw.tool_name, raw.tool_input]))}`;
   const target = hookTarget(raw.tool_name, raw.tool_input);
   const note = clip(printable(redact(`[${raw.tool_name}] ${target.text}`)).trim(), HOOK_LIMITS.noteChars);
-  const event = {id: safeId(`cc.${shortHash(session)}.${call}.${phase}`), kind: phase === 'pre' ? 'intent' : 'self_report',
-    occurredAt: now.toISOString(), traceId: session, actionId: call, actor, tool: HOOK_TOOL, action: hookAction(raw.tool_name),
+  const prefix = tool === 'codex' ? 'cx' : 'cc';
+  const event = {id: safeId(`${prefix}.${shortHash(session)}.${call}.${phase}`), kind: phase === 'pre' ? 'intent' : 'self_report',
+    occurredAt: now.toISOString(), traceId: session, actionId: call, actor, tool, action: hookAction(raw.tool_name),
     status: phase === 'pre' ? 'requested' : failed(raw.tool_response) ? 'failure' : 'success', note};
   if (phase === 'pre') { event.resource = target.resource || 'unknown'; if (target.destination) event.destination = target.destination; }
   if (typeof policyVersion === 'string' && policyVersion) event.policyVersion = policyVersion;
