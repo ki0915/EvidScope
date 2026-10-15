@@ -465,11 +465,14 @@ function findingLinks() {
   findingLinksLoad ??= api('/api/home/finding-requirements').catch(() => { findingLinksLoad = null; return { links: [] }; });
   return findingLinksLoad;
 }
-function requirementLabel(item) {
-  if (item.framework === 'isms-p') return `ISMS-P ${String(item.id).replace(/^ISMS-P-/, '')} ${item.title}`;
-  if (item.framework === 'eu-ai-act-logging') return `EU AI Act ${String(item.citation).split(', ').pop()} ${item.title}`;
-  return `AI 기본법 ${String(item.citation).replace(/^인공지능기본법 /, '').split(' / ')[0]} ${item.title}`;
+const FRAMEWORK_NAMES = { 'kr-ai-basic-act': 'AI 기본법', 'isms-p': 'ISMS-P', 'eu-ai-act-logging': 'EU AI Act' };
+// The item's number within its framework: 제32조제1항제2호, 2.11.3, Article 12(2)(a) -> 12(2)(a).
+function requirementNumber(item) {
+  if (item.framework === 'isms-p') return String(item.id).replace(/^ISMS-P-/, '');
+  if (item.framework === 'eu-ai-act-logging') return String(item.citation).split(', ').pop().replace(/^Article /, '');
+  return String(item.citation).replace(/^인공지능기본법 /, '').split(' / ')[0];
 }
+const requirementLabel = (item) => `${FRAMEWORK_NAMES[item.framework] || item.framework} ${requirementNumber(item)} ${item.title}`;
 function relatedRequirements(code, links) {
   const order = ['kr-ai-basic-act', 'isms-p', 'eu-ai-act-logging'], seen = new Set(), items = [];
   for (const link of links?.links || []) {
@@ -479,10 +482,21 @@ function relatedRequirements(code, links) {
   }
   return items.sort((a, b) => order.indexOf(a.framework) - order.indexOf(b.framework));
 }
-function requirementList(code, links) {
+// compact (the alerts list): one line per framework with the item numbers, the title on hover; otherwise one item per line.
+function requirementList(code, links, { compact = false } = {}) {
   const items = relatedRequirements(code, links), node = el('div', 'wrap');
   if (!items.length) { node.append(el('span', 'muted', '대응 항목 없음')); return node; }
-  for (const item of items) { const line = el('div', '', requirementLabel(item)); line.title = item.citation; node.append(line); }
+  if (!compact) {
+    for (const item of items) { const line = el('div', '', requirementLabel(item)); line.title = item.citation; node.append(line); }
+    return node;
+  }
+  for (const framework of [...new Set(items.map((item) => item.framework))]) {
+    const line = el('div', '', `${FRAMEWORK_NAMES[framework] || framework} `);
+    items.filter((item) => item.framework === framework).forEach((item, i) => {
+      const number = el('span', '', `${i ? ', ' : ''}${requirementNumber(item)}`); number.title = `${item.title} (${item.citation})`; line.append(number);
+    });
+    node.append(line);
+  }
   return node;
 }
 async function alertsView() {
@@ -492,13 +506,14 @@ async function alertsView() {
   filter.append(field('중요도', 'severity', { value: preset.severity || '', choices: [{ value: '', label: '모든 중요도' }, ...['critical', 'high', 'medium', 'low', 'info'].map((v) => ({ value: v, label: label(v) }))] }),
     field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }), rangeField(preset.range));
   const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
-  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, results, more);
-  node.append(el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다. 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.'));
+  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination');
+  const related = el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다(번호에 마우스를 올리면 항목 이름). 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.');
+  node.append(filter, related, count, results, more);
   const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
-    return [badge(item.severity), item.code, item.message, requirementList(item.code, links), date(item.createdAt), badge(item.state || 'open'), actions];
+    return [badge(item.severity), item.code, item.message, requirementList(item.code, links, { compact: true }), date(item.createdAt), badge(item.state || 'open'), actions];
   })) });
   filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }
