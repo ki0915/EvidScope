@@ -245,7 +245,11 @@ test('out of scope: with the local KISA guide the retrieval text also carries th
   const item = {kind: 'document_excerpt', text: query, locators: ['doc:1']};
   const guidedRequest = buildMappingRequest(item, {variant: 'retrieval', embeddings: null, localTables: dir});
   assert.ok(guidedRequest.outOfScope.includes('ISMS-P-2.2.4'));
-  assert.ok(!guidedRequest.messages[1].content.includes('기록하여야'), 'the criterion sentence never enters the prompt');
+  const describedOf = request => JSON.parse(request.messages[1].content).outOfScope.find(o => o.criterion === 'ISMS-P 2.2.4').description;
+  assert.equal(describedOf(guidedRequest), '분기마다 모의 피싱 메일 대응 훈련을 실시하고 그 결과를 기록하여야 한다.',
+    'the listed criterion is described by its criterion sentence');
+  assert.equal(guided.byId.get('ISMS-P-2.2.4').description, '분기마다 모의 피싱 메일 대응 훈련을 실시하고 그 결과를 기록하여야 한다.');
+  assert.ok(plainPool.entries.every(e => e.description && !/[가-힣]/.test(e.description)), 'without the guide: the Prowler description');
   assert.deepEqual(buildMappingRequest(item, {variant: 'retrieval', embeddings: null, ...NO_LOCAL}).candidates, guidedRequest.candidates);
 });
 
@@ -283,12 +287,16 @@ test('out of scope: listed after the 12 catalog candidates, marked, explained; t
     assert.deepEqual(Object.keys(user), ['evidence', 'candidates', 'outOfScope', 'examples']);
     assert.equal(user.candidates.length, LIMITS.candidates);
     assert.ok(user.candidates.every(c => governanceCatalog().byId.has(c.id)), 'the catalog candidates are untouched');
-    assert.ok(user.outOfScope.every(o => canonical(Object.keys(o)) === canonical(['criterion', 'title'])));
+    const described = 'description' in user.candidates[0];
+    assert.ok(user.outOfScope.every(o => canonical(Object.keys(o)) === canonical(['criterion', 'title', ...(described ? ['description'] : [])])),
+      'the outOfScope criteria are described exactly when the candidates are');
+    if (described) assert.ok(user.outOfScope.every(o => [...o.description].length <= Math.max(...user.candidates.map(c => [...c.description].length))));
     assert.doesNotMatch(JSON.stringify(user.outOfScope), /ISMS-P-/, 'nothing in the list has the form of a requirementId');
     assert.deepEqual(user.outOfScope.map(idOf), q.outOfScope);
     assert.deepEqual(q.outOfScope, [...q.outOfScope].sort());
     assert.ok(q.outOfScope.length <= LIMITS.outOfScope && q.outOfScope.includes(own), 'the row names its own criterion');
-    assert.deepEqual(user.outOfScope.find(o => o.criterion === shownOwn.criterion), shownOwn);
+    const {description: _, ...listedOwn} = user.outOfScope.find(o => o.criterion === shownOwn.criterion);
+    assert.deepEqual(listedOwn, shownOwn);
     if (q.responseFormat.type === 'json_schema') {
       assert.ok(!q.responseFormat.schema.properties.mappings.items.properties.requirementId.enum.some(id => pool.byId.has(id)));
     }

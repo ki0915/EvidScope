@@ -21,9 +21,11 @@ export const VARIANTS = Object.freeze(['zero_shot', 'retrieval', 'retrieval_cons
 // the base tokenizer over the local training set: 80 characters added ~450 tokens on average and the longest rows (Korean law text
 // with law-text examples) reached 2,183 tokens, past the trainer's 2,048-token sequence. At 5,600 bytes (longest 1,979) the first
 // pilot 12 try ran out of GPU memory under the 0.65 cap on its second step; at 5,000 bytes the longest row is 1,800 tokens, the
-// length pilot 11 trained with (peak 7,381 MiB), and 1,040 of 1,378 rows keep the full 80 characters.
+// length pilot 11 trained with (peak 7,381 MiB), and 1,040 of 1,378 rows keep the full 80 characters. Since 2026-10-15 the three
+// outOfScope criteria carry descriptions too; at 5,000 bytes only 376 rows kept 80 characters, so the budget is 5,600 bytes again
+// (1,022 rows keep 80, longest row 1,934 tokens), which the 0.72 GPU cap (8,847 MiB, src/governance-training.mjs) leaves room for.
 export const LIMITS = Object.freeze({textChars: 600, locators: 4, mappings: 5, candidates: 12, snippetChars: 60, examples: 5,
-  exampleChars: 160, outOfScope: 3, descriptionChars: 80, descriptionBudgetBytes: 5000});
+  exampleChars: 160, outOfScope: 3, descriptionChars: 80, descriptionBudgetBytes: 5600});
 const DESCRIPTION_STEPS = Object.freeze([LIMITS.descriptionChars, 60, 40, 20]);
 // Source tables (src/governance-mapping-sources.mjs) the out-of-scope pool reads: the shipped Prowler KISA ISMS-P table (English names
 // of the ISMS-P criteria) and the local-only KISA guide (the official Korean criterion sentences).
@@ -102,7 +104,7 @@ export function outOfScopePool({catalog = governanceCatalog(), localTables} = {}
     const title = titles.get(number), en = english.get(number), id = `ISMS-P-${number}`, criterion = criteria.get(number);
     if (typeof title !== 'string' || !title || typeof en?.Name !== 'string' || !en.Name || typeof en.Description !== 'string'
       || catalog.byId.has(id)) throw Error('out_of_scope_pool_invalid: ' + number);
-    return {id, number, reason, title, alias: flat(en.Name),
+    return {id, number, reason, title, alias: flat(en.Name), description: criterion ?? flat(en.Description),
       text: `ISMS-P ${number} ${title} ${flat(en.Name)}. ${flat(en.Description)}${criterion ? ' ' + criterion : ''}`};
   });
   const ids = entries.map(e => e.id);
@@ -117,7 +119,9 @@ export function outOfScopePool({catalog = governanceCatalog(), localTables} = {}
 // never the catalog's id form. In the constrained variants requirementId is a json_schema enum of catalog ids, and a copied
 // "ISMS-P-2.2.4" would be completed by the grammar into an aligned sibling of the same section (2.2.2 or 2.2.5): the look-alike
 // answer the list is there to prevent, and one that would pass onlyCatalogIds unseen.
-export const outOfScopeShown = entry => ({criterion: `ISMS-P ${entry.number}`, title: clip(entry.title, LIMITS.snippetChars)});
+// chars > 0 adds the criterion's description clipped to that length (the request's main outOfScope list, like the candidates').
+export const outOfScopeShown = (entry, chars = 0) => ({criterion: `ISMS-P ${entry.number}`, title: clip(entry.title, LIMITS.snippetChars),
+  ...(chars ? {description: clip(entry.description, chars)} : {})});
 
 // ---------- candidate descriptions: what each catalog requirement asks, in one sentence ----------
 // The prompt used to show a candidate as {id, label, title} only, and an ISMS-P title is two to four words ("사용자 인증"). In
@@ -407,9 +411,11 @@ export function buildMappingRequest(input, {variant, catalog = governanceCatalog
     if (examples) user.examples = near.map(n => ({text: clip(n.example.text, LIMITS.exampleChars),
       answer: n.example.abstain ? 'abstain' : n.example.requirementIds,
       ...(n.example.abstain && pool.byId.has(n.example.outOfScope) ? {outOfScope: outside(n.example.outOfScope)} : {})}));
-    // The longest description length that keeps the user message within descriptionBudgetBytes (none if even 20 does not fit).
+    // The longest description length that keeps the user message within descriptionBudgetBytes (none if even 20 does not fit). The
+    // outOfScope criteria carry descriptions of the same length: with descriptions on candidates only (pilot 12) the model answered
+    // more must-abstain evidence with a described catalog sibling (must-abstain correct 77.9% -> 67.5% before calibration).
     for (const chars of DESCRIPTION_STEPS) {
-      const candidate = {...user, candidates: shown(chars)};
+      const candidate = {...user, candidates: shown(chars), outOfScope: outOfScope.map(id => outOfScopeShown(pool.byId.get(id), chars))};
       if (Buffer.byteLength(JSON.stringify(candidate)) <= LIMITS.descriptionBudgetBytes) { user = candidate; break; }
     }
   }
