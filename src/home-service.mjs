@@ -5,7 +5,7 @@
 import {canonical} from './crypto.mjs';
 import {fail} from './model.mjs';
 import {isDecision} from './decision-rules.mjs';
-import {FRAMEWORKS, frameworkMapping} from './evidence-pack-frameworks.mjs';
+import {FRAMEWORKS, MAPPING_VERSION, frameworkMapping} from './evidence-pack-frameworks.mjs';
 import {NOT_CARRIED, inPeriod} from './evidence-inventory.mjs';
 import {modelStatus} from './model-status.mjs';
 
@@ -54,12 +54,31 @@ export function presence(rows, disclosures, period) {
     if (e.type === 'record') return types.has(e.name);
     if (e.type === 'eventKind') return [e.source, ...(e.alsoAllowed || [])].some(k => kinds.get(e.name)?.has(k));
     if (e.type === 'checkType') return checks.has(e.name);
-    if (e.type === 'finding') return codes.has(e.code);
+    if (e.type === 'finding') return e.codePrefix !== undefined ? [...codes].some(c => c.startsWith(e.codePrefix)) : codes.has(e.code);
     return null;
   };
 }
 let mappings = null;
 const frameworkMappings = () => (mappings ??= FRAMEWORKS.map(id => frameworkMapping(id)));
+// The mapped items that name each finding code or code prefix, for the console's alerts ("관련 기준"): where an auditor would file
+// the finding as evidence, not a verdict. Built once from the current mappings.
+let findingLinks = null;
+export function findingRequirements() {
+  if (findingLinks) return findingLinks;
+  const links = new Map();
+  for (const m of frameworkMappings()) for (const item of m.items) for (const e of item.evidence) {
+    if (e.type !== 'finding') continue;
+    const match = e.codePrefix !== undefined ? {codePrefix: e.codePrefix} : {code: e.code}, key = canonical(match);
+    if (!links.has(key)) links.set(key, {match, what: null, items: []});
+    const link = links.get(key);
+    link.what ??= e.what ?? null;
+    if (link.items.some(i => i.framework === m.id && i.id === item.id)) continue;
+    link.items.push({framework: m.id, id: item.id, title: item.title.ko, citation: item.citation});
+  }
+  findingLinks = {mappingVersion: MAPPING_VERSION, links: [...links.values()],
+    notice: '관련 기준은 이 발견사항을 증거로 볼 수 있는 항목입니다. 요구사항 충족·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.'};
+  return findingLinks;
+}
 
 // factsheets(p): the signed governance-model factsheets ({status, items}); src/governance-model-service.mjs.
 export function createHome({store, policyObjects, verifiedEvents, approvals, registry, legalReviewState, runtimeStatus, now = () => Date.now(),
@@ -295,8 +314,9 @@ export function createHome({store, policyObjects, verifiedEvents, approvals, reg
 
   function handle(p, method, url) {
     const path = url.pathname;
-    if (!['/api/home', '/api/home/agents', '/api/home/governance', '/api/model-status'].includes(path)) return undefined;
+    if (!['/api/home', '/api/home/agents', '/api/home/governance', '/api/home/finding-requirements', '/api/model-status'].includes(path)) return undefined;
     if (method !== 'GET') fail(405, '허용되지 않은 메서드');
+    if (path === '/api/home/finding-requirements') return findingRequirements();
     const period = url.searchParams.get('period') || '7d';
     if (path === '/api/home/governance' && !Object.hasOwn(HOME_PERIODS, period)) fail(400, '기간은 7d, 30d, 90d 중 하나입니다');
     // The governance summary reads the period's ledger range, so the console loads it after the rest of the home.

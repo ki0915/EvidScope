@@ -417,8 +417,8 @@ function openLinkedAction() {
 window.addEventListener('hashchange', openLinkedAction);
 async function actionDetail(actionId) {
   showDetail('행동 조사', el('div', 'loading', '행동의 원본 근거와 연결 사건을 조회합니다…')); const epoch = detailEpoch;
-  let data; let caseData;
-  try { [data, caseData] = await Promise.all([api(`/api/actions/${encodeURIComponent(actionId)}`), api('/api/cases')]); }
+  let data; let caseData; let links;
+  try { [data, caseData, links] = await Promise.all([api(`/api/actions/${encodeURIComponent(actionId)}`), api('/api/cases'), findingLinks()]); }
   catch (error) { if (epoch === detailEpoch) showDetail('행동 조회 실패', el('div', 'message error', error.message)); return; }
   if (epoch !== detailEpoch) return;
   const node = el('div');
@@ -441,10 +441,10 @@ async function actionDetail(actionId) {
   node.append(window.EvidScopeLiveGraphs.action(data, inspect), actionEvidenceSummary(data));
   if (latest?.findings?.length) {
     const findings = card('최신 평가의 발견 사항', '권한 범위 일치와 사람 승인 일치는 별개입니다. 해당 원본 근거를 확인하세요.');
-    findings.append(table(['중요도', '발견 사항', '원본 근거'], latest.findings.map((finding) => {
+    findings.append(table(['중요도', '발견 사항', '관련 기준', '원본 근거'], latest.findings.map((finding) => {
       const refs = el('div', 'actions');
       for (const ref of finding.evidence || []) refs.append(button(ref, () => inspect('발견 사항의 원본 증거', (data.events || []).find((event) => `${event.source}/${event.id}` === ref) || { reference: ref, status: '이 행동에서 참조 이벤트를 찾을 수 없습니다.' }), 'small'));
-      const message = el('div', 'wrap', finding.message); return [badge(finding.severity), message, refs];
+      const message = el('div', 'wrap', finding.message); return [badge(finding.severity), message, requirementList(finding.code, links), refs];
     }))); node.append(findings);
   }
   const timeline = el('div', 'timeline');
@@ -458,19 +458,47 @@ async function actionDetail(actionId) {
   if (linkedCases.length) node.append(button('추가 사건 만들기', () => newCase(actionId), 'small'));
   showDetail('행동 · 권한 · 결과 대조', node);
 }
+// Requirement items that name a finding (GET /api/home/finding-requirements: built-in codes, and since mapping version 3 the code
+// prefixes of the AI agent risk rules): where the finding counts as evidence, not a verdict. Loaded once; empty when unavailable.
+let findingLinksLoad = null;
+function findingLinks() {
+  findingLinksLoad ??= api('/api/home/finding-requirements').catch(() => { findingLinksLoad = null; return { links: [] }; });
+  return findingLinksLoad;
+}
+function requirementLabel(item) {
+  if (item.framework === 'isms-p') return `ISMS-P ${String(item.id).replace(/^ISMS-P-/, '')} ${item.title}`;
+  if (item.framework === 'eu-ai-act-logging') return `EU AI Act ${String(item.citation).split(', ').pop()} ${item.title}`;
+  return `AI 기본법 ${String(item.citation).replace(/^인공지능기본법 /, '').split(' / ')[0]} ${item.title}`;
+}
+function relatedRequirements(code, links) {
+  const order = ['kr-ai-basic-act', 'isms-p', 'eu-ai-act-logging'], seen = new Set(), items = [];
+  for (const link of links?.links || []) {
+    const match = link.match || {};
+    if (typeof code !== 'string' || !(match.code !== undefined ? match.code === code : typeof match.codePrefix === 'string' && code.startsWith(match.codePrefix))) continue;
+    for (const item of link.items || []) if (!seen.has(`${item.framework}/${item.id}`)) { seen.add(`${item.framework}/${item.id}`); items.push(item); }
+  }
+  return items.sort((a, b) => order.indexOf(a.framework) - order.indexOf(b.framework));
+}
+function requirementList(code, links) {
+  const items = relatedRequirements(code, links), node = el('div', 'wrap');
+  if (!items.length) { node.append(el('span', 'muted', '대응 항목 없음')); return node; }
+  for (const item of items) { const line = el('div', '', requirementLabel(item)); line.title = item.citation; node.append(line); }
+  return node;
+}
 async function alertsView() {
-  const preset = takeListPreset('alerts');
+  const preset = takeListPreset('alerts'), links = await findingLinks();
   const node = card('탐지된 위험 신호', '최근 평가부터 보여 줍니다. 늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
   const filter = el('form', 'toolbar');
   filter.append(field('중요도', 'severity', { value: preset.severity || '', choices: [{ value: '', label: '모든 중요도' }, ...['critical', 'high', 'medium', 'low', 'info'].map((v) => ({ value: v, label: label(v) }))] }),
     field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }), rangeField(preset.range));
   const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
   const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, results, more);
-  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '평가 시각', '상태', '조사'], items.map((item) => {
+  node.append(el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다. 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.'));
+  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
-    return [badge(item.severity), item.code, item.message, date(item.createdAt), badge(item.state || 'open'), actions];
+    return [badge(item.severity), item.code, item.message, requirementList(item.code, links), date(item.createdAt), badge(item.state || 'open'), actions];
   })) });
   filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }

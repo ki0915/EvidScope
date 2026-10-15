@@ -244,8 +244,13 @@ node scripts/evidence-pack.mjs build ... --signer-socket /run/pack-signer/signer
 
 대응표가 바뀌면 예전 묶음이 새 검증기에서 통과하지 못하던 문제를 버전으로 풉니다.
 
-- 새 묶음의 `mapping.json`은 `version`(지금은 2)을 적고, v2 색인의 `framework.mappingVersion`도 같은 값입니다. `version`이 없는 대응표는
+- 새 묶음의 `mapping.json`은 `version`(지금은 3)을 적고, v2 색인의 `framework.mappingVersion`도 같은 값입니다. `version`이 없는 대응표는
   버전 1(6라운드 묶음)입니다. 버전 1과 2의 차이는 이 필드뿐이고 항목은 같습니다.
+- 버전 3(2026-10-15)은 AI 코딩 에이전트 위험 규칙([에이전트 행동 감시](agent-monitoring.md))의 발견사항을 증거로 더합니다. 발견사항은
+  테넌트 룰이라 코드가 `CUSTOM:<룰 ID>:v<버전>`이므로, 증거 항목이 `code` 대신 `codePrefix`를 씁니다(`CUSTOM:risk.out.`은 그 묶음의 모든 룰,
+  `CUSTOM:risk.defense.defender:`는 그 룰의 모든 버전). 더한 곳: ISMS-P 2.11.3(모든 묶음), 2.6.7(외부 전송), 2.10.1(백신·방화벽·iptables·SELinux
+  변경), 2.9.4(로그·명령 기록 삭제, 감시 설정 접근), AI 기본법 KR-32-MONITOR·KR-34-RISK, EU AI Act 12(2)(a)·14(4)(a). 버전 2의 증거는 그대로입니다.
+  거버넌스 매핑 모델의 카탈로그는 학습한 어댑터와 같은 digest를 쓰도록 버전 2에 고정합니다(`CATALOG_MAPPING_VERSION`).
 - 검증기는 배포한 모든 버전을 `data/evidence-pack-mappings/<framework>-v<N>.json`(묶음의 `mapping.json`과 같은 바이트)으로 싣고,
   `src/evidence-pack-frameworks.mjs`의 `MAPPING_VERSIONS`에 각 파일의 SHA-256을 적습니다. 묶음이 이름 붙인 버전과 바이트 단위로 같으면
   `--mapping-from-pack` 없이 통과하고, 결과에 `mapping.version`을 적습니다. 싣지 않은 버전은 예전처럼 거부합니다.

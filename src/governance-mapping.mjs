@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {canonical, digest} from './crypto.mjs';
 import {EMBEDDING_FILE_ENV, cosine, loadEmbeddings, rrfFuse, vectorFor} from './governance-embeddings.mjs';
-import {FRAMEWORKS, MAPPING_VERSION, shippedMapping} from './evidence-pack-frameworks.mjs';
+import {FRAMEWORKS, shippedMapping} from './evidence-pack-frameworks.mjs';
 import {loadSourceTables} from './governance-mapping-sources.mjs';
 
 export const TASK = 'governance-mapping', TASK_VERSION = 1;
@@ -46,6 +46,9 @@ function shortLabel(framework, item) {
 }
 
 let cached;
+// The catalog reads mapping version 2 whatever version evidence packages are at: its digest is part of every request, dataset row
+// and trained adapter of the governance model, and version 3 (AI agent risk findings) changes no requirement text.
+export const CATALOG_MAPPING_VERSION = 2;
 // Requirement texts only (titles, citations, catalog requirement text, evidence needed, manual check items). The evidence
 // descriptions of the tables ("what", "shows") are left out: they are inputs of the derived dataset, not requirement text.
 export function governanceCatalog() {
@@ -55,8 +58,8 @@ export function governanceCatalog() {
   const alignment = JSON.parse(alignmentBytes), manual = new Map(alignment.alignments.map(a => [`ISMS-P-${a.item}`, a.manual || []]));
   const entries = [], sources = {};
   for (const framework of FRAMEWORKS) {
-    const bytes = shippedMapping(framework, MAPPING_VERSION), mapping = JSON.parse(bytes);
-    sources[framework] = {version: MAPPING_VERSION, sha256: sha256(bytes)};
+    const bytes = shippedMapping(framework, CATALOG_MAPPING_VERSION), mapping = JSON.parse(bytes);
+    sources[framework] = {version: CATALOG_MAPPING_VERSION, sha256: sha256(bytes)};
     for (const item of mapping.items) {
       const r = requirements.get(item.id);
       const text = [item.title.ko, item.title.en, item.citation, r?.requirement, ...(r?.evidenceNeeded || []), ...(manual.get(item.id) || [])]
@@ -161,7 +164,7 @@ export function candidateDescriptions({catalog = governanceCatalog(), localTable
 // Identity of one structured evidence entry (a table entry or an input item), without descriptive text.
 function structuredIdentity(e) {
   if (e.type === 'api') return {type: 'api', method: e.method, path: e.path};
-  if (e.type === 'finding') return {type: 'finding', code: e.code};
+  if (e.type === 'finding') return e.codePrefix !== undefined ? {type: 'finding', codePrefix: e.codePrefix} : {type: 'finding', code: e.code};
   if (e.type === 'file') return {type: 'file', path: e.path};
   return {type: e.type, name: e.name, ...(e.source ? {source: e.source} : {}), ...(e.alsoAllowed ? {alsoAllowed: e.alsoAllowed} : {})};
 }

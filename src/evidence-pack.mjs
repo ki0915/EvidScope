@@ -227,7 +227,7 @@ const LABEL = {
 };
 const md = value => String(value).replace(/[\r\n]+/g, ' ').replace(/[\\`*_|<>[\]#!]/g, c => '\\' + c);
 const seqSpan = e => (e.seqs?.length ? ` (seq ${e.seqs[0]}${e.seqs.length > 1 ? `–${e.seqs.at(-1)}` : ''}${e.seqsOmitted ? `, +${e.seqsOmitted}` : ''})` : '');
-const evidenceLabel = e => md(e.type === 'finding' ? `finding ${e.code}` : e.type === 'eventKind' ? `event ${e.name}/${e.source}`
+const evidenceLabel = e => md(e.type === 'finding' ? `finding ${e.code ?? e.codePrefix + '*'}` : e.type === 'eventKind' ? `event ${e.name}/${e.source}`
   : e.type === 'checkType' ? `governance_check ${e.name}` : e.type === 'integrityCheck' ? `${e.name}` : `record ${e.name}`);
 const TEXT = {
   ko: {title: 'EvidScope 증거 묶음 요약', made: '이 요약은 index.json에서 생성되었고 검증기가 다시 생성해 바이트 단위로 대조합니다.',

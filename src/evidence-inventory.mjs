@@ -7,7 +7,7 @@ export const EVIDENCE_TYPES = ['record', 'eventKind', 'checkType', 'finding', 'i
 
 // The identifying fields of one evidence entry of a mapping.
 export const evidenceName = e => e.type === 'api' ? {method: e.method, path: e.path, ...(e.mode ? {mode: e.mode} : {}), ...(e.field ? {field: e.field} : {})}
-  : e.type === 'finding' ? {code: e.code} : e.type === 'file' ? {path: e.path}
+  : e.type === 'finding' ? (e.codePrefix !== undefined ? {codePrefix: e.codePrefix} : {code: e.code}) : e.type === 'file' ? {path: e.path}
     : {name: e.name, ...(e.source ? {source: e.source} : {}), ...(e.alsoAllowed ? {alsoAllowed: e.alsoAllowed} : {})};
 
 export function timeRange(values) {
@@ -42,6 +42,8 @@ export function inventory(bundle, replay, {period = null, locators = false} = {}
 }
 
 const seqList = (data, seqs) => (data.locators ? {seqs: [...seqs].sort((a, b) => a - b)} : {});
+// Whether a finding entry of a mapping names this finding: one code, or (mapping version 3) every code with a prefix.
+export const findingMatches = (e, f) => typeof f?.code === 'string' && (e.codePrefix !== undefined ? f.code.startsWith(e.codePrefix) : f.code === e.code);
 // verifiedStatus names the integrity check this caller has just performed (a report, or a package).
 export function measure(e, data, verification, verifiedStatus = 'verified_by_this_report') {
   if (e.type === 'integrityCheck' && e.name === 'signed_ledger') {
@@ -68,7 +70,7 @@ export function measure(e, data, verification, verifiedStatus = 'verified_by_thi
     let actions = 0, occurrences = 0, suppressed = 0;
     const times = [], seqs = [], replay = data.replayed ? {replayed: 0, notReplayable: 0} : 'not_requested';
     for (const row of data.latest.values()) {
-      const hits = (Array.isArray(row.payload.findings) ? row.payload.findings : []).filter(f => f?.code === e.code);
+      const hits = (Array.isArray(row.payload.findings) ? row.payload.findings : []).filter(f => findingMatches(e, f));
       if (!hits.length) continue;
       actions++; occurrences += hits.length; suppressed += hits.filter(f => f.suppressedBy !== undefined).length;
       times.push(row.recordedAt); seqs.push(row.seq);
