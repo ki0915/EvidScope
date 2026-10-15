@@ -26,7 +26,7 @@ X-Evid-Signature: <HMAC-SHA256 hex>
 }
 ```
 
-필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
+필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. `collection`은 agent 출처만, 값은 `history_import`뿐이다(AI 도구의 대화 기록에서 사후에 가져온 기록, [에이전트 감시](agent-monitoring.md)). 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
 
 `dataRefs`는 최대16개 참조 배열이다. 각 항목은 `{id,kind,version,hash,role,locator?,description?}`. kind=document/dataset/record/retrieval/artifact, role=input/retrieved/output, hash는 SHA-256 hex 또는 not_provided다. 자료 본문·prompt·secret·verification 필드는 받지 않는다. locator는 자동 조회하지 않는다. `/api/actions/:id`는 참조마다 source/eventId/assurance/observedAt/verification을 서버에서 붙이고, 수신 업무 이벤트 중 참조가 있는 건수와 제한된 분모를 표시한다. 전체 모델 지식/자료의 coverage 비율이 아니다.
 
