@@ -7,6 +7,7 @@ import {submit} from '../src/client.mjs';
 import {digest} from '../src/crypto.mjs';
 // OTLP/JSON GenAI spans shaped like OTel SDK output, so the AI visibility screen has observations after the demo:
 // a registered service calling its allowed and an unlisted destination, a tool span, and an unregistered service.
+// Its assets are registered as synthetic, so the console lists the demo's alerts apart from real records (src/service.mjs).
 export function demoTraces(now=Date.now()){
  const hex=n=>randomBytes(n).toString('hex'),traceId=hex(16),nanos=offset=>String(BigInt(now+offset)*1000000n);
  const attributes=o=>Object.entries(o).map(([key,value])=>({key,value:typeof value==='number'?{intValue:String(value)}:{stringValue:value}}));
@@ -24,7 +25,7 @@ export async function demo({config,ingress='http://127.0.0.1:8081',audit='http:/
  const principal=kind=>config.principals.find(p=>p.tenant==='alpha'&&(p.kind===kind||p.role===kind));
  async function api(path,body,role='reviewer'){const r=await fetch(audit+path,{method:body?'POST':'GET',headers:{authorization:`Bearer ${principal(role).token}`,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});const x=await r.json();if(!r.ok)throw Error(`${path} ${r.status} ${x.error}`);return x;}
  const prefix='demo-'+randomUUID().slice(0,8),now=Date.now();const when=offset=>new Date(now+offset).toISOString();
- await api('/api/assets',{id:'support-agent',actor:'support-agent',tool:'customer-api',owner:'서비스운영팀',purpose:'합성 고객안내',version:'1.0',policyVersion:'auth-v1',approvalRequired:true,validFrom:when(-60000),destinations:['internal.example']});
+ await api('/api/assets',{id:'support-agent',actor:'support-agent',tool:'customer-api',owner:'서비스운영팀',purpose:'합성 고객안내',version:'1.0',policyVersion:'auth-v1',approvalRequired:true,validFrom:when(-60000),destinations:['internal.example'],synthetic:true});
  const reference=version=>({id:'product-guide',kind:'document',version:String(version),hash:digest(readFileSync(new URL(`../data/synthetic-knowledge-v${version}.json`,import.meta.url),'utf8')),role:'retrieved',locator:`workspace:data/synthetic-knowledge-v${version}.json`,description:'합성 제품안내. 실제 사용 여부는 도구 기록과 인간 확인을 대조합니다.'});
  const common={actionId:`${prefix}-action`,traceId:`${prefix}-trace`,actor:'support-agent',tool:'customer-api',action:'write',resource:'case-42',destination:'external.example',occurredAt:when(-1000),policyVersion:'auth-v1'};
  const events=[
@@ -43,7 +44,7 @@ export async function demo({config,ingress='http://127.0.0.1:8081',audit='http:/
  const c=await api('/api/cases',{title:'승인 범위 불일치와 성공 보고 상충 조사',actionId:common.actionId,owner:'감사팀'});
  await api(`/api/cases/${c.id}`,{status:'in_review',comment:'독립 API 실패 결과와 자기보고를 분리해서 검토합니다.',task:{title:'승인 대상 확인 및 notice-v2 렌더링 시험',owner:'서비스운영팀',dueAt:when(7*86400000),status:'open'}});
  await api('/api/assets',{id:'otel-service:support-agent',actor:'support-agent',tool:'model-api',owner:'서비스운영팀',purpose:'합성 고객안내 모델 호출',
-  version:'1.0',policyVersion:'auth-v1',approvalRequired:false,validFrom:when(-60000),destinations:['api.openai.com']});
+  version:'1.0',policyVersion:'auth-v1',approvalRequired:false,validFrom:when(-60000),destinations:['api.openai.com'],synthetic:true});
  const otlpSource=config.principals.find(p=>p.tenant==='alpha'&&p.kind==='otlp');let otlp={skipped:'no_otlp_source'};
  if(otlpSource){const traces=demoTraces(now),r=await fetch(ingress+'/v1/traces',{method:'POST',
    headers:{authorization:`Bearer ${otlpSource.token}`,'content-type':'application/json'},body:JSON.stringify(traces)});

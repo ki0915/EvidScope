@@ -165,6 +165,11 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
  function verifiedActions(p){try{return store.checkActionProjection(p.tenant);}catch(error){const message=error?.message||'';if(/^Event projection|^Event key|^Erased event|^Receipt/.test(message))fail(409,'이벤트 조회 사본·색인 또는 접수 영수증이 서명 원장과 일치하지 않습니다');if(/^Evaluation projection/.test(message))fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');if(/^Object projection/.test(message))fail(409,'객체 조회 사본이 서명 원장과 일치하지 않습니다');fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}}
  function verifiedEvents(p){try{return store.verifiedFacets(p.tenant,['keys','events']);}catch{fail(409,'이벤트 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}}
  const latestEvaluations=values=>{const latest=new Map();for(const value of values)latest.set(value.actionId,value);return latest;};
+ // Synthetic (demo/test) actions: every event of the action names an actor a reviewer registered as synthetic (asset synthetic:true,
+ // e.g. scripts/demo.mjs). A view classification only: findings, evaluations and the ledger are unchanged, and a source cannot mark
+ // its own records (the flag lives in the reviewer-written asset registry).
+ const syntheticActionIds=p=>{const actors=[...new Set([...verifiedPolicyObjects(p,'asset').values()].filter(a=>a.synthetic===true).map(a=>a.actor))];if(!actors.length)return new Set();
+  return new Set(store.db.prepare(`SELECT action_id id FROM events WHERE tenant=? GROUP BY action_id HAVING COUNT(*)=SUM(json_extract(body,'$.actor') IN (${actors.map(()=>'?').join(',')}))`).all(p.tenant,...actors).map(row=>row.id));};
  function verifiedEventReferences(p){try{return store.cachedEventIndex(p.tenant);}catch{fail(409,'이벤트 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}}
  function technicalEvidenceState(requirement,assessment,{documentStale=false,eventStale=false,system=null,provenanceReviews}={}){
   if(requirement?.id?.startsWith('KR-')&&assessment?.applicability==='not_applicable'){
@@ -350,7 +355,7 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
   const accessResult=identity.access(p,method,path,x);if(accessResult!==undefined)return accessResult;
   if(path.startsWith('/api/governance/')){const documentResult=governanceDocuments.handle(p,method,url,x);if(documentResult!==undefined)return documentResult;const result=finance.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path.startsWith('/api/assistance/')){const result=assistance.human(p,method,url,x);if(result!==undefined)return result;}
-  if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x);if(result!==undefined)return result;}
+  if(path.startsWith('/api/retention')){const result=retention.handle(p,method,path,x,url.searchParams);if(result!==undefined)return result;}
   if(path==='/api/registry'||path.startsWith('/api/registry/')){const result=registry.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/approvals'||path.startsWith('/api/approvals/')){const result=approvals.handle(p,method,url,x);if(result!==undefined)return result;}
   if(path==='/api/home'||path.startsWith('/api/home/')||path==='/api/model-status'){const result=home.handle(p,method,url);if(result!==undefined)return result;}
@@ -362,9 +367,9 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
   if(path==='/api/overview'&&method==='GET'){
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),events=store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n;
    const actions=store.db.prepare('SELECT * FROM actions WHERE tenant=?').all(p.tenant);
-   const alerts=actions.flatMap(a=>evaluations.get(a.id)?.findings||[]);
+   const alerts=actions.flatMap(a=>evaluations.get(a.id)?.findings||[]),synthetic=syntheticActionIds(p);
    const sources=principals.filter(s=>s.tenant===p.tenant&&s.role==='source').map(s=>{const row=store.db.prepare(SOURCE_LAST_SEEN_SQL).get(p.tenant,s.id);return {id:s.id,tenant:s.tenant,kind:s.kind,lastSeen:row.lastSeen,status:!row.lastSeen?'not_connected':Date.now()-Date.parse(row.lastSeen)>300000?'stale':'receiving'};});
-   return {counts:{events,alerts:alerts.length,cases:verifiedPolicyObjects(p,'case').size,backlog:actions.filter(a=>a.analyzed<a.version).length},sources,limitations:['등록된 출처 기준 상태이며 전체 AI 사용의 가시성 비율은 산출하지 않습니다','미연결·수집 공백은 무사고를 의미하지 않습니다','연동 수집기는 운영자가 배치·등록해야 하며, 합성 시험 기록을 실제 공급자 연결로 해석하지 않습니다']};});
+   return {counts:{events,alerts:alerts.length,syntheticAlerts:actions.filter(a=>synthetic.has(a.id)).reduce((n,a)=>n+(evaluations.get(a.id)?.findings?.length||0),0),cases:verifiedPolicyObjects(p,'case').size,backlog:actions.filter(a=>a.analyzed<a.version).length},sources,limitations:['등록된 출처 기준 상태이며 전체 AI 사용의 가시성 비율은 산출하지 않습니다','미연결·수집 공백은 무사고를 의미하지 않습니다','연동 수집기는 운영자가 배치·등록해야 하며, 합성 시험 기록을 실제 공급자 연결로 해석하지 않습니다']};});
   }
   if(path==='/api/monitoring'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);return monitoring(store,principals,p.tenant,url.searchParams);});
   if(path==='/api/ai-visibility'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);const registrations=[...verifiedPolicyObjects(p,'asset').values()];return aiVisibility(store,p.tenant,url.searchParams,{runtimeStatus:runtimeStatus(),registrations});});
@@ -393,19 +398,20 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
    return {events,references,traceLinks:traceLinks(linkTemplates,eventTraceIds(events)),analysis:{version:v?.version??null,analyzed:v?.analyzed??null,pending:!!v&&v.analyzed<v.version},evaluations,referenceCoverage:{eventsWithReferences:business.filter(e=>e.dataRefs?.length).length,observedBusinessEvents:business.length,scope:'수신된 업무 이벤트 중 참조 메타데이터 제출 범위이며 전체 AI 지식·참고자료의 가시성 비율이 아닙니다'},limitations:['늦은 증거와 룰 변경은 새 평가 버전을 추가합니다','참고자료 참조는 source의 보고입니다. 모델이 실제 읽거나 판단에 사용했음을 자동 확정하지 않습니다','원문 prompt/response·자료 내용은 기본 미수집; version/hash는 사람이 외부 원본과 대조해야 합니다',...(!references.length?['참고 데이터 출처 미수집: 어떤 자료를 참고했는지 확인할 수 없습니다']:[])]};});
   }
   if(path==='/api/alerts'&&method==='GET'){
-   const windowed=listWindow(url.searchParams),severity=url.searchParams.get('severity'),state=url.searchParams.get('state');
-   if(severity!==null&&!['critical','high','medium','low','info'].includes(severity)||state!==null&&!['open','suppressed'].includes(state))fail(400,'경보 조건 오류');
+   const windowed=listWindow(url.searchParams),severity=url.searchParams.get('severity'),state=url.searchParams.get('state'),data=url.searchParams.get('data');
+   if(severity!==null&&!['critical','high','medium','low','info'].includes(severity)||state!==null&&!['open','suppressed'].includes(state)||data!==null&&!['real','synthetic'].includes(data))fail(400,'경보 조건 오류');
    return store.transaction(()=>{verifiedActions(p);const evaluations=latestEvaluations(verifiedEvaluations(p,{latest:true})),actions=store.db.prepare('SELECT id FROM actions WHERE tenant=?').all(p.tenant);
-    const items=actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open'}));});
+    const synthetic=syntheticActionIds(p);
+    const items=actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open',synthetic:synthetic.has(a.id)}));});
     // Windowed: newest first by evaluation time, then id (docs/feature-guide.md).
-    const chosen=items.filter(a=>(!severity||a.severity===severity)&&(!state||a.state===state));
+    const chosen=items.filter(a=>(!severity||a.severity===severity)&&(!state||a.state===state)&&(!data||a.synthetic===(data==='synthetic')));
     return windowed?pageNewestFirst(chosen,windowed,a=>[String(a.createdAt||''),a.id]):{items:chosen};});
   }
   if(path==='/api/assets'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'asset').values()]}));
   // ledgerRecords is the verified state's signed count (the checkpoint count), not a COUNT over the ledger.
   if(path==='/api/metrics'&&method==='GET')return store.transaction(()=>{verifiedActions(p);const verifiedState=store.verifiedStateStatus(p.tenant);return {vaultRssBytes:process.memoryUsage().rss,verifiedState,
    accessLog:accessLog.status(p.tenant),events:store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n,ledgerRecords:verifiedState.count,analyzedEvents:store.db.prepare('SELECT COUNT(*) n FROM events e JOIN actions a ON a.tenant=e.tenant AND a.id=e.action_id WHERE e.tenant=? AND a.analyzed=a.version').get(p.tenant).n,backlog:store.db.prepare('SELECT COUNT(*) n FROM actions WHERE tenant=? AND analyzed<version').get(p.tenant).n,scope:'tenant counts; vault process memory shared across tenants'}});
-  if(path==='/api/assets'&&method==='POST'){reviewer(p);const a={id:identifier(x.id),actor:cleanText(x.actor,256),tool:cleanText(x.tool,256),owner:cleanText(x.owner,200),purpose:cleanText(x.purpose||'',500),version:cleanText(x.version||'unknown',100),policyVersion:cleanText(x.policyVersion||'unknown',100),approvalRequired:x.approvalRequired===true||x.approvalRequired===false?x.approvalRequired:'unknown',validFrom:date(x.validFrom||new Date().toISOString()),destinations:(x.destinations||[]).slice(0,30).map(s=>cleanText(s,256)),updatedAt:new Date().toISOString()};if(x.validUntil){a.validUntil=date(x.validUntil);if(Date.parse(a.validUntil)<=Date.parse(a.validFrom))fail(400,'자산 정책 유효기간 역전');}return store.transaction(()=>{verifiedPolicyObjects(p,'asset');store.put(p,'asset',a.id,a);dirty(p.tenant);return a;});}
+  if(path==='/api/assets'&&method==='POST'){reviewer(p);const a={id:identifier(x.id),actor:cleanText(x.actor,256),tool:cleanText(x.tool,256),owner:cleanText(x.owner,200),purpose:cleanText(x.purpose||'',500),version:cleanText(x.version||'unknown',100),policyVersion:cleanText(x.policyVersion||'unknown',100),approvalRequired:x.approvalRequired===true||x.approvalRequired===false?x.approvalRequired:'unknown',validFrom:date(x.validFrom||new Date().toISOString()),destinations:(x.destinations||[]).slice(0,30).map(s=>cleanText(s,256)),...(x.synthetic===true?{synthetic:true}:{}),updatedAt:new Date().toISOString()};if(x.validUntil){a.validUntil=date(x.validUntil);if(Date.parse(a.validUntil)<=Date.parse(a.validFrom))fail(400,'자산 정책 유효기간 역전');}return store.transaction(()=>{verifiedPolicyObjects(p,'asset');store.put(p,'asset',a.id,a);dirty(p.tenant);return a;});}
   if(path==='/api/cases'&&method==='GET'){const windowed=listWindow(url.searchParams),status=url.searchParams.get('status');
    if(status!==null&&!['open','in_review','closed','active'].includes(status))fail(400,'사건 상태 오류');
    return store.transaction(()=>{const items=[...verifiedPolicyObjects(p,'case').values()].filter(c=>!status||(status==='active'?c.status!=='closed':c.status===status));

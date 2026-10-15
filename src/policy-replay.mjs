@@ -12,8 +12,10 @@
 // Engine v5 adds the risky steps of the same actor in other actions (src/sequence-rules.mjs). They come from records every engine
 // read (intents and tenant rules), so the input is rebuilt only for evaluations that name v5; once a v5 evaluation is in the ledger,
 // an earlier engine named for an action with a risky step is a mismatch (the vault builds the input for every such action).
-import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINES, boundedEvaluation, evaluationEngine, matches as ruleMatches}
-  from './model.mjs';
+// Engine v7 likewise reads AI coding agent commands without their code markup (agentCommandInput): the input is rebuilt only for
+// evaluations that name v7, and once one is in the ledger an earlier engine named for an action with such a command is a mismatch.
+import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7, EVALUATION_ENGINES, agentCommandInput, boundedEvaluation,
+  evaluationEngine, matches as ruleMatches} from './model.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
@@ -34,12 +36,12 @@ const eventOrder = (a, b) => a.receivedAt.localeCompare(b.receivedAt) || a.sourc
 const findingKey = finding => `${finding.code}|${(finding.evidence || []).join(',')}`;
 
 // The engines whose snapshots carry the related risky steps of the same actor (src/sequence-rules.mjs).
-const STEP_ENGINES = [EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6];
+const STEP_ENGINES = [EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7];
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
     exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map(), stepsSince: undefined,
-    replaySince: undefined};
+    replaySince: undefined, commandsSince: undefined};
 }
 
 function addEvent(state, event) {
@@ -79,19 +81,22 @@ function apply(state, row, disclosures) {
   }
   if (row.type === 'evaluation' && STEP_ENGINES.includes(payload.replay?.engine)) state.stepsSince ??= row.seq;
   if (row.type === 'evaluation' && payload.replay) state.replaySince ??= row.seq;
+  if (row.type === 'evaluation' && payload.replay?.engine === EVALUATION_ENGINE_V7) state.commandsSince ??= row.seq;
   if (REGISTRY_INPUT_TYPES.includes(row.type) || row.type === STOP_ORDER_TYPE) {
     state.registryRows.push({seq: row.seq, type: row.type, recordedAt: row.recordedAt, hash: row.hash, payload});
   }
 }
 
-// steps: whether the evaluation names engine v5 or v6, whose input (relatedSteps) earlier engines never had.
-function snapshot(state, actionId, {steps = false} = {}) {
+// steps: whether the evaluation names engine v5 or later, whose input (relatedSteps) earlier engines never had; commands: whether it
+// names v7 (agentCommands).
+function snapshot(state, actionId, {steps = false, commands = false} = {}) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
   const approvals = approvalAnalysisInput((state.approvalActions.get(actionId) || []).map(id => state.approvals.get(id)));
   const stopOrders = stopOrderAnalysisInput(state.registryRows, state.events.values());
   const rules = [...state.rules.values()].flatMap(rule => (rule.versions || []).filter(version => version.status === 'active'));
   const relatedSteps = steps ? relatedStepInput(events, state.events.values(), rules, ruleMatches) : undefined;
+  const agentCommands = commands ? agentCommandInput(events) : undefined;
   return {
     events: events.sort(eventOrder),
     assets: [...state.assets.values()],
@@ -102,9 +107,10 @@ function snapshot(state, actionId, {steps = false} = {}) {
     ...(approvals ? {approvals} : {}),
     ...(stopOrders ? {stopOrders} : {}),
     ...(relatedSteps ? {relatedSteps} : {}),
+    ...(agentCommands ? {agentCommands} : {}),
   };
 }
-const EXTRA_INPUTS = ['registry', 'relatedDecisions', 'approvals', 'stopOrders', 'relatedSteps'];
+const EXTRA_INPUTS = ['registry', 'relatedDecisions', 'approvals', 'stopOrders', 'relatedSteps', 'agentCommands'];
 const extraBytes = data => (EXTRA_INPUTS.some(name => data[name])
   ? bytes(Object.fromEntries(EXTRA_INPUTS.filter(name => data[name]).map(name => [name, data[name]]))) + 1 : 0);
 
@@ -157,6 +163,7 @@ function inputSummary(data, matches) {
     ...(data.approvals ? {approvals: data.approvals.map(a => ({id: a.id, version: a.version}))} : {}),
     ...(data.stopOrders ? {stopOrders: {orders: data.stopOrders.orders.length, activations: data.stopOrders.activations.map(a => a.seq)}} : {}),
     ...(data.relatedSteps ? {relatedSteps: data.relatedSteps.map(s => s.seq)} : {}),
+    ...(data.agentCommands ? {agentCommands: data.agentCommands} : {}),
     snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 
@@ -167,10 +174,12 @@ function replayOne(state, row, engines) {
   const notReplayable = (reason, extra = {}) => ({...base, status: 'not_replayable', reason, ...extra});
   if (typeof evaluation.actionId !== 'string') return notReplayable('invalid_record');
   if (recordedEngine !== undefined && !engines.includes(recordedEngine)) return notReplayable('engine_unavailable');
-  const data = snapshot(state, evaluation.actionId, {steps: STEP_ENGINES.includes(recordedEngine)});
-  const downgraded = !STEP_ENGINES.includes(recordedEngine) && state.stepsSince !== undefined
+  const data = snapshot(state, evaluation.actionId, {steps: STEP_ENGINES.includes(recordedEngine), commands: recordedEngine === EVALUATION_ENGINE_V7});
+  const stepsDowngraded = !STEP_ENGINES.includes(recordedEngine) && state.stepsSince !== undefined
     && relatedStepInput(data.events, state.events.values(), data.rules, ruleMatches) !== undefined;
-  const downgrade = downgraded ? {engine: {recorded: recordedEngine ?? 'unrecorded', replayed: evaluationEngine({...data, relatedSteps: []})}} : null;
+  const commandsDowngraded = recordedEngine !== EVALUATION_ENGINE_V7 && state.commandsSince !== undefined && agentCommandInput(data.events) !== undefined;
+  const downgrade = stepsDowngraded || commandsDowngraded ? {engine: {recorded: recordedEngine ?? 'unrecorded',
+    replayed: evaluationEngine({...data, ...(stepsDowngraded ? {relatedSteps: []} : {}), ...(commandsDowngraded ? {agentCommands: []} : {})})}} : null;
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
   // Related denies of other actions erased since the evaluation cannot be re-examined either.

@@ -52,13 +52,13 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 
 | 경로 | 의미 |
 |---|---|
-| GET /api/overview | 수집 건강·사건·backlog·한계 |
+| GET /api/overview | 수집 건강·사건·backlog·한계; counts.syntheticAlerts는 합성 행위자만 있는 행동의 경보 수 |
 | GET /api/events?q=&traceId=&kind=&limit=100&offset=0 | 문자열 검색·필터·최대 500건 반환 |
 | GET /api/actions/:actionId | 이벤트 및 최신순 평가 이력 |
 | GET /api/agents?range=7d&focus=all&sort=attention | 기간별 에이전트 현황; 상세 id, 종료 end, 검색 q, limit/offset 지원. [산정 기준](agent-policy-metrics.md) |
 | GET /api/monitoring?range=1h | 수신 시각 기반 운영 시계열; range=10m/1h/24h/7d, 선택적 source |
-| GET /api/alerts | 최신 평가의 경보, 예외 억제 상태 |
-| GET/POST /api/assets | 자산 등록·소유자·목적·버전·허용 목적지 |
+| GET /api/alerts | 최신 평가의 경보, 예외 억제 상태; 경보마다 synthetic, data=real\|synthetic으로 실제·합성 기록 구분(보기 분류일 뿐 평가·원장은 그대로) |
+| GET/POST /api/assets | 자산 등록·소유자·목적·버전·허용 목적지; synthetic:true는 데모·시험 행위자(검토자만 표시, 출처가 스스로 표시할 수 없음) |
 | GET/POST /api/cases | 사건 목록/생성 |
 | POST /api/cases/:id | owner, comment, status, reason, task 변경; closed는 reason 필수 |
 | GET/POST /api/rules | 룰 버전 목록/초안 |
@@ -77,7 +77,7 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | POST /api/governance/assessments/:id/legal-review | reason; 평가 작성자가 아닌 reviewer·admin이 최신 평가(해시 결합)의 법률 검토를 확인 |
 | GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제, 항목별 `evidenceAssurance`·`legalReview`. 증거별 보증은 `vault_verified_document`·`authenticated_source_record`·`vault_retained_supplier_bundle`·`self_asserted`이고 수준은 `source_bound`·`mixed`·`self_asserted`·`no_evidence`다. vault는 공급사 서명을 검증하지 않는다. 공급사 묶음은 실제 자료로 신고되고 평가 작성자가 아닌 사람이 그 묶음 내용의 출처를 확인했을 때만 `vault_retained_supplier_bundle`이며, 합성 묶음이나 작성자 혼자 확인한 묶음은 `self_asserted`다(2라운드 S11) |
 | POST /api/governance/tasks/:id | status,reason; 조치/재검토 기록. 종결은 작성자 외 법률 검토 확인 뒤, 포함된 평가의 작성자가 아닌 검토자 |
-| GET /api/retention | 보존 정책·대상·hold·파기계획·한계 |
+| GET /api/retention | 보존 정책·대상·hold·파기계획·한계; counts는 전체, items는 검토 순서(계획 가능→만료 보류→종료 임박)로 limit건(기본 200, 최대 5000) |
 | POST /api/retention/policy | retentionSeconds,purpose,reason,legalReview; 새 이벤트에만 적용 |
 | POST /api/retention/holds | scope(tenant 또는 actionId),reason |
 | POST /api/retention/holds/:id/release | reason; 다른 검토자 해제 |

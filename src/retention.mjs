@@ -39,9 +39,18 @@ export function createRetention(store,{rotation:{intervalMs=0}={},accessLog}={})
   const {bundle,items}=scan(p);
   return {policy:store.get(p.tenant,'retention_policy','current')||{id:'current',version:0,retentionSeconds:30*86400,reason:'합성 파일럿 공학적 기본값; 법적 보존기간 아님'},items,holds:store.list(p.tenant,'retention_hold'),plans:store.list(p.tenant,'retention_plan'),legacyPlaintextEvents:bundle.records.filter(r=>r.type==='event'&&!isEncryptedEvent(r.payload)).length,limitations:['기간 종료만으로 자동 파기하지 않습니다. 다른 검토자 승인과 관리자 실행, 또는 두 사람이 사전 승인한 로테이션 정책이 필요합니다.','파기는 live DEK 및 검색 사본만 대상으로 합니다. 기존 export·backup·WAL/디스크 잔존물에는 별도 파기 통제가 필요합니다.','사건·평가·거버넌스의 인간 작성 내용과 최소 접수 영수증은 이 이벤트 파기 범위 밖입니다.','키를 파기한 이벤트는 내용을 재조사할 수 없고 서명된 commitment 및 파기 이력만 검증할 수 있습니다.','기존 v1 평문 원장은 이 방식으로 파기하지 못합니다. 별도 승인된 migration 및 보존 절차가 필요합니다.']};
  }
- function handle(p,method,path,x){
+ // The screen's view of the inventory: counts of every retained event and the first `limit` items (default 200, at most 5000) in review
+ // order: eligible for a plan, then expired but blocked, then by end of retention. Plans and erasure always read the whole inventory.
+ const reviewOrder=(a,b)=>Number(b.eligible)-Number(a.eligible)||Number(b.expired)-Number(a.expired)||a.retainUntil.localeCompare(b.retainUntil)||a.seq-b.seq;
+ function inventoryView(p,params){
+  const raw=params?.get('limit'),limit=raw===null||raw===undefined?200:Number(raw);if(!Number.isSafeInteger(limit)||limit<1||limit>5000)fail(400,'보존 목록 개수는 1~5000');
+  const all=inventory(p),items=[...all.items].sort(reviewOrder);
+  return {...all,items:items.slice(0,limit),counts:{items:items.length,eligible:items.filter(i=>i.eligible).length,expired:items.filter(i=>i.expired).length,
+   returned:Math.min(limit,items.length)},itemsTruncated:items.length>limit};
+ }
+ function handle(p,method,path,x,params){
   // One snapshot for the verification passes and the inventory (a read snapshot under the GET read-only scope).
-  if(path==='/api/retention'&&method==='GET')return store.transaction(()=>inventory(p));
+  if(path==='/api/retention'&&method==='GET')return store.transaction(()=>inventoryView(p,params));
   if(path==='/api/retention/policy'&&method==='POST'){review(p);if(!Number.isSafeInteger(x.retentionSeconds)||x.retentionSeconds<1||x.retentionSeconds>10*365*86400)fail(400,'보존기간은 1초~10년 사이 정수');
    return store.transaction(()=>{verifyProjection(p);
    const policy={id:'current',version:(store.get(p.tenant,'retention_policy','current')?.version||0)+1,retentionSeconds:x.retentionSeconds,purpose:cleanText(x.purpose,500),reason:cleanText(x.reason,1000),reviewer:p.id,legalReview:cleanText(x.legalReview||'pending',100),createdAt:new Date().toISOString(),scope:'new_minimized_event_payloads_only'};

@@ -8,6 +8,7 @@ import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs
 import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
 import {sequenceFindings} from './sequence-rules.mjs';
 import {parseWords,matchesWords} from './rule-words.mjs';
+import {HOOK_AGENTS} from './agent-hook-events.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
 export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
@@ -112,18 +113,35 @@ export const EVALUATION_ENGINE_V5='evidscope-evaluate-v5';
 // evaluation names v6 only then, so a verifier without v6 reports it as engine_unavailable instead of reading the rule as contains.
 // v6 includes v5: src/policy-replay.mjs rebuilds the related steps for it too.
 export const EVALUATION_ENGINE_V6='evidscope-evaluate-v6';
+// v7 reads the command of an AI coding agent (agentCommandInput) without its code markup when it looks for injection-shaped notes.
+// Its input occurs only in the snapshot of an action with such a command, and for any other snapshot v7 returns the v1-v6 output; like
+// v5 the input comes from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v7.
+// v7 includes v5 and v6.
+export const EVALUATION_ENGINE_V7='evidscope-evaluate-v7';
 export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5,
- EVALUATION_ENGINE_V6]);
-export const evaluationEngine=data=>(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
+ EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7]);
+export const evaluationEngine=data=>data.agentCommands!==undefined?EVALUATION_ENGINE_V7:(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
  :data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
  :data.approvals!==undefined?EVALUATION_ENGINE_V3
  :data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
+// Injection-shaped text in a note (LOG_INJECTION_SIGNAL): script markup or an instruction aimed at the reviewer. In the command of an
+// AI coding agent, markup is the code it writes (grep "<script" app.html), so engine v7 reads only the instruction part there.
+const INJECTION_TEXT=/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i;
+const INSTRUCTION_TEXT=/ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경/i;
+// Engine v7 input: the ledger sequences of the action's AI coding agent records (an agent source naming a coding agent tool,
+// src/agent-hook-events.mjs) whose note is injection-shaped only through markup. Undefined when there is none, so every other
+// snapshot stays as it was. The tool is the source's claim: an agent source can only quiet the markup check of its own notes.
+const agentCommand=e=>e.sourceKind==='agent'&&HOOK_AGENTS.includes(e.tool)&&['intent','self_report'].includes(e.kind);
+export function agentCommandInput(events){
+ const seqs=events.filter(e=>agentCommand(e)&&Number.isSafeInteger(e.seq)&&INJECTION_TEXT.test(e.note||'')&&!INSTRUCTION_TEXT.test(e.note||'')).map(e=>e.seq);
+ return seqs.length?seqs.sort((a,b)=>a-b):undefined;
+}
 // The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
 // recorded for the same action and rule. The vault applies the same predicate to worker results.
 export function suppressingException(exceptions,finding,actionId,now){
  return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
 }
-export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps}={}) {
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -179,10 +197,11 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
  // An agent's after-record repeats its intent's note (src/agent-hook-events.mjs): a words rule (engine v6) flags the call once, on the
  // intent, and reads an after-record only when no intent of the action carries the same note.
  const repeatsIntent=e=>e.kind==='self_report'&&events.some(x=>x.kind==='intent'&&x.actionId===e.actionId&&x.note===e.note);
+ const commands=new Set(agentCommands||[]);
  for(const e of events){
   if(e.kind==='gap')add('COLLECTION_GAP','high','수집 출처가 관측 공백을 보고했습니다',[e]);
   if(e.late)add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
-  if(/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i.test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
+  if((commands.has(e.seq)&&agentCommand(e)?INSTRUCTION_TEXT:INJECTION_TEXT).test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
   for(const r of rules)if(matches(r,e)&&!(r.op==='words'&&repeatsIntent(e)))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
  registryFindings(events,registry,{add,clockBound});
@@ -202,7 +221,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
 // The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
 export function boundedEvaluation(input,limits){
  const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions,
-  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps});
+  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps,agentCommands:input.agentCommands});
  const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
  const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
  result.coverage=coverage();

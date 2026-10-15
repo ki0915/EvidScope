@@ -94,7 +94,7 @@ test('engine v6: named when a words rule is in the snapshot; one finding per cal
   const contains = rule({id: 'c', title: 'c', field: 'resource', op: 'contains', value: 'curl -d', severity: 'low'});
   assert.equal(evaluationEngine({events: [], rules: [contains, words]}), EVALUATION_ENGINE_V6);
   assert.equal(evaluationEngine({events: [], rules: [contains], relatedSteps: []}), EVALUATION_ENGINE_V5);
-  assert.equal(EVALUATION_ENGINES.at(-1), EVALUATION_ENGINE_V6);
+  assert.equal(EVALUATION_ENGINES.at(-2), EVALUATION_ENGINE_V6);
   const input = {command: 'cat /etc/shadow'}, session = {hook_event_name: 'PreToolUse', session_id: 's', tool_use_id: 'toolu_shadow', tool_name: 'Bash'};
   const pre = validateEvent(hookEvent({...session, tool_input: input}, {actor, now}), agentSource);
   const post = validateEvent(hookEvent({...session, hook_event_name: 'PostToolUse', tool_input: input, tool_response: {}}, {actor, now}), agentSource);

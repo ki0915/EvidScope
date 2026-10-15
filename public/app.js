@@ -208,7 +208,9 @@ function sourceTable(sources) {
 async function overview() {
   const data = await api('/api/overview'); const node = el('div'); const stats = el('div', 'grid stats');
   if (window.EvidScopeConsole) node.append(await window.EvidScopeConsole.overviewPulse());
-  [['수집 이벤트', 'events', '지속성 접수된 관측 기록'], ['탐지 경보', 'alerts', '행동 대조와 룰의 위험 신호'], ['감사 사건', 'cases', '담당자가 검토하는 조사 기록'], ['분석 대기', 'backlog', '아직 평가가 완료되지 않은 기록']].forEach(([title, key, note]) => {
+  const syntheticAlerts = data.counts?.syntheticAlerts || 0;
+  if (data.counts && Number.isFinite(data.counts.alerts)) data.counts = { ...data.counts, alerts: data.counts.alerts - syntheticAlerts };
+  [['수집 이벤트', 'events', '지속성 접수된 관측 기록'], ['탐지 경보', 'alerts', syntheticAlerts ? `실제 기록의 위험 신호 · 합성(데모) ${syntheticAlerts.toLocaleString('ko-KR')}건 제외` : '행동 대조와 룰의 위험 신호'], ['감사 사건', 'cases', '담당자가 검토하는 조사 기록'], ['분석 대기', 'backlog', '아직 평가가 완료되지 않은 기록']].forEach(([title, key, note]) => {
     const stat = el('section', 'stat'); stat.append(el('div', 'stat-label', title), el('div', 'stat-value', data.counts?.[key] == null ? '—' : data.counts[key].toLocaleString('ko-KR')), el('div', 'stat-note', note)); stats.append(stat);
   }); node.append(stats);
   const columns = el('div', 'grid two');
@@ -504,16 +506,20 @@ async function alertsView() {
   const node = card('탐지된 위험 신호', '최근 평가부터 보여 줍니다. 늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
   const filter = el('form', 'toolbar');
   filter.append(field('중요도', 'severity', { value: preset.severity || '', choices: [{ value: '', label: '모든 중요도' }, ...['critical', 'high', 'medium', 'low', 'info'].map((v) => ({ value: v, label: label(v) }))] }),
-    field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }), rangeField(preset.range));
+    field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }),
+    field('기록', 'data', { value: preset.data ?? 'real', choices: [{ value: 'real', label: '실제 기록' }, { value: 'synthetic', label: '합성(데모·시험) 기록' }, { value: '', label: '전체' }] }), rangeField(preset.range));
   const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
   const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination');
+  const synthetic = el('p', 'muted', '합성 기록은 자산 등록에서 합성(데모·시험)으로 표시한 행위자만 있는 행동입니다. 기본으로 실제 기록만 보여 주며, 경보와 원장은 그대로 남습니다.');
+  node.append(synthetic);
   const related = el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다(번호에 마우스를 올리면 항목 이름). 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.');
   node.append(filter, related, count, results, more);
   const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
-    return [badge(item.severity), item.code, item.message, requirementList(item.code, links, { compact: true }), date(item.createdAt), badge(item.state || 'open'), actions];
+    const state = el('div', 'actions'); state.append(badge(item.state || 'open')); if (item.synthetic) state.append(el('span', 'badge', '합성'));
+    return [badge(item.severity), item.code, item.message, requirementList(item.code, links, { compact: true }), date(item.createdAt), state, actions];
   })) });
   filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }
@@ -959,8 +965,8 @@ function financeBundleProvenanceReview(bundle, systemId, requirements) {
 }
 function financeApprovalPolicyEditor() {
   showDetail('행동 시점 승인 정책 등록', form([
-    field('정책 등록 ID · 버전별 다른 ID', 'id', {required:true}), field('보고된 실행 주체', 'actor', {required:true}), field('도구', 'tool', {required:true}), field('책임자', 'owner', {required:true}), field('정책 버전', 'policyVersion', {required:true}), field('유효 시작', 'validFrom', {required:true,type:'datetime-local'}), field('유효 종료 · 선택', 'validUntil', {type:'datetime-local'}), field('사전 사람 승인 필요', 'approvalRequired', {choices:[{value:'unknown',label:'미확인'},{value:'true',label:'필요'},{value:'false',label:'불필요'}]}), field('허용 목적지 · 쉼표 구분', 'destinations', {}),
-  ], '정책 근거 등록', async values => { const payload={...values,approvalRequired:values.approvalRequired==='true'?true:values.approvalRequired==='false'?false:'unknown',destinations:values.destinations.split(',').map(x=>x.trim()).filter(Boolean),validFrom:new Date(values.validFrom).toISOString()}; if(values.validUntil)payload.validUntil=new Date(values.validUntil).toISOString();else delete payload.validUntil; await api('/api/assets','POST',payload); $('#detail-dialog').close(); notice('정책 근거를 등록했습니다. 관련 행동의 재분석 결과를 확인하세요.'); }));
+    field('정책 등록 ID · 버전별 다른 ID', 'id', {required:true}), field('보고된 실행 주체', 'actor', {required:true}), field('도구', 'tool', {required:true}), field('책임자', 'owner', {required:true}), field('정책 버전', 'policyVersion', {required:true}), field('유효 시작', 'validFrom', {required:true,type:'datetime-local'}), field('유효 종료 · 선택', 'validUntil', {type:'datetime-local'}), field('사전 사람 승인 필요', 'approvalRequired', {choices:[{value:'unknown',label:'미확인'},{value:'true',label:'필요'},{value:'false',label:'불필요'}]}), field('허용 목적지 · 쉼표 구분', 'destinations', {}), field('기록 종류', 'synthetic', {choices:[{value:'false',label:'실제 업무'},{value:'true',label:'합성(데모·시험) · 경보를 실제 기록과 따로 표시'}]}),
+  ], '정책 근거 등록', async values => { const payload={...values,synthetic:values.synthetic==='true',approvalRequired:values.approvalRequired==='true'?true:values.approvalRequired==='false'?false:'unknown',destinations:values.destinations.split(',').map(x=>x.trim()).filter(Boolean),validFrom:new Date(values.validFrom).toISOString()}; if(values.validUntil)payload.validUntil=new Date(values.validUntil).toISOString();else delete payload.validUntil; await api('/api/assets','POST',payload); $('#detail-dialog').close(); notice('정책 근거를 등록했습니다. 관련 행동의 재분석 결과를 확인하세요.'); }));
 }
 function systemEditor(old = {}) {
   const triChoices = [{ value: 'unknown', label: '미확인 · 추가 근거 필요' }, { value: 'true', label: '예 · 사실 확인됨' }, { value: 'false', label: '아니요 · 사실 확인됨' }];
@@ -1153,7 +1159,10 @@ async function retentionView() {
     })); showDetail('파기 계획 작성', content);
   }, 'small'));
   plans.append(table(['계획 ID', '대상 수', '작성자 / 승인자', '계획 유효기한', '상태', '검토'], (data.plans || []).map((plan) => [plan.id, plan.items?.length ?? 0, `${plan.author} / ${plan.approvedBy || '미승인'}`, date(plan.expiresAt), badge(plan.status), button('대상·승인 검토', () => retentionPlanDetail(plan.id), 'small')]))); node.append(plans);
-  const inventory = card('이벤트별 보존 상태', `${data.items?.length ?? 0}건 · 계획 포함 가능 ${(data.items || []).filter((item) => item.eligible).length}건. 현재 조회 결과이며 승인·실행 시 서버가 유효성을 다시 검증합니다.`);
+  const counts = data.counts || { items: data.items?.length ?? 0, eligible: (data.items || []).filter((item) => item.eligible).length, returned: data.items?.length ?? 0 };
+  const shown = data.itemsTruncated ? ` · 계획에 포함할 수 있는 것과 보존이 먼저 끝나는 것부터 ${counts.returned.toLocaleString('ko-KR')}건 표시` : '';
+  const inventory = card('이벤트별 보존 상태',
+    `${counts.items.toLocaleString('ko-KR')}건 · 계획 포함 가능 ${counts.eligible.toLocaleString('ko-KR')}건${shown}. 현재 조회 결과이며 승인·실행 시 서버가 유효성을 다시 검증합니다.`);
   inventory.append(retentionItems(data.items, true)); node.append(inventory);
   if (data.legacyPlaintextEvents) node.append(el('div', 'message warning', `기존 평문 원장 이벤트 ${data.legacyPlaintextEvents}건은 이 암호키 파기 절차의 대상이 아닙니다. 별도 승인된 이전·보존 절차가 필요합니다.`));
   node.append(limits(data.limitations)); return node;
@@ -1239,8 +1248,16 @@ async function healthView() {
   }
   const sources = card('출처별 수집 상태', '알려진 출처 범위의 상태입니다. 모든 AI 사용을 관측했다는 의미가 아닙니다.'); sources.append(sourceTable(data.sources)); node.append(sources);
   const integrity = card('증적 무결성 검증', '서명 원장, 보존된 이벤트 본문·색인, 개발 실행, 등록 객체·평가·행동 상태, 거버넌스 문서 사본과 참조된 로컬 암호화 문서를 대조합니다. 문서 검증은 파일별 읽기 시점이며 미참조 파일이나 파일시스템 전체 스냅샷을 뜻하지 않습니다. 독립 내보내기 검증에는 별도로 확보한 신뢰 앵커가 필요합니다.');
-  const result = el('div'); integrity.append(el('p', 'muted', `분석 대기: ${data.counts?.backlog ?? '미확인'}건. 접수·분석·외부 봉인은 구분해서 판단하세요.`), button('보관 증적 검증 실행', async () => { result.replaceChildren(el('div', 'loading', '체인 무결성 검사 중')); try { const response = await api('/api/integrity'); result.replaceChildren(el('pre', 'json', stringify(response))); } catch (error) { result.replaceChildren(el('div', 'message error', error.message)); } }, 'primary'), result);
+  const result = el('div'); integrity.append(el('p', 'muted', `분석 대기: ${data.counts?.backlog ?? '미확인'}건. 접수·분석·외부 봉인은 구분해서 판단하세요.`), button('보관 증적 검증 실행', async () => { result.replaceChildren(el('div', 'loading', '서명 원장 전체와 보관 사본을 처음부터 다시 대조하고 있습니다. 기록이 많으면 몇 초 걸립니다…')); const started = Date.now(); try { const response = await api('/api/integrity'); result.replaceChildren(integritySummary(response, Date.now() - started)); } catch (error) { result.replaceChildren(el('div', 'message error', error.message)); } }, 'primary'), result);
   node.append(integrity, limits(data.limitations), limits(['수집되지 않은 출처의 행동과 원문 미보관으로 인한 사후 검증 범위는 확인할 수 없습니다.', '체인 검증 성공은 기록 내용의 진실성이나 법적 증거능력에 대한 판정이 아닙니다.'])); return node;
+}
+// The integrity answer in words first (records, events and evaluations checked, time taken), the full answer below it.
+function integritySummary(response, ms) {
+  const node = el('div'), count = (value) => (Number.isFinite(value) ? value.toLocaleString('ko-KR') : '미확인');
+  const ok = response?.valid === true;
+  const checked = `서명 원장 ${count(response.count)}건, 보관 이벤트 ${count(response.projection?.retainedEvents ?? response.disclosedEvents)}건, 평가 ${count(response.evaluationProjection?.evaluations)}건`;
+  node.append(el('div', ok ? 'message' : 'message error', ok ? `검증 통과: ${checked}을 대조했습니다 (${(ms / 1000).toFixed(1)}초).` : '검증에 실패했거나 결과를 확인할 수 없습니다. 아래 상세를 확인하세요.'));
+  node.append(jsonDetails('검증 상세', response)); return node;
 }
 async function accessSubjects() {
   if (authMode !== 'oidc' || sessionPrincipal?.role !== 'admin') throw new Error('조직 계정 관리 권한이 필요합니다.');

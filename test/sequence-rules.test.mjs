@@ -122,7 +122,7 @@ test('engine v5 names only snapshots that carry related steps; with no other ste
   assert.equal(evaluationEngine({events: [], stopOrders: {orders: [], activations: []}, relatedSteps: []}), EVALUATION_ENGINE_V5);
   assert.equal(evaluationEngine({events: [], stopOrders: {orders: [], activations: []}}), EVALUATION_ENGINE_V4);
   assert.equal(evaluationEngine({events: []}), EVALUATION_ENGINE);
-  assert.equal(EVALUATION_ENGINES.at(-2), EVALUATION_ENGINE_V5);
+  assert.equal(EVALUATION_ENGINES.at(-3), EVALUATION_ENGINE_V5);
   const out = send('send', 1), without = evaluate([out], [], rules, [], T0 + 3600e3);
   assert.deepEqual(evaluate([out], [], rules, [], T0 + 3600e3, {relatedSteps: []}), without);
   assert.ok(without.findings.some(f => f.code === 'CUSTOM:risk.out.curl-data:v1'), 'the single-call rule fires on its own');
