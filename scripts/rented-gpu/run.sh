@@ -28,6 +28,7 @@ qwen_chain() {
       --pause-ratio 0 --thermal-max-wait-seconds 0 --epochs "${QWEN_EPOCHS:-1}" > logs/train-qwen.log 2>&1 || { status "qwen training failed"; return 1; }
   status "qwen trained"
   for judge in qwen-zero qwen-cand; do
+    [ "$judge" = qwen-zero ] && [ -n "${SKIP_ZERO:-}" ] && continue
     mkdir -p "results/$judge"
     for requests in in/requests/*.jsonl; do
       set_name=$(basename "$requests" .jsonl)
@@ -46,6 +47,7 @@ jev_chain() {
     || { status "jev training failed"; return 1; }
   status "jev trained"
   for judge in jev-zero jev-cand; do
+    [ "$judge" = jev-zero ] && [ -n "${SKIP_ZERO:-}" ] && continue
     mkdir -p "results/$judge"
     if [ "$judge" = jev-zero ]; then a=$JEV/adapter; h=$JEV/head.safetensors; c=$JEV/calibration.json
     else a=$JRUN/candidate/adapter; h=$JRUN/candidate/head.safetensors; c=$JRUN/candidate/calibration.json; fi
@@ -80,6 +82,7 @@ fill() {
 if [ "${1:-}" = fill ]; then fill; exit 0; fi
 
 # Both chains by default; "run.sh qwen" or "run.sh jev" reruns one (with QRUN or JRUN pointing at a new output directory).
+# SKIP_ZERO=1 leaves out the untrained judges, for a later round on the same request files: their outputs would not change.
 chains=${1:-both}
 status "round started $chains $(sha in/train.jsonl)"
 qs=skipped; js=skipped
