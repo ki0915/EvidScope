@@ -1,0 +1,65 @@
+{
+  "skills": {
+    "problem_definition": "문제 정의",
+    "requirements": "요구사항·범위 설계",
+    "system_architecture": "시스템 아키텍처",
+    "security_architecture": "보안 아키텍처",
+    "threat_modeling": "위협 모델링",
+    "cryptography_integrity": "암호·무결성 설계",
+    "access_control": "권한·접근 통제",
+    "adversarial_testing": "적대적 검증·레드팀",
+    "detection_engineering": "탐지 엔지니어링",
+    "llm_security": "LLM 보안",
+    "data_quality": "데이터 품질·누수 방지",
+    "dataset_design": "데이터셋·답안지 설계",
+    "ml_training": "모델 학습(QLoRA)",
+    "ml_evaluation": "모델 평가·게이트",
+    "calibration": "확신도 보정·판단 보류",
+    "statistics": "통계적 검증",
+    "model_selection": "모델 선정",
+    "mlops_infra": "GPU·학습 인프라",
+    "cost_management": "비용 관리",
+    "performance_optimization": "성능 최적화",
+    "standards_integration": "표준·외부 도구 연동",
+    "compliance": "규제·컴플라이언스",
+    "ux_design": "UX 설계",
+    "frontend": "프런트엔드 구현",
+    "qa_testing": "테스트·QA",
+    "ci_cd": "CI/CD·품질 게이트",
+    "operations": "운영·배포",
+    "privacy": "개인정보·데이터 최소화",
+    "user_feedback": "사용자 피드백 반영",
+    "decision_making": "의사결정·우선순위",
+    "documentation": "문서화·투명한 보고",
+    "ai_collaboration": "AI 협업 개발"
+  },
+  "tracks": {
+    "evidence-layer": "증거 계층·제품·보안",
+    "agent-monitoring": "AI 에이전트 모니터링·탐지",
+    "judge-models": "판정 모델과 학습",
+    "ui-ux": "UI/UX"
+  },
+  "status": {
+    "done": "완료",
+    "in_progress": "진행 중",
+    "planned": "예정",
+    "invalidated": "무효화",
+    "superseded": "대체됨"
+  },
+  "trigger": {
+    "owner_request": "오너 요청",
+    "owner_feedback": "오너 피드백",
+    "adversarial_audit": "적대적 감사",
+    "qa": "QA",
+    "measurement": "측정 결과",
+    "plan": "계획",
+    "incident": "사고·실패",
+    "external_research": "외부 조사"
+  },
+  "decided_by": {
+    "owner": "오너",
+    "ai_agent": "AI 에이전트",
+    "joint": "오너와 AI 에이전트",
+    "unknown": "기록 없음"
+  }
+}

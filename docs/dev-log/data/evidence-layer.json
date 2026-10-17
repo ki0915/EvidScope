@@ -1,0 +1,4474 @@
+[
+  {
+    "id": "EL-01",
+    "track": "evidence-layer",
+    "date_start": "2026-09-09",
+    "date_end": null,
+    "status": "done",
+    "title": "첫 구현 공개: 서명 원장 기반 AI 행동 감사 파일럿",
+    "title_en": "First public implementation: an AI action audit pilot built on a signed ledger",
+    "summary": "업무용 AI 에이전트의 자기보고와 실제 도구 결과·권한·승인을 대조하는 감사 파일럿을 Node.js 24와 SQLite로 처음 구현해 저장소에 올렸다. vault·ingress·audit·worker 네 프로세스, Ed25519 서명 원장, 한국어 감사 화면, Kubernetes 배포·부하 시험을 한 번에 갖췄고, 실패한 시험 결과까지 원자료로 남겼다.",
+    "context": "프로젝트의 출발점이다. 그 전까지 작업은 오너 PC에서만 진행됐고 이날 첫 커밋(b24f4d4, 177개 파일·30,117줄 추가)으로 공개 저장소에 올라갔다. 개발은 오너가 목표와 조건을 정하고 여러 AI 에이전트가 역할을 나눠 맡는 방식이었다(설계·감사 Astra, 핵심 구현 Sol, UI Claude). 오너가 정한 조건은 사람이 판단할 수 있는 가시성을 우선 목표로 두는 것, 로컬 모델 실증, Kubernetes 분산, 역할별 에이전트, 추가 API 비용 0원이었다. 같은 날 디자인 핸드북 PDF(f94b7a0)와 클릭하며 읽는 문서 뷰어(0b96781)도 함께 올라갔다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "오너가 업무용 AI의 행동을 사람이 확인할 수 있게 하는 감사 도구를 목표로 정하고, 로컬 모델 실증·Kubernetes 분산·추가 API 비용 0원 같은 조건을 걸었다.",
+      "quote": null
+    },
+    "problem": "업무용 AI 에이전트가 “무엇을 했다”고 스스로 보고한 내용이 실제 도구 결과, 당시 권한, 사람의 승인과 맞는지 확인할 수단이 없었다. 기록이 없을 때 그것을 “사고 없음”으로 읽어 버리면 감사가 오히려 거짓 안심을 준다. 또 원장을 서명하더라도 그것이 출처 주장의 진실을 보장하지 않는다는 점을 설계에서 분명히 해야 했다.",
+    "constraints": [
+      "추가 API 비용 0원(오너 조건)",
+      "로컬 모델 실증과 Kubernetes 분산을 함께 보여 줄 것(오너 조건)",
+      "한 사람이 유지할 수 있는 낮은 의존성: Node 내장 기능과 정적 UI",
+      "원문 prompt·response·비밀은 기본 수집하지 않는 최소수집 원칙",
+      "Windows 개발 PC에서 IPv4 loopback 오류(listen EFAULT)가 반복되는 시험 환경"
+    ],
+    "options": [
+      {
+        "option": "자기보고·독립 결과·출처 인증·무결성을 서로 다른 필드와 상태로 분리",
+        "pros": "기록이 없을 때 통과로 오인되지 않고, 어떤 보장이 있는지 따로 보인다",
+        "cons": "데이터 모델과 화면이 복잡해진다",
+        "chosen": true,
+        "reason": "설계 철학 문서가 “관측 공백을 통과나 무사고로 바꾸지 않는다”를 원칙으로 삼았기 때문"
+      },
+      {
+        "option": "하나의 “성공” 값으로 합쳐 표시",
+        "pros": "단순하고 읽기 쉽다",
+        "cons": "기록 부재가 통과로 바뀌고, 서명 여부와 출처 진실이 섞인다",
+        "chosen": false,
+        "reason": "감사 도구가 거짓 안심을 주는 구조라 버렸다"
+      },
+      {
+        "option": "결정적 규칙 기반 분석(LLM 없음)",
+        "pros": "설명 가능하고 재현되며 상시 모델 요금이 없다",
+        "cons": "규칙에 없는 패턴은 못 본다",
+        "chosen": true,
+        "reason": "아키텍처 초안 §8의 비용·재현성 판단. 재검토 조건은 “사람이 승인한 추가 분석 요구 발생”"
+      },
+      {
+        "option": "SQLite 단일 vault(쓰기 1개)",
+        "pros": "접수·중복·원장·작업 상태를 한 트랜잭션으로 원자적으로 처리",
+        "cons": "writer 포화와 저장소 HA 부재",
+        "chosen": true,
+        "reason": "파일럿 단계에서 원자성이 더 중요하다고 판단. 재검토 조건은 writer 포화나 HA 요구"
+      }
+    ],
+    "decision": {
+      "what": "vault(원장·인증·저장)·ingress(수집)·audit(화면·API)·worker(규칙 분석) 네 프로세스 구조로, 출처별 HMAC 인증과 Ed25519 서명 원장, 별도 신뢰 키로 검증하는 내보내기, 두 사람 승인이 필요한 룰·예외·파기를 갖춘 파일럿을 만든다.",
+      "why": "“볼 수 없는 것은 다스릴 수 없다”는 출발점에서, 관측 범위와 공백을 숨기지 않으면서 사람이 근거를 따라가 판단할 수 있게 하기 위해서다. 비용과 의존성은 오너 조건에 맞춰 최소화했다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "src/server.mjs 한 바이너리가 MODE에 따라 vault·ingress·audit·worker로 기동하도록 구성하고 loopback 외 바인딩은 TLS를 강제",
+      "tenant와 출처를 페이로드가 아니라 인증 자격에서 결정하는 HMAC+nonce+timestamp 수집 경로 구현",
+      "이벤트 암호화 저장, Ed25519 서명 해시 체인 원장과 checkpoint, 별도 신뢰 키로 확인하는 독립 내보내기 검증기(src/crypto.mjs, scripts/verify.mjs)",
+      "룰·예외 자기 승인 금지와 파기 2인 승인(4-eyes)을 코드로 강제",
+      "한국어 감사 UI와 Kubernetes 매니페스트, 부하·분산 시험 Job 작성",
+      "설계 철학(docs/philosophy.md)·아키텍처 초안(docs/architecture-draft.md)·수집 계약 문서와 디자인 핸드북 PDF, 문서 뷰어 공개"
+    ],
+    "tech": [
+      "Node.js 24",
+      "node:sqlite (SQLite WAL)",
+      "Ed25519",
+      "HMAC-SHA256",
+      "AES-GCM",
+      "Kubernetes",
+      "HPA",
+      "k3d",
+      "Docker",
+      "vanilla JavaScript"
+    ],
+    "skills": [
+      "problem_definition",
+      "system_architecture",
+      "security_architecture",
+      "cryptography_integrity",
+      "access_control",
+      "operations",
+      "documentation",
+      "ai_collaboration"
+    ],
+    "metrics": [
+      {
+        "name": "Kubernetes 내부 Service 분산 수집",
+        "before": null,
+        "after": "60/60",
+        "unit": "요청",
+        "scope": "수집 Pod 2개, 09-08 측정, 외부 LB 시험 아님",
+        "source": "docs/portfolio.md"
+      },
+      {
+        "name": "Kubernetes 내부 Service 분산 감사 조회",
+        "before": null,
+        "after": "60/60",
+        "unit": "요청",
+        "scope": "감사 Pod 2개, 09-08 측정",
+        "source": "docs/portfolio.md"
+      },
+      {
+        "name": "HPA 확장 중 성공 접수 보존",
+        "before": null,
+        "after": "515",
+        "unit": "건",
+        "scope": "replica 2→3→2, 단일 PVC, 같은 구간에 timeout 8건",
+        "source": "docs/portfolio.md"
+      },
+      {
+        "name": "Linux 독립 컨테이너 전체 회귀",
+        "before": null,
+        "after": "70/70 PASS",
+        "unit": "검사",
+        "scope": "Node 24.20.0, 2CPU/1GiB, host mount·port 없음",
+        "source": "docs/progress-matrix.md @ b24f4d4"
+      },
+      {
+        "name": "Windows 회귀",
+        "before": null,
+        "after": "56 PASS / 10 FAIL",
+        "unit": "검사",
+        "scope": "IPv4 loopback listen EFAULT, Linux 결과와 따로 기록",
+        "source": "docs/progress-matrix.md @ b24f4d4"
+      },
+      {
+        "name": "첫 커밋 규모",
+        "before": null,
+        "after": "177개 파일, 30,117줄 추가",
+        "unit": null,
+        "scope": "b24f4d4",
+        "source": "b24f4d4"
+      }
+    ],
+    "result": "네 프로세스 파일럿과 문서 일체가 첫날 공개됐다. 09-08 측정 기준 Kubernetes 내부 분산 수집·감사가 각각 60/60, HPA 2→3→2 동안 성공 접수 515건이 보존됐지만 timeout 8건이 함께 기록됐다. Linux 독립 컨테이너 회귀는 70/70이었고 Windows는 56 PASS/10 FAIL을 숨기지 않고 따로 남겼다.",
+    "tradeoffs": [
+      "실제 수집 연동은 없었다. 10-06 감사에서 “OTLP 수집”이 표준 입력 JSON 변환기였다는 점이 드러났다(EL-06)",
+      "서명키·원장·자격이 같은 호스트에 있어 관리자·호스트 공격자에 대한 변조 증거 능력은 없었다(10-06 감사 S1·S2)",
+      "vault는 단일 writer라 stateless replica를 늘려도 저장소 HA가 생기지 않는다",
+      "외부 LoadBalancer, CNI 패킷 단위 귀속, 장애 3건 실패는 미해결로 남겼다"
+    ],
+    "lessons": [
+      "기록 부재를 통과로 바꾸지 않는 상태 분리는 처음부터 데이터 모델에 넣어야 나중에 고치기 쉽다",
+      "실패한 시험을 원자료로 남겨 두면 이후 감사가 같은 결론을 빨리 재현할 수 있다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "처음부터 OpenTelemetry 수신을 기준으로 삼았다면 10-06 감사 전까지의 수집 관련 작업 중 얼마가 필요 없었을까?",
+        "SQLite 단일 writer 선택이 이후 처리량 개선(EL-18)의 상한을 얼마나 정했는가?",
+        "네 프로세스 분리가 실제 위협 모델에서 얼마만큼의 격리를 줬는가, 아니면 같은 호스트라 의미가 작았는가?"
+      ],
+      "what_if": [
+        "서명키를 처음부터 별도 프로세스나 KMS에 두었다면 감사 S1·S2가 HIGH로 나오지 않았을 것이다(추정)"
+      ],
+      "revisit_when": "실제 회사 내부망 배포에서 쓰기 처리량이나 저장소 HA 요구가 생길 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 에이전트의 자기보고·도구 결과·권한을 대조하는 서명 원장 기반 감사 파일럿을 Node.js/SQLite/Kubernetes로 구현해 내부 분산 수집·감사 각 60/60, HPA 확장 중 접수 515건 보존을 실측하고 실패 시험까지 원자료로 공개"
+      ],
+      "en": [
+        "Built a signed-ledger audit pilot (Node.js/SQLite/Kubernetes) that reconciles AI agents' self-reports with tool results and permissions; measured 60/60 distributed ingest and 515 accepted events preserved through HPA scaling, publishing failed runs alongside passes."
+      ]
+    },
+    "interview": [
+      {
+        "q": "서명 원장이 있으면 기록이 믿을 만하다고 말할 수 있나요?",
+        "a_points": [
+          "서명은 보관된 바이트가 바뀌지 않았다는 증거일 뿐 출처 주장이 사실이라는 보장이 아니다",
+          "그래서 자기보고·독립 결과·출처 인증·무결성을 다른 필드로 나눴다",
+          "같은 호스트에 키와 원장이 있으면 관리자 공격은 못 막는다는 한계도 처음부터 문서에 적었다"
+        ]
+      },
+      {
+        "q": "왜 LLM 없이 규칙으로 분석했나요?",
+        "a_points": [
+          "재현성과 설명 가능성",
+          "상시 모델 요금 0원 조건",
+          "이후 오프라인 정책 재생(EL-11)이 가능한 기반이 됐다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "b24f4d4",
+        "f94b7a0",
+        "0b96781"
+      ],
+      "docs": [
+        "docs/philosophy.md",
+        "docs/architecture-draft.md",
+        "docs/portfolio.md",
+        "docs/progress-matrix.md",
+        "reports/kubernetes-runtime-20260908.md"
+      ],
+      "notes": []
+    },
+    "related": [
+      "EL-02",
+      "EL-06",
+      "UX-01",
+      "UX-02"
+    ],
+    "uncertain": [
+      "Kubernetes 분산·HPA 수치는 첫 커밋 전날(09-08) 측정이며 커밋 당일 코드로 다시 잰 값이 아니다",
+      "오너 조건(가시성 우선, 추가 API 비용 0원 등)은 docs/portfolio.md의 역할 분담 서술에 근거하며 오너 원문은 확인하지 못했다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-02",
+    "track": "evidence-layer",
+    "date_start": "2026-09-09",
+    "date_end": null,
+    "status": "done",
+    "title": "로컬 AI 보조 경로의 신뢰 경계와 첫 적대적 감사(A1~A5)",
+    "title_en": "Trust boundary for the local AI advisory path and the first adversarial audit (A1-A5)",
+    "summary": "사람이 고른 증거만 고정해 로컬 모델에 보내고 모델 초안은 “조언”으로만 저장하는 보조 경로를 만들었다. 같은 날 별도 AI 감사 역할이 공격자 입장에서 검토해 결함 5건(P1 1, P2 4)을 실제 HTTP로 재현했고, 서버 쪽 3건을 원장 재구성 검증 등으로 같은 날 고쳤다.",
+    "context": "EL-01 파일럿 위에 로컬 LLM을 붙이는 첫 단계였다. ADR 0004로 “증거 수집·규칙 평가·사람 판단 경로에 모델 성공을 필수 조건으로 넣지 않는다”를 먼저 정했다. 개발 체계는 설계·적대적 감사를 Astra, 구현을 Sol, UI를 Claude가 맡았고, 오너의 추가 지시로 1차 적대적 감사에 고급 모델을 우선 배치했다. 감사자는 제품 코드를 고치지 않고 자기 지적을 스스로 종결하지 않는 규칙을 따랐다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "통합 커밋 300c07f를 별도 문맥의 감사 역할(GPT-6 Astra)이 ADR 0004와 요구사항을 먼저 읽고 공격자 입장에서 검토했다(reports/astra-adversarial-20260909.md).",
+      "quote": null
+    },
+    "problem": "A1(P1, 조건부): DB의 조회용 사본(projection)만 바꾸면 서명 원본과 다른 지시문이 모델에 전달되고, 위조한 초안이 사람 검토 기록으로 서명될 수 있었다. 해시 문자열만 비교하고 내용을 원본에서 다시 계산하지 않았기 때문이다. A2: 사건을 종결해도 예전 조언이 “최신”으로 남았다. A3: 시간 초과 상태 전이가 410 응답과 함께 트랜잭션 롤백으로 사라졌는데 화면은 시간 초과로 보여 줬다. A4·A5(UI): 전송 전 미리보기에서 거버넌스 입력이 빠졌고, 사람이 고쳐 채택한 문안이 이력에 보이지 않았다.",
+    "constraints": [
+      "추가 API 예산 0원: 원격 유료 모델 대체 호출(fallback) 금지",
+      "로컬 추론 동시 1개, 작업당 응답 최대 4회, 최대 5분",
+      "감사 범위에서 “호스트 관리자 전체 장악”은 제외",
+      "Claude UI 작업은 구독 사용 한도에 도달해 추가 수정이 후순위로 밀림"
+    ],
+    "options": [
+      {
+        "option": "보조 객체를 쓸 때마다 서명 원장에서 다시 구성하고 사본과 대조",
+        "pros": "사본 변조·누락·삽입을 모두 거부한다",
+        "cons": "읽을 때마다 비용이 든다",
+        "chosen": true,
+        "reason": "감사 권고대로 내용 자체를 원본에서 재계산해야 묶임이 생긴다"
+      },
+      {
+        "option": "해시 문자열 비교만 유지",
+        "pros": "빠르고 단순",
+        "cons": "내용과 해시가 묶이지 않아 A1이 그대로 성립",
+        "chosen": false,
+        "reason": "재현된 공격을 막지 못한다"
+      },
+      {
+        "option": "A4·A5 UI 결함도 같은 날 수정",
+        "pros": "결함을 한 번에 닫는다",
+        "cons": "UI 담당 세션이 사용 한도에 걸려 있었다",
+        "chosen": false,
+        "reason": "UI 수정은 오너 지시로 보류하고 서버 쪽 3건만 먼저 고쳤다"
+      }
+    ],
+    "decision": {
+      "what": "서버 쪽 A1~A3을 즉시 고치고(원장 재구성 검증, 사건 스냅샷 해시를 신선도에 포함, 만료 전이를 410 전에 한 번만 영속 기록), UI 쪽 A4·A5는 보류로 남긴다. 모델은 셸·파일·브라우저 도구 없이 고정 입력만 받고 원격 fallback은 두지 않는다.",
+      "why": "A1~A3은 서명된 사람 검토 기록의 신뢰를 직접 무너뜨리는 결함이고, UI 결함은 내용 보존은 정상이라 영향이 작았다. 비용 0원 조건 때문에 원격 모델로 우회하지 않았다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "ADR 0004 작성: 사람 선택 → vault 준비 → 사람 전달 → 로컬 추론 → 사람 검토 → 재검토의 책임과 보존 근거를 단계별로 정의",
+      "src/assistance.mjs 보조 파이프라인 추가(ed7b689): 실행기는 작업 하나에 묶인 1회용 자격만 받고 원본 DB·서명키·사람 토큰은 받지 않음",
+      "76aaaf8: 보조 객체를 원장에서 다시 구성해 바뀐·빠진·끼워 넣은 사본 거부, 실행기 CLI도 패키지·프로필 해시를 독립 재계산",
+      "사건 스냅샷 해시를 신선도 판정에 포함(A2), 만료 전이를 HTTP 오류 전에 별도 커밋(A3)",
+      "0ae7cbc: fixture 100% 통과 시 품질 승인(qualityClaimAllowed)을 주던 결함 분리",
+      "9c62d0c: 시험용 Ollama·k3d 자원을 기본 중지 상태로 두고 자신이 시작한 자원만 정리하는 test-runtime 도구 추가"
+    ],
+    "tech": [
+      "Ollama",
+      "Qwen3 (로컬 모델)",
+      "Node.js",
+      "SQLite",
+      "k3d",
+      "ADR(Architecture Decision Record)"
+    ],
+    "skills": [
+      "llm_security",
+      "security_architecture",
+      "adversarial_testing",
+      "threat_modeling",
+      "cryptography_integrity",
+      "cost_management",
+      "ai_collaboration",
+      "decision_making"
+    ],
+    "metrics": [
+      {
+        "name": "기존 보조 시험",
+        "before": null,
+        "after": "8 passed, 0 failed",
+        "unit": "시험",
+        "scope": "감사 시작 시점의 assistance 시험",
+        "source": "reports/astra-adversarial-20260909.md"
+      },
+      {
+        "name": "적대적 감사로 재현한 결함",
+        "before": null,
+        "after": "5 (P1 1, P2 4)",
+        "unit": "건",
+        "scope": "합성 데이터, 실제 HTTP·실행기 함수 재현",
+        "source": "reports/astra-adversarial-20260909.md"
+      },
+      {
+        "name": "같은 날 수정한 결함",
+        "before": "0",
+        "after": "3 (A1~A3)",
+        "unit": "건",
+        "scope": "서버 쪽만, A4·A5 UI 보류",
+        "source": "76aaaf8"
+      },
+      {
+        "name": "로컬 Qwen3 4B 실제 실행 시간",
+        "before": null,
+        "after": "10.90 / 46.04",
+        "unit": "초",
+        "scope": "서로 다른 합성 입력 2회, 평균 아님",
+        "source": "docs/portfolio.md"
+      }
+    ],
+    "result": "기존 시험 8개가 모두 통과한 상태에서 감사가 추가 결함 5개를 재현했고, 서버 쪽 3건(A1~A3)은 같은 날 원장 재구성 검증으로 닫혔다. 실제 HTTP 탐색에서 다른 tenant 패키지 조회 404, 수집 계정 조회 403, 실행 자격으로 사람 판단 쓰기 401이 확인돼 자격 경계 자체는 유지됐다. A4·A5는 UI 보류로 남았다.",
+    "tradeoffs": [
+      "A4·A5(전송 묶음 전체 미리보기, 채택한 수정본 표시)는 09-12 계획 시점에도 UI에 남아 있었다",
+      "실제 모델 품질, 의미 수준 주입 내성, 실제 5분 취소·GPU 직렬화는 시험하지 않았다",
+      "호스트 관리자 장악은 경계 밖으로 두었다",
+      "같은 사용자로 실행하는 호스트 프로세스는 OS 격리 완료가 아니다"
+    ],
+    "lessons": [
+      "해시 문자열을 비교하는 것만으로는 내용이 묶이지 않는다. 내용을 서명 원본에서 다시 만들어 비교해야 한다",
+      "기존 시험이 모두 통과해도 공격자 시점의 별도 검토가 다른 결함을 찾는다",
+      "감사자와 수정자를 분리하고 감사자가 스스로 종결하지 않는 규칙이 결과를 믿을 만하게 만든다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "A4·A5를 같은 날 고쳤다면 사람이 모델 입력 전체를 확인하는 습관이 더 일찍 자리 잡았을까?",
+        "조언 경로를 원장 밖으로 완전히 분리하는 대신 원장 안에 두고 재구성 검증하는 방식이 이후 판정 모델(JM 트랙) 설계에 어떤 제약을 남겼나?",
+        "같은 계열 모델이 설계와 감사를 모두 맡았을 때 감사 독립성은 얼마나 유지됐나?"
+      ],
+      "what_if": [
+        "원격 유료 모델 fallback을 허용했다면 품질 실험은 빨랐겠지만, 증거가 PC 밖으로 나가는 경계 문제가 생겼을 것이다"
+      ],
+      "revisit_when": "판정 모델이 실제로 감사 화면에 결과를 올리기 시작할 때(조언과 판단의 경계를 다시 정해야 할 때)"
+    },
+    "resume": {
+      "ko": [
+        "로컬 LLM 보조 기능을 서명 원장 밖의 조언으로 격리하고, 적대적 감사로 재현된 결함 5건 중 서명 기록 신뢰를 깨는 서버 결함 3건을 원장 재구성 검증으로 당일 수정"
+      ],
+      "en": [
+        "Isolated a local-LLM advisory feature from the signed ledger and fixed, the same day, 3 of 5 adversarially reproduced defects by reconstructing advisory objects from the signed ledger before use."
+      ]
+    },
+    "interview": [
+      {
+        "q": "LLM 출력을 감사 기록에 넣을 때 가장 조심한 점은 무엇인가요?",
+        "a_points": [
+          "모델 성공을 수집·평가·사람 판단의 필수 조건으로 두지 않았다",
+          "모델은 사람이 고른 고정 입력만 받고 도구가 없다",
+          "모델 출력은 조언으로만 저장하고 사람 검토가 별도 기록이다",
+          "사본 변조로 다른 지시문이 들어가는 공격을 원장 재구성으로 막았다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "4b1d476",
+        "ed7b689",
+        "300c07f",
+        "5160524",
+        "76aaaf8",
+        "8b91337",
+        "334e730",
+        "9c62d0c",
+        "0ae7cbc",
+        "c8c449b"
+      ],
+      "docs": [
+        "docs/adr/0004-local-advisory-boundary.md",
+        "reports/astra-adversarial-20260909.md",
+        "docs/test-runtime.md",
+        "docs/multi-agent-development.md",
+        "docs/portfolio.md",
+        "docs/assistance-contract.md"
+      ],
+      "notes": []
+    },
+    "related": [
+      "EL-01",
+      "EL-03",
+      "JM-01",
+      "UX-03"
+    ],
+    "uncertain": [
+      "A4·A5가 언제 고쳐졌는지는 이 슬라이스의 출처에서 확인하지 못했다(UX-03 참고)",
+      "UI 보류가 오너의 지시였다는 점은 감사 보고서의 “UI remediation remains deferred under the user's instruction” 문장에 근거하며, 오너 원문은 확인하지 못했다",
+      "8b91337·334e730(개발 에이전트 운영 기록)은 이 항목에 묶였지만 보조 경로와의 직접 관계는 추정이다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-03",
+    "track": "evidence-layer",
+    "date_start": "2026-09-12",
+    "date_end": null,
+    "status": "superseded",
+    "title": "1차 완성본 계획: 관측 범위의 정직한 분모와 격리된 모델 실행 설계",
+    "title_en": "First full-release plan: honest coverage denominators and isolated model execution",
+    "summary": "“모든 AI 사용 감사”를 구현 가능한 범위로 정의한 실행 계획과 기능 명세(F-01~F-14), 기술 가이드를 썼다. 관측 분모를 셋으로 나눠 미관측을 숨기지 않는 원칙과, 자격·네트워크·파일 접근을 모두 끊은 격리 Pod 모델 실행, 사람 검토 데이터가 갖춰져야 학습을 시작하는 조건을 정했다. 10-06 방향 전환 뒤 이 계획의 상당 부분은 다른 방식으로 대체됐다.",
+    "context": "EL-01·EL-02로 파일럿과 보조 경로가 생긴 뒤, 오너의 요청으로 1차 완성본의 실행 계획을 정리했다. 당시 장비는 Windows x64, 논리 CPU 20개, RAM 32GiB, RTX 3080 12GiB였고 Docker daemon과 클러스터 상태는 확인되지 않았다. 기존 보조 경로의 qwen3:4b는 기준선으로만 보존하고, 보안 특화 공개 모델을 비교한 뒤 오너가 고른 모델만 쓰기로 했다(JM-02). 작업은 오너 PC에서 이뤄졌고 문서는 10-06 게시 커밋 28d4dfb로 저장소에 올라갔다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "실행 계획 문서가 “이번 문서는 마지막 요청에 따라 실행 계획을 정리한 산출물”이라고 적고 있다. 추가 요구로 최신 보안 특화 모델 비교 뒤 사용자 선택, 초기 추론 자원 제한과 즉시 중지, 독립 Pod 실행이 필수 조건으로 붙었다.",
+      "quote": null
+    },
+    "problem": "네트워크 로그만으로는 암호화된 대화나 설치되지 않은 로컬 실행기를 확정할 수 없다. 그런데도 “이벤트 0건”이나 “heartbeat 정상”을 “가시성 100%”로 바꾸면 거짓 안심이 생긴다. 또 감사 모델이 업무 파일·DB·서명키에 접근할 수 있으면 감사 도구 자체가 새로운 위험이 된다. 사람 검토 학습 데이터는 0건이었다.",
+    "constraints": [
+      "RTX 3080 12GB 한 대, 학습과 추론은 GPU를 동시에 쓰지 않음",
+      "모델은 오너가 고른 것만 다운로드·실행(그 전 다운로드·학습 금지)",
+      "초기 추론: Q4, context 2048, 출력 512 토큰, 동시 1개, 요청당 120초, 자동 재시도 0회",
+      "원문 prompt/response·쿠키·Authorization 기본 미수집",
+      "오너가 PC를 쓰는 동안 학습이 방해하지 않을 것(유휴 15분 이상 등 호스트 조건)"
+    ],
+    "options": [
+      {
+        "option": "관측 분모를 셋으로 분리: ① 수집기가 연결된 등록 자산, ② 출처 보고 발생량 대비 수신량, ③ 필요한 증거가 갖춰진 행동",
+        "pros": "어디까지 보이는지 정직하게 드러난다",
+        "cons": "화면과 집계가 복잡해진다",
+        "chosen": true,
+        "reason": "미관측 사용까지 감지한 것처럼 계산하지 않기 위해"
+      },
+      {
+        "option": "시간·목적지만 맞는 연결을 확정 연결로 합치기",
+        "pros": "연결 건수가 많아 보인다",
+        "cons": "우연한 일치가 증거를 합친다",
+        "chosen": false,
+        "reason": "“추정 연결”로 따로 저장하고 사람이 해제할 수 있게 했다"
+      },
+      {
+        "option": "dispatcher Pod와 inference Pod 분리, inference Pod는 vault 자격 없음·새 egress 전부 거부·mTLS",
+        "pros": "모델이 장악돼도 원장·키·업무 파일에 닿지 못한다",
+        "cons": "배포가 복잡하고 실제 CNI 차단은 실측이 필요",
+        "chosen": true,
+        "reason": "모델 Pod에 업무 파일 접근 경로 자체가 없도록 하기 위해"
+      },
+      {
+        "option": "모델 품질 벤치마크로 감사 정확도를 대신 표시",
+        "pros": "숫자를 바로 보여 줄 수 있다",
+        "cons": "제품 과제와 다른 지표다",
+        "chosen": false,
+        "reason": "벤치마크를 제품 감사 정확도로 대신하지 않는 원칙을 세웠다"
+      }
+    ],
+    "decision": {
+      "what": "분모 3종과 추정 연결 분리, 격리 Pod 모델 실행(비 root, 읽기 전용 루트, 권한 상승 금지, 업무 파일·DB·서명키 미mount), 모델 기본 OFF, 사람 검토 데이터 300/50/100건과 오너의 모델 선택 등 7가지 조건이 모두 충족돼야 학습 Job을 시작하는 계획을 확정했다.",
+      "why": "볼 수 없는 것을 본 척하지 않는 것이 감사 도구의 신뢰 기반이고, 모델은 감사 대상과 같은 위험을 가지므로 경계 밖에서 돌려야 한다고 판단했다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "실행 계획(docs/first-release-execution-plan-20260912.md): 수집 경로(로컬 실행기·OTLP·승인된 프록시·Zeek 로그), 의심 시나리오 8종, 단계 P0~P6과 인수 기준 표 작성",
+      "기능 명세 F-01~F-14와 6개 주 메뉴(현황, AI 자산·수집, 탐색·조사, 거버넌스, AI 검토실, 운영·설정) 정의",
+      "격리 추론 템플릿: 기본 suspend, 가중치 revision·SHA-256·라이선스 검토와 실측 격리 영수증이 없으면 기동 거부, 종료 확인 실패 시 MODEL_STOP_UNCONFIRMED",
+      "PC 학습 정책: 입력 15분 이상 없음, CPU 20% 이하, 여유 RAM 18GiB 이상, GPU 온도 80°C 이하 등에서만 후보가 되고 입력이 생기면 종료 요청",
+      "학습 시작 조건 7가지와 승격 조건(영문 성능 저하 2%p 이하, 목표 과제 5%p 이상 개선, 독립 사람 검토) 정의",
+      "인수 기준을 “제안이며 측정 결과가 아님”으로 명시하고 실패 후 기준을 낮춰 통과시키지 않는다고 적음"
+    ],
+    "tech": [
+      "Kubernetes NetworkPolicy",
+      "mTLS",
+      "OpenTelemetry GenAI semconv",
+      "Zeek",
+      "QLoRA",
+      "Ollama",
+      "llama.cpp GGUF"
+    ],
+    "skills": [
+      "requirements",
+      "system_architecture",
+      "security_architecture",
+      "privacy",
+      "mlops_infra",
+      "ml_evaluation",
+      "ux_design",
+      "documentation"
+    ],
+    "metrics": [
+      {
+        "name": "기능 요구사항",
+        "before": null,
+        "after": "14 (F-01~F-14)",
+        "unit": "개",
+        "scope": "1차 기능 명세",
+        "source": "docs/first-release-functional-spec-20260912.md"
+      },
+      {
+        "name": "주 메뉴 수",
+        "before": "13",
+        "after": "6",
+        "unit": "개",
+        "scope": "계획상 UI 재구성(실제 적용은 UX-04)",
+        "source": "docs/first-release-execution-plan-20260912.md"
+      },
+      {
+        "name": "사람 검토 학습 데이터",
+        "before": null,
+        "after": "0/0/0 (요구 300/50/100)",
+        "unit": "건",
+        "scope": "역할별 학습/검증/시험",
+        "source": "docs/first-release-technical-guide-20260912.md"
+      }
+    ],
+    "result": "수치 결과는 없는 계획·명세 단계였다. 구현·합성 무모델 시험은 완료로, 실제 가중치 다운로드·모델 추론·Pod 실행·학습과 CNI·mTLS·GPU 실측은 “미확인”으로 분리해 적었다. 09-19에 Reasoning 학습 후보가 선택됐다(JM-02·JM-03).",
+    "tradeoffs": [
+      "10-06 감사 이후 제품이 “AI 에이전트 행동 증거 계층”으로 재정의되며(EL-06) Zeek·프록시 기반의 “모든 AI 사용 감사” 범위와 격리 Pod 모델 실행 계획은 주 경로에서 내려왔다",
+      "사람 검토 300/50/100건 조건은 끝내 채워지지 않았고 이후 판정 모델은 설계로 정답이 정해진 합성 시나리오로 방향을 바꿨다(JM 트랙)",
+      "계획에 쓴 CipherGuard 분류기는 이후 공개 저장소에서 사라졌다(작업 메모)",
+      "실제 CNI 차단·GPU 실측은 끝까지 확인되지 않았다"
+    ],
+    "lessons": [
+      "인수 기준을 “제안”으로 먼저 고정해 두면 실패 후 기준을 낮추는 유혹을 막을 수 있다",
+      "계획이 정교해도 실제 수집 연동이 없으면 감사 한 번에 우선순위가 뒤집힌다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "분모 3종 중 지금 제품 화면에 실제로 살아 있는 것은 무엇이고, 사라진 것은 왜 사라졌나?",
+        "격리 Pod 설계를 먼저 실측했다면 10-17 판정 모델의 PC 배포 계획이 더 단순해졌을까?",
+        "사람 검토 데이터 300/50/100 조건 대신 합성 정답지로 일찍 전환했다면 모델 트랙이 몇 주 빨라졌을까?"
+      ],
+      "what_if": [
+        "계획 단계에서 OpenTelemetry Collector를 기본 수집 경로로 정했다면 10-06 감사의 “실제 수집 연동 0건” 지적은 없었을 것이다(추정)"
+      ],
+      "revisit_when": "회사 내부망·VPC 배포를 실제로 준비하며 모델 실행 격리 요구가 다시 생길 때"
+    },
+    "resume": {
+      "ko": [
+        "“모든 AI 사용 감사”를 등록 자산·수신량·증거 충족의 세 분모로 나눠 미관측을 숨기지 않는 관측 설계와, 자격·egress·업무 파일 접근을 모두 끊은 격리 Pod 모델 실행 설계를 기능 명세 14개 항목으로 정리"
+      ],
+      "en": [
+        "Specified 14 functional requirements for a first release, including three separate coverage denominators that never report unobserved AI use as covered and an isolated inference-pod design with no vault credentials, no egress and no workspace mounts."
+      ]
+    },
+    "interview": [
+      {
+        "q": "가시성 지표를 어떻게 정직하게 만들었나요?",
+        "a_points": [
+          "분모를 셋으로 나눠 각각의 출처·기간·미확인을 함께 표시",
+          "heartbeat 정상이나 이벤트 0건을 100%로 바꾸지 않음",
+          "시간·목적지만 맞는 연결은 추정 연결로 따로 저장"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "28d4dfb"
+      ],
+      "docs": [
+        "docs/first-release-execution-plan-20260912.md",
+        "docs/first-release-functional-spec-20260912.md",
+        "docs/first-release-technical-guide-20260912.md",
+        "docs/security-model-comparison-20260912.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-02",
+      "EL-06",
+      "JM-02",
+      "UX-04"
+    ],
+    "uncertain": [
+      "09-12 작업은 오너 PC에서 커밋 없이 진행돼 문서 날짜와 10-06 게시 커밋으로만 확인했다",
+      "“마지막 요청”의 오너 원문은 확인하지 못했다",
+      "status를 superseded로 둔 것은 10-06 방향 전환에 근거한 판단이며, 분모 3종 등 일부 원칙은 여전히 유효할 수 있다(코드로 확인하지 않음)"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-04",
+    "track": "evidence-layer",
+    "date_start": "2026-09-22",
+    "date_end": "2026-10-05",
+    "status": "done",
+    "title": "금융 AI 공급사 증거 대조와 변경 시 의무별 재검토",
+    "title_en": "Financial AI supplier evidence reconciliation and per-obligation re-review on change",
+    "summary": "외부 AI를 도입한 금융사의 감사 담당자를 첫 사용자로 정하고, 공급사 증빙과 현재 운영 모델·목적을 대조해 바뀐 부분에 연결된 의무만 재검토로 돌리는 흐름을 만들었다. 10-05에는 이 흐름을 6개 시나리오로 재현하는 검증 데모를 만들어 87개 확인 항목과 관련 회귀 46/46을 통과했다.",
+    "context": "EL-03 계획 이후 한국 인공지능기본법(법률 제21311호)과 시행령의 공급사 조치 인정 조건을 제품 흐름에 넣는 단계였다. 비교 조사에서 xsoft comply, KOMPLI, Regula, Microsoft AGT 같은 기존 도구를 확인하고, 이들이 이미 하는 문서관리·승인 발급을 다시 만들지 않기로 했다. 모든 자료는 합성이며 실제 금융사 연동은 없었다. 데모는 취업용 설명 자료로도 쓰도록 3분 시연 순서와 이력서 초안까지 함께 만들었다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "1차 완성본 계획의 거버넌스 확장(P3)에서 첫 대상 사용자를 금융사 감사 담당자로 좁히고, 10-05에는 취업용 검증 데모 하네스를 만들었다.",
+      "quote": null
+    },
+    "problem": "공급사 문서가 “존재한다”는 것과 “지금 쓰는 모델·목적에 맞는 증거”라는 것은 다르다. 모델 버전이나 사용 목적이 바뀌었는데 예전 평가를 그대로 믿으면 안 된다. 반대로 변경마다 모든 평가를 재검토로 돌리면 담당자 부담이 커진다. 또 금융 업무라는 사실만으로 고영향 AI를 확정하거나, 사람 감독 계획만 있고 수행 기록이 없는데 과제를 종결하는 일이 생길 수 있었다.",
+    "constraints": [
+      "합성 자료만 사용, 실제 금융 고객 자료·기관 연동 없음",
+      "법률 적용성·충분성 판단은 사람에게 남김",
+      "공급사 묶음 문서 1~10개, decoded 합계 64KiB, JSON 128KiB",
+      "시험 중 네트워크 호출 0(fetch·HTTP·TCP·listen 금지 상태에서 실행)",
+      "Windows IPv4 loopback 오류로 일부 시험은 IPv6 loopback 선택"
+    ],
+    "options": [
+      {
+        "option": "변경 시 모든 평가를 재검토로 돌림",
+        "pros": "놓치는 의무가 없다",
+        "cons": "관계없는 의무까지 다시 검토해야 한다",
+        "chosen": false,
+        "reason": "공급사 문서 개정이 위험관리 근거에만 영향을 주는 경우처럼 범위를 좁힐 수 있었다"
+      },
+      {
+        "option": "변경된 증거에 연결된 의무만 재검토",
+        "pros": "담당자 부담이 줄고 왜 재검토인지 설명된다",
+        "cons": "연결 관계를 정확히 유지해야 한다",
+        "chosen": true,
+        "reason": "데모 시연 3단계에서 “무조건 재검토와 연결된 의무만 재검토의 차이”를 핵심 설명으로 삼았다"
+      },
+      {
+        "option": "범용 DMS·승인 엔진 직접 구현",
+        "pros": "흐름을 한 제품에서 끝낸다",
+        "cons": "KOMPLI·AGT 등 기존 도구와 중복",
+        "chosen": false,
+        "reason": "비교 조사 결과 기존 도구 연동을 우선하고 승인 결과는 수집 어댑터로만 받기로 했다"
+      }
+    ],
+    "decision": {
+      "what": "공급 당시 모델·목적이 없거나 다르면 SUPPLIED_*_UNKNOWN/MISMATCH 재검토 지점을 남기고 충분 평가를 막는다. 공급사 근거 재사용은 위험·설명·보호 조치 3종(KR-34-RISK·EXPLAIN·PROTECT)으로 한정하고, 사람 감독과 문서 보관은 자동 승계하지 않는다.",
+      "why": "시행령 제27조제3항이 공급사 실제 이행·제공받은 시스템·중대한 변경 없음 조건에서 제1~3호만 이행한 것으로 보기 때문이다. 고영향 여부와 법적 간주는 사람이 판단한다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "시스템 등록에 공급사·모델 식별자·버전·공급 목적·중대한 변경 여부 추가(schema 1~3 → 4 이관, 새 사실은 미확인으로 두고 재검토 과제 생성)",
+      "공급사 증빙 묶음 등록 API: 문서 해시 검사·암호화 보관, 사용자 파일명을 저장 경로로 쓰지 않음, 임의 URL·경로 읽기 금지",
+      "실제 자료 신고에 담당자의 3항목 출처 확인(공급사 신원·전달 참조·모델·목적·시험 범위)을 요구하되 확인 후에도 not_independently_verified 유지",
+      "평가 당시 문서 해시를 서버가 고정하고 보고서는 별도로 고정한 공개키로만 검증(verify-finance-report)",
+      "AGT 승인 입력 변환기(src/agt-approval-adapter.mjs): 상위 서명·승인자 신원은 검증하지 않는다고 명시",
+      "10-05 취업용 검증 데모(scripts/portfolio-governance-demo.mjs)와 6개 분기 시험, 3분 시연 순서 작성"
+    ],
+    "tech": [
+      "Node.js",
+      "SQLite",
+      "Ed25519",
+      "AES-GCM",
+      "인공지능기본법·시행령",
+      "Microsoft Agent Governance Toolkit(AGT)"
+    ],
+    "skills": [
+      "compliance",
+      "requirements",
+      "problem_definition",
+      "cryptography_integrity",
+      "qa_testing",
+      "standards_integration",
+      "documentation"
+    ],
+    "metrics": [
+      {
+        "name": "데모 시나리오",
+        "before": null,
+        "after": "6/6",
+        "unit": "시나리오",
+        "scope": "합성, 같은 프로세스에서 service.handle 직접 호출",
+        "source": "docs/portfolio-governance-demo-20261005.ko.md"
+      },
+      {
+        "name": "데모 확인 항목",
+        "before": null,
+        "after": "87",
+        "unit": "개 통과",
+        "scope": "보고서 보존·서명·변조 거절·과거 export 거절 포함",
+        "source": "docs/portfolio-governance-demo-20261005.ko.md"
+      },
+      {
+        "name": "관련 회귀",
+        "before": "52/53",
+        "after": "46/46",
+        "unit": "시험",
+        "scope": "첫 회귀는 HTTP 시험의 .test-runs EPERM으로 1건 실패, 최종은 그 파일을 제외한 프로세스 내부 회귀",
+        "source": "docs/portfolio-governance-demo-20261005.ko.md"
+      },
+      {
+        "name": "시험 중 네트워크 호출",
+        "before": null,
+        "after": "0",
+        "unit": "회",
+        "scope": "fetch·HTTP·TCP·listen 금지 상태",
+        "source": "docs/portfolio-governance-demo-20261005.ko.md"
+      }
+    ],
+    "result": "모델 v2 변경, 목적 변경, 공급사 문서 개정, 자체 감독 계획 개정, 감독 수행 기록 누락까지 6개 분기가 의도한 상태로 바뀌었다. 공급사 문서 개정에서는 위험관리 근거만 재검토로 가고 나머지는 유지됐고, 감독 수행 기록 누락에서는 과제 종결이 거절됐다. 87개 확인 항목과 관련 회귀 46/46을 통과했으며 첫 실패 로그(52/53)도 보존했다.",
+    "tradeoffs": [
+      "공급사 금융 재사용 경로는 synthetic:true만 허용하는 제한을 해제하지 않았다",
+      "출처 확인은 담당자의 수동 진술이며 공급사 서명·메일 원본을 독립 검증하지 않는다",
+      "데모는 HTTP/TLS와 별도 호스트의 출처 신뢰 경계를 시험하지 않는다",
+      "감사자의 실제 검토 시간은 측정하지 않았다(humanReviewSeconds:null)"
+    ],
+    "lessons": [
+      "“문서가 있다”와 “지금의 모델·목적에 맞는 증거다”를 분리하는 것이 컴플라이언스 도구의 핵심 차이다",
+      "변경 영향을 의무 단위로 좁히면 재검토 이유를 사람에게 설명할 수 있다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "금융사 감사 담당자를 첫 사용자로 정한 것이 이후 AI 에이전트 모니터링(AM 트랙)으로 방향을 바꿀 때 얼마나 재사용됐나?",
+        "실제 금융사 담당자에게 6개 분기를 보여 줬다면 어떤 분기가 가장 쓸모 있다고 했을까?",
+        "공급사 근거 3종 한정 해석을 법률 전문가가 검토하면 범위가 바뀔까?"
+      ],
+      "what_if": [
+        "범용 DMS를 직접 만들었다면 기능은 넓어졌겠지만 10-06 감사가 지적한 “재발명” 영역을 더 키웠을 것이다(추정)"
+      ],
+      "revisit_when": "실제 금융사나 공공기관 파일럿 고객이 생겨 공급사 증빙을 실제로 받게 될 때"
+    },
+    "resume": {
+      "ko": [
+        "공급사 문서·모델 버전·사용 목적이 바뀔 때 연결된 법적 의무만 재검토로 돌리는 증거 대조 흐름을 구현하고, 6개 시나리오·87개 확인 항목·관련 회귀 46/46으로 재현 가능하게 검증"
+      ],
+      "en": [
+        "Implemented supplier-evidence reconciliation that sends only the affected legal obligations back to review when a supplier document, model version or purpose changes, verified with 6 reproducible scenarios, 87 checks and 46/46 related regressions."
+      ]
+    },
+    "interview": [
+      {
+        "q": "공급사가 준 문서를 왜 그대로 믿지 않았나요?",
+        "a_points": [
+          "공급 당시 모델·목적과 현재 운영 값이 다를 수 있다",
+          "시행령은 중대한 변경이 없을 때만 일부 조치를 인정한다",
+          "그래서 버전·목적 대조와 문서 해시 고정, 담당자 출처 확인을 거치게 했다",
+          "확인 후에도 독립 검증이 아니라는 라벨을 유지했다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "28d4dfb",
+        "6660cf6"
+      ],
+      "docs": [
+        "docs/finance-evidence-20260922.md",
+        "docs/kr-supplier-reliance.md",
+        "docs/portfolio-governance-demo-20261005.ko.md",
+        "reports/finance-comparison-20260922.md"
+      ],
+      "notes": []
+    },
+    "related": [
+      "EL-03",
+      "EL-05",
+      "EL-14"
+    ],
+    "uncertain": [
+      "첫 사용자를 금융사 감사 담당자로 정한 주체가 오너인지 AI 에이전트인지 기록을 찾지 못했다",
+      "decided_by를 ai_agent로 둔 것은 설계 문서 서술에 근거한 추정이다",
+      "09-22~10-05 작업은 커밋 없이 PC에서 진행돼 문서와 10-06 게시 커밋, 10-07 반영 커밋(6660cf6)으로만 확인했다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-05",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": null,
+    "status": "done",
+    "title": "파일럿 v0.1.0 출시와 v0.1.1 권한 보안 패치",
+    "title_en": "Pilot v0.1.0 release and the v0.1.1 authorization security patch",
+    "summary": "고정 의존성을 동봉한 설치 ZIP과 버전별 검증 매니페스트, 암호화 백업·새 경로 복구 도구를 갖춘 로컬·폐쇄망 파일럿 v0.1.0을 냈다. 출시 직후 독립 HTTP 검토에서 읽기 전용이어야 할 감사자 계정이 거버넌스 판단을 바꿀 수 있는 결함이 나와 v0.1.1 패치로 30개 거부 회귀와 10회 반복 설치 검증(390/390)으로 닫았다.",
+    "context": "09-12 계획과 금융 증거 흐름(EL-04)을 묶어 처음으로 설치 가능한 배포본을 만든 날이다. 같은 날 오후 공개 저장소 게시(28d4dfb)와 적대적 감사(EL-06)가 이어졌다. 배포본에는 개인키·자격·로컬 DB·학습 가중치를 넣지 않았고, 개발 PC의 비공개 학습 자료에 의존하는 시험 3개 파일 8개 검사는 이유와 함께 배포 시험에서 뺐다.",
+    "trigger": {
+      "type": "qa",
+      "detail": "v0.1.0 출시 직후 독립 HTTP 검토가 감사자(auditor) 토큰으로 한국 거버넌스 시스템·사람 평가·과제를 변경할 수 있음을 확인했다.",
+      "quote": null
+    },
+    "problem": "읽기·조사만 해야 할 감사자 계정이 한국 거버넌스 시스템 등록, 사람 평가 작성, 과제 변경 세 API를 호출할 수 있었다. 자산·문서 변경에는 이미 검토자·관리자 권한 검사가 있었지만 이 세 API에는 빠져 있었다. 수집원·내부 worker·OIDC 역할 바인딩에도 같은 검사가 필요했다.",
+    "constraints": [
+      "법령 조건이나 사람의 충분성 판정 기준은 바꾸지 않을 것",
+      "원래 v0.1.0 아카이브는 당시 시험 근거로 보존",
+      "Node 24.15.x 고정, 동봉 의존성으로 npm 네트워크 설치 없이 설치",
+      "실패한 반복 회차는 최종 통과에 포함하지 않음"
+    ],
+    "options": [
+      {
+        "option": "권한 경계만 고치는 최소 패치(세 변경 API에 검토자·관리자 역할 요구)",
+        "pros": "판정 기준을 건드리지 않아 재검증 범위가 좁다",
+        "cons": "역할 모델 전체 재설계는 미룸",
+        "chosen": true,
+        "reason": "출시 직후라 영향 범위를 최소화하고 기존 시험 근거를 유지하려 했다"
+      }
+    ],
+    "decision": {
+      "what": "세 변경 API에 검토자·관리자 역할을 요구(감사자는 403)하고 수집원·worker·OIDC 역할 바인딩에도 같은 검사를 적용한 v0.1.1을 내고, 운영 파일럿에는 v0.1.1을 쓰게 한다.",
+      "why": "감사 기록의 신뢰는 누가 사람 판단을 바꿀 수 있는지에 달려 있다. 판정 기준을 건드리지 않는 최소 수정이 재검증 비용과 위험을 줄인다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "v0.1.0 설치 ZIP·배포 디렉터리·서버 Docker 이미지와 release-manifest.json, 102개 소스 해시가 10회 검사와 일치해야 패키징을 허용하는 규칙",
+      "실행기 개선: 각 서버 준비 확인, 시작 실패·종료 시 자신이 시작한 자식만 회수, 상속된 TLS 변수로 HTTPS를 HTTP 주소로 안내하던 문제를 시작 전 거부",
+      "v0.1.1: 감사 게이트웨이·vault 직접 요청 30개 거부와 서명 상태 불변을 회귀 시험으로 고정",
+      "Windows 긴 설치 경로에서 Git diff가 실패하던 문제를 이 프로그램의 Git 호출에만 core.longpaths를 적용해 수정",
+      "의존성 취약점 조회(npm audit 0건)와 CycloneDX SBOM 생성",
+      "v0.1.2 반복 검증 9회차 실패를 원본 그대로 보존하고 원인 조사(합성 fixture의 3ms 시각 역전, fetch failed 원인 미확정)"
+    ],
+    "tech": [
+      "Node.js 24.15",
+      "npm ci",
+      "Docker",
+      "CycloneDX SBOM",
+      "npm audit",
+      "OIDC",
+      "PowerShell"
+    ],
+    "skills": [
+      "access_control",
+      "qa_testing",
+      "operations",
+      "security_architecture",
+      "documentation"
+    ],
+    "metrics": [
+      {
+        "name": "v0.1.0 설치본 반복 검사",
+        "before": null,
+        "after": "10회 × 38개 = 380/380",
+        "unit": "검사",
+        "scope": "설치 ZIP, 매회 새 합성 환경과 독립 서버, 약 188초",
+        "source": "docs/first-release-20261006.md"
+      },
+      {
+        "name": "v0.1.0 배포 전체 회귀",
+        "before": "752/759 (최초 설치, 실패 7)",
+        "after": "756/756",
+        "unit": "검사",
+        "scope": "실패 7 중 6은 배포하지 않는 .local 학습 자료 의존",
+        "source": "reports/first-release-20261006.md"
+      },
+      {
+        "name": "v0.1.1 권한 거부 회귀",
+        "before": null,
+        "after": "30",
+        "unit": "개 요청 거부",
+        "scope": "감사 게이트웨이·vault 직접 요청, 서명 상태 불변",
+        "source": "docs/first-release-security-patch-20261006.md"
+      },
+      {
+        "name": "v0.1.1 설치본 전체",
+        "before": null,
+        "after": "758/758",
+        "unit": "검사",
+        "scope": "Windows, IPv6 loopback",
+        "source": "docs/verification-status.md"
+      },
+      {
+        "name": "v0.1.1 반복",
+        "before": null,
+        "after": "10회 × 39 = 390/390",
+        "unit": "검사",
+        "scope": "설치본",
+        "source": "docs/first-release-security-patch-20261006.md"
+      },
+      {
+        "name": "v0.1.2 반복",
+        "before": null,
+        "after": "10회 요청 중 9회 실행·8회 통과(passed:false)",
+        "unit": "회",
+        "scope": "9회차 117/119",
+        "source": "docs/verification-status.md"
+      },
+      {
+        "name": "의존성 취약점 조회",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "고정 npm 런타임 의존성만, 컨테이너 OS 검사 아님",
+        "source": "reports/first-release-20261006.md"
+      }
+    ],
+    "result": "v0.1.0은 설치본 10회 연속 380/380, 배포 전체 756/756, Linux 이미지 38/38을 통과했다. v0.1.1은 전체 758/758, 10회 반복 390/390, Linux 이미지 39/39를 통과했다. 다만 v0.1.2 반복 검증은 9회 실행 중 8회만 통과해 passed:false로 남겼다.",
+    "tradeoffs": [
+      "v0.1.2의 권한 시험 fetch failed 원인은 확정하지 못하고 진단만 보강했다",
+      "설치 검사의 lease rename EPERM, IPv4 loopback listen EFAULT는 원인 미확정으로 남겼다",
+      "역할 모델 전체(감사자의 사건 종결 등)는 이 패치에서 다루지 않았고 10-06 감사 S10으로 다시 나왔다(EL-12)",
+      "외부 GitHub·레지스트리 공개 출시가 아니라 통제된 전달이었다(private:true, UNLICENSED)"
+    ],
+    "lessons": [
+      "출시 직후의 독립 검토가 가장 값싼 시점에 권한 결함을 찾는다",
+      "실패 회차를 지우지 않고 passed:false로 남겨야 “검증 완료”가 고정된 의미를 갖는다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "권한 검사를 API마다 따로 두지 않고 라우팅 단계의 역할 표 하나로 강제했다면 S10 같은 후속 결함이 줄었을까?",
+        "v0.1.2의 fetch failed가 제품 결함이었을 가능성은 얼마나 되나?",
+        "설치 ZIP 반복 검증 체계를 이후 PC 배포(AM·JM 트랙)에도 그대로 썼다면 무엇이 달라졌을까?"
+      ],
+      "what_if": [
+        "패치 대신 역할 모델을 재설계했다면 v0.1.1 출시는 늦어졌지만 10-06 감사의 S10·S11 지적이 줄었을 것이다(추정)"
+      ],
+      "revisit_when": "외부 사용자에게 설치본을 실제로 배포하거나 역할 모델을 재설계할 때"
+    },
+    "resume": {
+      "ko": [
+        "파일럿 출시 직후 발견된 감사자 권한 상승 결함을 30개 요청 거부 회귀와 10회 반복 설치 검증(390/390)으로 닫은 보안 패치를 내고, 실패한 v0.1.2 회차까지 원본으로 보존"
+      ],
+      "en": [
+        "Shipped a security patch closing a post-release auditor privilege-escalation flaw, locked by 30 denied-request regressions and 10 repeated installer runs (390/390), while keeping a failed later run on record."
+      ]
+    },
+    "interview": [
+      {
+        "q": "출시 검증에서 실패한 회차는 어떻게 다뤘나요?",
+        "a_points": [
+          "최종 통과 회차에 넣지 않고 원본 로그를 보존",
+          "원인 조사 문서를 따로 쓰고 제품의 시간 검증은 완화하지 않음",
+          "원인을 확정하지 못한 것은 미확정으로 남김"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "28d4dfb"
+      ],
+      "docs": [
+        "docs/first-release-20261006.md",
+        "docs/first-release-security-patch-20261006.md",
+        "docs/verification-status.md",
+        "reports/first-release-20261006.md",
+        "reports/release-012-round09-diagnosis-20261006.md"
+      ],
+      "notes": []
+    },
+    "related": [
+      "EL-04",
+      "EL-06",
+      "EL-12"
+    ],
+    "uncertain": [
+      "“독립 HTTP 검토”를 수행한 주체(어떤 AI 역할인지)는 문서에 나오지 않는다",
+      "출시와 패치는 오너 PC 작업이며 커밋은 게시 커밋 28d4dfb 하나로만 확인된다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-06",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": null,
+    "status": "done",
+    "title": "적대적 감사와 방향 전환: “SIEM”에서 “AI 에이전트 행동 증거 계층”으로",
+    "title_en": "Adversarial audit and repositioning: from “SIEM” to an AI agent action evidence layer",
+    "summary": "오너 요청으로 제품 전체에 대한 적대적 감사와 코드 리뷰가 진행됐고, 감사는 이 제품을 “SIEM이 아니라 AI 에이전트 행위 증거 원장의 동작하는 로컬 파일럿”으로 판정했다. 오너가 감사 근거로 개선하라고 지시하자 제품 정의를 “AI 에이전트 행동 증거 계층”으로 바꾸고, 만들 것과 표준에 맡길 것을 나눈 라운드 방식 개선과 CI 게이트를 세웠다.",
+    "context": "같은 날 v0.1.0·v0.1.1 출시(EL-05)와 공개 저장소 게시(28d4dfb, 커밋 15개·추적 파일 873개)가 있었다. 오너는 GitHub HEAD가 아니라 미커밋 변경 77개 파일이 있는 PC 작업본이 실제 감사 대상이라고 정정했고, 감사를 Fable 모델로 처음부터 다시 수행하게 했다. 감사는 두 벌(HEAD와 PC 작업본)을 모두 실행하고 보안 PoC, 모델 산출물 재채점, 시장 조사를 거쳐 5점 척도 성숙도(보안 모델 2, 성능 2, 코드 구조 2, 모델 학습 1)와 결정 사항 5개를 냈다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "오너가 기능·완성도·코드 구조·모델 학습 정도와 재발명 여부를 따지는 적대적 감사를 요청했고, 감사 결과(적대적 감사 보고서(10-06, 비공개))를 받은 뒤 감사 근거로 개선하라고 지시했다. 이어 “부족한 점·재발명 여부·특성화 작업을 계속 이어가도록” 라운드 반복을 지시했다.",
+      "quote": "그러면 이 감사 근거를 기준으로 이 시스템을 개선해라. 그리고 무엇보다 사용가능하면서 바퀴의 재발명에서 벗어난, 그리고 기존 제품의 기능이나 아키텍처가 있다면, GitHub 같은 곳에서 참고하고 우리 만의 차별점을 구체적으로 제시하고 만들어나가라"
+    },
+    "problem": "감사가 확인한 사실은 다음과 같다. 실제 수집 연동이 없었고 “OTLP 수집”은 표준 입력 JSON 변환기였으며 데모 뒤에도 AI 가시성 화면이 비어 있었다. tenant 원장 전체를 지우거나 옛 사본으로 되돌려도 탐지되지 않았고(S1), 서명키가 원장·자격과 같은 호스트에 있으며 문서·백업 암호키도 서명키에서 유도됐다(S2). 버스트 처리량은 약 160~240 EPS였고 조회마다 원장 전체를 재검증하며 GET만 해도 원장이 커졌다(S5). 린터·포매터·CI가 없고 가장 긴 줄이 2,057자였으며, 공개 HEAD는 자체 데모 시험이 깨진 채 올라가 있었다.",
+    "constraints": [
+      "공개 저장소에 올리면 오너 PC의 미커밋 로컬 작업까지 공개됨",
+      "vault 무의존성 원칙(공급망 공격 표면 최소화)",
+      "기존 코드의 긴 줄을 한꺼번에 재포맷하면 대량 변경으로 리뷰가 불가능해짐",
+      "Windows 개발 PC와 Linux 컨테이너 양쪽에서 시험이 돌아야 함",
+      "오너 지시: 권한은 다 줄 테니 병목 없이 끝까지 진행"
+    ],
+    "options": [
+      {
+        "option": "“SIEM” 이름 유지",
+        "pros": "기존 문서·폴더명과 맞음",
+        "cons": "상관분석·UEBA·대량 검색을 약속하지만 20~240 EPS 제품이라 첫 기술 검토에서 신뢰를 잃음",
+        "chosen": false,
+        "reason": "감사가 “오해 유발”로 판정했다"
+      },
+      {
+        "option": "“AI 에이전트 행동 증거 계층”으로 재정의하고 수집·저장·검색·상관분석은 표준(OpenTelemetry, OCSF, C2SP, 기존 위트니스)에 맡김",
+        "pros": "재발명 영역에서 경쟁하지 않고 검증 가능한 증거 사슬에 집중",
+        "cons": "기존 SIEM 같은 기능 범위를 내려놓음",
+        "chosen": true,
+        "reason": "감사 결정 1번 권고(예)와 오너의 “바퀴의 재발명에서 벗어난” 지시"
+      },
+      {
+        "option": "신뢰 모델 먼저 vs 수집 연동 먼저",
+        "pros": "감사는 신뢰 모델 먼저를 권고(유일한 차별화 근거)",
+        "cons": "수집이 없으면 쓸 수 있는 제품이 아님",
+        "chosen": true,
+        "reason": "실제로는 1라운드에서 투명성 로그·키 분리·OTLP 수집·CI를 네 갈래로 병렬 구현해 둘 다 진행했다"
+      },
+      {
+        "option": "개선 반영 방식: PC 폴더 반영 / GitHub PR / 패치만",
+        "pros": "PC 반영은 원본 백업과 패치로 되돌릴 수 있음, PR은 공개 이력이 남음",
+        "cons": "PR은 미커밋 로컬 작업까지 공개됨",
+        "chosen": true,
+        "reason": "오너가 결정 카드에서 “PC 폴더 반영”을 골랐다. 클라우드 작업 브랜치에서 개발하고 PC에는 원본 백업과 함께 패치로 전달"
+      },
+      {
+        "option": "긴 줄 일괄 재포맷",
+        "pros": "코드가 한 번에 읽기 쉬워짐",
+        "cons": "수천 줄 diff로 실제 변경이 묻힘",
+        "chosen": false,
+        "reason": "기존 273개 파일은 줄 수 기준선만 넘지 않게 하고 새 파일에만 160자 제한을 걸었다(f8b35cc)"
+      }
+    ],
+    "decision": {
+      "what": "제품을 “AI 에이전트 행동 증거 계층”으로 재정의하고, 직접 만드는 범위를 증거 원장, 외부 위트니스와 묶인 투명성 로그, 오프라인 검증기·정책 재생, 한국 규제 증거 묶음으로 좁힌다. 개선은 “재감사 → 바퀴의 재발명 점검 → 차별점 구현 → 다음 후보” 라운드로 반복하고, 매일 점검 루틴을 둔다.",
+      "why": "감사가 확인한 결함 중 S1·S2가 유일한 차별화 근거인 변조 증거 능력을 무효로 만들었고, 수집·검색은 이미 표준과 오픈소스가 성숙해 있었다. 오너는 재발명을 피하고 차별점을 구체적으로 만들라고 지시했다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "적대적 감사·코드 리뷰: HEAD와 PC 작업본 전체 시험 2회, 제품 기동·데모·UI 캡처·내보내기 오프라인 검증, 보안 PoC 2회(결함 S1~S12), 모델 산출물 재채점, 시장 조사",
+      "fe750be·853fdd4: README와 문서의 제품 정의를 증거 계층으로 바꾸고 만들 것/연결할 것 표, GitHub 참고 구조, 라운드 기록 문서(docs/improvement-rounds.md) 작성",
+      "f8b35cc: 의존성 없는 소스 검사(npm run check): 구문 검사, BOM·CR·후행 공백, test.only 금지, 줄 길이 기준선",
+      "9c87e8b: GitHub Actions CI(contents: read 최소 권한, 자격 미보존, Node 24.15.0과 24.x 직렬 시험, 액션을 커밋 SHA로 고정)와 허용 목록 밖 skip이면 실패하는 TAP 게이트",
+      "시험 위생: 파일별 시간 제한 직렬 실행기(4e39b69), 통과 시 토큰·키가 든 fixture 삭제(2fef576, a2e278d), 비공개 연구 산출물 시험은 이유를 적어 skip(16d3604), IPv4 기본값(07206c9)",
+      "작업을 7개 작업 묶음(WP-C·O·T·X·F·E·R)으로 나눠 병렬 구현하고 병합 후 별도 검토자의 적대적 재검토 2건 수행"
+    ],
+    "tech": [
+      "GitHub Actions",
+      "TAP",
+      "node:test",
+      "OpenTelemetry",
+      "OCSF",
+      "C2SP",
+      "RFC 6962",
+      "litewitness",
+      "git worktree"
+    ],
+    "skills": [
+      "adversarial_testing",
+      "decision_making",
+      "problem_definition",
+      "system_architecture",
+      "ci_cd",
+      "qa_testing",
+      "standards_integration",
+      "ai_collaboration"
+    ],
+    "metrics": [
+      {
+        "name": "감사 시점 전체 시험(GitHub HEAD)",
+        "before": null,
+        "after": "874/887 통과, 12 실패, 1 skip",
+        "unit": "시험",
+        "scope": "컨테이너, Node 24.21",
+        "source": "적대적 감사 보고서(10-06, 비공개)"
+      },
+      {
+        "name": "감사 시점 전체 시험(PC 작업본)",
+        "before": null,
+        "after": "1,013/1,023 통과, 9 실패, 1 skip",
+        "unit": "시험",
+        "scope": "컨테이너, Node 24.21",
+        "source": "적대적 감사 보고서(10-06, 비공개)"
+      },
+      {
+        "name": "1라운드 종료 전체 시험",
+        "before": "1,023개 중 실패 9",
+        "after": "1,189개 중 1,183 통과, 실패 0, skip 6",
+        "unit": "시험",
+        "scope": "skip 6은 비공개 산출물 의존, 이유 표시",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "가장 긴 코드 줄",
+        "before": null,
+        "after": "2,057",
+        "unit": "자",
+        "scope": "감사 시점 src/service.mjs",
+        "source": "적대적 감사 보고서(10-06, 비공개)"
+      },
+      {
+        "name": "줄 길이 기준선",
+        "before": null,
+        "after": "273개 파일, 300자 초과 줄 1,460개",
+        "unit": null,
+        "scope": "기존 파일은 증가 금지, 새 파일은 160자 제한",
+        "source": "f8b35cc"
+      },
+      {
+        "name": "버스트 처리량",
+        "before": null,
+        "after": "238.86",
+        "unit": "EPS",
+        "scope": "감사 컨테이너(Xeon 2.1GHz 4vCPU) 재현, 저자 PC 158 EPS",
+        "source": "적대적 감사 보고서(10-06, 비공개)"
+      },
+      {
+        "name": "1라운드 적대적 재검토 결함",
+        "before": null,
+        "after": "13",
+        "unit": "건",
+        "scope": "재검토 2건, 모두 처리",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "제품 정의가 “AI 에이전트 행동 증거 계층”으로 바뀌었고, 1라운드가 10-07에 끝났을 때 전체 시험은 1,189개 중 1,183개 통과, 실패 0이 됐다(감사 시점 1,023개 중 9 실패). CI·소스 검사·TAP 게이트가 생겼고, 감사 결함 12건 중 10건이 1라운드에서 처리됐다(S2는 데이터 키 분리까지, S3는 2라운드로). 라운드 반복은 매일 08:53 점검 루틴으로 이어졌다.",
+    "tradeoffs": [
+      "SIEM이 약속하는 상관분석·UEBA·대량 검색은 만들지 않기로 했다",
+      "기존 긴 줄은 그대로 두었다(기준선 방식)",
+      "시험은 Linux 컨테이너 중심이라 Windows PC 전체 통과는 그 시점에 확인하지 않았다",
+      "감사가 권고한 “reports/ 분리”와 “검증기 Apache-2.0 공개”는 이 항목에서 하지 않았다",
+      "모델 연구(KLUE 미세조정)는 상수 기준선보다 낮아 제품 차별점에서 제외됐다(JM-03)"
+    ],
+    "lessons": [
+      "이름이 약속하는 기능과 실제 강점이 다르면 첫 기술 검토에서 신뢰를 잃는다",
+      "만들 것과 연결할 것을 표로 먼저 나누면 차별점이 구체해지고 범위가 줄어든다",
+      "대량 재포맷 대신 기준선(ratchet)으로 품질을 조이면 리뷰 가능한 diff를 유지할 수 있다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "신뢰 모델과 수집 연동을 병렬로 진행한 것이 감사 권고(신뢰 모델 먼저)보다 실제로 나은 선택이었나, 아니면 리뷰 부담만 늘렸나?",
+        "PC 폴더 반영 대신 처음부터 별도 브랜치를 공개 PR로 운영했다면 이후 PC 전달 비용(패치 다운로드·해시 대조)이 얼마나 줄었을까?",
+        "“증거 계층”이라는 정의가 10-15 이후 에이전트 모니터링·탐지(AM 트랙)로 넓어진 지금도 맞는 이름인가?"
+      ],
+      "what_if": [
+        "감사 없이 SIEM 방향을 계속 갔다면 처리량과 상관분석 경쟁에서 상용 제품과 정면으로 부딪혔을 것이다(추정)"
+      ],
+      "revisit_when": "실제 회사 내부망 고객이 SIEM 대체 기능을 요구하거나, 증거 계층만으로 구매 이유가 서지 않는다는 피드백이 나올 때"
+    },
+    "resume": {
+      "ko": [
+        "적대적 감사 결과를 받아들여 제품을 “운영자를 믿지 않아도 검증 가능한 AI 행동 증거 계층”으로 재정의하고, CI·소스 검사·TAP 게이트를 도입해 전체 시험을 실패 9건에서 1,189개 중 실패 0으로 정리"
+      ],
+      "en": [
+        "Repositioned the product from a self-styled SIEM to a verifiable AI agent action evidence layer after an adversarial audit, and added CI, source checks and a TAP gate that took the suite from 9 failures to 0 failures across 1,189 tests."
+      ]
+    },
+    "interview": [
+      {
+        "q": "감사 결과를 받고 무엇을 가장 먼저 바꿨나요?",
+        "a_points": [
+          "이름과 범위: SIEM을 내리고 증거 계층으로",
+          "만들 것(원장·투명성 로그·검증기·한국 규제 묶음)과 표준에 맡길 것(수집·검색·SIEM)을 표로 분리",
+          "라운드 방식으로 재감사와 재발명 점검을 반복"
+        ]
+      },
+      {
+        "q": "코드 한 줄이 2,057자였는데 왜 한꺼번에 재포맷하지 않았나요?",
+        "a_points": [
+          "대량 diff가 실제 보안 수정을 가린다",
+          "기존 파일은 긴 줄 수가 늘지 않게만 막고 새 파일은 160자 제한",
+          "점진적으로 줄이는 ratchet 방식"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "891ca6f",
+        "fe750be",
+        "853fdd4",
+        "f8b35cc",
+        "9c87e8b",
+        "4e39b69",
+        "2fef576",
+        "a2e278d",
+        "16d3604",
+        "07206c9",
+        "04fa3cc"
+      ],
+      "docs": [
+        "docs/evidence-layer.md",
+        "docs/improvement-rounds.md",
+        "README.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-05",
+      "EL-07",
+      "EL-08",
+      "EL-09",
+      "EL-10",
+      "EL-11",
+      "EL-12",
+      "JM-03",
+      "UX-04"
+    ],
+    "uncertain": [
+      "“병렬 구현이 감사 권고와 다르다”는 해석은 작업 메모의 진행 상황에 근거한 추정이며 명시적 결정 기록은 없다",
+      "감사 결함 12건 중 1라운드 처리 10건이라는 집계는 작업 메모의 1라운드 결과 보고에 근거한다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-07",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "되돌리기·삭제를 거부하는 투명성 로그(감사 S1, 차별점 D1)",
+    "title_en": "A transparency log that refuses rollback and deletion (audit S1, differentiator D1)",
+    "summary": "tenant마다 RFC 6962 Merkle 트리와 C2SP 서명 체크포인트를 두고, 모든 tenant의 머리를 묶은 heads 로그를 독립 위트니스(litewitness·OmniWitness)에 제출해 공동서명을 받게 했다. enforce 모드는 되돌리기·갈라짐·tenant 삭제가 보이면 시작을 거부하거나 격리하며, 구현 뒤 별도 검토자가 찾은 F1~F8을 모두 처리하고 실제 litewitness와 상호운용을 확인했다.",
+    "context": "EL-06의 방향 전환에서 “유일한 차별화 근거”로 꼽힌 변조 증거 능력을 실제로 만드는 작업이다. 감사 S1은 키 없이도 tenant 이력 전체 삭제나 과거 사본 롤백을 탐지하지 못하고 검증기가 항상 rollbackChecked:false를 낸다는 것이었다. 감사는 외부 앵커 후보로 Object Lock 버킷, Sigstore Rekor, SCITT 투명성 서비스를 제시했다. 작업은 작업 묶음 WP-T(10-06)와 WP-E(복구 epoch·pin 강화), WP-T2(10-07, F1)로 나뉘었다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "감사 S1(HIGH): tenant 전 테이블을 지우고 재기동하면 검증이 정상(valid:true)으로 나오고, 과거 시점 사본으로 바꿔도 나중 기록이 흔적 없이 사라졌다. 오너의 10-06 개선 지시(EL-06)가 재발명을 피하고 기존 아키텍처를 참고하라고 했다.",
+      "quote": null
+    },
+    "problem": "checkpoint 행이 없으면 genesis checkpoint를 즉석 서명했고, 원장과 checkpoint가 함께 없으면 정상으로 취급했다. append-only 트리거는 vault 자신의 연결에만 적용돼 외부 연결에서는 우회할 수 있었다. 구현 뒤 재검토에서는 F1(서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명), F2(monitor 모드가 롤백 뒤에도 pin을 덮어써 흔적을 지움), F3(pin 파일이 없으면 첫 기동처럼 통과), F4(사례 보고서 이벤트에 순번·해시가 없으면 포함 증명 없이 통과), F5(위트니스 응답 전체 버퍼링), F6(시작 시 경쟁 조건), F7(실행 중 상태 유실 시 갈라진 이력 재봉인), F8(heads 행이 tenant 수만큼 커짐)이 나왔다.",
+    "constraints": [
+      "vault 무의존성 원칙: C2SP 라이브러리를 직접 작성해야 함",
+      "위트니스는 운영자와 독립적일 때만 의미가 있음(같은 사람이 운영하면 기능 확인용)",
+      "복구(restore)는 항상 투명성 로그를 갈라지게 만듦",
+      "기존 원장과 내보내기, 예전 검증기와의 호환을 유지할 것"
+    ],
+    "options": [
+      {
+        "option": "위트니스 서버를 직접 구현",
+        "pros": "완전한 통제",
+        "cons": "재발명이고 운영자와 같은 신뢰 경계",
+        "chosen": false,
+        "reason": "개발·시험용 scripts/witness.mjs만 두고 운영은 litewitness·OmniWitness를 쓴다"
+      },
+      {
+        "option": "기존 C2SP tlog-witness(litewitness·OmniWitness)에 공동서명 받기",
+        "pros": "표준이고 독립 운영자가 equivocation(두 갈래 이력)을 거부",
+        "cons": "C2SP 라이브러리를 무의존성으로 직접 써야 함",
+        "chosen": true,
+        "reason": "Go/torchwood 시험 벡터와 실제 litewitness 상호운용 시험으로 정확성을 보정"
+      },
+      {
+        "option": "RFC 3161 타임스탬프 기관이나 Object Lock(WORM) 버킷만으로 앵커링",
+        "pros": "구현이 단순",
+        "cons": "타임스탬프는 받은 해시에 서명할 뿐 두 갈래 이력을 막지 못함",
+        "chosen": false,
+        "reason": "경쟁 도구(auditant) 비교에서 equivocation을 막지 못하는 점이 차별점으로 정리됐다"
+      },
+      {
+        "option": "F1 대응: heads 로그만 위트니스에 제출(기본)",
+        "pros": "위트니스 등록 origin이 하나라 운영이 쉬움",
+        "cons": "서명 키 보유자의 tenant 단위 되돌리기를 못 막음",
+        "chosen": false,
+        "reason": "기본으로 남기되 보증 수준을 database_tamper로 정직하게 표시"
+      },
+      {
+        "option": "F1 대응: witnessTenantLogs로 tenant 로그도 각자의 origin으로 위트니스에 제출(선택 기능)",
+        "pros": "위트니스가 tenant 되돌리기를 직접 거부",
+        "cons": "tenant 수만큼 위트니스 등록·제출 부담",
+        "chosen": true,
+        "reason": "검증 결과에 rollbackCheckedAgainst(database_tamper/signing_key_holder)를 표시하고 --require-tenant-witness로 강한 수준을 요구할 수 있게 함"
+      }
+    ],
+    "decision": {
+      "what": "tenant별 RFC 6962 트리와 커밋 시 C2SP 체크포인트, heads 로그의 위트니스 공동서명, enforce 모드의 시작 거부·격리(쓰기 API 503)를 기본 구조로 하고, F1은 선택 기능 witnessTenantLogs와 보증 수준 표시로 대응한다.",
+      "why": "운영자를 믿지 않아도 외부 관찰자가 되돌리기와 갈라짐을 거부해야 변조 증거가 의미를 갖는다. 위트니스는 표준을 쓰고, 직접 만드는 부분은 운영 의미(fail-closed, tenant 삭제 탐지, 복구 epoch)로 좁혔다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "5d62db3: 무의존성 C2SP/RFC 6962 라이브러리 src/tlog.mjs(signed-note, tlog-checkpoint, cosignature, tlog-witness 클라이언트, tlog-proof, 오프라인 검증기), Go/torchwood 시험 벡터 재생",
+      "81bad99·79c489a: 원장 트랜잭션 안에서 tenant 트리 갱신, 커밋 때만 체크포인트 서명, heads 로그 위트니스 pump, 시작 시 pin·위트니스 확인과 격리, /api/integrity가 확인 못 한 범위(rollback·truncation·tenant_removal)를 밝힘",
+      "ef9ef29: 사례 보고서에 포함·일관성 증명을 넣고 verify.mjs에 --witness·--quorum·--origin-base·--min-checkpoint·--max-staleness 옵션 추가",
+      "be5c6bc·49f30b4·67179d9·f08d1b9: F2(pin은 일관성 확인된 방향으로만), F3(새 vault는 크기 0 pin부터), F4(순번·해시 필수), F5(응답 64 KiB까지만), F6·F7, 시작 시 정족수 요구(startupProbe), F8(바뀐 tenant 항목만 저장)",
+      "de27b17·4088770: 복구 시 서명된 새 epoch를 시작하고 잃은 범위를 기록, 실제 litewitness로 epoch 시험",
+      "bc4f5f5·d2b7d61·2771a51·184ea5d: witnessTenantLogs, tenantCosigned 오프라인 검증, rollbackCheckedAgainst, 두 tenant origin의 litewitness 상호운용과 tenant 롤백 거부"
+    ],
+    "tech": [
+      "RFC 6962 Merkle tree",
+      "C2SP signed-note",
+      "C2SP tlog-checkpoint",
+      "C2SP tlog-witness",
+      "litewitness (torchwood)",
+      "OmniWitness",
+      "Ed25519",
+      "ssh-agent protocol",
+      "SQLite"
+    ],
+    "skills": [
+      "cryptography_integrity",
+      "security_architecture",
+      "threat_modeling",
+      "adversarial_testing",
+      "standards_integration",
+      "qa_testing"
+    ],
+    "metrics": [
+      {
+        "name": "재검토 결함(투명성 로그)",
+        "before": null,
+        "after": "F1~F8 8건 모두 처리",
+        "unit": "건",
+        "scope": "1라운드 적대적 재검토",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "heads 행 저장 크기(tenant 1,000개, 1개 변경)",
+        "before": "약 161 KB",
+        "after": "약 570 bytes",
+        "unit": "페이지 바이트",
+        "scope": "F8 수정",
+        "source": "f08d1b9"
+      },
+      {
+        "name": "위트니스 응답 읽기 상한",
+        "before": "무제한(전체 버퍼링)",
+        "after": "64",
+        "unit": "KiB",
+        "scope": "F5 수정",
+        "source": "49f30b4"
+      },
+      {
+        "name": "C2SP/RFC 6962 라이브러리",
+        "before": null,
+        "after": "1,871줄 추가",
+        "unit": null,
+        "scope": "src/tlog.mjs와 시험",
+        "source": "5d62db3"
+      }
+    ],
+    "result": "실제 litewitness와 롤백 거부, fork 422 후 격리, 두 tenant origin 공동서명과 tenant 롤백 거부 상호운용 시험이 통과했다. F1 PoC는 신선한 tenant 공동서명이 없어 --require-tenant-witness에서 실패하도록 바뀌었다. 다만 서명 키 보유자의 tenant 삭제는 heads 모니터로만 탐지된다는 한계를 문서에 남겼다.",
+    "tradeoffs": [
+      "heads 잎은 여전히 vault 키로 서명돼 vault 호스트 장악은 막지 못했다(2라운드 heads 서명기로 대응, EL-13)",
+      "마지막 tenant 공동서명 이후 maxStalenessSeconds 안의 되돌리기, 미등록 tenant, 복구 epoch의 vault 키 서명은 남은 범위",
+      "전체 재검증과 시작 시간이 늘었다(EL-10 측정)",
+      "enforce 운영 배포는 업그레이드 때 pin 부트스트랩·startupProbe 확인이 필요하고 Kubernetes 매니페스트에 pin 전용 볼륨이 없다"
+    ],
+    "lessons": [
+      "외부 관찰자가 일관성을 확인해야 운영자를 믿지 않는 증거가 된다. 서명만으로는 되돌리기를 막지 못한다",
+      "보증 수준을 하나의 boolean으로 말하지 말고 어떤 공격자까지 막았는지(database_tamper·signing_key_holder)로 표시해야 정직하다",
+      "직접 쓴 암호 라이브러리는 공식 시험 벡터와 실제 구현 상호운용으로만 신뢰할 수 있다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "witnessTenantLogs를 기본값으로 켰다면 실제 운영에서 위트니스 등록 부담이 감당 가능했을까?",
+        "독립 위트니스 운영자를 고객이 어떻게 확보할지(공용 위트니스 네트워크 vs 자체 운영) 정하지 않은 채 차별점이라고 말할 수 있나?",
+        "Rekor v2나 SCITT 투명성 서비스를 앵커로 썼다면 직접 쓴 C2SP 코드의 유지 부담이 줄었을까?"
+      ],
+      "what_if": [
+        "의존성 정책을 완화해 golang.org/x/mod/sumdb/note 계열 구현을 썼다면 구현 시간은 줄고 상호운용 위험도 낮았겠지만 공급망 표면이 늘었을 것이다"
+      ],
+      "revisit_when": "실제 고객이 독립 위트니스를 운영하거나 공용 위트니스 네트워크에 연결할 때"
+    },
+    "resume": {
+      "ko": [
+        "RFC 6962·C2SP 체크포인트와 독립 위트니스 공동서명으로 tenant 단위 롤백·포크·삭제를 거부하는 투명성 로그를 무의존성으로 구현하고, 적대적 재검토 결함 8건을 처리한 뒤 실제 litewitness와 상호운용을 검증"
+      ],
+      "en": [
+        "Built a dependency-free transparency log (RFC 6962 trees, C2SP checkpoints, independent witness cosigning) that refuses per-tenant rollback, fork and deletion; resolved 8 adversarial review findings and verified interop with a real litewitness."
+      ]
+    },
+    "interview": [
+      {
+        "q": "서명된 원장인데 왜 롤백을 못 잡았나요?",
+        "a_points": [
+          "원장과 checkpoint를 함께 지우거나 옛 사본으로 통째로 바꾸면 내부 서명만으로는 구별할 수 없다",
+          "외부 위트니스가 이전 크기·루트를 기억하고 일관성 증명 없이는 공동서명하지 않아야 한다",
+          "키 보유자 공격은 tenant 로그 자체를 위트니스에 맡겨야 막힌다"
+        ]
+      },
+      {
+        "q": "타임스탬프 기관을 쓰지 않은 이유는?",
+        "a_points": [
+          "타임스탬프는 받은 해시에 서명할 뿐 두 갈래 이력을 막지 못한다",
+          "C2SP 위트니스는 일관성 증명을 확인한 뒤에만 서명한다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "5d62db3",
+        "81bad99",
+        "79c489a",
+        "ef9ef29",
+        "25579e5",
+        "9df5577",
+        "49f30b4",
+        "9221385",
+        "de27b17",
+        "be5c6bc",
+        "67179d9",
+        "f08d1b9",
+        "f27534f",
+        "4088770",
+        "abae3d3",
+        "bc4f5f5",
+        "d2b7d61",
+        "2771a51",
+        "184ea5d",
+        "df00946"
+      ],
+      "docs": [
+        "docs/transparency-log.md",
+        "docs/evidence-layer.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-06",
+      "EL-08",
+      "EL-10",
+      "EL-11",
+      "EL-13"
+    ],
+    "uncertain": [
+      "Object Lock·Rekor·SCITT를 앵커 대안으로 명시적으로 비교한 기록은 감사 보고서의 권고 목록뿐이며, 버린 이유를 따로 적은 문서는 없다(추정: 표준 위트니스가 equivocation을 직접 막기 때문)"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-08",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "키 분리, 파기 잔여물 제거, 숨김 커밋먼트와 이벤트 키 감싸기(감사 S2·S3·S4)",
+    "title_en": "Key separation, erasure-remnant removal, hiding commitments and event-key wrapping (audit S2, S3, S4)",
+    "summary": "문서·백업 암호키를 서명키에서 떼어 별도 32바이트 데이터 루트 키와 HKDF 용도별 키로 바꾸고, 파기한 키가 SQLite 빈 페이지·WAL에 남지 않게 했다. 2라운드에는 원장에 salt를 둔 HMAC 커밋먼트만 서명하고 이벤트 키를 tenant별 키 epoch 비밀로 감싸 별도 키스토어에 두어, epoch 파기만으로 모든 DB 사본과 백업에서 그 기간을 읽을 수 없게 했다.",
+    "context": "EL-06 감사의 S2(HIGH), S3·S4(MEDIUM)를 처리한 작업이다. 1라운드(10-06, 작업 묶음 WP-K 일부·WP-F)는 키 분리와 파기 잔여물을, 2라운드(10-07, WP-K)는 이벤트 키 감싸기를 다뤘다. 감사는 PEM 하나로 보관 문서를 오프라인 복호할 수 있음과 2인 승인 파기 뒤에도 키 바이트가 파일에 남음을 실제로 재현했다. 키 분리·잔여물 제거는 1라운드 시험에서 신규 시험 17개가 통과한 상태로 병합됐다(작업 메모).",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "감사 S2: 서명키가 원장·자격과 같은 디렉터리에 있고 문서·백업 AES 키가 서명키에서 유도됨. S3: 이벤트 키(DEK)가 같은 DB에 평문 BLOB으로 있고 payloadHash가 무염 SHA-256. S4: 파기 후 평문과 키가 WAL·DB 파일에 잔존.",
+      "quote": null
+    },
+    "problem": "서명키 PEM 하나로 모든 문서·백업이 복호화됐고, 서명키를 회전하거나 KMS로 옮길 수 없었다(키를 바꾸면 기존 문서를 복구할 수 없음). 파기 뒤에도 키 바이트가 DB 파일에 남아 원장 암호문과 조합하면 “파기된” 이벤트를 다시 열 수 있었다. 이벤트 키가 같은 DB에 평문으로 있어 DB 사본이나 백업을 가진 사람은 보관 중인 모든 이벤트를 열 수 있었고, 값 범위가 좁은 이벤트는 원장의 payloadHash와 영수증 해시로 추측 확인할 수 있었다. 2라운드 재현에서 지운 이벤트 하나가 실제로 확인됐다.",
+    "constraints": [
+      "키 저장소나 새 암호 구성을 만들지 않을 것(재발명 회피)",
+      "KMS는 SDK 의존성 없이 인터페이스만",
+      "서명된 v1 원장 레코드는 고쳐 쓸 수 없음: v1은 그대로 검증되게 유지",
+      "기존 로컬 설치를 업그레이드 도구로 옮길 수 있어야 함",
+      "읽기 비용 증가를 측정해 기록할 것"
+    ],
+    "options": [
+      {
+        "option": "서명을 KMS/HSM 또는 데이터 볼륨을 mount하지 않는 서명 전용 프로세스로 이동",
+        "pros": "서명키 노출을 근본적으로 줄임",
+        "cons": "1라운드 범위에서 구현·시험 부담이 큼",
+        "chosen": false,
+        "reason": "1라운드는 데이터 키 분리까지만 하고 서명 키 격리는 2라운드 heads 서명기로 넘겼다(EL-13)"
+      },
+      {
+        "option": "별도 32바이트 데이터 루트 키 + HKDF 용도별 키, 키 ID를 AAD에 묶음",
+        "pros": "서명키와 무관하게 회전 가능, 다운그레이드 탐지",
+        "cons": "키 파일 하나가 더 생겨 백업·운영 부담",
+        "chosen": true,
+        "reason": "감사 권고(별도 secret에서 HKDF로 용도별 분리)와 일치하는 표준 방식"
+      },
+      {
+        "option": "파기 잔여물: secure_delete + WAL truncate",
+        "pros": "실행 중에도 즉시 적용, 회귀 시험으로 검증 가능",
+        "cons": "파일시스템·SSD·스냅샷 잔여물은 범위 밖",
+        "chosen": true,
+        "reason": "감사가 제시한 VACUUM보다 운영 중 부담이 작다(추정)"
+      },
+      {
+        "option": "이벤트 키: 표준 봉투 암호화(KEK가 DEK를 감쌈) + tenant별 월 단위 키 epoch",
+        "pros": "epoch 하나 파기로 모든 사본·백업에서 그 기간을 읽을 수 없게 함",
+        "cons": "읽기 비용 증가, 키스토어를 따로 백업해야 함",
+        "chosen": true,
+        "reason": "새 암호 구성을 만들지 않고 AES-256-GCM AAD에 tenant·키 ID·순번·epoch를 묶는 표준 구성"
+      }
+    ],
+    "decision": {
+      "what": "데이터 키를 서명키에서 분리하고(엔터프라이즈 프로필은 데이터 키 없이 시작 거부), 파기 후 secure_delete와 WAL truncate를 수행하며, 새 이벤트는 salt를 둔 HMAC-SHA256 커밋먼트와 키 epoch로 감싼 이벤트 키(EVENT_KEYSTORE_DIR)로 저장한다.",
+      "why": "키 하나가 새면 무결성과 기밀성이 함께 무너지는 구조를 끊고, 파기(crypto-shredding)가 모든 사본에서 실제로 효력을 갖게 하기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "eed035f: src/data-keys.mjs 키링(32바이트 raw, 그룹·기타 쓰기 금지, DATA_DIR 안 금지)과 문서 봉투 v2·백업 manifest v2, scripts/data-key.mjs generate/id/migrate",
+      "87abe6d: Kubernetes에서 데이터 키 Secret을 vault Pod에만 mount하고 정적 검사로 다른 Pod mount 금지",
+      "1ebea2b·1cbf76d·7b848ef: 마이그레이션 중단 내성, vault 시작 시 키 ID 기록, 분리된 vault의 서명키 봉인 백업 거부(다운그레이드 방지), 실패한 업그레이드 재실행 보완",
+      "f01c419: secure_delete와 wal_checkpoint(TRUNCATE), vault를 연 채로 DB·WAL을 스캔해 파기 키가 없는지 확인하는 회귀 시험",
+      "8a74038: 이벤트 봉투 v2(이벤트마다 32바이트 salt, HMAC 커밋먼트), 영수증 지문 fp2(tenant 키 epoch로 HMAC)",
+      "407d868·8710c89·d8467e7: 키스토어 감싸기, 평문 64바이트 단위 패딩, DB 쓰기 권한자가 epoch 행을 심어 살아 있는 epoch를 파기시키는 공격을 키스토어의 첫 이전 표시(moved.json)로 차단"
+    ],
+    "tech": [
+      "HKDF-SHA256",
+      "AES-256-GCM (AAD)",
+      "HMAC-SHA256",
+      "envelope encryption (KEK/DEK)",
+      "crypto-shredding",
+      "SQLite secure_delete",
+      "SQLite WAL",
+      "Kubernetes Secret"
+    ],
+    "skills": [
+      "cryptography_integrity",
+      "security_architecture",
+      "privacy",
+      "adversarial_testing",
+      "operations",
+      "performance_optimization"
+    ],
+    "metrics": [
+      {
+        "name": "1,000건 내보내기",
+        "before": "99–130",
+        "after": "199–250 (키스토어 모드)",
+        "unit": "ms",
+        "scope": "2라운드 시작 9177cee 대비, 반복 실행 최소~최대",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "/api/integrity",
+        "before": "372–383",
+        "after": "699–840 (키스토어 모드)",
+        "unit": "ms",
+        "scope": "1,000건",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "순간 처리량",
+        "before": "233",
+        "after": "215 (키스토어 모드)",
+        "unit": "EPS",
+        "scope": "scripts/benchmark.mjs",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "수집 이벤트당 비용",
+        "before": "3.0–3.4",
+        "after": "3.45–3.47",
+        "unit": "ms",
+        "scope": "키스토어 모드",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "이벤트당 추가 연산",
+        "before": null,
+        "after": "약 20~25",
+        "unit": "µs (항목별)",
+        "scope": "HMAC 커밋먼트, 감싸기 키 HKDF, GCM 풀기 각각",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "파기 이벤트 추측 확인",
+        "before": "확인됨(9177cee)",
+        "after": "v2 레코드에서 확인 안 됨",
+        "unit": null,
+        "scope": "test/event-commitments.test.mjs",
+        "source": "docs/improvement-rounds.md"
+      }
+    ],
+    "result": "회귀 시험이 vault를 연 상태에서 DB와 WAL을 스캔해 파기 키가 남지 않음을 확인한다. 키스토어 모드에서 1,000건 내보내기는 99–130ms에서 199–250ms로, /api/integrity는 372–383ms에서 699–840ms로 늘었고 순간 처리량은 233에서 215 EPS로 줄었다. 대신 지운 이벤트를 원장 해시로 추측 확인하는 공격은 v2 레코드에서 막혔다.",
+    "tradeoffs": [
+      "읽기 비용이 약 두 배 늘었다(epoch별 키 캐시로 줄일 여지)",
+      "epoch 파기는 모든 사본에 적용되므로 키스토어를 vault 백업과 따로, 자주 백업해야 한다",
+      "업그레이드 전 v1 레코드는 salt 없는 해시를 유지한다",
+      "운영 중인 evidence.db의 평문 검색 사본, 파일시스템·SSD 잔여물(physicalMediaErasure not_verified)은 남는다",
+      "Kubernetes 매니페스트는 아직 DB 모드였다"
+    ],
+    "lessons": [
+      "암호화가 기밀성 통제인지 파기 수단인지 먼저 정해야 설계가 맞아진다",
+      "해시는 값 범위가 좁으면 추측 확인 수단이 된다. 숨김 커밋먼트에는 salt가 필요하다",
+      "키 저장소 공격은 “처음 한 번만 가져오기”처럼 상태 전이를 DB 밖에 기록해야 막힌다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "월 단위 epoch가 실제 보존 정책(예: 5년 문서, 짧은 이벤트)과 맞는 단위인가, tenant별로 다르게 해야 하나?",
+        "키스토어 모드의 읽기 비용 두 배가 실제 고객 규모에서 허용 가능한가?",
+        "KMS 인터페이스만 둔 결정이 회사 내부망 배포 때 어떤 추가 작업을 요구하게 될까?"
+      ],
+      "what_if": [
+        "처음부터 KMS SDK를 붙였다면 인터페이스 검증은 쉬웠겠지만 무의존성 원칙이 깨지고 폐쇄망 설치가 어려워졌을 것이다(추정)"
+      ],
+      "revisit_when": "실제 고객 환경에서 KMS·HSM 연동이나 보존 기간 정책을 정할 때"
+    },
+    "resume": {
+      "ko": [
+        "서명키와 데이터 키를 HKDF로 분리하고 이벤트 키를 tenant별 키 epoch로 감싸, epoch 파기만으로 모든 DB 사본·백업에서 해당 기간을 읽을 수 없게 하는 암호학적 파기를 구현(읽기 비용 증가 99–130→199–250ms를 측정해 공개)"
+      ],
+      "en": [
+        "Separated data-encryption keys from the signing key with HKDF and wrapped per-event keys under per-tenant key epochs, so destroying one epoch makes that period unreadable in every database copy and backup; measured and published the read-cost increase (export 99-130 ms to 199-250 ms)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "이벤트를 암호화해 두었는데 왜 다시 고쳤나요?",
+        "a_points": [
+          "키가 같은 DB에 평문으로 있어 DB 사본이 곧 전체 평문이었다",
+          "원장의 무염 해시로 짧은 값은 추측 확인이 가능했다",
+          "salt를 둔 HMAC 커밋먼트와 epoch 키 감싸기로 파기가 모든 사본에 효력을 갖게 했다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "eed035f",
+        "87abe6d",
+        "1ebea2b",
+        "1cbf76d",
+        "7b848ef",
+        "f01c419",
+        "20c6ec8",
+        "8a74038",
+        "407d868",
+        "8710c89",
+        "f9d92e7",
+        "b0df39a",
+        "d8467e7"
+      ],
+      "docs": [
+        "docs/data-key-separation.md",
+        "docs/event-key-wrapping.md",
+        "docs/improvement-rounds.md",
+        "docs/vault-recovery.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-06",
+      "EL-07",
+      "EL-13"
+    ],
+    "uncertain": [
+      "secure_delete를 VACUUM보다 고른 이유는 문서에 명시되지 않았다(추정: 운영 중 부담)",
+      "신규 시험 17개 수치는 작업 메모(진행 상황)에 근거한다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-09",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": null,
+    "status": "done",
+    "title": "OpenTelemetry OTLP 수신과 인증 전 메모리 증폭 차단",
+    "title_en": "OpenTelemetry OTLP intake and blocking pre-authentication memory amplification",
+    "summary": "ingress가 OTLP/HTTP /v1/traces(JSON·protobuf, gzip/deflate/zstd)를 받아 GenAI span을 가장자리에서 허용 목록 메타데이터로 줄인 뒤 vault로 보내게 했다. 실제 OTel Collector·JS SDK와 상호운용을 확인했고, 재검토에서 나온 인증 전 디코딩 메모리 증폭 공격을 인증 우선·구조 예산으로 막아 처리 시간을 2,470ms에서 80ms로 줄였다.",
+    "context": "EL-06 감사가 “실제 수집 연동 0건, OTLP 수집은 표준 입력 JSON 변환기, 데모 뒤 AI 가시성 화면이 비어 있음”을 확인한 데 대한 응답이다. 방향 전환에 따라 자체 수집기·SDK 대신 이미 쓰이는 OpenTelemetry 계측과 Collector에 붙이기로 했다. 작업은 작업 묶음 WP-O(수신기)와 WP-F(재검토 결함 수정)로 진행됐다. 감사는 수집 연동보다 신뢰 모델을 먼저 하라고 권고했지만 1라운드에서 병렬로 진행됐다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "감사 결과 실제 수집 연동이 없었다. 구현 뒤 별도 검토자의 적대적 재검토(OTLP·키 분리)가 실제 결함 5건을 확인했고 그중 하나가 인증 전 압축 해제·디코딩 증폭이었다.",
+      "quote": null
+    },
+    "problem": "수신기가 토큰 확인 전에 본문을 읽고 풀고 디코딩하고 매핑했다. 디코더는 빈 ResourceSpans·ScopeSpans마다 메모리를 할당했기 때문에, 누구나 보낼 수 있는 약 8 KiB gzip 요청 하나로 CPU 수 초와 최대 1GB 힙을 쓰게 만들 수 있었고 384MB ingress는 메모리 부족으로 죽었다. 또 OTLP 토큰으로 vault에 직접 보내면 매퍼가 만들지 않는 필드(메모·목적·자료 참조, 위조된 본문 검사 주장)를 저장할 수 있었고, 배치 단위 적체 검사를 배치 하나만큼 넘을 수 있었다. 한 tenant의 적체가 다른 tenant 수집을 막는 문제(감사 S7)도 있었다.",
+    "constraints": [
+      "vault 무의존성 원칙: 표준 OTLP 디코더 라이브러리를 쓰지 않음",
+      "원문 prompt·response는 고객망 안에서 지워야 함(최소수집)",
+      "OTLP 명세의 응답·재시도 의미(200 partialSuccess, 503+Retry-After)를 지킬 것",
+      "OTel GenAI semconv가 Development 단계라 속성 이름이 바뀔 수 있음"
+    ],
+    "options": [
+      {
+        "option": "표준 OTLP 디코더(@opentelemetry/otlp-transformer) 사용",
+        "pros": "정확성과 명세 추종을 라이브러리가 보장",
+        "cons": "vault에 외부 의존성이 생김",
+        "chosen": false,
+        "reason": "무의존성 원칙 때문에 직접 작성하고, 의존성 정책이 바뀌면 교체할 수 있다고 문서에 적었다"
+      },
+      {
+        "option": "무의존성 디코더를 직접 작성하고 실제 Collector·SDK 캡처와 바이트 단위 상호운용 시험으로 보정",
+        "pros": "공급망 표면 최소, 허용 목록 키만 디코딩해 비용 절감",
+        "cons": "명세 해석 오류 위험, 유지 부담",
+        "chosen": true,
+        "reason": "실제 Collector 0.140.1·JS SDK 0.223.0 캡처를 fixture로 썼다"
+      },
+      {
+        "option": "본문 제거·버퍼링을 EvidScope 수신기에서 처리",
+        "pros": "한 곳에서 통제",
+        "cons": "Collector가 이미 하는 일을 재발명",
+        "chosen": false,
+        "reason": "본문 속성 삭제와 배치는 고객망의 OTel Collector 설정에 맡겼다"
+      },
+      {
+        "option": "증폭 대응: 본문을 읽기 전에 vault에 토큰 확인 + 디코더 구조 예산",
+        "pros": "익명 요청이 비용을 만들지 못함",
+        "cons": "요청마다 vault 확인 비용, 판정 캐시 필요",
+        "chosen": true,
+        "reason": "토큰 해시별 판정을 짧게 캐시(허용 30초, 거부 5초, 1,024개)하고 vault는 실제 배치를 다시 검사"
+      }
+    ],
+    "decision": {
+      "what": "OTLP/HTTP 수신기를 무의존성으로 두되 인증을 본문 읽기보다 먼저 하고, 디코더에 구조 예산(빈 컨테이너·키값 개수 상한, 초과 시 413)을 두며, vault 배치는 매퍼 출력과 정확히 같은 모양만 받는다. OTLP 증거에는 authenticated_telemetry_report 보증 라벨을 붙인다.",
+      "why": "수집은 표준에 붙이되, 가장자리에서 익명 요청이 자원을 쓰게 두면 증거 계층 전체가 멈출 수 있기 때문이다. 텔레메트리는 인증된 자기보고일 뿐 독립 사실이 아니라는 점도 라벨로 남겼다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "55db9de: src/otlp-protobuf.mjs(순서 무관 디코딩, 허용 목록 키만 값 디코딩, span 이름·이벤트 등은 건너뜀)와 src/otlp.mjs 매퍼(otel-genai-map-1: 모델 호출은 notice, 도구·에이전트 호출은 self_report)",
+      "8b4cd63: /v1/traces 응답 의미(200·partialSuccess·503+Retry-After), 본문 4 MiB·풀린 뒤 8 MiB 상한, 512개 단위 vault 전달, bearer 전용 otlp principal, tenant별 적체 게이트(감사 S7)",
+      "b3cebb0: 고객망용 Collector 설정(GenAI span만 남기고 본문 속성 삭제, protobuf+gzip 전송), 한국어 OTLP 안내, 저장된 export 재생 도구; 예전 표준 입력 변환기의 otlp 종류 제거",
+      "ee41673: 실제 OTel Collector와 JS SDK exporter로 503 재시도·부분 성공까지 확인하는 상호운용 시험(환경 변수로 켜는 선택 시험)",
+      "3fbc25a·00d8463·fc7ed32: 인증 우선, 구조 예산, vault 배치 불변식, 배치가 남길 적체 기준 게이트, vault 거부 사유 문자열 필터",
+      "6c7e1ef(10-07): 데모가 OTLP GenAI span을 보내 AI 가시성 화면이 채워지게 하고 OCSF 발견사항에 목적지 자원을 담음"
+    ],
+    "tech": [
+      "OpenTelemetry OTLP/HTTP",
+      "Protocol Buffers",
+      "OTel GenAI semantic conventions",
+      "OTel Collector 0.140",
+      "OTel JS SDK",
+      "OpenInference",
+      "OpenLLMetry",
+      "gzip/deflate/zstd"
+    ],
+    "skills": [
+      "standards_integration",
+      "security_architecture",
+      "performance_optimization",
+      "adversarial_testing",
+      "privacy",
+      "system_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "증폭 요청 처리 시간",
+        "before": "2,470",
+        "after": "80",
+        "unit": "ms",
+        "scope": "인증 전 디코딩을 노린 압축 요청, 같은 컨테이너",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "384 MB ingress 힙",
+        "before": "OOM으로 종료",
+        "after": "OOM 해소",
+        "unit": null,
+        "scope": "같은 증폭 요청",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "OTLP 수신 처리량",
+        "before": null,
+        "after": "약 1,100",
+        "unit": "span/s",
+        "scope": "1라운드 구현 시점 진행 보고, 상세 조건 미기록",
+        "source": "작업 메모"
+      },
+      {
+        "name": "적대적 재검토(OTLP·키 분리) 결함",
+        "before": null,
+        "after": "5",
+        "unit": "건 확인·수정",
+        "scope": "인증 전 DoS, vault 경로 최소화 우회, 백업 키 다운그레이드 등",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "증폭 요청 처리 시간은 2,470ms에서 80ms로 줄었고 384MB 힙의 OOM이 해소됐다. 실제 OTel Collector 0.140과 OTel JS SDK와의 상호운용 시험이 통과했고, 10-07부터 데모가 OTLP GenAI span을 보내 비어 있던 AI 가시성 화면이 채워졌다.",
+    "tradeoffs": [
+      "디코더를 직접 써서 OTLP·GenAI semconv 변화에 맞춘 유지 부담을 떠안았다",
+      "OTLP 증거는 인증된 자기보고이며 독립 관측이 아니다",
+      "토큰 판정 캐시 때문에 토큰 회수가 최대 30초 늦게 반영될 수 있다",
+      "실제 고객 계측 앱 연동과 운영 부하 측정은 하지 않았다"
+    ],
+    "lessons": [
+      "가장자리 수신기는 인증 전에 본문을 읽지 않는 것이 첫 번째 방어다",
+      "압축 해제 크기만 제한해서는 부족하고 구조(빈 컨테이너 수)에도 예산이 필요하다",
+      "직접 쓴 표준 구현은 실제 구현이 보낸 바이트로 시험해야 믿을 수 있다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "10-15 이후 Claude Code·Codex hook 직접 수집(AM-02)이 주 경로가 된 지금, OTLP 수신기는 회사 내부 AI 앱 연동용으로 충분히 쓰이고 있나?",
+        "공식 otlp-transformer를 썼다면 무의존성 원칙의 실익보다 유지 비용 절감이 더 컸을까?",
+        "GenAI semconv가 안정화되면 매핑 버전을 어떻게 이전할 것인가?"
+      ],
+      "what_if": [
+        "인증 우선 구조를 처음부터 넣었다면 재검토 결함 하나가 줄었겠지만, 재검토가 없었다면 이 DoS는 출시까지 남았을 것이다(추정)"
+      ],
+      "revisit_when": "회사 내부 AI 앱이 실제로 OTLP를 보내기 시작하거나 GenAI semconv가 Stable로 바뀔 때"
+    },
+    "resume": {
+      "ko": [
+        "자체 수집기 대신 OpenTelemetry OTLP/HTTP 수신기를 무의존성으로 구현해 실제 Collector·SDK와 상호운용을 확인하고, 인증 전 디코딩으로 생기던 메모리 증폭 DoS를 인증 우선·구조 예산으로 막아 처리 시간 2,470ms→80ms, OOM 해소"
+      ],
+      "en": [
+        "Implemented a dependency-free OTLP/HTTP receiver interoperating with the real OTel Collector and JS SDK, and closed a pre-authentication decompression/decoding amplification DoS with auth-first handling and structural budgets (2,470 ms to 80 ms, OOM eliminated)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "OTLP 수신기에서 어떤 보안 문제가 있었나요?",
+        "a_points": [
+          "인증 전에 본문을 풀고 디코딩해 작은 요청으로 큰 메모리를 쓰게 할 수 있었다",
+          "토큰 확인을 먼저 하고 판정을 짧게 캐시",
+          "디코더에 구조 예산을 두어 빈 컨테이너 폭탄을 413으로 거부",
+          "vault는 매퍼 출력과 같은 모양만 받아 우회 저장을 막음"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "55db9de",
+        "8b4cd63",
+        "b3cebb0",
+        "ee41673",
+        "fc7ed32",
+        "ff260db",
+        "00d8463",
+        "3fbc25a",
+        "7f09295",
+        "6c7e1ef"
+      ],
+      "docs": [
+        "docs/evidence-layer.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-06",
+      "EL-08",
+      "EL-11",
+      "EL-19",
+      "AM-02"
+    ],
+    "uncertain": [
+      "약 1,100 span/s는 작업 진행 보고의 수치로, 측정 조건(하드웨어·배치 크기)이 문서에 남아 있지 않다",
+      "“8 KiB gzip, 최대 1GB 힙”은 커밋 3fbc25a 본문에 근거하며 측정 반복 횟수는 기록이 없다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-10",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": null,
+    "status": "done",
+    "title": "조회가 원장을 키우던 구조 제거: 증분 검증 상태와 봉인된 열람 로그(감사 S5)",
+    "title_en": "Stopping reads from growing the ledger: incremental verified state and a sealed access log (audit S5)",
+    "summary": "정책·평가·이벤트·사건 조회가 매번 원장 전체를 훑지 않고 증분 검증 상태에서 읽게 하고, 열람 기록은 원장 밖 tenant별 해시 체인 로그에 남긴 뒤 주기적으로 Merkle 루트로 원장에 봉인했다. 18,337행 기준 주요 조회 지연이 수백 배 줄었지만 전체 재검증과 시작 시간은 늘었고, 그 비용을 함께 공개했다.",
+    "context": "EL-06 감사 S5는 정상 사용만으로 성능이 계속 나빠지는 구조를 지적했다. 모든 조회가 쓰기 락 안에서 직렬화되고 원장 전체를 재검증했으며, 인증된 GET마다 서명된 열람 레코드가 원장에 추가됐다. 감사 재현에서 /api/integrity GET 3회만으로 원장 count가 69→70→71로 늘었고, GET /api/cases는 1만 행에서 70ms, 5만 행에서 325ms였다. 작업은 작업 묶음 WP-R로 진행됐고 투명성 로그(EL-07) 병합 뒤에 이어졌다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "감사 S5(MEDIUM): 읽기 O(N), 읽을 때마다 원장 증가, 전 조회 직렬화. 감사 권고는 증분 캐시와 접근 로그를 별도 append-only 저장소로 분리하는 것이었다.",
+      "quote": null
+    },
+    "problem": "조회마다 쓰기 락(BEGIN IMMEDIATE) 안에서 원장 전체를 다시 검증하고 열람 레코드를 원장에 추가했다. 화면을 보기만 해도 원장이 커지고, 원장이 커질수록 모든 조회가 느려졌다. 조사함 쿼리는 행동마다 최신 수신 시각을 찾느라 행동 수 × 이벤트 수에 비례하는 비용이 들었다.",
+    "constraints": [
+      "“누가 무엇을 봤는가”라는 열람 감사 요건은 유지해야 함",
+      "변조된 사본이 있으면 그 사본을 쓰는 읽기는 반드시 실패해야 함(fail closed)",
+      "GET 경로는 증거 DB에 쓰지 않아야 함",
+      "같은 컨테이너에서 감사 시점과 같은 벤치마크로 비교할 것"
+    ],
+    "options": [
+      {
+        "option": "열람 기록을 아예 없앰",
+        "pros": "가장 빠름",
+        "cons": "열람 감사 요건이 사라짐",
+        "chosen": false,
+        "reason": "감사 증거 제품에서 “누가 봤는가”는 버릴 수 없는 요건"
+      },
+      {
+        "option": "열람 기록을 원장에 계속 추가(현상 유지)",
+        "pros": "모든 열람이 즉시 서명됨",
+        "cons": "GET마다 원장 증가, 성능 계속 악화",
+        "chosen": false,
+        "reason": "감사 S5 그대로"
+      },
+      {
+        "option": "원장 밖 tenant별 SHA-256 해시 체인 로그에 남기고 60초·1,000건·내보내기 전에 Merkle 루트로 원장에 봉인",
+        "pros": "열람 감사 유지, 원장 증가는 봉인 배치 수로 줄어듦",
+        "cons": "봉인 전 끝부분은 재시작 전까지 서명되지 않음, 검증 대상이 늘어 전체 재검증이 느려짐",
+        "chosen": true,
+        "reason": "요건을 지키면서 원장 증가와 쓰기 락을 함께 없앨 수 있었다"
+      }
+    ],
+    "decision": {
+      "what": "조회는 증분 검증 상태(10분 지나면 처음부터 재구축)와 읽기 전용 스냅샷(query_only)에서 처리하고, 열람 기록은 별도 access-log.db의 해시 체인에 남겨 주기적으로 봉인한다. 열람 기록을 쓰지 못하면 503으로 아무것도 내주지 않고, 서명 체크포인트와 다른 머리가 보이면 409를 낸다.",
+      "why": "평상시 조회 비용을 원장 크기와 분리하면서도 열람 감사와 fail-closed 보장은 유지하기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "0334fa4: 행동별·출처별 최신 수신 시각 조회용 커버링 인덱스와 EXPLAIN QUERY PLAN 회귀 시험",
+      "7896a26: 정책·평가·이벤트·사건 자료·거버넌스 문서를 증분 검증 상태에서 읽고, 결함은 항목별로 기록해 변조된 사본을 쓰는 읽기만 실패",
+      "957fb54: 열람 기록을 원장 대신 tenant별 SHA-256 해시 체인(access-log.db)에 쓰고 60초·1,000건·내보내기·integrity·heads 게시 전·종료 시 audit_access_batch로 봉인, 감사자용 열람 증명 API",
+      "6f86c40: GET 요청 전체를 하나의 WAL 읽기 트랜잭션과 query_only로 처리, GET 안에서 쓰던 보조 경로 상태 갱신을 별도 쓰기 트랜잭션으로 분리",
+      "30eb47f: /api/events 필터·페이지를 SQL로, 지표 카운트를 서명 상태에서, 보고서 검증을 스냅샷당 한 번"
+    ],
+    "tech": [
+      "SQLite WAL",
+      "PRAGMA query_only",
+      "covering index",
+      "SHA-256 hash chain",
+      "RFC 6962 Merkle root",
+      "EXPLAIN QUERY PLAN"
+    ],
+    "skills": [
+      "performance_optimization",
+      "cryptography_integrity",
+      "system_architecture",
+      "qa_testing",
+      "security_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "governance 조회 지연",
+        "before": "1,046.9",
+        "after": "2.5",
+        "unit": "ms",
+        "scope": "18,337행, 같은 컨테이너",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "events 조회 지연",
+        "before": "1,058.5",
+        "after": "1.9",
+        "unit": "ms",
+        "scope": "18,337행",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "investigations 조회 지연",
+        "before": "3,821.6",
+        "after": "61.8",
+        "unit": "ms",
+        "scope": "18,337행",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "review-context 조회 지연",
+        "before": "917.7",
+        "after": "3.1",
+        "unit": "ms",
+        "scope": "18,337행",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "GET 95회가 만든 원장 레코드",
+        "before": "95",
+        "after": "6 (봉인 배치)",
+        "unit": "건",
+        "scope": "같은 시험",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "/api/integrity 전체 재검증",
+        "before": "1,803.8",
+        "after": "3,219.5",
+        "unit": "ms",
+        "scope": "18,337행, 투명성 상태·열람 로그 검증 추가로 증가",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "시작 시간",
+        "before": "657",
+        "after": "1,687",
+        "unit": "ms",
+        "scope": "같은 데이터",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "지속 부하(20 EPS) p95",
+        "before": "57–69",
+        "after": "11–12",
+        "unit": "ms",
+        "scope": "원본·최종본 3회씩 교차, 투명성 로그 꺼짐",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "단일 사례 보고서 p95",
+        "before": "154–171",
+        "after": "6.7–7.5",
+        "unit": "ms",
+        "scope": "같은 벤치마크",
+        "source": "docs/improvement-rounds.md"
+      },
+      {
+        "name": "burst 처리량(동시 20)",
+        "before": "276–298",
+        "after": "270–286",
+        "unit": "EPS",
+        "scope": "쓰기 프로세스 하나라 사실상 같음",
+        "source": "docs/improvement-rounds.md"
+      }
+    ],
+    "result": "18,337행 기준 governance 1,046.9→2.5ms, events 1,058.5→1.9ms, investigations 3,821.6→61.8ms로 줄었고, GET 95회가 만들던 원장 레코드는 95건에서 6건(봉인 배치)이 됐다. 지속 부하 p95는 57–69ms에서 11–12ms로 줄었다. 반대로 /api/integrity는 1,803.8→3,219.5ms, 시작 시간은 657→1,687ms로 늘었고 burst 처리량은 그대로였다.",
+    "tradeoffs": [
+      "전체 재검증과 시작 시간이 약 1.8배, 2.6배 늘었다",
+      "열람 로그의 아직 봉인되지 않은 끝부분은 vault 재시작 전까지 서명되지 않는다",
+      "파기(retention)와 보조(assistance) 경로는 여전히 전체 스캔이었다",
+      "쓰기 처리량은 그대로였다(이후 EL-18에서 group commit 등으로 다룸)"
+    ],
+    "lessons": [
+      "감사 요건을 지우지 말고 저장 위치와 서명 주기를 바꾸면 성능과 증거를 함께 지킬 수 있다",
+      "빨라진 숫자만이 아니라 느려진 숫자(전체 재검증, 시작 시간)도 같은 표에 남겨야 한다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "60초·1,000건 봉인 주기는 무엇을 기준으로 정했고, 봉인 전 열람 기록 유실 위험과 비교해 적절했나?",
+        "증분 검증 상태를 10분마다 처음부터 재구축하는 비용이 행 수가 백만 단위로 늘면 어떻게 되나?",
+        "시작 시간 1.7초가 PC 자동 시작이나 Kubernetes 재시작 시 실제 문제가 됐나?"
+      ],
+      "what_if": [
+        "열람 기록을 원장과 같은 SQLite 파일의 별도 테이블로 두었다면 백업은 단순했겠지만 쓰기 락 경합은 남았을 것이다(추정)"
+      ],
+      "revisit_when": "원장 행 수가 수십만 이상으로 늘거나 시작 시간이 운영 SLA에 걸릴 때"
+    },
+    "resume": {
+      "ko": [
+        "조회마다 원장 전체를 재검증하던 구조를 증분 검증 상태와 Merkle 봉인 열람 로그로 바꿔 주요 조회 API 지연을 최대 수백 배(1,058.5→1.9ms) 줄이고, 열람 감사 기록과 fail-closed 보장은 유지"
+      ],
+      "en": [
+        "Replaced full-ledger re-verification on every read with an incremental verified state and a Merkle-sealed access log, cutting key read API latency by up to several hundred times (1,058.5 ms to 1.9 ms) while keeping read auditing and fail-closed checks."
+      ]
+    },
+    "interview": [
+      {
+        "q": "성능을 올리면서 감사 요건을 어떻게 지켰나요?",
+        "a_points": [
+          "열람 기록은 남기되 원장 밖 해시 체인으로 옮김",
+          "주기적으로 Merkle 루트를 원장에 서명해 묶음",
+          "기록을 못 쓰면 503으로 아무것도 주지 않음",
+          "느려진 지표도 함께 공개"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "0334fa4",
+        "7896a26",
+        "957fb54",
+        "6f86c40",
+        "969b85e",
+        "30eb47f",
+        "22c64ce"
+      ],
+      "docs": [
+        "docs/improvement-rounds.md",
+        "docs/architecture.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)"
+      ]
+    },
+    "related": [
+      "EL-06",
+      "EL-07",
+      "EL-18"
+    ],
+    "uncertain": [
+      "봉인 주기(60초·1,000건)를 고른 근거는 커밋과 문서에 적혀 있지 않다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-11",
+    "track": "evidence-layer",
+    "date_start": "2026-10-06",
+    "date_end": null,
+    "status": "done",
+    "title": "오프라인 정책 재생과 OCSF 내보내기(차별점 D2·D5)",
+    "title_en": "Offline policy replay and OCSF export (differentiators D2 and D5)",
+    "summary": "내보낸 원장의 모든 서명된 평가를 그 평가보다 앞선 레코드만으로 오프라인에서 다시 계산해 같은 결과인지 확인하는 검증기(verify.mjs --replay)를 만들었다. 각 행동의 발견사항은 원장 순번·해시·체크포인트 참조를 담은 OCSF Detection Finding(class 2004) 1.3.0/1.9.0으로 내보내 기존 SIEM에서 받아 다시 검증할 수 있게 했다.",
+    "context": "EL-06 방향 전환에서 정한 차별점 다섯 가지 중 D2(권한에 묶인 증거 사슬과 결정적 오프라인 정책 재생)와 D5(위트니스 체크포인트에 연결된 OCSF 발견사항)를 구현한 작업이다. 분석 evaluate()가 EL-01부터 LLM 없이 결정적이었기 때문에 가능한 기능이다. 조사에서 IETF 에이전트 영수증 초안은 오프라인 정책 재생을 범위 밖으로 두고, MS AGT는 결과를 기록하지 않는다고 밝힌 점을 확인했다. 작업은 작업 묶음 WP-X로 진행됐다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "1라운드 차별점 계획(D2·D5). 감사는 SIEM 연동이 없다는 점과 “SIEM을 대체하지 않고 옆에 붙어야 한다”는 로드맵을 제시했다.",
+      "quote": null
+    },
+    "problem": "서명은 “vault가 이렇게 판정했다”는 것만 증명한다. 운영자가 발견사항을 숨기거나 지어낸 뒤 사슬 전체를 다시 서명하면 서명 검증은 통과한다. 판정 자체가 그 시점의 입력으로 재현되는지를 따로 보여 줘야 했다. 또 기존 SIEM 사용자가 EvidScope 결과를 받아 다시 검증할 경로가 없었다.",
+    "constraints": [
+      "상관분석·UEBA·SOAR는 만들지 않음(재발명 회피)",
+      "Amazon Security Lake 사용자 정의 소스는 OCSF 1.3까지만 받음",
+      "파기된 입력 등 재생이 불가능한 경우를 성공으로 덮지 않음",
+      "실제 Splunk 환경 없이 시험해야 함"
+    ],
+    "options": [
+      {
+        "option": "SIEM 상관분석·UEBA·SOAR 직접 구현",
+        "pros": "SIEM 없이도 완결",
+        "cons": "상용 SIEM과 정면 경쟁하는 재발명",
+        "chosen": false,
+        "reason": "방향 전환 원칙: SIEM을 대체하지 않고 OCSF 직렬화만"
+      },
+      {
+        "option": "OCSF 1.9.0만 출력",
+        "pros": "ai_agent, attestation 등 새 필드 사용",
+        "cons": "Security Lake 사용자 정의 소스가 받지 못함",
+        "chosen": false,
+        "reason": "1.3.0을 기본으로 두고 1.9.0은 선택"
+      },
+      {
+        "option": "OCSF 1.3.0 기본 + 1.9.0 선택, 두 버전 모두 원장 순번·해시·체크포인트 참조 포함",
+        "pros": "넓은 호환과 재검증 경로를 함께 제공",
+        "cons": "두 버전 유지",
+        "chosen": true,
+        "reason": "SIEM 분석가가 발견사항 하나에서 위트니스가 서명한 로그까지 거슬러 갈 수 있게 하기 위해"
+      },
+      {
+        "option": "재생 불가 사례를 성공 처리하거나 생략",
+        "pros": "결과가 깔끔해 보임",
+        "cons": "검증 결과가 과장됨",
+        "chosen": false,
+        "reason": "not_replayable로 이유(erased_input, resource_limit, engine_unavailable, 옛 기록)를 표시"
+      }
+    ],
+    "decision": {
+      "what": "워커와 재생이 같은 boundedEvaluation()을 써서 잘린 결과까지 바이트 단위로 재현하고, 각 평가를 replayed/mismatch/not_replayable로 보고하며 불일치가 하나라도 있으면 0이 아닌 종료 코드를 낸다. 발견사항은 OCSF 2004로 직렬화만 하고 Splunk HEC 전송은 명시적 옵션일 때만 한다.",
+      "why": "판정을 운영자 없이 재현할 수 있어야 “증거 계층”이라는 주장이 성립하고, 결과를 기존 SIEM 생태계에 넘겨야 실제로 쓰인다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "96c68b9: src/policy-replay.mjs가 내보내기 안의 모든 평가를 seq가 더 작은 레코드(파기 전 이벤트, 자산 이력, 활성 규칙 버전, 예외)와 기록된 분석 시각으로 다시 계산하고 snapshotHash와 결과를 정확히 비교",
+      "새 평가에 replay 정보(엔진 ID, 한도, 입력)를 덧붙이고 scripts/replay-findings.mjs는 묶음 검증 후 재생",
+      "도구 레코드마다 권한 레코드가 로그 위치상 앞인지 뒤인지 표시해 행동 뒤에 도착한 승인을 드러냄(approvalRecordedAfterExecution)",
+      "bd70c54: src/ocsf.mjs가 최신 서명 평가의 발견사항을 OCSF 2004로 변환, 1.9.0은 원장 레코드 해시를 fingerprint로 하는 record_integrity attestation 포함, GET /api/export/ocsf",
+      "scripts/export-ocsf.mjs: 내보내기를 먼저 검증한 뒤 NDJSON 출력, --hec-url과 토큰 변수가 있을 때만 Splunk HEC 전송",
+      "0dd3d45: verify.mjs --replay 연결, 재생 순서를 위트니스 체크포인트에 고정하는 옵션, 투명성 로그를 켜면 OCSF chain_uid에 tenant C2SP origin"
+    ],
+    "tech": [
+      "OCSF Detection Finding (class 2004) 1.3.0/1.9.0",
+      "Amazon Security Lake",
+      "Splunk HEC",
+      "NDJSON",
+      "C2SP",
+      "deterministic evaluation"
+    ],
+    "skills": [
+      "standards_integration",
+      "cryptography_integrity",
+      "detection_engineering",
+      "system_architecture",
+      "qa_testing"
+    ],
+    "metrics": [
+      {
+        "name": "OCSF 출력 버전",
+        "before": "0",
+        "after": "2 (1.3.0 기본, 1.9.0)",
+        "unit": "개",
+        "scope": "최소 스키마 발췌본으로 검증",
+        "source": "bd70c54"
+      },
+      {
+        "name": "재생 결과 상태",
+        "before": null,
+        "after": "3 (replayed, mismatch, not_replayable)",
+        "unit": "종",
+        "scope": "not_replayable 사유 4종 표시",
+        "source": "96c68b9"
+      }
+    ],
+    "result": "운영자가 발견사항을 숨기거나 지어내고 사슬 전체를 다시 서명해도 재생에서 mismatch로 잡히고, 불일치가 있으면 재생 도구가 0이 아닌 종료 코드를 낸다. 도구 실행보다 뒤에 기록된 승인은 출처가 시각을 앞당겨 적어도 드러난다. 성능 수치는 측정하지 않았다.",
+    "tradeoffs": [
+      "OCSF 스키마는 최소 발췌본으로만 검증했고 Splunk HEC는 모의 서버로만 시험했다",
+      "OCSF 연동은 누구나 따라 할 수 있어 단독 차별점이 아니라 D1·D2의 연동 증명으로 본다(가장 약한 차별점)",
+      "재생 정보가 없던 옛 분석 기록은 not_replayable(legacy_engine_unrecorded)로만 보고된다",
+      "실제 SIEM 사용자 검증은 없다"
+    ],
+    "lessons": [
+      "결정적 분석 엔진은 나중에 오프라인 재생이라는 검증 기능을 공짜에 가깝게 준다",
+      "재생 불가를 성공으로 덮지 않고 이유와 함께 보고해야 검증기 결과를 믿을 수 있다",
+      "서명 시각보다 로그 위치로 순서를 증명하면 출처가 시각을 조작해도 드러난다"
+    ],
+    "reflection": {
+      "open_questions": [
+        "판정 모델(JEV·Qwen)이 경보 처리에 들어오면, 모델 출력이 섞인 판정도 오프라인 재생 가능하게 만들 수 있을까, 아니면 재생 범위를 규칙 부분으로 한정해야 할까?",
+        "실제 SIEM 분석가가 OCSF 1.9의 attestation 필드를 따라가 재검증할 동기가 있을까?",
+        "OCSF 1.3을 기본으로 둔 것이 Security Lake 외 SIEM에서도 맞는 선택인가?"
+      ],
+      "what_if": [
+        "분석 엔진에 LLM을 넣었다면 이 재생 검증은 불가능했거나 확률적 비교로 약해졌을 것이다(추정)"
+      ],
+      "revisit_when": "판정 모델 결과가 서명된 평가에 들어가거나 실제 SIEM 고객이 OCSF 데이터를 받기 시작할 때"
+    },
+    "resume": {
+      "ko": [
+        "서명된 정책 평가를 원장 앞부분만으로 오프라인 재계산해 운영자 없이 판정을 재현·불일치를 탐지하는 검증기와, 원장 위치·체크포인트 참조를 담은 OCSF Detection Finding 1.3.0/1.9.0 내보내기를 구현"
+      ],
+      "en": [
+        "Built an offline verifier that recomputes every signed policy evaluation from the ledger prefix to detect operator-altered findings, plus OCSF Detection Finding 1.3.0/1.9.0 export carrying ledger positions and checkpoint references for SIEM re-verification."
+      ]
+    },
+    "interview": [
+      {
+        "q": "서명이 있는데 왜 재생 검증이 필요한가요?",
+        "a_points": [
+          "서명은 vault가 그렇게 판정했다는 것만 증명",
+          "운영자가 결과를 바꾸고 전체를 다시 서명하면 서명은 통과",
+          "앞선 레코드만으로 다시 계산해 비교하면 바뀐 판정이 드러남"
+        ]
+      },
+      {
+        "q": "SIEM 기능은 왜 만들지 않았나요?",
+        "a_points": [
+          "상관분석·UEBA는 성숙한 제품이 많다",
+          "OCSF로 내보내 기존 SIEM 옆에 붙는 쪽을 택함",
+          "각 발견사항이 원장 위치를 가리켜 다시 검증 가능"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "96c68b9",
+        "bd70c54",
+        "d905510",
+        "0dd3d45",
+        "a8079fe",
+        "6c7e1ef"
+      ],
+      "docs": [
+        "docs/evidence-layer.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "적대적 감사 보고서(10-06, 비공개)"
+      ]
+    },
+    "related": [
+      "EL-01",
+      "EL-06",
+      "EL-07",
+      "EL-09",
+      "AM-07"
+    ],
+    "uncertain": [
+      "trigger를 plan으로 둔 것은 1라운드 차별점 계획에 근거한 분류이며, 감사의 “SIEM 옆에 붙는다” 권고도 계기로 볼 수 있다"
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-12",
+    "track": "evidence-layer",
+    "date_start": "2026-10-07",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "1라운드 마무리와 2라운드 재감사: 권한·인증 경계 결함 수정(S6·S8~S12)",
+    "title_en": "Closing round 1 and the round-2 re-audit: fixing authorization and authentication boundary flaws (S6, S8-S12)",
+    "summary": "10-06 적대적 감사가 지적한 권한·인증 경계 결함 6건(S6, S8~S12)을 1라운드 마지막 작업 묶음(WP-H)으로 고쳤다. 이어 2라운드 첫 작업으로 그 수정 자체를 공격자 입장에서 다시 감사해 확인 결함 4건과 가능성 있는 결함 1건을 더 찾아 고쳤다. 재감사 PoC는 모두 판정을 뒤집어 회귀 시험으로 남겼고, 1라운드 종료 시 전체 시험 1,189건 중 실패는 0건이었다.",
+    "context": "10-06 적대적 감사(EL-06)는 신뢰 모델 결함(S1·S2) 외에도 분석 worker, OIDC 로그인, 사건 종결, 거버넌스 평가, 요청 처리 경로에서 권한 경계 결함을 지적했다. 같은 날 투명성 로그(EL-07), 키 분리(EL-08), OTLP 수신(EL-09), 조회 구조 개선(EL-10)을 먼저 끝냈고, 남은 경계 결함은 10-07 오전(UTC) WP-H 묶음 하나로 처리했다. 오너는 10-06에 '재감사, 바퀴의 재발명 확인, 차별점 구현'을 한 라운드로 삼아 계속 반복하고 라운드마다 다음 후보를 남기라고 지시해 두었다. 2라운드 후보 10번이 바로 1라운드에서 새로 만든 worker 바인딩, 로그인 쿠키, 설정 재바인딩, tenant 위트니스를 공격자 입장에서 다시 보는 일이었다. 급하게 넣은 수정이 새 공격면이 되기 쉬워, 고친 코드를 바로 다시 공격하는 절차가 이 시점에 자리 잡았다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "10-06 적대적 감사의 S6·S8~S12 항목(1라운드)과, 1라운드 수정을 다시 공격한 2라운드 후보 10번 적대적 재감사. 라운드 반복 자체는 오너의 상시 지시였다.",
+      "quote": null
+    },
+    "problem": "S6: worker 자격 하나로 모든 tenant의 복호화된 분석 스냅샷을 받고 임의의 분석 결과에 vault 서명을 받을 수 있었다. S8: 활성 복구 뒤에는 토큰 회전이나 principal 추가만 해도 설정 해시가 달라져 vault가 기동을 거부했다. S9: 익명 /auth/login 요청이 1,000칸짜리 메모리 흐름 표를 채워 OIDC 로그인이 5분간 잠겼다. S10·S11: 감사자가 자기가 연 사건을 스스로 종결하고, 자기주장 증거만으로 평가를 완료하며, 작성자가 법률 검토와 종결까지 혼자 할 수 있었다. 또 이미 승인된 예외를 다시 승인하면 원장이 거부하는 전이가 서명돼 그 tenant의 행동 조회가 모두 깨졌다. S12: 큰 본문을 인증 전에 버퍼링했고, 잘못된 퍼센트 인코딩이 503 저장 오류로 보였으며, 되돌린 트랜잭션의 문서 파일이 남았다. 2라운드 재감사에서는 같은 principal ID를 가진 worker 항목 둘이 tenant 범위를 공유해 alpha 전용 자격이 beta 스냅샷을 받고 서명할 수 있었고, 사용한 로그인 state 기록이 1만 개를 넘으면 오래된 것부터 버려 재전송한 callback이 IdP 토큰 엔드포인트에 다시 닿았다. 작성자가 직접 올린 합성 공급사 묶음이 ‘공급사 서명’으로 표시되는 문제도 있었다.",
+    "constraints": [
+      "vault 무의존성 원칙(공급망 표면 최소화): 외부 패키지 없이 Node.js 내장 기능만 사용",
+      "이미 서명된 평가·내보내기는 수정 후에도 그대로 검증돼야 함(저장된 검증 문자열 유지)",
+      "작업은 클라우드 컨테이너의 작업 브랜치에서 하고 공개 저장소에 push하지 않으며 PC에는 패치로 전달",
+      "시험은 Linux 컨테이너에서만 실행(Windows 전체 시험은 미실시)"
+    ],
+    "options": [
+      {
+        "option": "S6: worker를 tenant 목록에 묶고, vault가 같은 스냅샷과 분석 시각으로 결과를 다시 계산해 똑같을 때만 서명",
+        "pros": "worker 자격을 빼앗겨도 다른 tenant 데이터를 받거나 임의 결과에 서명받지 못함",
+        "cons": "분석 CPU가 행동당 약 두 배, vault와 worker의 분석 엔진 버전이 같아야 함",
+        "chosen": true,
+        "reason": "서명 주체(vault)가 서명 대상을 직접 확인해야 서명의 의미가 생기므로 CPU 비용을 받아들이고 운영자 안내에 적음"
+      },
+      {
+        "option": "S9: 로그인 흐름 상태(state·nonce·PKCE verifier·만료)를 서버 메모리 표 대신 AES-256-GCM으로 봉인한 5분 쿠키에 보관",
+        "pros": "익명 폭주가 서버 자원을 채울 수 없어 잠금이 사라짐, 429 한도 불필요",
+        "cons": "쿠키 봉인 키가 프로세스마다 새로 만들어져 로그인 도중 vault가 재시작되면 다시 로그인해야 함",
+        "chosen": true,
+        "reason": "재시작 시 재로그인은 이전 메모리 표와 같은 동작이라 손해가 없다고 판단"
+      },
+      {
+        "option": "S9 재감사: /auth/login 요청 수를 다시 제한",
+        "pros": "폭주 자체를 입구에서 막음",
+        "cons": "1라운드에서 없앤 잠금 문제가 되살아남",
+        "chosen": false,
+        "reason": "대신 IdP 토큰 교환만 프로세스 전체 token bucket(분당 60, burst 20, 동시 4)으로 제한하고 IP별 제한은 프록시에 맡기도록 안내"
+      },
+      {
+        "option": "worker 범위와 lease를 principal ID에 묶기(기존)",
+        "pros": "설정이 단순함",
+        "cons": "ID가 중복되면 두 범위가 합쳐져 다른 tenant 데이터가 새어 나감",
+        "chosen": false,
+        "reason": "인증한 토큰의 SHA-256 지문에 묶고 principal ID 중복은 기동 단계에서 거부하는 쪽으로 바꿈"
+      },
+      {
+        "option": "작성자·법률 검토자·종결자 세 역할을 모두 다른 사람으로 분리",
+        "pros": "가장 강한 직무 분리",
+        "cons": "작은 조직에서 운영이 어려움",
+        "chosen": false,
+        "reason": "2인 규칙(작성자가 아닌 사람의 확인)에서 멈추고, 세 역할 분리는 종결 검사에 조건 한 줄을 더하면 된다고만 문서에 남김"
+      }
+    ],
+    "decision": {
+      "what": "권한 경계를 ‘누가 주장했나’가 아니라 ‘어떤 인증된 자격이 무엇을 했나’에 묶는다. worker lease는 토큰 지문에, 사건 종결·예외 승인·법률 검토는 작성자가 아닌 사람에게, 증거 보증 라벨은 vault가 실제로 확인한 범위에만 붙인다.",
+      "why": "감사가 지적한 결함 대부분이 자기주장이나 식별자 이름을 그대로 믿어서 생겼기 때문이다. 재감사 결과도 같은 원인(ID 공유, 작성자 주장)이 형태만 바꿔 남아 있음을 보여 줬다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "분석 worker를 설정의 tenants 목록에 묶고, vault가 boundedEvaluation()을 같은 스냅샷으로 다시 계산해 다른 결과는 422로 거부(f0b63cd)",
+      "OIDC 로그인 흐름을 봉인 쿠키로 옮기고 callback에서 state를 상수 시간 비교 후 1회만 사용(3e84840), 이후 IdP 토큰 교환에 token bucket과 동시 4개 제한, 사용 기록은 흐름 만료까지 유지하고 가득 차면 fail closed(a218ec7)",
+      "사건을 연 사람의 종결 금지와 대기 중 예외만 승인하는 4-eyes 규칙 적용, README의 역할 표 정정(b9ebdb3)",
+      "거버넌스 보고서에 evidenceAssurance(self_asserted·mixed·source_bound·no_evidence) 라벨과, 평가 해시에 묶인 다른 사람의 법률 검토 확인 API 추가(1c0ed10), 작성자 주장과 무관하게 모든 평가에 법률 검토 과제를 열고 기존 평가는 1회 이전 작업으로 보충(f7e50dc)",
+      "활성 복구 뒤 설정을 바꿀 수 있도록 vault 서명 재바인딩 연쇄와 외부 pin을 두는 vault-backup rebind 명령 추가(2c06f3d)",
+      "큰 본문 경로는 본문을 읽기 전에 인증하고(게이트웨이는 vault 사전 인증 호출), 잘못된 인코딩은 400, 롤백된 문서 파일은 삭제(5a58f82)",
+      "2라운드 재감사: principal ID 중복 시 기동 거부, lease를 토큰 지문에 묶고 claim한 자격만 완료 가능, 자격당 살아 있는 lease 64개 상한과 끝난 lease 행 24시간 뒤 정리(ffe59bd, 0414fb9)",
+      "공급사 묶음 라벨을 vault_retained_supplier_bundle로 바꾸고 작성자가 아닌 사람이 출처를 확인한 실제 묶음만 source-bound로 인정(7a7696a), 재감사 PoC를 뒤집어 회귀 시험으로 고정"
+    ],
+    "tech": [
+      "Node.js",
+      "SQLite",
+      "OIDC",
+      "PKCE",
+      "AES-256-GCM",
+      "SHA-256",
+      "HMAC",
+      "token bucket",
+      "4-eyes(두 사람 원칙)"
+    ],
+    "skills": [
+      "security_architecture",
+      "access_control",
+      "threat_modeling",
+      "adversarial_testing",
+      "qa_testing",
+      "documentation",
+      "ai_collaboration"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험(1라운드 종료)",
+        "before": "1,023건 중 1,013 통과·9 실패·1 skip",
+        "after": "1,189건 중 1,183 통과·0 실패·6 skip",
+        "unit": "건",
+        "scope": "감사 시점 로컬 사본 대 1라운드 종료(cf45e19), Linux 컨테이너. skip 6은 비공개 산출물 의존 시험",
+        "source": "docs/improvement-rounds.md 1라운드 측정"
+      },
+      {
+        "name": "전체 시험(2라운드 종료)",
+        "before": "1,189",
+        "after": "1,275건 중 1,269 통과·0 실패",
+        "unit": "건",
+        "scope": "2라운드 전체(재감사 수정 외에 영수증·서명기·키 감싸기·ISMS-P 작업 포함)",
+        "source": "docs/improvement-rounds.md 2라운드 측정"
+      },
+      {
+        "name": "S6 수정 후 분석 CPU",
+        "before": null,
+        "after": "행동당 약 2배",
+        "unit": null,
+        "scope": "vault가 worker 결과를 다시 계산하는 비용, 운영자 안내 기준",
+        "source": "docs/improvement-rounds.md 1라운드 운영자 안내"
+      },
+      {
+        "name": "S6 수정 후 분석 적체",
+        "before": null,
+        "after": "1,000건 모두 분석, 적체 0",
+        "unit": null,
+        "scope": "1라운드 수집 벤치마크(감사와 같은 컨테이너, 투명성 로그 꺼짐)",
+        "source": "docs/improvement-rounds.md 1라운드 측정"
+      },
+      {
+        "name": "IdP 토큰 교환 한도",
+        "before": "제한 없음",
+        "after": "분당 60, burst 20, 동시 4",
+        "unit": null,
+        "scope": "프로세스 전체, 기본값",
+        "source": "a218ec7"
+      },
+      {
+        "name": "자격당 살아 있는 worker lease 상한",
+        "before": "무제한",
+        "after": "64",
+        "unit": "개",
+        "scope": "같은 토큰을 쓰는 replica 합산(Kubernetes HPA 최대 6 replica×5건=30보다 큼)",
+        "source": "0414fb9"
+      }
+    ],
+    "result": "S6·S8~S12는 1라운드 안에 모두 수정됐고, 1라운드 종료(cf45e19) 전체 시험은 1,189건 중 1,183 통과·0 실패·6 skip이었다(감사 시점 로컬 1,013/1,023). 2라운드 재감사는 1라운드 수정에서 확인 결함 4건과 가능성 결함 1건을 찾았고, 모두 고쳐 9177cee에서 병합했다. 각 재감사 PoC는 수정 전 코드에서 실패하고 수정 후 통과하는 회귀 시험으로 남았다.",
+    "tradeoffs": [
+      "vault 재계산으로 분석 CPU가 행동당 약 두 배가 되고, vault와 worker의 엔진 버전을 맞춰야 한다",
+      "로그인 도중 vault가 재시작되면 다시 로그인해야 하며, 폭주 중에는 실제 사용자의 로그인도 실패할 수 있다(프록시 IP 제한 권고)",
+      "탈취된 worker 자격은 상한 64개 안에서 자기 범위 행동을 계속 재임대해 분석을 늦출 수 있다",
+      "세 역할 완전 분리는 하지 않고 2인 규칙에서 멈췄다",
+      "업그레이드 후 첫 기동에 기존 자기 확인 평가의 법률 검토 과제가 새로 생겨 운영자가 놀랄 수 있다"
+    ],
+    "lessons": [
+      "수정 직후의 재감사가 가장 생산적이다. 같은 원인(식별자·자기주장 신뢰)이 다른 모양으로 남아 있었다.",
+      "PoC를 판정만 뒤집어 회귀 시험으로 남기면 수정 전 실패·수정 후 통과가 기록되어 고쳤다는 주장이 검증 가능해진다.",
+      "‘누가 말했나’ 대신 ‘어떤 인증된 자격이 했나’에 권한을 묶어야 이름 충돌이나 자기주장으로 우회되지 않는다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "vault 재계산으로 두 배가 된 분석 CPU를, worker가 결과와 함께 입력 해시만 서명해 제출하는 방식으로 줄였다면 S6 방어 수준이 얼마나 약해졌을까?",
+        "로그인 폭주 방어를 프록시 IP 제한에 맡긴 결정은 사내망처럼 NAT 뒤 사용자가 많은 환경에서도 실제 사용자를 막지 않을까?",
+        "2인 규칙과 세 역할 분리 중 실제 감사인이 요구하는 수준은 어느 쪽이며, 그 판단을 누구에게 물어야 할까?"
+      ],
+      "what_if": [
+        "1라운드 수정 직후 재감사를 건너뛰었다면 principal ID 중복으로 tenant 간 복호 스냅샷이 새는 결함이 다음 기능 위에 그대로 깔렸을 것이다."
+      ],
+      "revisit_when": "사내망·여러 팀 배포에서 worker와 OIDC를 실제로 운영해 분석 CPU와 로그인 실패율을 측정할 수 있을 때"
+    },
+    "resume": {
+      "ko": [
+        "적대적 감사와 재감사로 찾은 권한·인증 경계 결함 11건(1라운드 6건, 재감사 5건)을 자격 지문 바인딩·token bucket·4-eyes 규칙으로 고치고 PoC를 모두 회귀 시험으로 고정해, 전체 시험 1,189건 실패 0을 달성",
+        "worker가 낸 분석 결과를 vault가 같은 입력으로 다시 계산해 일치할 때만 서명하도록 바꿔, 자격 하나로 모든 tenant 데이터를 받고 임의 결과에 서명받던 경로를 차단(분석 CPU 약 2배를 비용으로 명시)"
+      ],
+      "en": [
+        "Fixed 11 authorization/authentication boundary flaws found by an adversarial audit and re-audit (credential-fingerprint lease binding, token-bucket IdP limits, four-eyes rules), turning every PoC into a regression test; full suite 1,189 tests with 0 failures."
+      ]
+    },
+    "interview": [
+      {
+        "q": "수정한 코드를 왜 곧바로 다시 감사했나요?",
+        "a_points": [
+          "급히 넣은 수정은 새 공격면을 만들기 쉽다",
+          "실제로 principal ID 중복으로 worker 범위가 합쳐지는 결함이 남아 있었다",
+          "PoC를 뒤집어 회귀 시험으로 남겨 수정의 효과를 증명했다"
+        ]
+      },
+      {
+        "q": "S6를 고치면서 성능을 희생한 이유는?",
+        "a_points": [
+          "서명하는 주체가 서명 대상을 직접 확인하지 않으면 서명이 의미가 없다",
+          "비용(행동당 약 2배 CPU)을 숨기지 않고 운영자 안내에 적었다",
+          "엔진 버전 불일치 시 lease를 거부하고 다시 배정하는 동작도 정의했다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "f0b63cd",
+        "3e84840",
+        "b9ebdb3",
+        "1c0ed10",
+        "2c06f3d",
+        "5a58f82",
+        "0932b2a",
+        "cf45e19",
+        "ffe59bd",
+        "0414fb9",
+        "f7e50dc",
+        "7a7696a",
+        "a218ec7",
+        "aa897d5",
+        "9177cee"
+      ],
+      "docs": [
+        "docs/improvement-rounds.md",
+        "docs/vault-recovery.md",
+        "docs/oidc-authentication.md",
+        "README.md"
+      ],
+      "notes": [
+        "작업 메모",
+        "적대적 감사 문서(비공개)"
+      ]
+    },
+    "related": [
+      "EL-06",
+      "EL-07",
+      "EL-08",
+      "EL-09",
+      "EL-10",
+      "EL-13"
+    ],
+    "uncertain": [
+      "docs/improvement-rounds.md는 1라운드를 2026-10-06으로 적지만 S6·S8~S12 수정 커밋은 2026-10-07(UTC) 01:40~02:41에 있다. 이 항목은 커밋 날짜를 따랐다.",
+      "2라운드 종료 시험 수 1,275건은 재감사 수정만이 아니라 2라운드 전체 작업을 포함한다.",
+      "재감사 수행자는 ‘별도 검토자’로만 기록돼 있어 어떤 에이전트 구성이었는지는 확인하지 못했다(추정: 별도 AI 에이전트 세션)."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-13",
+    "track": "evidence-layer",
+    "date_start": "2026-10-07",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "표준 영수증·독립 검증기와 vault 밖 heads 서명기(2라운드, D1·D2)",
+    "title_en": "Standard receipts, an independent verifier, and a heads signer outside the vault (round 2, D1/D2)",
+    "summary": "내보내기·사건 보고서에 DSSE/in-toto 증명을, 레코드 하나마다 C2SP tlog-proof 영수증을 붙이고 의존성 없는 검증기 evidscope-verify를 따로 배포할 수 있게 했다. 또 heads 로그 서명키를 vault 밖의 얇은 서명기 프로세스로 옮겨, vault 호스트를 장악한 공격자가 tenant를 되돌린 heads 잎에 위트니스 공동서명을 받던 공격을 막았다. 같은 날 3라운드 재감사로 서명기·영수증 경로의 결함 5건을 추가로 고쳤다.",
+    "context": "1라운드에서 RFC 6962 tenant 로그와 위트니스 공동서명 heads 로그(EL-07)를 만들었지만, 별도 검토(재검토 F1)는 서명 키 보유자가 heads 잎 안에서 tenant 하나만 되돌려도 위트니스가 공동서명한다는 점을 보여 줬다. 1라운드는 이 한계를 검증 결과의 보증 수준 표시(database_tamper, signing_key_holder)로 정직하게 드러내는 데서 멈췄다. 감사 권고에는 ‘검증기를 분리 공개하라’는 결정 항목도 있었다. 2라운드 후보 1(서명 키 격리)과 3(표준 영수증과 검증기 분리)이 이 두 과제였다. 증거 계층의 차별점은 ‘운영자를 믿지 않고도 제3자가 검증한다’였으므로, 그 검증을 표준 형식과 독립 구현으로 할 수 있어야 했다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "1라운드 적대적 재검토 F1(서명 키 보유자의 tenant 되돌리기)과 10-06 감사의 검증기 분리 공개 권고, 그리고 2라운드 후보 1·3번",
+      "quote": null
+    },
+    "problem": "1라운드 끝(cf45e19)에서 vault 키를 가진 공격자가 tenant를 7건에서 5건으로 되돌린 heads 잎을 vault 키로 서명해 보내면, 실제 litewitness가 heads 로그는 한 잎 자랐을 뿐이라며 공동서명(200)했다. 그 체크포인트를 붙인 5건짜리 예전 내보내기는 rollbackChecked:true로 검증됐다. 즉 vault 호스트 하나만 장악하면 최신 기록을 지우고도 신선한 위트니스 앵커를 보여 줄 수 있었다. 또 영수증과 검증기가 EvidScope 자체 형식이라 감사인이 다른 도구로 교차 확인할 방법이 없었다.",
+    "constraints": [
+      "vault 무의존성 원칙: DSSE·tlog-policy 파서를 외부 라이브러리 없이 직접 작성",
+      "키 저장소(KMS·HSM)를 직접 만들지 않음",
+      "기존 내보내기와 검증기 출력은 새 옵션을 쓰지 않으면 바뀌지 않아야 함",
+      "클라우드 KMS·Windows 이름 있는 파이프·Kubernetes overlay 실기동은 이 환경에서 시험 불가"
+    ],
+    "options": [
+      {
+        "option": "자체 영수증 형식 설계",
+        "pros": "필요한 필드를 마음대로 정의",
+        "cons": "감사인이 다른 도구로 검증할 수 없고 재발명",
+        "chosen": false,
+        "reason": "DSSE v1·in-toto Statement v1과 C2SP tlog-proof·tlog-policy를 쓰고 Go 독립 구현과 교차 검증"
+      },
+      {
+        "option": "RFC 9942 COSE 영수증(SCITT 호환)",
+        "pros": "IETF 표준 영수증",
+        "cons": "CBOR·COSE 인코더와 검증기를 무의존성으로 새로 써야 하고 상호운용 도구가 없음",
+        "chosen": false,
+        "reason": "같은 포함 증명은 tlog-proof가 표준 형식으로 제공하므로 보류"
+      },
+      {
+        "option": "heads 서명키를 vault 밖의 얇은 서명기로 옮기고, 키 보관은 파일·ssh-agent·외부 명령(KMS CLI)에 맡김",
+        "pros": "서명기가 루트를 직접 계산해 되돌리기·삭제·갈라치기 잎에 서명하지 않음, 하드웨어 키·KMS 연결 가능",
+        "cons": "프로세스 하나 추가, 보호는 handover 시점부터, 레코드·tenant 체크포인트는 여전히 vault 키",
+        "chosen": true,
+        "reason": "직접 만드는 부분을 heads 잎 규칙 검사로 최소화하고 키 보관은 기존 도구에 맡길 수 있어서"
+      },
+      {
+        "option": "모든 서명(레코드·tenant 체크포인트 포함)을 서명기로 이전",
+        "pros": "vault 호스트 장악 시에도 거짓 이력 서명 불가",
+        "cons": "커밋마다 동기 서명이 필요해 트랜잭션 안에서 외부 호출이 생김",
+        "chosen": false,
+        "reason": "빈도가 높고 Store.transaction 안에서 끝나야 해서 옮기지 않음. heads 로그 일관성으로 갈라진 tenant 이력이 heads에 들어가지 못하게 하는 것으로 대신함"
+      }
+    ],
+    "decision": {
+      "what": "표준(DSSE·in-toto·C2SP) 영수증과 분리 배포 가능한 무의존성 검증기를 만들고, heads 로그 키만 규칙을 강제하는 별도 서명기로 옮겨 새 보증 수준 rollbackCheckedAgainst:\"vault_host\"를 추가한다.",
+      "why": "검증이 표준 형식이어야 제3자가 EvidScope 코드를 믿지 않고도 확인할 수 있고, vault 호스트 장악까지 견디려면 되돌리기를 거부하는 주체가 vault 밖에 있어야 했다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "src/dsse.mjs(DSSE v1 PAE, t-of-n 검증)와 src/tlog-policy.mjs(c2sp.org/tlog-policy 파서·평가) 작성, 내보내기·사건 보고서 ?attest=intoto와 레코드별 tlog-proof API 추가(4ffe7f0, 46051fe)",
+      "오프라인 검증기 evidscope-verify CLI와 재현 가능한 tar.gz 묶음(고정 mtime·소유자, SHA256SUMS) 작성, 네트워크·저장소 접근 없이 Node 권한 모델에서 실행되는지 시험(ff5f383, 490ba68)",
+      "Go 표준 라이브러리 DSSE 검증기와 torchwood VerifyProof로 같은 영수증을 교차 검증하는 상호운용 시험 추가(db6bc11)",
+      "heads 서명기(scripts/signer.mjs): 자체 compact range로 루트를 계산하고 tenant 삭제·축소·같은 크기 변경·일관성 증명 없는 성장을 거부, 해시 체인 감사 로그, 파일·ssh-agent·외부 명령 백엔드(da0f360)",
+      "vault가 서명기에서 heads 체크포인트를 받는 경로, 기존 vault 키 heads 로그의 handover, 검증기 --heads-key·--require-heads-signer 옵션(a3c592a, 58db65e)",
+      "공격 재현 시험: 1라운드 모듈만으로 같은 공격을 cf45e19와 새 코드에 돌려 서명기 유무의 차이를 기록(2d8f86e)",
+      "로컬 런처(upgrade-local --heads-signer)와 Kubernetes sidecar·별도 Deployment overlay, Secret 파일 권한 처리(8888ea6, c62303f, 1a13a45, 0d69918)",
+      "3라운드 재감사 수정: 복구 epoch 주장의 fork 거부, 정책의 모든 로그 키 고정 검사, vault_host 판정에 --origin-base 고정 요구, 서명기 TLS 핸드셰이크 5초·주소당 연결 8개, genesis 경고(d28ed3d, 5652f55, f071c4d, 71db988, c4967a8)"
+    ],
+    "tech": [
+      "DSSE v1",
+      "in-toto Statement v1",
+      "C2SP tlog-proof",
+      "C2SP tlog-policy",
+      "C2SP signed-note",
+      "RFC 6962",
+      "litewitness",
+      "Go(torchwood, golang.org/x/mod/sumdb/note)",
+      "ssh-agent",
+      "Ed25519",
+      "Kubernetes",
+      "TLS",
+      "Node.js 권한 모델"
+    ],
+    "skills": [
+      "cryptography_integrity",
+      "security_architecture",
+      "threat_modeling",
+      "adversarial_testing",
+      "standards_integration",
+      "operations",
+      "qa_testing"
+    ],
+    "metrics": [
+      {
+        "name": "vault 호스트의 tenant 되돌리기 공격(위트니스 응답)",
+        "before": "200(공동서명, 공격 성공)",
+        "after": "403(위트니스 거부), 서명기 422 rollback",
+        "unit": "HTTP 상태",
+        "scope": "실제 litewitness, tenant 7건에서 5건으로 되돌린 heads 잎, cf45e19 대 서명기 handover 후",
+        "source": "2d8f86e, docs/improvement-rounds.md 2라운드 공격 재현 결과"
+      },
+      {
+        "name": "영수증 변조 거부",
+        "before": null,
+        "after": "subject 1바이트·payload 비트·서명 키·레코드·정책·로그 키·체크포인트 변조를 세 검증기 모두 거부",
+        "unit": null,
+        "scope": "자체 검증기, 분리 배포 evidscope-verify, Go 검증기",
+        "source": "docs/improvement-rounds.md 2라운드"
+      },
+      {
+        "name": "서명기 연결 독점 공격",
+        "before": "64개 연결을 핸드셰이크 기본 120초 동안 점유 가능",
+        "after": "핸드셰이크 5초, 주소당 연결 8개",
+        "unit": null,
+        "scope": "인증 전 TLS 상대 하나",
+        "source": "71db988"
+      },
+      {
+        "name": "전체 시험",
+        "before": "1,275",
+        "after": "1,284",
+        "unit": "건",
+        "scope": "2라운드 끝에서 3라운드 재감사 병합 후, 실패 0",
+        "source": "docs/improvement-rounds.md 3라운드 측정"
+      }
+    ],
+    "result": "서명기를 쓰면 같은 되돌리기 공격에 위트니스는 403, 서명기는 422로 거부하고, 서명기 키를 고정한 검증자는 새 내보내기를 vault_host 수준으로 검증한다. 세 검증기(자체, 분리 배포, Go)는 7종의 영수증 변조를 모두 거부했다. 서명기 없이 운영하면 같은 공격이 여전히 성공한다는 점과, 3라운드부터 vault_host를 받으려면 --origin-base 고정도 필요하다는 점을 문서에 적었다.",
+    "tradeoffs": [
+      "레코드·tenant 체크포인트는 여전히 vault 키로 서명하므로 vault 호스트 장악자는 앵커를 멈추거나 정상 성장처럼 보이는 위조 기록을 덧붙일 수 있다(vault_host는 ‘앵커된 이력보다 뒤로 되돌릴 수 없음’만 뜻함)",
+      "보호는 handover 시점부터이고, 위트니스에서 vault 키를 지워야 완성된다",
+      "서명기와 vault가 같은 노드에 있으면 노드 장악이 서명기 키까지 닿는다",
+      "레코드 영수증 하나마다 tenant 트리를 다시 계산(O(n))한다",
+      "KMS 명령 예시, Windows 이름 있는 파이프, Kubernetes overlay 실기동은 시험하지 못했다",
+      "COSE·SCITT 영수증은 만들지 않았다"
+    ],
+    "lessons": [
+      "보증 수준을 이름으로 드러내니(database_tamper, signing_key_holder, vault_host) 무엇을 아직 못 막는지가 다음 작업 목록이 되었다.",
+      "같은 공격 스크립트를 이전 커밋과 새 커밋에 그대로 돌리는 재현 시험이 ‘막았다’는 주장을 가장 설득력 있게 만든다.",
+      "직접 만드는 부분을 최소화하고(규칙 검사만), 키 보관은 ssh-agent·KMS 같은 기존 도구에 맡기면 공급망과 유지보수 부담이 줄어든다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "레코드·tenant 체크포인트까지 서명기로 옮길 때의 커밋 지연을, 묶음 서명(group commit, EL-18)과 함께라면 감당할 수 있었을까?",
+        "감사인이 실제로 --heads-key와 --origin-base를 고정해 검증할 만큼 절차가 단순한가, 아니면 기본값으로 묶어 배포해야 하는가?",
+        "COSE·SCITT 영수증을 요구하는 고객이 나타나면 무의존성 원칙과 어떻게 타협할 것인가?"
+      ],
+      "what_if": [
+        "자체 영수증 형식을 만들었다면 Go 독립 구현과의 교차 검증이 불가능해 ‘운영자를 믿지 않는 검증’이라는 차별점의 근거가 약해졌을 것이다."
+      ],
+      "revisit_when": "실제 KMS나 하드웨어 키로 서명기를 운영하거나, 감사인이 독립 검증기를 처음 사용해 피드백을 줄 때"
+    },
+    "resume": {
+      "ko": [
+        "DSSE/in-toto·C2SP tlog-proof 표준 영수증과 무의존성 분리 배포 검증기를 만들고 Go 독립 구현과 교차 검증해, 7종의 변조를 세 검증기 모두가 거부하도록 함",
+        "heads 로그 서명키를 롤백·포크·tenant 삭제를 거부하는 별도 서명기로 옮겨, 실제 litewitness에서 성공(200)하던 vault 호스트 되돌리기 공격을 거부(403·422)로 바꿈"
+      ],
+      "en": [
+        "Moved the heads-log signing key into a separate policy-enforcing signer and shipped standard DSSE/in-toto and C2SP tlog-proof receipts with a dependency-free verifier, turning a vault-host rollback attack that a real witness cosigned (HTTP 200) into a refusal (403/422)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 모든 서명을 서명기로 옮기지 않았나요?",
+        "a_points": [
+          "레코드·tenant 체크포인트는 커밋마다 동기 서명이 필요해 트랜잭션 안 외부 호출이 된다",
+          "heads 로그 일관성 증명으로 갈라진 tenant 이력이 앵커에 들어가지 못하게 했다",
+          "남은 위험(앵커 멈추기, 위조 기록 덧붙이기)은 문서에 명시했다"
+        ]
+      },
+      {
+        "q": "독립 검증기를 어떻게 신뢰할 수 있게 만들었나요?",
+        "a_points": [
+          "표준 형식(DSSE·in-toto·C2SP)만 사용",
+          "Go 독립 구현(torchwood, x/mod note)과 같은 영수증을 교차 검증",
+          "재현 가능한 tar.gz와 네트워크 차단 환경 실행 시험"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "4ffe7f0",
+        "46051fe",
+        "ff5f383",
+        "490ba68",
+        "db6bc11",
+        "df407e3",
+        "189c890",
+        "58e1a60",
+        "da0f360",
+        "a3c592a",
+        "58db65e",
+        "2d8f86e",
+        "03c5a1c",
+        "8888ea6",
+        "c62303f",
+        "1a13a45",
+        "0d69918",
+        "04408f0",
+        "d28ed3d",
+        "5652f55",
+        "7d4ac9a",
+        "f071c4d",
+        "71db988",
+        "c4967a8",
+        "d2f5e70"
+      ],
+      "docs": [
+        "docs/receipts.md",
+        "docs/signer.md",
+        "docs/improvement-rounds.md",
+        "docs/transparency-log.md",
+        "deploy/verifier/README.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-07",
+      "EL-08",
+      "EL-12",
+      "EL-18",
+      "EL-20"
+    ],
+    "uncertain": [
+      "3라운드 재감사의 키스토어 F2 수정(d8467e7)은 이벤트 키 감싸기(EL-08) 영역이라 이 항목의 행동 목록에서 뺐다.",
+      "검증기 묶음의 라이선스와 공개 위치는 오너 결정으로 남아 있어 실제 별도 공개 여부는 확인하지 못했다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-14",
+    "track": "evidence-layer",
+    "date_start": "2026-10-07",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "규제 원문 재확인과 ISMS-P 항목 단위 정렬(차별점 D3)",
+    "title_en": "Re-checking primary legal sources and item-level ISMS-P alignment (differentiator D3)",
+    "summary": "국가법령정보센터 Open API로 인공지능기본법 하위 고시를 다시 확인하고, ISMS-P 인증기준 101개 항목을 고시 원문 [별표 7]에서 받아 항목 단위로 정렬했다(27개 정렬, 74개 제외 사유). 검증된 내보내기에서만 항목별 증거 건수와 기간을 뽑는 보고서 도구를 냈고, 경쟁 조사와 데이터 대조 결과에 따라 과장된 차별점·규제 매핑 주장을 스스로 줄이고 정정했다.",
+    "context": "D3(조문 단위 한국 규제 증거 묶음)는 1라운드에서 기존 기능을 유지만 했고 법률 검토도 없었다. 2라운드 후보 8번이 법률 검토용 매핑 패키지와 ISMS-P·AI 기본법 하위 고시 정렬이었다. 작업 컨테이너에서는 law.go.kr·관보·과기정통부 사이트가 접속 허용 목록 밖이라 열리지 않아, 첫 재확인(533e140)은 ‘아무것도 새로 읽지 못함’으로 끝났다. 같은 날 국내 망(오너 PC 쪽 작업 환경)에서 원문을 받아 다시 확인했다. 동시에 2라운드의 시장 재조사는 비슷한 기능을 가진 제품들을 찾아냈다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "2라운드 후보 8번(D3: 조문 매핑 패키지, ISMS-P·AI 기본법 하위 고시 정렬)과 같은 라운드의 경쟁 제품 재조사",
+      "quote": null
+    },
+    "problem": "기존 문서(evidence-layer.md)는 금융위원회 금융분야 AI 가이드라인과 금융감독원 AI RMF를 조문 단위로 매핑했다고 적었지만, data/requirements.json에는 그 항목이 없었다. ISMS-P는 영역·분야 제목만 읽을 수 있어 처음에는 분야 단위로만 정렬할 수 있었다. AI 기본법 하위 고시 여섯 건의 최종본 여부를 확인하지 못한 상태였다. 또 위트니스 공동서명 로그를 쓰는 제품(Traefik Hub 투명성 로그, remit, agent-custody)과 한국 AI 기본법 안내를 갖춘 도구(Microsoft AGT, DeepInspect)가 확인돼 D1·D3 주장이 넓게 쓰여 있었다.",
+    "constraints": [
+      "작업 컨테이너에서 law.go.kr·관보·isms-p.or.kr 접속 불가, 국내 망에서 받은 파일로만 확인",
+      "KISA 점검 질문 원문을 저장소에 복사하지 않음(저작권)",
+      "관보 대조와 법률 전문가 검토는 불가",
+      "확정본이 없는데 확인일만 바꾸면 catalog identity가 바뀌어 실질 변화 없는 서명 재검토 과제가 생기므로 requirements.json을 건드리지 않음"
+    ],
+    "options": [
+      {
+        "option": "분야(domain) 단위 정렬",
+        "pros": "공식 출처에서 읽을 수 있던 범위로 바로 가능",
+        "cons": "항목 번호가 없어 감사인이 실제 확인사항과 연결하기 어려움",
+        "chosen": false,
+        "reason": "처음 이렇게 만들었다가(34f3f08), 고시 원문 XML을 받은 뒤 항목 단위로 바꿈(c455170)"
+      },
+      {
+        "option": "고시 [별표 7] 원문과 KISA 세부점검항목을 근거로 항목 단위 정렬",
+        "pros": "번호·명칭을 원문과 대조 가능, drift 시험으로 고정",
+        "cons": "확인사항 위치 번호는 KISA 자료에 없어 저장소가 붙인 순서",
+        "chosen": true,
+        "reason": "인증심사와 같은 단위로 증거 위치를 보여 줄 수 있어서"
+      },
+      {
+        "option": "자체 통제 체계를 만들어 여러 규제를 하나로 묶기",
+        "pros": "교차 매핑이 쉬움",
+        "cons": "근거가 원문이 아닌 자체 해석이 됨",
+        "chosen": false,
+        "reason": "고시 원문과 KISA 자료를 그대로 근거로 쓰기로 함(공통 통제 ID는 이후 후보로 남김)"
+      },
+      {
+        "option": "증거가 있으면 해당 기준을 ‘충족’으로 표시",
+        "pros": "보고서가 더 강해 보임",
+        "cons": "인증 판정이 아닌데 판정처럼 읽힘",
+        "chosen": false,
+        "reason": "모든 항목에 criterionAssessment not_performed를 붙이고 ‘증거 있음’과 ‘기준 충족’을 구분"
+      }
+    ],
+    "decision": {
+      "what": "ISMS-P 101개 항목을 원문 기준으로 정렬하되 27개만 증거 위치를 적고 74개는 제외 사유 코드를 붙이며, ‘증거 있음’을 충족 판정으로 쓰지 않는다. 확인하지 못한 고시는 미확인으로 두고, 데이터에 없는 매핑 주장과 경쟁 제품이 이미 가진 차별점 주장은 줄인다.",
+      "why": "감사 증거 제품이 원문보다 넓게 주장하면 신뢰 자체를 잃는다. 경쟁 조사는 주장을 좁고 방어 가능한 범위로 다시 쓰는 근거가 되었다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "AI 기본법 하위 고시 재확인 기록: 컨테이너에서 접속 실패한 사실(533e140)과 국내 망 DRF 조회로 과기정통부 2026년 행정규칙 182건 전수 확인 결과(d33c960)를 docs/legal-sources.md에 남김",
+      "data/isms-p-alignment.json을 분야 단위로 만들고 drift 시험 추가(34f3f08), 고시 XML·KISA 엑셀·안내서 SHA-256을 기록하며 항목 단위로 전환(c455170)",
+      "27개 항목은 확인사항 위치별 EvidScope 증거와 사람이 할 일을, 74개는 11가지 제외 사유 코드와 16개 항목의 보충 설명을 적음",
+      "scripts/isms-p-report.mjs: 내보내기를 먼저 검증(선택적으로 평가 재생)한 뒤 항목·확인사항별 증거 건수와 서명 시각 범위를 JSON·한국어 Markdown으로 출력, 실패 시 아무것도 출력하지 않음(4ddb863)",
+      "리뷰 후 문구 정정과 Markdown 표 이스케이프 강화(dec8b08), enforcement 출처 분류 추가(6bcab84)",
+      "경쟁 조사에 따라 D1을 ‘tenant 단위 되돌리기·삭제 거부, 내용 증거, 서명기 보유 로그 키’로, D3를 ‘독립 검증 가능한 증거에 묶인 조문 단위 요구사항’으로 좁힘(8bd8e03, bc7453e)",
+      "evidence-layer.md의 금융 AI 가이드라인 조문 매핑 주장을 데이터에 맞게 삭제·정정(3751035)"
+    ],
+    "tech": [
+      "국가법령정보센터 Open API(DRF)",
+      "ISMS-P 인증기준 [별표 7]",
+      "KISA 세부점검항목",
+      "JSON",
+      "Markdown",
+      "SHA-256",
+      "Node.js"
+    ],
+    "skills": [
+      "compliance",
+      "requirements",
+      "documentation",
+      "standards_integration",
+      "qa_testing",
+      "decision_making"
+    ],
+    "metrics": [
+      {
+        "name": "ISMS-P 정렬",
+        "before": "분야 단위(항목 번호 없음)",
+        "after": "101개 항목 중 27 정렬·74 제외 사유",
+        "unit": "항목",
+        "scope": "고시 [별표 7] 101개(영역별 16·64·21), 주요 확인사항 328개(42·195·91)",
+        "source": "c455170, docs/isms-p-alignment.md"
+      },
+      {
+        "name": "AI 기본법 하위 고시 재확인",
+        "before": "미확인 6건",
+        "after": "과기정통부 2026-01-01~10-06 행정규칙 182건(본부 67, 고시 49) 중 하위 고시는 제2026-50호 1건, 6건은 여전히 미확인",
+        "unit": "건",
+        "scope": "국가법령정보센터 Open API, 관보 미대조",
+        "source": "docs/improvement-rounds.md 2라운드, docs/legal-sources.md"
+      },
+      {
+        "name": "제외 사유 코드",
+        "before": null,
+        "after": "11종(관리 행위, 인적 보안, 계약, 물리, IdP, 배포 환경, 조직 시스템 개발, 사고 대응, 재해복구, 원 서비스 개인정보 처리, 정보주체 권리)",
+        "unit": null,
+        "scope": "정렬하지 않은 74개 항목",
+        "source": "docs/isms-p-alignment.md"
+      }
+    ],
+    "result": "ISMS-P 101개 항목 전부가 정렬되거나 제외 사유를 가지며, drift 시험이 항목 목록 다이제스트와 출처 해시, 인용한 경로·기록 종류·발견 코드의 존재를 매번 확인한다. 하위 고시는 제2026-50호 1건만 확인됐고 나머지 여섯은 미확인으로 유지했다. 데이터에 없던 금융 AI 가이드라인 매핑 주장은 문서에서 정정했고, D1·D3 주장은 경쟁 제품을 반영해 좁혔다.",
+    "tradeoffs": [
+      "정렬은 사람 검토 전 초안이며 인증심사원·법률 전문가의 검토를 거치지 않았다",
+      "관보 대조를 하지 않아 고시 상태는 ‘미확인’으로 남았다",
+      "과기정통부 고시 번호(제2024-30호)는 전달받은 값으로 원문 XML에서 대조하지 못했다",
+      "[별표 7의2]·[별표 7의3] 완화 기준은 정렬하지 않았다",
+      "차별점 주장을 줄인 만큼 마케팅 문구는 약해졌다"
+    ],
+    "lessons": [
+      "경쟁 조사는 기능을 늘리는 도구가 아니라 주장을 줄이고 방어 가능한 범위로 다시 쓰는 도구다.",
+      "문서와 데이터를 시험으로 묶어 두지 않으면 문서가 데이터보다 앞서 나간다. 이번에 그런 과장 하나를 스스로 찾았다.",
+      "원문을 읽지 못한 것은 ‘없음’이 아니라 ‘미확인’으로 남겨야 한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "27개 정렬 항목의 증거 위치 판단이 실제 인증심사원의 판단과 얼마나 일치할까?",
+        "공통 통제 ID로 ISMS-P·AI 기본법·EU AI Act를 묶었다면 이후 대응표(AM-03)와 증빙 묶음(EL-20)의 유지 비용이 줄었을까, 아니면 원문 추적성이 약해졌을까?",
+        "차별점을 좁힌 뒤에도 남은 주장(조문 단위 요구사항과 독립 검증 증거의 결합)이 구매자에게 충분히 구별되는 가치일까?"
+      ],
+      "what_if": [
+        "처음 분야 단위 정렬에서 멈췄다면 감사 패키지와 운영 홈의 ‘프레임워크별 증거 현황’이 항목 번호 없이 만들어져 감사인이 쓰기 어려웠을 것이다."
+      ],
+      "revisit_when": "AI 기본법 하위 고시 최종본이 관보에 게재되거나, 법률·인증 전문가 검토를 받을 수 있을 때"
+    },
+    "resume": {
+      "ko": [
+        "ISMS-P 인증기준 101개 항목을 고시 원문 기준으로 정렬(27 정렬·74 제외 사유)하고 검증된 내보내기에서만 항목별 증거를 뽑는 도구를 만들었으며, 데이터와 어긋난 규제 매핑 주장을 스스로 찾아 정정"
+      ],
+      "en": [
+        "Aligned all 101 ISMS-P certification items against the official notice (27 aligned, 74 with exclusion codes) with drift tests, built an offline evidence report that only runs on verified exports, and corrected an unsupported regulatory-mapping claim."
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 ‘증거 있음’을 ‘충족’으로 표시하지 않았나요?",
+        "a_points": [
+          "기록이 있다는 것과 기준을 충족했다는 것은 다른 판단이다",
+          "인증 판정은 심사원의 일이고 매핑은 사람 검토 전 초안",
+          "과대 주장이 감사 제품의 신뢰를 가장 빨리 무너뜨린다"
+        ]
+      },
+      {
+        "q": "원문에 접근할 수 없을 때 어떻게 했나요?",
+        "a_points": [
+          "컨테이너에서 실패한 사실을 그대로 기록",
+          "국내 망에서 받은 파일의 SHA-256과 확인 수준을 남김",
+          "확인하지 못한 값은 ‘제공받은 값’이나 ‘미확인’으로 구분"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "533e140",
+        "34f3f08",
+        "d33c960",
+        "929bcdf",
+        "c455170",
+        "4ddb863",
+        "dec8b08",
+        "fef87d6",
+        "8bd8e03",
+        "bc7453e",
+        "3751035",
+        "6bcab84"
+      ],
+      "docs": [
+        "docs/isms-p-alignment.md",
+        "docs/legal-sources.md",
+        "docs/evidence-layer.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-04",
+      "EL-13",
+      "EL-20",
+      "EL-21",
+      "AM-03",
+      "JM-04"
+    ],
+    "uncertain": [
+      "국내 망 재확인을 수행한 주체가 ‘리드’로만 기록돼 있다. 오너 PC 쪽 작업 환경에서 AI 에이전트가 한 것으로 보인다(추정).",
+      "경쟁 제품(Traefik Hub, remit, agent-custody, MS AGT, DeepInspect)의 기능 사실은 2026-10-07 조사 기준이며 이후 다시 확인하지 않았다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-15",
+    "track": "evidence-layer",
+    "date_start": "2026-10-07",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "에이전트 레지스트리와 정책 결정 수집(3라운드)",
+    "title_en": "Agent registry and policy-decision intake (round 3)",
+    "summary": "에이전트마다 서명된 등록 객체와 모든 버전을 남기고, 상태 전이를 별도 서명 기록과 4-eyes 승인으로 관리하는 레지스트리를 만들었다. 게이트웨이·OPA 같은 집행 지점의 허용·거부 결정을 enforcement 출처로 받아 실제 실행 기록과 대조하고, 평가 엔진 v2가 행동 시점의 등록 상태로 정지·폐기·미등록 에이전트의 활동을 보고하게 했다. 레지스트리 입력이 없는 tenant는 평가 결과가 바이트 단위로 이전과 같아 하위 호환을 지켰다.",
+    "context": "10-07 오너가 흩어져 있는 미완성 사내 AI 에이전트를 관리할 GRC 감사 대시보드 설계(메뉴 구조, 감사 증적 스키마, 실시간 차단·격리 구조)를 요청했고, 참고 제품 7종(Langfuse, Credo AI, watsonx.governance, Monitaur, Phoenix, Logfire, Traccia/Agent-Audit-Trail)을 함께 보냈다. AI는 EvidScope를 ‘증거·통제 계층’으로 두고 추적 화면은 Langfuse·Phoenix, 차단은 AI/MCP 게이트웨이, 허용·거부 판단은 OPA·Cedar·AGT에 맡기는 설계 문서로 답했다. 3라운드는 그 설계의 구현 순서를 따랐고, 이 항목은 1번(레지스트리와 수명 주기)과 2번(결정 로그 수신)이다. 그때까지 /api/agents는 이벤트에서 에이전트를 추려 낼 뿐 등록 대상이 아니었다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "오너의 GRC 감사 대시보드 설계 요청(2026-10-07)과 그 설계의 구현 순서 1·2번(3라운드 후보 1·2)",
+      "quote": null
+    },
+    "problem": "어떤 에이전트가 승인됐는지, 승인 후 구성이 바뀌었는지를 증거로 남길 수단이 없었다. 자산(행위자+도구 정책)과 거버넌스 시스템은 서로도, 에이전트와도 연결되지 않았다. 정책 엔진이 ‘거부’한 행동이 실제로 실행됐는지, 결정이 필요한 도구에 결정이 있었는지를 대조할 입력 경로도 없었다.",
+    "constraints": [
+      "EvidScope는 차단하지 않음(제품 역할 유지), 추적 화면과 정책 엔진을 새로 만들지 않음",
+      "레지스트리·결정 입력이 없는 tenant의 평가 스냅샷·해시·내보내기·검증은 이전과 바이트 단위로 같아야 함",
+      "이전 검증기가 새 평가를 변조로 오인하지 않아야 함",
+      "정책 결정 로그의 input·result 본문(민감 내용 가능)은 저장하지 않음"
+    ],
+    "options": [
+      {
+        "option": "자체 정책 엔진을 만들어 허용·거부를 직접 판단",
+        "pros": "결정과 기록이 한 곳",
+        "cons": "정책 언어 재발명, 실행 경로에 들어가 제품 역할이 바뀜",
+        "chosen": false,
+        "reason": "정책 언어를 다시 만들 가치가 없고, 실행 경로에 들어가면 제품이 증거 계층에서 게이트웨이로 바뀌므로 버림"
+      },
+      {
+        "option": "OPA·Cedar·AGT가 내린 결정을 enforcement 출처의 증거로 받아 실제 실행 기록과 대조",
+        "pros": "정책 언어 재발명 없이 기존 엔진의 결정을 쓰고, 결정과 실제 실행의 어긋남을 제3자가 검증 가능",
+        "cons": "결정 기록은 ‘그렇게 결정했다’는 인증된 기록일 뿐 집행 증거가 아니며, OPA 결정 로그는 OPA가 서명하지 않아 로그 자체의 무결성은 확인하지 못함",
+        "chosen": true,
+        "reason": "EvidScope는 증거·통제 계층이고 차단은 집행 지점이라는 설계 원칙을 지키면서 결정과 실행의 대조를 차별점으로 삼을 수 있어서"
+      },
+      {
+        "option": "위험 등급을 설문으로 산정(Credo AI 방식)",
+        "pros": "업계에 익숙한 절차",
+        "cons": "자기 보고 기반이라 증거가 약함",
+        "chosen": false,
+        "reason": "설문 답은 자기 보고라 증거 계층의 근거로 약해서 버림"
+      },
+      {
+        "option": "위험 등급을 등록된 도구·데이터 범주·목적지에 대한 규칙(서명된 정책 데이터)으로 계산하고 검토자 재지정은 별도 기록",
+        "pros": "어떤 규칙이 걸렸는지(reasons)를 설명할 수 있고 규칙 자체가 서명된 데이터",
+        "cons": "검토자 한 명이 등급을 재지정할 수 있어, 4라운드 재감사에서 재지정 후 자기 승인하는 우회(R4-3)가 발견됨",
+        "chosen": true,
+        "reason": "자기 보고 대신 등록된 구성에서 계산해야 등급이 증거에 근거하므로"
+      },
+      {
+        "option": "보이는 미등록 에이전트를 자동 등록",
+        "pros": "입력 부담 감소",
+        "cons": "자기 보고 출처가 곧 등록이 되어 승인 의미가 사라짐",
+        "chosen": false,
+        "reason": "‘승인된 에이전트’ 상태가 자기 보고와 구별되지 않게 되므로 버림"
+      },
+      {
+        "option": "미등록 에이전트를 후보로만 나열하고 사람이 등록",
+        "pros": "등록과 승인의 의미가 유지됨",
+        "cons": "사람이 직접 입력해야 해, 이미 다른 카탈로그에 목록이 있는 조직은 이중 입력을 해야 함(4라운드 카탈로그 가져오기의 계기)",
+        "chosen": true,
+        "reason": "등록은 사람의 판단이어야 4-eyes 수명 주기가 의미를 가지므로"
+      },
+      {
+        "option": "새 엔진 버전을 모든 tenant에 일괄 적용",
+        "pros": "구현 단순",
+        "cons": "기존 평가 해시가 모두 바뀌어 재생·검증이 깨짐",
+        "chosen": false,
+        "reason": "이미 서명된 평가의 재생과 하위 호환이 깨지므로 버림"
+      },
+      {
+        "option": "입력(레지스트리·결정)이 있을 때만 엔진 이름을 v2(이후 v3·v4)로 올림",
+        "pros": "입력이 없는 tenant의 평가 스냅샷이 바이트 단위로 같고 이전 내보내기가 그대로 검증·재생됨",
+        "cons": "이전 검증기는 새 평가를 재생하지 못하고 engine_unavailable로만 보고함",
+        "chosen": true,
+        "reason": "새 기능을 넣으면서도 기존 서명 평가의 재생과 하위 호환을 지킬 수 있어서"
+      }
+    ],
+    "decision": {
+      "what": "에이전트 레지스트리를 서명된 4-eyes 수명 주기로 만들고, 정책 결정은 외부 엔진의 결정을 허용 목록 메타데이터만 받아 실행 기록과 대조한다. 엔진 버전은 입력에 따라 선택해 하위 호환을 지킨다.",
+      "why": "설계 문서의 원칙(EvidScope는 증거·통제 계층, 차단은 집행 지점)을 지키면서 ‘승인된 대로 운영되는가’를 제3자가 검증할 수 있게 하려는 것이다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "src/agent-registry.mjs와 /api/registry: 소유자·목적·출처 자격·행위자·자산·거버넌스 시스템·모델·도구·데이터 범주·목적지를 묶은 서명 객체, 발견·초안·시험·승인·운영·중지·폐기 전이를 별도 서명 기록으로(2af2820)",
+      "승인·운영·중지 해제 전이는 등록자·마지막 수정자·요청자가 아닌 검토자만 승인, 위험 등급별 게이트 조건을 서명된 정책 데이터로 검사",
+      "평가 엔진 v2(src/decision-rules.mjs): 행동 시점 등록 상태로 정지·폐기·미등록 활동, 거부 후 실행, 결정 필수 도구의 결정 누락, 승인 요구 후 무승인 실행, 반복 거부 보고(91f5418)",
+      "OPA 결정 로그 어댑터와 수집 CLI(기본 미리보기, 8 MiB 한도): 결정 id·경로·묶음 리비전 등 허용 목록만 남기고 input·result·질의 본문은 버림(c6e663d)",
+      "레지스트리 화면 탭 추가, 모든 판단(역할·4-eyes·게이트)은 서버에서만(e00b4d0)",
+      "자체 검토 후 강화: 거부 해제는 같은 출처·집행 지점의 허용만, 재등록 시 폐기 활동 발견 정리, 등급 재지정 해제자 기록(935081d)",
+      "9a15b5f 시점 내보내기 고정 파일로 이전 내보내기가 그대로 검증·재생되는지 시험"
+    ],
+    "tech": [
+      "Node.js",
+      "SQLite",
+      "Open Policy Agent(OPA) 결정 로그",
+      "Ed25519 서명 원장",
+      "4-eyes",
+      "JSON 정책 데이터"
+    ],
+    "skills": [
+      "system_architecture",
+      "access_control",
+      "security_architecture",
+      "compliance",
+      "standards_integration",
+      "requirements"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험",
+        "before": "1,284",
+        "after": "1,307",
+        "unit": "건",
+        "scope": "3라운드 재감사 병합 후에서 레지스트리 병합(ef18d23) 후, 실패 0",
+        "source": "docs/improvement-rounds.md 3라운드 측정"
+      },
+      {
+        "name": "레지스트리 미사용 tenant의 평가 스냅샷",
+        "before": "evidscope-evaluate-v1",
+        "after": "바이트 단위 동일(엔진 이름 v1 유지)",
+        "unit": null,
+        "scope": "레지스트리·결정 입력이 없는 tenant",
+        "source": "91f5418"
+      }
+    ],
+    "result": "레지스트리와 결정 수집이 병합됐고(ef18d23) 전체 시험 1,307건 실패 0이었다. 2라운드 시점 내보내기는 이전과 똑같이 검증·재생되고, 2라운드 검증기는 새 내보내기에서 v2 평가만 engine_unavailable로 보고한다. 결정 기록은 ‘그렇게 결정했다’는 인증된 기록일 뿐 집행 증거가 아니라고 문서에 적었다.",
+    "tradeoffs": [
+      "EvidScope는 여전히 차단하지 않으며, 정지·폐기는 기록과 발견일 뿐이다",
+      "서명 키 보유자는 앞뒤가 맞는 거짓 생애주기를 새로 서명할 수 있다(되돌리기·갈라치기만 투명성 로그가 막음)",
+      "레지스트리·정책을 쓸 때마다 tenant 전체를 다시 평가하고, 등록 버전이 많아지면 평가 스냅샷 한도에 걸린다",
+      "레지스트리 정책 변경은 관리자 한 명이 하며, 운영 중에도 소유자·목적 등 일부 필드는 고칠 수 있다",
+      "OPA 결정 로그는 OPA가 서명하지 않아 로그 자체의 무결성은 확인하지 못한다"
+    ],
+    "lessons": [
+      "새 기능을 ‘입력이 있을 때만’ 엔진 버전을 올리는 방식으로 넣으면 기존 서명 평가의 재생과 하위 호환을 지킬 수 있다.",
+      "결정 기록과 집행 증거를 구분해 적는 것이 과대 주장을 막는다.",
+      "위험 등급을 규칙 데이터로 두면 왜 그 등급인지(reasons)를 설명할 수 있다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "도구 이름 키워드로 위험 등급을 계산하는 규칙이 실제 사내 에이전트의 도구 이름 관행에서도 쓸 만한가, 아니면 등록자가 이름만 바꿔 등급을 낮출 수 있는가?",
+        "레지스트리 정책 변경에도 4-eyes를 걸었다면 운영 부담과 안전 사이의 균형은 어땠을까?",
+        "결정 기록이 집행 증거가 아니라는 한계를, 게이트웨이의 서명된 결정 로그를 요구하는 방식으로 줄일 수 있을까?"
+      ],
+      "what_if": [
+        "미등록 에이전트를 자동 등록했다면 입력 부담은 줄었겠지만 ‘승인된 에이전트’라는 상태가 자기 보고와 구별되지 않았을 것이다."
+      ],
+      "revisit_when": "사내망에 실제 게이트웨이·OPA가 있고 여러 팀의 에이전트를 등록해 운영할 때"
+    },
+    "resume": {
+      "ko": [
+        "서명된 4-eyes 수명 주기를 가진 AI 에이전트 레지스트리와 OPA 결정을 실제 실행 기록과 대조하는 결정 증거 수집을 구현하고, 입력 없는 tenant의 평가를 바이트 단위로 유지해 하위 호환을 지킴(전체 시험 1,307건 실패 0)"
+      ],
+      "en": [
+        "Built a signed, four-eyes AI agent registry and policy-decision intake that reconciles OPA decisions with independent execution records, keeping evaluations byte-identical for tenants without the new inputs (1,307 tests, 0 failures)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "정책 엔진을 직접 만들지 않은 이유는?",
+        "a_points": [
+          "OPA·Cedar·AGT가 이미 있고 정책 언어 재발명은 가치가 없다",
+          "실행 경로에 들어가면 제품이 증거 계층에서 게이트웨이로 바뀐다",
+          "차별점은 결정과 실제 실행의 대조를 제3자가 검증하는 것"
+        ]
+      },
+      {
+        "q": "하위 호환을 어떻게 지켰나요?",
+        "a_points": [
+          "입력이 있을 때만 엔진 버전을 올림",
+          "이전 검증기는 모르는 엔진을 변조가 아닌 engine_unavailable로 보고",
+          "이전 커밋이 만든 내보내기 고정 파일로 회귀 시험"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "91f5418",
+        "2af2820",
+        "c6e663d",
+        "e00b4d0",
+        "935081d",
+        "6bcab84",
+        "4ae4664",
+        "ef18d23",
+        "34b94df"
+      ],
+      "docs": [
+        "docs/agent-registry.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "작업 메모",
+        "GRC 대시보드 설계 문서(비공개)"
+      ]
+    },
+    "related": [
+      "EL-16",
+      "EL-17",
+      "EL-21",
+      "UX-05",
+      "AM-13"
+    ],
+    "uncertain": [
+      "오너가 GRC 대시보드 설계 문서의 결정(추적 화면 외부 위임 등)을 명시적으로 승인했는지는 기록에 없다. 3라운드가 그 구현 순서를 따랐다는 것만 확인했다.",
+      "참고 제품 7종 중 일부 주장(예: watsonx의 Testing 상태)은 설계 당시 사실 확인에서 틀린 것으로 판정됐다고만 기록돼 있다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-16",
+    "track": "evidence-layer",
+    "date_start": "2026-10-07",
+    "date_end": "2026-10-07",
+    "status": "done",
+    "title": "사람 승인 대기열과 킬 스위치: 정지의 전파 증거(3라운드)",
+    "title_en": "Human approval queue and kill switch: evidence that a stop propagated (round 3)",
+    "summary": "집행 지점이 ‘승인 필요’ 판정을 내리면 행동 하나에 묶인 승인 요청을 vault에 열고 CIBA 방식으로 폴링하며, 사람의 답은 게이트웨이가 오프라인 검증하는 DSSE 문서로 받게 했다. 킬 스위치는 한 사람이 서명된 정지 명령을 내리고 다른 사람만 해제할 수 있으며, 정지 상태를 OPA 묶음과 DSSE 거부 목록으로 배포하고 OPA 상태 보고로 전파 시각을 증거로 남긴다. EvidScope는 여전히 직접 차단하지 않고, 승인·정지가 지켜졌는지를 판정한다.",
+    "context": "2라운드의 남은 한계는 ‘EvidScope는 사후 관측 설계라 어떤 호출도 실시간으로 막지 못한다’였다. GRC 대시보드 설계는 정지를 정책 묶음 거부, 게이트웨이 거부 목록, IdP 비활성화와 CAEP 신호, 컨테이너 중지의 4단계로 정하고, EvidScope가 실행 경로에 들어가는 곳은 사람 승인 하나뿐이라고 정했다. 레지스트리(EL-15)가 생겨 정지 대상을 등록 항목으로 지정할 수 있게 된 직후였다. 3라운드 후보 3번(격리·킬스위치 통제 API)과 4번(사람 승인 대기열)이 이 작업이다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "GRC 대시보드 설계의 구현 순서 3·4번(3라운드 후보 3·4)과 2라운드 ‘실시간으로 막지 못함’ 한계",
+      "quote": null
+    },
+    "problem": "정책 엔진이 승인을 요구한 행동에 사람 승인 증거 없이 실행되면 사후에 REQUIRED_APPROVAL_MISSING만 냈고, 승인 자체는 Slack·티켓·게이트웨이 화면 같은 밖에서 이뤄져 누가 답할 자격이 있었는지, 답이 어느 대상에 대한 것이었는지 증거가 없었다. 레지스트리에서 에이전트를 정지해도 집행 지점에 알리는 경로가 없었고, 집행 지점이 정지를 언제 받아들였는지 또는 받아들이지 않았는지 보여 줄 기록도 없었다. 그렇다고 EvidScope가 직접 차단하면 제품의 역할이 바뀐다.",
+    "constraints": [
+      "EvidScope는 직접 차단하지 않음, 차단은 OPA·게이트웨이",
+      "vault는 밖으로 호출하지 않음(pull 배포만), vault에 IdP·클러스터 자격을 두지 않음",
+      "OPA는 Ed25519 묶음 서명을 검증하지 못함",
+      "OPA 바이너리가 환경에 없어 Rego 예시를 실행·문법 검사할 수 없음",
+      "승인·정지 기록이 없는 tenant의 평가·내보내기는 이전과 동일해야 함"
+    ],
+    "options": [
+      {
+        "option": "EvidScope가 직접 호출을 가로채 차단",
+        "pros": "확실한 실시간 통제",
+        "cons": "제품이 게이트웨이가 되어 역할이 바뀌고 가용성 책임이 커짐",
+        "chosen": false,
+        "reason": "제품 역할이 바뀌고 가용성 책임이 커지므로 버림"
+      },
+      {
+        "option": "차단은 집행 지점(OPA·게이트웨이)에 맡기고, EvidScope는 정지가 언제 전파됐고 지켜졌는지를 서명된 증거로 판정",
+        "pros": "제품 역할을 유지하면서 승인 없이 실행됐는지와 정지 전파 시각을 제3자가 내보내기와 공개키만으로 확인 가능",
+        "cons": "집행 지점이 적용하지 않거나 우회 경로가 있으면 실행은 계속되고, 활성화 보고는 집행 지점의 자기 보고라 시각을 일정 범위 안에서 꾸밀 수 있음",
+        "chosen": true,
+        "reason": "직접 차단하지 않고도 정지와 승인을 통제의 일부로 만들 수 있어서"
+      },
+      {
+        "option": "새 승인 전송 형식 설계",
+        "pros": "필요한 필드만",
+        "cons": "재발명, 게이트웨이 개발자가 새로 배워야 함",
+        "chosen": false,
+        "reason": "재발명이고 통합 비용이 커서 버림"
+      },
+      {
+        "option": "OpenID CIBA Core 1.0 poll 모드의 이름과 의미(auth_req_id, interval, authorization_pending, slow_down 등)만 빌리고 OAuth 토큰은 발급하지 않음",
+        "pros": "표준 이름을 빌려 통합 비용이 줄고 설명이 쉬움",
+        "cons": "폴링 방식이라 검토자 알림이 없고 승인 화면은 15초마다 다시 읽음",
+        "chosen": true,
+        "reason": "표준의 의미를 빌리면 게이트웨이 개발자가 익숙한 흐름으로 연결할 수 있어서"
+      },
+      {
+        "option": "승인 무응답 시 실행 허용(fail-open)",
+        "pros": "EvidScope 장애가 업무를 멈추지 않음",
+        "cons": "vault를 끄면 승인 통제가 사라짐",
+        "chosen": false,
+        "reason": "vault를 멈추는 것만으로 승인 통제를 우회할 수 있어 버림"
+      },
+      {
+        "option": "응답이 없으면 게이트웨이가 거절(fail-closed)",
+        "pros": "vault를 멈춰 승인 통제를 우회할 수 없고, 이미 받은 답은 공개키만으로 검증돼 vault 장애 중에도 실행 창 안에서 사용 가능",
+        "cons": "vault가 내려가면 승인이 필요한 행동이 모두 멈춤(가용성 부담)",
+        "chosen": true,
+        "reason": "승인 대기열은 EvidScope가 실행 경로에 들어가는 유일한 곳이라 우회 불가해야 하므로, 가용성 부담은 문서에 남김"
+      },
+      {
+        "option": "vault 키(Ed25519)로 OPA 묶음 서명",
+        "pros": "키 하나로 단순",
+        "cons": "OPA가 검증하지 못함",
+        "chosen": false,
+        "reason": "OPA가 Ed25519 묶음 서명을 검증하지 못해 버림"
+      },
+      {
+        "option": "OPA가 검증하는 RS256·ES256 별도 키로 묶음 서명하고, OPA를 쓰지 않는 게이트웨이는 DSSE 거부 목록 사용",
+        "pros": "OPA가 서명을 검증할 수 있고 OPA 없는 게이트웨이도 서명된 거부 목록을 받음",
+        "cons": "묶음 서명 키가 vault 호스트에 있음",
+        "chosen": true,
+        "reason": "OPA Bundle Service API를 그대로 따르면서 서명 검증이 가능한 유일한 경로라서"
+      },
+      {
+        "option": "IdP 비활성화·컨테이너 중지를 EvidScope가 직접 호출",
+        "pros": "정지 4단계를 한곳에서 자동화",
+        "cons": "vault 호스트 장악 시 IdP·클러스터까지 조작 가능",
+        "chosen": false,
+        "reason": "vault에 IdP·클러스터 자격을 두면 장악 시 피해 범위가 커지므로 버림"
+      },
+      {
+        "option": "정지 명령을 ‘수행하라’는 기록으로 두고 IdP·컨테이너 단계의 수행 증거는 외부 참조로 연결",
+        "pros": "vault에 IdP·클러스터 자격을 두지 않아 장악 시 피해 범위가 줄어듦",
+        "cons": "IdP 비활성화·CAEP·컨테이너 중지는 수동 단계로 남음",
+        "chosen": true,
+        "reason": "정지 단계를 기록과 증거로 연결하면서 vault의 자격 범위를 최소로 유지할 수 있어서"
+      }
+    ],
+    "decision": {
+      "what": "승인은 CIBA poll 방식과 vault 서명 DSSE 답으로, 정지는 서명된 정지 명령과 OPA Bundle·Status API 기반 pull 배포로 구현하고, 엔진 v3(승인)·v4(정지)가 승인 전 실행, 정지 활성화 뒤 실행(STOP_ORDER_NOT_HELD), 기한 안 미전파(STOP_PROPAGATION_MISSING)를 보고한다.",
+      "why": "직접 차단하지 않고도 ‘승인 없이 실행됐는가’와 ‘정지가 언제 집행 지점에 닿았는가’를 제3자가 내보내기 파일과 공개키만으로 확인할 수 있게 하려는 것이다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "승인 요청을 approval_request 서명 객체로 저장, 누가 답할 수 있는지(역할, 제외 대상, 등급별 승인자 수)를 레지스트리 정책 데이터에서 요청 시점에 고정하고 만료는 거절(6a28c8a)",
+      "게이트웨이 폴링은 검증된 상태에서 한 요청만 읽고 아무것도 쓰지 않으며, 서명된 답 외에는 모두 오류로 답해 fail-closed",
+      "평가 엔진 v3: 승인 전 실행, 거절·만료 뒤 실행, 실행 창 초과, 다른 대상 실행, 제외된 사람의 승인 보고, 오프라인 검증기에 승인 답 검증 명령 추가(3da3902)",
+      "정지 명령 agent_stop_order: 검토자 한 명이 에이전트 전체나 지정 도구를 정지, 해제는 다른 사람의 승인으로만, 담당 집행 지점과 전파 기한을 발령 때 고정(5ed60a4, 43f285a)",
+      "OPA Bundle Service API(ETag·304, 원장 기반 리비전)와 선택적 RS256·ES256 묶음 서명, DSSE 거부 목록, OPA Status API 수신을 bundle_activation 기록으로(6f11abf)",
+      "평가 엔진 v4가 담당 집행 지점의 활성화 지연을 서명된 전파 기한과 비교, 정지 버튼·전파 패널·승인 대기열 화면 추가(20c8d64, 16cd049)",
+      "두 기능 병합 시 엔진 이름 정리(승인만 있으면 v3, 정지가 있으면 v4)와 예시 Rego·OPA 설정 문서화(781fed4, 88d78f7)"
+    ],
+    "tech": [
+      "OpenID CIBA Core 1.0(poll 모드 명명)",
+      "DSSE",
+      "in-toto",
+      "OPA Bundle Service API",
+      "OPA Status API",
+      "Rego",
+      "RS256",
+      "ES256",
+      "Ed25519",
+      "Node.js"
+    ],
+    "skills": [
+      "security_architecture",
+      "system_architecture",
+      "access_control",
+      "standards_integration",
+      "threat_modeling",
+      "decision_making"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험",
+        "before": "1,307",
+        "after": "1,325(승인 대기열 병합), 1,340(정지 명령 병합, 통과 1,334)",
+        "unit": "건",
+        "scope": "실패 0, skip 6",
+        "source": "docs/improvement-rounds.md 3라운드 측정"
+      },
+      {
+        "name": "Rego 예시 검증",
+        "before": null,
+        "after": "미실행(OPA 바이너리 없음)",
+        "unit": null,
+        "scope": "deploy/opa 예시 정책",
+        "source": "작업 메모, docs/kill-switch.md"
+      }
+    ],
+    "result": "승인 대기열(7246e00)과 킬 스위치(739f372)가 병합되어 3라운드가 1,340건(통과 1,334, 실패 0)으로 끝났다(503c185). 승인·정지 기록이 없는 tenant는 평가·내보내기가 이전과 같고, v1~v2만 아는 검증기는 새 평가를 engine_unavailable로 보고한다. 예시 Rego는 OPA로 실행해 보지 못했고, 승인 요청과 정지 명령이 한 tenant에 함께 있는 경우는 엔진 선택만 단위 시험했다(4라운드에서 종단 시험 추가).",
+    "tradeoffs": [
+      "승인 대기열은 EvidScope를 실행 경로에 넣어 vault가 내려가면 승인이 필요한 행동이 모두 멈춘다(fail-closed)",
+      "한 번만 실행하는 책임은 게이트웨이에 있고, 실행 창 안의 두 번째 실행은 평가에서도 정상으로 보인다",
+      "활성화 보고는 집행 지점의 인증된 자기 보고라 시각을 일정 범위 안에서 꾸밀 수 있다",
+      "알림 기능이 없어 검토자는 15초마다 갱신되는 화면을 직접 봐야 한다",
+      "묶음 서명 키가 vault 호스트에 있다",
+      "IdP 비활성화·CAEP·컨테이너 중지는 수동 단계로 남았다"
+    ],
+    "lessons": [
+      "직접 차단하지 않는 제품도 ‘정지가 언제 어디에 닿았는가’를 증거로 만들면 통제의 일부가 될 수 있다.",
+      "표준의 이름과 의미만 빌려도(CIBA) 통합 비용이 줄고 설명이 쉬워진다.",
+      "실행 경로에 들어가는 유일한 지점에서는 fail-closed를 택하고 그 가용성 비용을 숨기지 않아야 한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "fail-closed 승인 대기열이 vault 장애 때 실제 업무를 얼마나 멈추게 할지, 이중화 없이 사내망에 배포해도 될까?",
+        "집행 지점의 자기 보고 시각을 독립 관측(프록시·네트워크 기록)으로 교차 확인하면 전파 증거가 얼마나 강해질까?",
+        "이후 에이전트 모니터링에서 정한 ‘확실한 것만 차단’(AM-13) 원칙과, 여기서 정한 ‘EvidScope는 차단하지 않는다’ 원칙은 어떻게 조정해야 할까?"
+      ],
+      "what_if": [
+        "fail-open을 택했다면 가용성 걱정은 줄었겠지만, vault를 멈추는 것만으로 승인 통제를 우회할 수 있었을 것이다."
+      ],
+      "revisit_when": "실제 OPA·게이트웨이와 상호운용 시험을 하거나, 사내망에서 승인 지연·장애 데이터가 쌓일 때"
+    },
+    "resume": {
+      "ko": [
+        "직접 차단하지 않고도 승인 없이 실행됐는지와 정지 명령이 집행 지점에 언제 전파됐는지를 서명된 증거로 판정하는 CIBA 방식 승인 대기열과 OPA 기반 킬 스위치를 설계·구현(전체 시험 1,340건 실패 0)"
+      ],
+      "en": [
+        "Designed a CIBA-style human approval queue with vault-signed DSSE answers and an OPA-bundle kill switch that records propagation evidence, proving whether stops were honored without EvidScope blocking anything itself (1,340 tests, 0 failures)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "차단하지 않는 킬 스위치가 무슨 의미가 있나요?",
+        "a_points": [
+          "차단은 OPA·게이트웨이가 하고 EvidScope는 정지가 전파·준수됐는지 증명",
+          "활성화 뒤 실행과 기한 안 미전파를 서명된 발견으로 보고",
+          "vault에 IdP·클러스터 자격을 두지 않아 장악 시 피해 범위를 줄임"
+        ]
+      },
+      {
+        "q": "승인 대기열을 fail-closed로 한 이유와 비용은?",
+        "a_points": [
+          "실행 경로에 들어가는 유일한 지점이라 우회 불가해야 함",
+          "이미 받은 답은 공개키만으로 검증되어 vault 장애 중에도 실행 창 안에서 사용 가능",
+          "가용성 부담은 문서에 명시하고 이중화를 권고"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "3da3902",
+        "6a28c8a",
+        "16cd049",
+        "2869975",
+        "7246e00",
+        "5ed60a4",
+        "43f285a",
+        "6f11abf",
+        "20c8d64",
+        "88d78f7",
+        "3305d5c",
+        "781fed4",
+        "969a901",
+        "739f372",
+        "503c185"
+      ],
+      "docs": [
+        "docs/approval-queue.md",
+        "docs/kill-switch.md",
+        "docs/improvement-rounds.md",
+        "deploy/opa/evidscope-kill-switch.rego",
+        "deploy/opa/opa-config.example.yaml"
+      ],
+      "notes": [
+        "작업 메모",
+        "GRC 대시보드 설계 문서(비공개)"
+      ]
+    },
+    "related": [
+      "EL-15",
+      "EL-17",
+      "EL-20",
+      "UX-05",
+      "AM-13"
+    ],
+    "uncertain": [
+      "승인 대기열과 킬 스위치는 별도 작업 갈래(worktree)에서 병렬 구현된 것으로 보인다(추정, 병합 커밋 781fed4 기준)."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-17",
+    "track": "evidence-layer",
+    "date_start": "2026-10-08",
+    "date_end": "2026-10-08",
+    "status": "done",
+    "title": "4라운드: 3라운드 재감사, 기존 카탈로그 가져오기, 결정 출처 확장",
+    "title_en": "Round 4: re-audit of round 3, importing existing agent catalogs, and more decision sources",
+    "summary": "3라운드의 승인 대기열·킬 스위치·레지스트리를 공격자 입장에서 다시 감사해 중간 3건·낮음 2건의 결함과 제안 1건을 고쳤다(프로토타입 이름으로 정지된 에이전트가 거부 목록에서 사라지는 문제 포함). A2A Agent Card와 Backstage 엔터티를 신뢰 필드 없이 레지스트리 ‘발견’ 항목으로 가져오게 했고, OTLP 결정 span과 Cedar(Amazon Verified Permissions) 결정 어댑터를 더했다. 전체 시험은 1,374건, 실패 0이었다.",
+    "context": "3라운드는 하루에 레지스트리, 결정 수집, 승인 대기열, 킬 스위치를 모두 넣어 새 공격면이 컸다. 4라운드는 다음 날 새벽(UTC) 정기 점검 루틴으로 시작했고, 세 작업 갈래(재감사, 카탈로그, 결정 출처)를 503c185에서 나눠 병렬로 진행했다. 레지스트리는 사람이 직접 입력해야 해서, 이미 Backstage나 A2A 카드에 에이전트 목록을 가진 조직은 이중 입력을 해야 했다. 결정 수집은 OPA 어댑터만 있어 Cedar나 OTLP로 결정을 내보내는 게이트웨이는 연결할 수 없었다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "4라운드 후보 1(3라운드 적대적 재감사), 2(카탈로그 가져오기), 3(결정 수집 확장). 정기 점검 루틴으로 시작",
+      "quote": null
+    },
+    "problem": "R4-1: 등록 id가 __proto__인 항목은 OPA 묶음 data.json과 거부 목록에서 사라져, 정지된 에이전트를 예시 Rego가 허용했다. constructor·toString 같은 행위자 이름도 빠졌다. R4-2: 배포가 항목의 현재 출처·행위자를 써서, 검토자 한 명이 정지된 항목을 고치거나 다시 등록하면 거부 목록에서 이름이 빠졌다. R4-3: 검토자 한 명이 위험 등급을 high(승인자 2명)에서 low(1명)로 낮춘 뒤 그 요청을 혼자 승인할 수 있었다. R4-4: 오프라인 검증이 API가 쓰지 않는 승인 이력(요청보다 이른 답 등)을 통과시켰다. R4-5: 짝 없는 서로게이트만 다른 두 이름이 data.json에 중복 키를 만들어 서명 묶음 검증이 실패할 수 있었다. P-2: 집행 지점 자격 하나가 승인 요청을 무제한으로 열 수 있었다.",
+    "constraints": [
+      "YAML 파서 의존성을 추가하지 않음(무의존성 원칙)",
+      "카탈로그 문서는 자기 보고이므로 신뢰 필드를 문서에서 가져오지 않음",
+      "vault는 외부 URL을 가져오지 않음(카탈로그 본문은 요청에 담아 보냄)",
+      "OTel 의미 규약에 인가 결정 속성이 없음",
+      "503c185가 만든 내보내기와 이전 검증기가 계속 동작해야 함"
+    ],
+    "options": [
+      {
+        "option": "카탈로그 문서의 모든 필드(도구·위험 등급·상태 포함)를 가져오기",
+        "pros": "입력 부담 최소",
+        "cons": "자기 보고 문서가 신뢰 필드를 정하게 됨",
+        "chosen": false,
+        "reason": "자기 보고 문서가 승인 의미를 정하게 되므로 버림"
+      },
+      {
+        "option": "이름·목적·책임자·버전만 옮기고 출처 자격·행위자·도구·위험 등급·상태는 가져오지 않으며, 가져온 출처를 서명해 남김",
+        "pros": "이중 입력을 줄이면서 승인 의미를 지키고, 오프라인 검증기가 신뢰 필드 불변을 확인",
+        "cons": "카탈로그 문서와 위치는 자기 보고이며 실제 에이전트를 설명하는지는 확인하지 않음",
+        "chosen": true,
+        "reason": "외부 카탈로그 연동은 무엇을 절대 가져오지 않는가를 먼저 정해야 안전하므로"
+      },
+      {
+        "option": "YAML 라이브러리 의존성 추가",
+        "pros": "완전한 YAML 지원",
+        "cons": "공급망 표면 증가",
+        "chosen": false,
+        "reason": "무의존성 원칙에 어긋나 버림"
+      },
+      {
+        "option": "YAML 안전 부분집합만 직접 읽음(앵커·별칭·태그·병합 키 거부)",
+        "pros": "의존성을 늘리지 않음",
+        "cons": "재발명 논란이 남고, 6라운드 재감사에서 실제로 이차 시간 파싱 결함이 나옴",
+        "chosen": true,
+        "reason": "필요한 범위만 읽으면 무의존성 원칙을 지킬 수 있다고 보고, 재발명 논란이 있는 부분이라고 기록함"
+      },
+      {
+        "option": "MCP server.json도 레지스트리로 가져오기",
+        "pros": "MCP 생태계 연결",
+        "cons": "에이전트가 아니라 도구를 설명함",
+        "chosen": false,
+        "reason": "에이전트 레지스트리의 대상이 아니므로 제외"
+      },
+      {
+        "option": "A2A Agent Card와 Backstage 엔터티만 가져오기",
+        "pros": "에이전트를 설명하는 형식만 레지스트리 ‘발견’ 항목으로 들어옴",
+        "cons": "그 밖의 에이전트 목록 형식은 지원하지 않음",
+        "chosen": true,
+        "reason": "4라운드 후보 2번이 Backstage와 A2A Agent Card를 대상으로 정했으므로"
+      },
+      {
+        "option": "OPA 결정 로그용 서명 형식을 새로 정의",
+        "pros": "결정 로그 무결성 확인 가능",
+        "cons": "OPA가 지원하지 않는 자체 형식",
+        "chosen": false,
+        "reason": "OPA가 지원하지 않는 형식을 새로 만드는 재발명이라 버림"
+      },
+      {
+        "option": "OPA 문서에 결정 로그 서명 수단이 없다는 사실만 문서에 적음",
+        "pros": "형식을 새로 만들지 않음",
+        "cons": "OPA 결정 로그 자체의 무결성은 확인하지 못함",
+        "chosen": true,
+        "reason": "표준에 없는 형식을 만들지 않고 한계를 정직하게 드러내는 쪽을 택함"
+      },
+      {
+        "option": "P-1(재발령 시 담당 집행 지점이 전파 판정에서 빠짐) 수정",
+        "pros": "전파 판정 일관성",
+        "cons": "‘다시 내려 담당을 바꾼다’는 문서화된 동작과 충돌",
+        "chosen": false,
+        "reason": "문서화된 동작과 충돌해 이번에는 고치지 않음"
+      },
+      {
+        "option": "P-1은 고치지 않고 5라운드 후보로 넘김",
+        "pros": "문서화된 재발령 동작을 유지하고, 정지 자체는 유지됨",
+        "cons": "재발령 시 지정한 담당 집행 지점이 전파 판정에서 빠질 수 있는 문제가 남음",
+        "chosen": true,
+        "reason": "정지 자체는 유지되는 낮음 등급 제안이라 문서 동작과의 충돌을 정리할 때까지 미룸"
+      }
+    ],
+    "decision": {
+      "what": "재감사 결함은 원인 단위로 고치고(프로토타입 없는 맵, 발령 때 고정한 이름 배포, 재지정자의 응답 금지, 출처당 대기 요청 상한), 카탈로그는 비신뢰 필드만 가져오며, 결정 출처는 기존 형식(제안 0033, AVP CloudTrail)에 맞춰 어댑터로 넓힌다.",
+      "why": "통제 기능일수록 한 사람이 우회할 수 있는 작은 구멍이 전체 통제를 무력화하기 때문이다. 카탈로그는 이중 입력을 없애되 승인 의미를 지켜야 했다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "OPA 묶음·거부 목록 맵을 프로토타입 없는 객체로 바꾸고, Rego가 묶음에 없는 에이전트도 거부하도록 수정(44ab4c0)",
+      "활성 정지 명령이 발령 때 고정한 출처·행위자 이름을 4-eyes 해제 전까지 배포하고 대체 명령이 이를 물려받게 함(30bb609)",
+      "위험 등급을 재지정한 검토자를 요청에 고정해 그 요청에 답하지 못하게(403) 하고 오프라인 검증도 확인(84a5769), API가 쓰지 않는 승인 이력을 오프라인 검증에서 거부(db5d414)",
+      "OPA가 읽는 형태로 맵 키 생성(6ff55df), 출처당 답을 기다리는 요청 기본 100개 상한과 429(fed406f), 승인·정지가 함께 있는 tenant의 종단 시험(6908a3a)",
+      "A2A Agent Card(1.0·0.3)와 Backstage 엔터티 매핑, A2A 서명은 가져오는 사람이 준 공개 키로만 확인하고 jku는 가져오지 않음, RSA 키 8192비트 제한(cc4d5ef, c4111ef)",
+      "POST /api/registry/import: 2 MiB 본문을 인증 후 버퍼링, 출처(형식·digest·위치·서명 상태·가져온 사람)를 서명해 남기고 사람이 고친 항목은 충돌로 보고(8ba67dd)",
+      "OTLP 결정 span(kube-agentic-networking 제안 0033의 event.action)을 otlpDecisions를 켠 enforcement 출처만 결정으로 저장(f363084), Cedar·AVP CloudTrail 결정 어댑터와 중복 전달 무시(9870e1a, b90ef01)",
+      "출처별로 증명하는 것과 증명하지 않는 것을 표로 정리(43ef749)"
+    ],
+    "tech": [
+      "A2A Agent Card",
+      "Backstage Software Catalog",
+      "YAML(안전 부분집합)",
+      "JWS",
+      "RFC 8785",
+      "OpenTelemetry",
+      "Cedar",
+      "Amazon Verified Permissions",
+      "AWS CloudTrail",
+      "OPA",
+      "Rego",
+      "JavaScript 프로토타입 오염 방어"
+    ],
+    "skills": [
+      "adversarial_testing",
+      "access_control",
+      "standards_integration",
+      "threat_modeling",
+      "qa_testing",
+      "security_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험",
+        "before": "1,340",
+        "after": "1,374(통과 1,368)",
+        "unit": "건",
+        "scope": "3라운드 끝에서 4라운드 끝(ee068f7), 실패 0, skip 6",
+        "source": "docs/improvement-rounds.md 4라운드 측정"
+      },
+      {
+        "name": "재감사 결함",
+        "before": null,
+        "after": "중간 3(R4-1~3), 낮음 2(R4-4·5), 제안 1(P-2) 수정, 제안 1(P-1) 이월",
+        "unit": "건",
+        "scope": "승인 대기열·킬 스위치·레지스트리",
+        "source": "docs/improvement-rounds.md 4라운드"
+      },
+      {
+        "name": "출처당 답 대기 승인 요청 상한",
+        "before": "무제한(행동당 10건×행동 수)",
+        "after": "기본 100(1~1000)",
+        "unit": "건",
+        "scope": "approvals.maxPendingPerSource",
+        "source": "fed406f"
+      }
+    ],
+    "result": "재감사 결함은 모두 503c185에서 실패하는 재현 시험과 함께 고쳐졌고, 4라운드는 전체 시험 1,374건(통과 1,368, 실패 0)으로 끝났다(ee068f7). 503c185 검증기는 카탈로그 가져오기가 든 내보내기도 받아들이고, 새 기록이 없는 tenant의 평가·내보내기는 이전과 같다. 카탈로그 서명 ‘verified’는 검토자가 준 키로 서명됐다는 뜻일 뿐이라고 문서에 적었다.",
+    "tradeoffs": [
+      "카탈로그 문서와 위치는 자기 보고이며 실제 에이전트를 설명하는지는 확인하지 않는다",
+      "YAML 부분집합 파서는 재발명 논란이 남는다(6라운드 재감사에서 실제로 이차 시간 파싱 결함이 나옴)",
+      "OTLP 결정은 Bearer 토큰만으로 받고 요청 서명이 없으며, 제안 0033은 allow·deny만 있어 승인 요구·변형을 표현하지 못한다",
+      "AVP CloudTrail 다이제스트 파일은 검증하지 않는다",
+      "P-1은 고치지 않고 이월했다"
+    ],
+    "lessons": [
+      "자유 문자열을 키로 쓰는 맵에서 JavaScript 프로토타입 이름은 통제 우회가 된다. 보안 통제용 데이터 구조는 프로토타입 없는 맵이 기본이어야 한다.",
+      "한 사람에게 허용한 작은 권한(위험 등급 재지정)이 다른 4-eyes 규칙을 무력화할 수 있으므로, 권한 조합을 함께 봐야 한다.",
+      "외부 카탈로그 연동은 ‘무엇을 절대 가져오지 않는가’를 먼저 정해야 안전하다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "YAML을 직접 파싱한 대가(6라운드의 이차 시간 DoS)를 생각하면, 무의존성 원칙을 지키는 것이 검증된 YAML 라이브러리를 쓰는 것보다 정말 안전했을까?",
+        "P-1처럼 문서화된 동작과 보안 제안이 충돌할 때, 문서를 바꾸는 것과 제안을 미루는 것 중 무엇이 맞았을까?",
+        "Backstage·A2A 외에 실제 사내 조직이 쓰는 에이전트 목록 형식은 무엇이며, 그쪽을 먼저 지원했어야 하지 않을까?"
+      ],
+      "what_if": [
+        "3라운드 직후 재감사 없이 카탈로그 기능만 쌓았다면, 정지된 에이전트가 특수 id 하나로 거부 목록에서 빠지는 결함이 배포 경로에 남았을 것이다."
+      ],
+      "revisit_when": "실제 OPA로 묶음·Rego·상태 보고 상호운용 시험을 하거나, 사내 카탈로그 연동 요구가 생길 때"
+    },
+    "resume": {
+      "ko": [
+        "통제 기능 재감사로 프로토타입 오염·자기 승인 우회 등 결함 5건과 제안 1건을 회귀 시험과 함께 막고, A2A·Backstage 카탈로그를 신뢰 필드 없이 가져오는 기능과 Cedar·OTLP 결정 어댑터를 추가(전체 시험 1,374건 실패 0)"
+      ],
+      "en": [
+        "Re-audited the approval queue, kill switch, and registry, fixing five flaws (including a prototype-key bypass that dropped stopped agents from the deny-list) with regression tests, and added trust-field-free A2A/Backstage catalog import plus Cedar and OTLP decision adapters (1,374 tests, 0 failures)."
+      ]
+    },
+    "interview": [
+      {
+        "q": "__proto__ 결함은 어떻게 통제 우회가 되었나요?",
+        "a_points": [
+          "일반 객체 맵에서 __proto__ 키가 키가 아니라 프로토타입을 바꿈",
+          "정지된 에이전트가 묶음 데이터와 거부 목록에서 사라져 예시 Rego가 허용",
+          "프로토타입 없는 맵과 ‘묶음에 없는 에이전트도 거부’ 규칙으로 이중 방어"
+        ]
+      },
+      {
+        "q": "카탈로그 가져오기에서 무엇을 가져오지 않았나요?",
+        "a_points": [
+          "출처 자격·행위자·도구·위험 등급·상태 같은 신뢰 필드",
+          "가져온 출처를 서명해 남기고 검증기가 신뢰 필드 불변을 확인",
+          "사람이 고친 항목은 덮어쓰지 않고 충돌로 보고"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "e42bc09",
+        "44ab4c0",
+        "30bb609",
+        "84a5769",
+        "db5d414",
+        "6908a3a",
+        "fed406f",
+        "7a0cd9a",
+        "cc4d5ef",
+        "8ba67dd",
+        "9e09b74",
+        "3724666",
+        "c4111ef",
+        "6ee085e",
+        "f363084",
+        "9870e1a",
+        "43ef749",
+        "b90ef01",
+        "6ff55df",
+        "e087b40",
+        "ee068f7"
+      ],
+      "docs": [
+        "docs/agent-registry.md",
+        "docs/kill-switch.md",
+        "docs/approval-queue.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-15",
+      "EL-16",
+      "EL-20",
+      "UX-05"
+    ],
+    "uncertain": [
+      "4라운드 작업 지시서(작업 갈래별 brief)는 클라우드 임시 공간에 있었고 보존되지 않아, 세부 지시 내용은 확인하지 못했다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-18",
+    "track": "evidence-layer",
+    "date_start": "2026-10-08",
+    "date_end": "2026-10-08",
+    "status": "done",
+    "title": "수집 처리량 3단계 개선: 측정, group commit, 측정 분리, tenant 분할(5~7라운드)",
+    "title_en": "Three stages of ingest throughput work: profiling, group commit, split measurement and tenant shards (rounds 5-7)",
+    "summary": "참고 제품보다 뒤처져 보인다는 오너 지적에 따라, 보증(202 응답은 영속 저장 뒤, fsync, 검증 형식)을 하나도 약하게 하지 않고 수집 처리량을 세 단계로 올렸다. 프로파일링으로 병목을 찾아 group commit, 검증 상태 이어가기, keep-alive와 봉투 전달, 체크포인트 검증 캐시, SAVEPOINT 제거, tenant 분할 시제품을 넣었다. 단일 tenant 급증 처리량은 중앙값 기준 약 1,075 EPS까지 올랐지만 목표(2,000 EPS)에는 못 미쳤고, 이를 근거와 함께 공개했다.",
+    "context": "4라운드까지는 보안 결함과 통제 기능에 집중해 수집 처리량은 감사 시점(약 160~240 EPS) 수준에 머물러 있었다. 10-08 오너가 참고 제품 7종과 비교해 EvidScope가 뒤처져 보인다며 차별화와 성능 향상 방법을 물었다. AI는 ‘같은 판에서 정면으로 겨루지 않고 그 도구들 위에 얹는 검증 계층이 된다’고 답했고, 5라운드는 그 답의 첫 두 단계(성능, 판정 노출)였다. 기준 ee068f7의 급증 처리량은 동시 출처 20에서 초당 254건(p95 111 ms)이었다. 관측 도구는 초당 수천 span을 받기 때문에 250 EPS에서 멈추는 원장은 도입을 막는다고 판단했다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "오너가 참고 제품(Langfuse, Phoenix, Logfire, Credo AI, watsonx.governance, Monitaur, Traccia/Agent-Audit-Trail)과 비교해 뒤처져 보인다며 차별화와 성능 향상 방법을 물음(10-08). 6라운드는 오너의 ‘계속 진행해’, 7라운드는 ‘다음 라운드 시작’으로 이어짐",
+      "quote": "계속 진행해"
+    },
+    "problem": "ee068f7에서 vault는 단일 스레드로 거의 쉬지 않았고(idle 7%), 이벤트마다 트랜잭션과 fsync, 저장된 체크포인트 Ed25519 검증 2회와 새 체크포인트 서명 1회, 투영 증분 검사(직전 이벤트 재복호·대조)를 반복했다. SQLite 문을 매번 새로 준비하고, Buffer 키 HMAC이 Node 24의 느린 경로를 타고, 영수증마다 에포크 키 HKDF를 다시 했다. 6라운드에는 묶음 시작 때 직전 묶음 행을 다시 읽고 복호하는 비용(이벤트당 약 0.25 ms)과 게이트웨이의 fetch 비용(약 0.7 ms)이 컸다. 7라운드에는 분석이 이벤트 1,000건에 체크포인트 서명을 5,128번 검증했고, 수집 묶음은 이벤트마다 SAVEPOINT(약 40 µs)를 두었다. 또 부하 생성기와 vault가 같은 4 vCPU를 나눠 써서 측정값이 vault 용량과 클라이언트 용량을 섞고 있었다.",
+    "constraints": [
+      "202 응답은 영속 저장(COMMIT) 뒤에만, synchronous=FULL과 fsync 유지",
+      "레코드·체크포인트·내보내기 형식과 검증기·위트니스 불변, 이전 내보내기가 그대로 검증돼야 함",
+      "4 vCPU 컨테이너 하나에서 부하 생성기·ingress·vault·worker·audit가 함께 돎(측정 잡음 ±10%)",
+      "vault 무의존성 원칙",
+      "다른 에이전트가 같은 기계에서 시험을 돌릴 때가 있어 번갈아 실행해 비교"
+    ],
+    "options": [
+      {
+        "option": "202를 영속 저장 전에 응답하거나 fsync를 완화",
+        "pros": "처리량을 크게 올릴 수 있음",
+        "cons": "‘받았다’는 응답이 기록 보존을 보장하지 못해 증거 제품의 핵심 보증이 깨짐",
+        "chosen": false,
+        "reason": "보증은 협상 대상이 아니라고 보고 택하지 않음"
+      },
+      {
+        "option": "group commit: 가까이 도착한 이벤트가 트랜잭션·체크포인트 서명 하나를 공유",
+        "pros": "커밋·fsync·서명 비용을 묶음 단위로 나눔, 레코드 형식 불변",
+        "cons": "한 tenant의 커밋 실패가 같은 묶음의 다른 tenant 요청도 503으로 돌려보냄",
+        "chosen": true,
+        "reason": "이벤트마다 자기 원장 행·해시 체인 위치·영수증은 그대로이고 마지막 머리의 서명이 해시 체인으로 묶음 전체를 덮어서"
+      },
+      {
+        "option": "암호화 등 일부 작업을 worker thread로",
+        "pros": "주 스레드 부담 감소",
+        "cons": "레코드 해시와 AAD가 순번에 묶여 미리 할 수 있는 일은 약 7%뿐, 키 재료가 스레드를 오감",
+        "chosen": false,
+        "reason": "얻을 몫이 작고 4 vCPU를 이미 나눠 쓰고 있어 하지 않음"
+      },
+      {
+        "option": "CPU 고정(taskset)으로 프로세스 간 간섭 제거",
+        "pros": "측정 분리",
+        "cons": "vault의 모든 스레드를 한 코어에 묶어 주 스레드가 GC·libuv와 코어를 나눔",
+        "chosen": false,
+        "reason": "측정 옵션으로만 남기고, 처리량을 올리지 못했다는 결과도 그대로 기록"
+      },
+      {
+        "option": "tenant 분할: 여러 vault가 tenant를 나눠 맡음",
+        "pros": "여러 tenant 합계 처리량이 vault 수에 비례해 늘 수 있음",
+        "cons": "단일 tenant 처리량은 늘지 않음, OIDC 세션 미지원",
+        "chosen": true,
+        "reason": "원장이 tenant마다 독립이라 보증을 건드리지 않고 확장 가능해서, 기본 꺼짐 시제품으로 넣음"
+      }
+    ],
+    "decision": {
+      "what": "추측 대신 node --cpu-prof와 프로세스별 CPU 측정으로 병목을 먼저 찾고, 보증과 형식을 유지하는 변경만 단계적으로 넣는다. 목표 미달은 숫자와 이유로 공개한다.",
+      "why": "증거 계층의 가치는 보증에 있으므로 속도를 위해 보증을 내주면 개선의 의미가 없다. 측정 방법 자체가 결론을 바꿀 수 있어(부하 생성기 분리) 측정도 개선 대상으로 삼았다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "벤치마크에 동시 50 급증(burst50)과 OTLP 묶음 단계 추가(6849e51), node --cpu-prof로 vault·ingress·클라이언트 각각 프로파일",
+      "1단계(5라운드): 준비된 문 재사용, KeyObject 키, 에포크 파생 키 캐시(비밀의 해시가 같을 때만), 적체·nonce 인덱스(5343ba4), /api/ingest group commit(기본 대기 0 ms, 최대 256건)(25f2587)",
+      "자체 검토에서 SQLite가 트랜잭션을 스스로 되돌린 뒤 나머지 이벤트가 체크포인트 없이 자동 커밋될 수 있는 경로를 찾아 차단(f3acc8b)",
+      "2단계(6라운드): 쓰기 트랜잭션이 자기가 쓴 행을 검증 상태에 바로 반영해 재독·재복호 생략(81388d7), 게이트웨이에서 vault로 가는 호출을 node:http keep-alive로(736c0d8), ingress가 같은 차례 이벤트를 bearer별 봉투(최대 64건·1 MiB)로 전달(43776ed)",
+      "3단계(7라운드): 벤치마크에 클라이언트 방식·CPU 고정·프로세스별 cpuMsPerEvent 추가(45cddfc), 체크포인트 서명 검증을 같은 텍스트당 한 번, 평가 증분 대조를 id 커서로, 행동별 이벤트 색인(8fef815)",
+      "수집 묶음의 이벤트별 SAVEPOINT 제거: 모든 거절이 첫 쓰기 전에 나도록 순서를 바꾸고, 쓰기 뒤 예외 시 묶음 전체를 예전 방식으로 다시 실행(f8044c6)",
+      "tenant 분할 시제품: VAULT_TENANTS, 배타적 소유 파일 레지스트리, 자격 토큰의 라벨 붙은 SHA-256으로 경로 지정(경로 파일에 자격 미보관)(c79bcd6)",
+      "단계마다 이전 커밋이 만든 내보내기 고정 파일을 두 검증기로 검증하고, SIGKILL 중 202 무손실을 시험, docs/performance.md에 방법·전후 수치·미달 이유 기록"
+    ],
+    "tech": [
+      "Node.js(node --cpu-prof, node:http keep-alive)",
+      "SQLite(WAL, synchronous=FULL, SAVEPOINT)",
+      "group commit",
+      "Ed25519",
+      "AES-GCM",
+      "HMAC",
+      "HKDF",
+      "taskset",
+      "/proc 프로세스 CPU 측정"
+    ],
+    "skills": [
+      "performance_optimization",
+      "system_architecture",
+      "cryptography_integrity",
+      "qa_testing",
+      "documentation",
+      "decision_making"
+    ],
+    "metrics": [
+      {
+        "name": "급증 처리량(5라운드)",
+        "before": "262-270 EPS, p95 209-219 ms",
+        "after": "755-840 EPS, p95 72-85 ms",
+        "unit": "EPS",
+        "scope": "burst50: 서명 이벤트 2,000건, 동시 50, 같은 기계 번갈아 3회, ee068f7 대비",
+        "source": "docs/performance.md, docs/improvement-rounds.md 5라운드"
+      },
+      {
+        "name": "OTLP 묶음 처리량(5라운드)",
+        "before": "759-789 EPS",
+        "after": "1,566-1,764 EPS",
+        "unit": "EPS",
+        "scope": "GenAI span 2,000개, 요청당 500",
+        "source": "docs/performance.md"
+      },
+      {
+        "name": "급증 처리량(6라운드)",
+        "before": "760 EPS(중앙), p95 84 ms",
+        "after": "1,031 EPS(중앙), p95 67-78 ms",
+        "unit": "EPS",
+        "scope": "burst50, 8b3af6c 대비, 3회 중앙값",
+        "source": "docs/performance.md 2단계"
+      },
+      {
+        "name": "OTLP 묶음 처리량(6라운드)",
+        "before": "1,524 EPS(중앙)",
+        "after": "1,868 EPS(중앙)",
+        "unit": "EPS",
+        "scope": "8b3af6c 대비",
+        "source": "docs/performance.md 2단계"
+      },
+      {
+        "name": "급증 처리량(7라운드)",
+        "before": "889 EPS(중앙), vault 0.95 ms/건",
+        "after": "1,075 EPS(중앙), vault 0.75 ms/건",
+        "unit": "EPS",
+        "scope": "burst50, fetch 클라이언트, d7413a0+측정 커밋 대비",
+        "source": "docs/performance.md 3단계"
+      },
+      {
+        "name": "분석 1건당 vault CPU",
+        "before": "4.23 ms",
+        "after": "2.81 ms(−34%)",
+        "unit": "ms",
+        "scope": "1,500건 수집 뒤 worker 2개가 비울 때까지",
+        "source": "docs/performance.md 3단계(8fef815)"
+      },
+      {
+        "name": "HTTP 없는 vault 핵심 건당 시간",
+        "before": "0.622 ms",
+        "after": "0.498 ms(−20%)",
+        "unit": "ms",
+        "scope": "4,000건, 묶음 50, SAVEPOINT 제거 효과",
+        "source": "docs/performance.md 3단계(f8044c6)"
+      },
+      {
+        "name": "tenant 분할 합계 처리량",
+        "before": "1,383 EPS(vault 1개)",
+        "after": "2,160 EPS(vault 2개, 1.56배)",
+        "unit": "EPS",
+        "scope": "tenant 2개 각 동시 50·2,000건, 같은 4 vCPU, 시제품",
+        "source": "docs/performance.md 3단계"
+      },
+      {
+        "name": "키스토어 모드 /api/integrity",
+        "before": "890-1,055 ms",
+        "after": "518-582 ms",
+        "unit": "ms",
+        "scope": "1,000건, 5라운드",
+        "source": "docs/improvement-rounds.md 5라운드"
+      },
+      {
+        "name": "group commit 대기 시간 비교",
+        "before": null,
+        "after": "0 ms 966 EPS, 2 ms 877 EPS, 5 ms 828 EPS(평균 묶음 약 19건)",
+        "unit": "EPS",
+        "scope": "급증 2,000건, 동시 50",
+        "source": "docs/performance.md"
+      }
+    ],
+    "result": "세 단계를 거쳐 단일 tenant 급증 처리량이 5라운드 기준 262-270 EPS에서 7라운드 중앙값 1,075 EPS로 올랐고, OTLP 묶음은 약 1,600~1,900 EPS 수준이 되었다. 분석 1건당 vault CPU는 34% 줄었고, tenant 분할 시제품은 vault 2개 합계 2,160 EPS를 냈다. 단일 tenant 목표(급증 2,000·OTLP 3,000 EPS)는 미달이며, vault 주 스레드가 건당 0.75 ms를 써서 CPU만으로도 약 1,330 EPS가 상한이라는 근거를 문서에 적었다. 모든 단계에서 레코드·검증 형식은 바뀌지 않았고 이전 내보내기가 그대로 검증됐다.",
+    "tradeoffs": [
+      "단일 tenant 목표 2,000 EPS 미달(체인 하나라 분할로 늘릴 수 없음)",
+      "group commit에서 한 tenant의 커밋 실패가 같은 묶음의 다른 tenant 요청도 503으로 돌려보낸다(재시도로 해결)",
+      "검증 상태 이어가기와 체크포인트 검증 캐시는 쓰기 전 검증 경로를 바꿔 별도 검토가 필요했다",
+      "tenant 분할은 기본 꺼짐 시제품이며 OIDC 세션 미지원, 소유 레지스트리는 운영 실수 방지일 뿐 DB 복사본은 막지 못한다",
+      "CPU 고정은 처리량을 올리지 못했다",
+      "모든 측정이 4 vCPU 컨테이너 하나에서 이뤄져 실제 서버 성능과 다를 수 있다"
+    ],
+    "lessons": [
+      "성능은 측정이 먼저다. 프로파일이 짚은 곳(fsync·서명·재복호)과 직감이 짚을 곳은 달랐다.",
+      "측정 방법이 결론을 바꾼다. 부하 생성기를 분리해 재 보니 남은 한계는 클라이언트가 아니라 vault 자신이었다.",
+      "보증을 유지한 채 안 되는 것은 ‘안 됐다’고 숫자로 공개하는 것이 신뢰를 지킨다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "처음부터 tenant 분할을 기본 구조로 설계했다면 단일 vault 최적화에 들인 세 라운드의 노력 중 얼마가 필요 없었을까?",
+        "사내망 실제 부하(에이전트 수·이벤트 크기)에서 필요한 처리량은 2,000 EPS가 맞는 목표였을까, 아니면 근거 없이 잡은 숫자였을까?",
+        "투영(검색 사본·행동 투영)을 원장 트랜잭션 밖으로 빼는 설계 변경이 ‘쓰기 전 검증’ 보증을 어떻게 바꿨을까?"
+      ],
+      "what_if": [
+        "202를 영속 저장 전에 응답하는 지름길을 택했다면 목표 2,000 EPS는 쉽게 넘었겠지만, ‘받았다는 기록은 지워지지 않는다’는 증거 계층의 핵심 주장을 잃었을 것이다."
+      ],
+      "revisit_when": "코어가 더 많은 기계나 여러 호스트에서 vault를 분리해 측정할 수 있을 때, 또는 사내망 배포에서 실제 이벤트 유입량이 나올 때"
+    },
+    "resume": {
+      "ko": [
+        "프로파일링으로 병목을 찾아 group commit·검증 상태 이어가기·체크포인트 검증 캐시·SAVEPOINT 제거를 적용해, 202=영속 보장과 검증 형식을 바꾸지 않고 단일 tenant 수집 처리량을 약 4배(262에서 1,075 EPS로) 높임",
+        "tenant 분할 시제품으로 vault 2개 합계 2,160 EPS(1.56배)를 확인하고, 단일 tenant 목표 미달(CPU 상한 약 1,330 EPS)을 근거와 함께 공개"
+      ],
+      "en": [
+        "Raised single-tenant ingest throughput about 4x (262 to 1,075 events/s median) through profiling-driven group commit, verified-state carry-over and checkpoint-verification caching, without weakening the durable-202 guarantee or changing record formats."
+      ]
+    },
+    "interview": [
+      {
+        "q": "처리량을 올리면서 무엇을 절대 바꾸지 않았나요?",
+        "a_points": [
+          "202는 COMMIT 뒤에만, synchronous=FULL 유지",
+          "레코드·체크포인트·검증기 형식 불변, 이전 내보내기 회귀 시험",
+          "202를 먼저 보내는 지름길은 검토 후 거부"
+        ]
+      },
+      {
+        "q": "목표를 못 맞췄는데 어떻게 설명했나요?",
+        "a_points": [
+          "vault 주 스레드 건당 0.75 ms라 CPU만으로 약 1,330 EPS가 상한",
+          "남은 비용 대부분이 보증 자체(SQLite 쓰기, 암호화, 해시)",
+          "여러 tenant 합계는 분할로 2,000을 넘겼지만 단일 tenant 목표와 다른 숫자라고 구분"
+        ]
+      },
+      {
+        "q": "측정 방법을 왜 바꿨나요?",
+        "a_points": [
+          "부하 생성기가 같은 4 vCPU를 쓰며 vault 용량과 섞임",
+          "프로세스별 CPU(ms/건)로 vault 몫을 분리",
+          "그 결과 남은 한계가 vault 자신임을 확인"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "6849e51",
+        "5343ba4",
+        "25f2587",
+        "f3acc8b",
+        "fe2e987",
+        "cc64126",
+        "81388d7",
+        "736c0d8",
+        "0523277",
+        "43776ed",
+        "a1029c1",
+        "083042c",
+        "5b8201c",
+        "45cddfc",
+        "8fef815",
+        "f8044c6",
+        "c79bcd6",
+        "b6029b6",
+        "afd3e49"
+      ],
+      "docs": [
+        "docs/performance.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-10",
+      "EL-19",
+      "EL-20",
+      "EL-21"
+    ],
+    "uncertain": [
+      "6라운드 결과는 급증 1,031 EPS(중앙)였는데, 7라운드가 d7413a0(6라운드 종료)에 측정 커밋만 더해 다시 잰 기준은 757-890 EPS(중앙 889)다. 두 문서 모두 차이를 설명하지 않는다.",
+      "‘약 4배(262에서 1,075로)’는 5라운드 기준 범위의 하한과 7라운드 중앙값을 다른 측정 회차에서 비교한 값이라 엄밀한 배수가 아니다.",
+      "목표 2,000 EPS를 누가 정했는지 기록이 없다. AI가 5라운드 계획에서 제시한 값으로 보인다(추정).",
+      "trigger의 인용 ‘계속 진행해’는 6라운드 시작 지시이며, 5라운드를 시작한 오너의 원문 질문은 영문 작업 메모의 요약만 있다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-19",
+    "track": "evidence-layer",
+    "date_start": "2026-10-08",
+    "date_end": "2026-10-08",
+    "status": "done",
+    "title": "판정을 이미 쓰는 화면에: Langfuse 점수·Phoenix 주석으로 검증 결과 노출(5라운드)",
+    "title_en": "Verdicts where teams already look: EvidScope results as Langfuse scores and Phoenix annotations (round 5)",
+    "summary": "자체 trace 화면을 만드는 대신, 운영자 쪽 도구가 내보내기를 고정한 신뢰 앵커로 오프라인 검증한 뒤 행동과 OTel trace마다 verified·unverified·tampered 판정을 Langfuse 점수와 Phoenix 주석으로 보내게 했다. EvidScope 화면에는 같은 trace를 여는 딥링크를 붙였다. 검증되지 않은 내보내기는 결코 verified로 보내지 않고, 이벤트 본문은 내보내지 않으며, 점수는 다시 검증하러 가는 ‘표지판’일 뿐이라고 명시했다.",
+    "context": "5라운드는 ‘참고 제품보다 뒤처져 보인다’는 오너 지적에 대한 답(EL-18과 같은 계기)이었다. 비교 결과 실행 추적 화면·평가·프롬프트 관리는 Langfuse·Phoenix·Logfire가, 규제 정책 팩과 위험 평가 흐름은 Credo AI·watsonx·Monitaur가 훨씬 앞섰다. 반면 일곱 제품 중 운영자를 믿지 않고 제3자가 오프라인으로 검증할 수 있는 증거를 내는 곳은 없었다. 그래서 정면으로 겨루지 않고 그 도구들 위에 얹는 검증 계층이 되기로 했고, 이 항목은 그 전략의 첫 구현이다. GRC 대시보드 설계(EL-15)에서도 추적 화면은 외부 도구에 맡기기로 했다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "오너가 참고 제품 7종보다 뒤처져 보인다며 차별화 방법을 물음(10-08). AI가 ‘검증 계층’ 전략을 답하고 그 첫 단계로 구현",
+      "quote": null
+    },
+    "problem": "EvidScope의 차별점(오프라인 검증 가능한 증거)은 사람들이 실제로 보는 화면에 나타나지 않으면 쓸모가 없었다. 팀은 trace를 Langfuse·Phoenix에서 보는데 EvidScope 판정은 별도 화면에만 있었다. 같은 화면을 다시 만들면 팀은 두 곳을 오가야 하고 그 화면은 언제나 뒤처진다. 또 외부 도구로 판정을 내보낼 때 이벤트 본문이 새거나, 검증하지 않은 내보내기가 ‘verified’로 표시될 위험이 있었다.",
+    "constraints": [
+      "vault는 외부로 아무것도 보내지 않음(전송은 운영자가 실행하는 스크립트)",
+      "이벤트 본문·발견 메시지는 외부로 보내지 않음(허용 목록 메타데이터만)",
+      "실제 Langfuse·Phoenix 서비스에 접속해 시험할 수 없음(문서 형태를 검사하는 모의 서버만)",
+      "API 키는 환경 변수로만, https만(루프백만 http)"
+    ],
+    "options": [
+      {
+        "option": "EvidScope 자체 trace 화면 구축",
+        "pros": "판정과 trace를 한곳에",
+        "cons": "기존 도구보다 늘 뒤처지고 팀이 두 화면을 오감",
+        "chosen": false,
+        "reason": "정면 경쟁 대신 기존 화면 위에 판정을 얹기로 함"
+      },
+      {
+        "option": "Langfuse 점수·Phoenix 주석으로 판정 노출, 양방향 딥링크",
+        "pros": "팀이 이미 보는 곳에 차별점이 보임, 링크로 증거에 돌아올 수 있음",
+        "cons": "점수 자체는 API 키를 가진 누구나 쓸 수 있어 증거가 아님",
+        "chosen": true,
+        "reason": "점수를 ‘표지판’으로 정의하고 판단은 링크를 따라 EvidScope에서 다시 검증하도록 문서화"
+      },
+      {
+        "option": "Logfire 판정 노출",
+        "pros": "참고 제품 하나 더 연결",
+        "cons": "이번 라운드 범위 초과",
+        "chosen": false,
+        "reason": "같은 매핑에 대상만 추가하면 된다고 남기고 미구현"
+      }
+    ],
+    "decision": {
+      "what": "판정 보내기를 vault 밖 운영자 도구(push-verdicts)로 두고, 고정한 키로 오프라인 검증(서명·체인·공개 본문·선택적 위트니스·서명 이력·평가 재생)을 통과한 내보내기만 verified로 보내며, 판정·코드·원장 위치·딥링크·다이제스트만 내보낸다.",
+      "why": "차별점을 사용자가 보는 곳에 보여 주되, 그 표시가 새로운 신뢰 근거로 오해되지 않게 하려는 것이다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "scripts/push-verdicts.mjs: 파일이나 감사자 토큰 API로 내보내기를 읽어 고정 신뢰 앵커로 검증한 뒤 evidscope.verified·findings·witness와 span별 evidscope.recorded를 전송, 기본은 미리보기(a22e6d6)",
+      "Langfuse는 날짜가 고정되는 수집(score-create) 경로, Phoenix는 sync=true 주석 upsert를 써서 다시 실행해도 겹치지 않게 함, 두 API를 OpenAPI 원문으로 확인",
+      "행동·trace 화면에서 같은 trace를 여는 링크와, Langfuse 댓글·Phoenix 설명에서 EvidScope 행동을 여는 #action 딥링크(2873777), 링크 템플릿은 서명 재바인딩 대상인 config.json이 아니라 별도 파일로(a1f5195)",
+      "Langfuse 봉투 id를 전송마다 새로 만들어 같은 값으로 돌아온 점수가 무시되지 않게 하고, 검증 실패 내보내기의 체크포인트 head는 16진수만 허용(03a82d8)",
+      "평가 하나라도 재생이 안 되면 실행 실패로 종료(577d415)",
+      "7라운드 재감사: 같은 vault의 다른 tenant 내보내기로 바꿔치기할 수 있어 tenant 고정을 필수로 함(baa453f), 읽을 수 없는 내보내기는 그 이유로 보고(5799dd3)",
+      "표지 문자열(canary)을 넣은 필드가 외부 요청 어디에도 없음을 시험으로 확인"
+    ],
+    "tech": [
+      "Langfuse 공개 API(score, ingestion)",
+      "Arize Phoenix REST API(trace·span annotations)",
+      "OpenAPI",
+      "OpenTelemetry trace id",
+      "W3C Trace Context",
+      "Node.js"
+    ],
+    "skills": [
+      "standards_integration",
+      "privacy",
+      "system_architecture",
+      "decision_making",
+      "adversarial_testing",
+      "documentation"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험",
+        "before": "1,374",
+        "after": "1,399(통과 1,393)",
+        "unit": "건",
+        "scope": "5라운드 끝(성능 작업 포함), 실패 0",
+        "source": "docs/improvement-rounds.md 5라운드 측정"
+      },
+      {
+        "name": "외부 전송 제한",
+        "before": null,
+        "after": "요청당 15초, 재시도 최대 3회, Retry-After 5초까지, 응답 1 MiB(내보내기 512 MiB)",
+        "unit": null,
+        "scope": "push-verdicts 네트워크 규칙",
+        "source": "docs/observability-integration.md"
+      }
+    ],
+    "result": "판정 보내기와 딥링크가 병합됐다(6a92108). 실제 Langfuse·Phoenix 서비스가 아니라 요청 모양을 검사하는 로컬 모의 서버로만 시험했기 때문에 실사용 수치는 없다. 7라운드 재감사에서 tenant 바꿔치기 결함을 찾아 tenant 고정을 필수로 했다.",
+    "tradeoffs": [
+      "점수·주석은 API 키를 가진 누구나 쓸 수 있어 그 자체로는 증거가 아니다",
+      "witness가 none인 verified는 예전 내보내기일 수 있어 위트니스나 고정 체크포인트를 함께 써야 한다",
+      "실제 서비스와의 상호운용은 미검증이다",
+      "Logfire는 미구현이다",
+      "같은 날 정리한 참고 제품 비교 메모는, 오너 PC에 이 도구들이 하나도 돌고 있지 않아 위에 얹을 데이터가 없다는 점을 지적했다"
+    ],
+    "lessons": [
+      "차별점은 사용자가 이미 보는 화면에 나타나야 가치가 생긴다.",
+      "외부 도구에 올린 표시가 새로운 신뢰 근거로 오해되지 않도록 ‘무엇을 증명하지 않는가’를 함께 적어야 한다.",
+      "‘위에 얹는 계층’ 전략은 밑에서 데이터를 보내는 도구가 실제로 돌고 있을 때만 성립한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "오너 PC에 Langfuse·Phoenix가 없는 상황에서, 판정 보내기보다 에이전트 자동 계측(Logfire 방식)을 먼저 만들었다면 이후 ‘수집 먼저’ 전환(AM-01)이 앞당겨졌을까?",
+        "Langfuse·Phoenix 사용자가 실제로 점수 옆 딥링크를 따라 다시 검증할까, 아니면 점수만 믿게 될까?",
+        "검증 계층 전략이 기능 비교표에서 뒤처져 보이는 문제를 실제로 해결했는가, 설명만 바꾼 것인가?"
+      ],
+      "what_if": [
+        "자체 trace 화면을 만들었다면 처음 보기에는 참고 제품과 비슷해졌겠지만, 늘 뒤처지는 화면을 유지하는 데 라운드를 계속 썼을 것이다."
+      ],
+      "revisit_when": "실제 Langfuse나 Phoenix가 돌고 있는 환경에서 상호운용 시험을 하거나, 사용자가 판정 링크를 쓰는지 관찰할 수 있을 때"
+    },
+    "resume": {
+      "ko": [
+        "경쟁 관측 도구와 정면 승부 대신, 오프라인 검증을 통과한 판정만 Langfuse 점수·Phoenix 주석으로 올리고 이벤트 본문은 내보내지 않는 ‘검증 계층’ 연동을 설계·구현"
+      ],
+      "en": [
+        "Positioned EvidScope as a verification layer on top of Langfuse and Phoenix, pushing only offline-verified verdicts (never event content) as scores and annotations with deep links back to the signed evidence."
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 trace 화면을 직접 만들지 않았나요?",
+        "a_points": [
+          "Langfuse·Phoenix가 그 영역에서 훨씬 앞섬",
+          "같은 화면을 만들면 팀이 두 곳을 오가고 우리 화면은 늘 뒤처짐",
+          "우리 차별점(제3자 검증)을 그들 화면에 띄우는 쪽이 더 큰 가치"
+        ]
+      },
+      {
+        "q": "외부에 보낸 verified 점수를 누가 위조하면요?",
+        "a_points": [
+          "점수는 표지판일 뿐이라고 문서에 명시",
+          "메타데이터의 내보내기 다이제스트·원장 순번으로 EvidScope에서 다시 검증해야 함",
+          "tenant 고정·재생 실패 시 종료로 잘못된 verified 전송을 막음"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "a22e6d6",
+        "2873777",
+        "a1f5195",
+        "7b386b1",
+        "03a82d8",
+        "ec9b8dc",
+        "577d415",
+        "6a92108",
+        "8b3af6c",
+        "baa453f",
+        "5799dd3"
+      ],
+      "docs": [
+        "docs/observability-integration.md",
+        "docs/improvement-rounds.md"
+      ],
+      "notes": [
+        "작업 메모",
+        "참고 제품 차이 메모(비공개)"
+      ]
+    },
+    "related": [
+      "EL-15",
+      "EL-18",
+      "EL-20",
+      "UX-05",
+      "UX-07",
+      "AM-01"
+    ],
+    "uncertain": [
+      "decided_by를 joint로 둔 근거는 오너의 질문에 AI가 ‘검증 계층’ 전략을 답하고 오너가 다음 라운드를 계속 진행시킨 것뿐이며, 오너가 이 전략을 명시적으로 고른 기록은 없다.",
+      "‘PC에 참고 도구가 하나도 돌지 않는다’는 지적은 같은 날 7라운드 중에 작성된 비공개 메모에 근거한다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-20",
+    "track": "evidence-layer",
+    "date_start": "2026-10-08",
+    "date_end": "2026-10-08",
+    "status": "done",
+    "title": "감사인용 증빙 묶음과 6·7라운드 재감사",
+    "title_en": "Auditor evidence packages and the round 6-7 re-audits",
+    "summary": "내보내기를 검증한 뒤에만 감사인용 묶음을 만들고, 묶음 전체를 DSSE 봉투 안의 in-toto Statement(Simple Verification Result 술어)로 서명하게 했다. 오프라인 검증기는 증거를 다시 검증하고 색인과 한국어·영어 요약을 다시 만들어 바이트 단위로 대조하므로, 묶는 사람이 내용을 부풀려 다시 서명해도 통과하지 못한다. 7라운드에는 기간 묶음, 레코드 영수증 동봉, 서명기 프로세스 서명, 대응표 버전을 더했고, 두 번의 재감사로 이차 시간 YAML 파싱 DoS와 기간 증거 과대 주장 등을 고쳤다.",
+    "context": "5라운드 비교에서 Credo AI·watsonx 같은 거버넌스 도구의 보고서는 운영자가 만든 문서라 감사인이 내용을 독립적으로 확인할 수 없다는 점이 확인됐다. 오너가 5라운드 뒤 ‘계속 진행해’라고 해서 6라운드는 4·5라운드 재감사, 감사인용 규제 증빙 묶음, 성능 2단계를 진행했다. ISMS-P 정렬(EL-14)과 AI 기본법 요구사항 카탈로그, 표준 영수증(EL-13)이 이미 있어 이를 묶을 수 있었다. 7라운드는 오너의 ‘다음 라운드 시작’으로 시작했고 증빙 묶음 2단계와 6라운드 결과 재감사가 포함됐다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "6라운드 후보 1·2(4·5라운드 재감사, 감사인용 규제 증빙 묶음)를 오너의 ‘계속 진행해’로 시작, 7라운드 후보 1·3(재감사, 증빙 묶음 2단계)을 ‘다음 라운드 시작’으로 진행",
+      "quote": "계속 진행해"
+    },
+    "problem": "거버넌스 도구 보고서에 ‘로그 보관: 충족’이라고 적혀 있어도 감사인은 그 문장이 어떤 기록에서 나왔고 기록이 나중에 바뀌지 않았는지 혼자 확인할 수 없었다. 6라운드 재감사 F1: 카탈로그 YAML 한 줄 흐름 시퀀스 파싱이 닫히지 않은 따옴표마다 다시 맞춰 보느라 줄 길이의 제곱 시간이 걸려, 요청 하나로 vault 전체(다른 tenant 수집 포함)가 수십 초~수 분 멈출 수 있었다. F2: 승인 요청의 행동당 10건 한도를 tenant 전체로 세서, 탈취된 집행 지점 자격이 다른 게이트웨이의 행동을 영구히 승인 불가로 만들 수 있었다. 7라운드 재감사: 기간 색인에서 원장 전체 무결성 검사 하나만으로 ‘증거 있음’이 되어, 로그가 하나도 없는 기간에도 EU AI Act 제12조 등에 증거가 있다고 표시됐다. 또 약 16 KiB의 긴 인증 헤더 두 건으로 ingress의 봉투 전송을 1분마다 꺼서 모든 출처를 한 건씩 보내기로 되돌릴 수 있었고, 승인 폴링 간격 표 1만 칸을 한 출처가 채우면 다른 출처가 모두 slow_down을 받았다.",
+    "constraints": [
+      "새 서명 형식·술어를 만들지 않음(DSSE·in-toto 심사 목록에서 선택)",
+      "요약은 ‘증거 있음’만 말하고 요구사항 충족을 판정하지 않음",
+      "eur-lex 접속 불가(AI Act Service Desk 조문 페이지로 읽음), law.go.kr 재확인 불가",
+      "묶음 서명 키는 PEM 파일 또는 서명기 프로세스",
+      "6라운드 묶음과 대응표 v1이 이후 검증기에서도 그대로 검증돼야 함"
+    ],
+    "options": [
+      {
+        "option": "in-toto Simple Verification Result v0.2 술어",
+        "pros": "‘검증자가 subject를 정책에 대해 확인했고 통과한 속성은 이것’이라는 의미가 묶는 쪽이 하는 일과 일치",
+        "cons": "검증 결과 외의 증거 연결은 색인 파일이 따로 맡아야 함",
+        "chosen": true,
+        "reason": "in-toto가 심사한 목록 중 의미가 가장 정확히 맞아서"
+      },
+      {
+        "option": "SCAI v0.3 evidence collection",
+        "pros": "속성마다 증거를 붙이는 구조",
+        "cons": "색인과 중복되고 검증 결과를 담을 자리가 없음",
+        "chosen": false,
+        "reason": "제외"
+      },
+      {
+        "option": "SLSA VSA v1",
+        "pros": "널리 쓰이는 검증 요약",
+        "cons": "SLSA 트랙 수준에 묶여 있고 문서도 단순 결과에는 SVR을 권함",
+        "chosen": false,
+        "reason": "제외"
+      },
+      {
+        "option": "기간 묶음에 구간 앞뒤의 기간 밖 레코드를 ‘울타리’로 담아 부재까지 증명",
+        "pros": "기간 안 증거 부재를 주장 가능",
+        "cons": "다른 기간 기록이 보이고, vault가 recordedAt 단조성을 서명으로 보장하지 않음",
+        "chosen": false,
+        "reason": "부재는 주장하지 않고 no_evidence_in_package로 표시"
+      }
+    ],
+    "decision": {
+      "what": "감사인용 묶음은 검증된 내보내기에서만 만들고, 검증기가 색인·요약을 다시 계산해 바이트 대조하며, 확인할 수 없는 것(기간 밖 부재, 앞선 기록이 필요한 재생)은 성공이나 실패로 뭉개지 않고 별도 상태로 표시한다.",
+      "why": "감사인이 운영자를 믿지 않고도 같은 결론에 도달할 수 있어야 거버넌스 보고서와 구별되는 가치가 생긴다. 과대 주장은 재감사에서 실제로 발견됐다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "6라운드 재감사: YAML 흐름 시퀀스를 한 번 훑는 파서로 바꾸고 닫히지 않은 따옴표 거부(7ccd1fc), 승인 요청 한도를 출처별로 집계(55ba722)",
+      "ISMS-P 증거 집계를 공용 모듈로 옮겨 원장 순번과 기간을 지원(7f0026d)",
+      "scripts/evidence-pack.mjs build: 내보내기를 verify.mjs와 같은 검사로 확인한 뒤 내보내기·증명·사건 보고서·대응표·항목별 증거 위치·사람 판단 색인·한국어·영어 요약·SHA256SUMS를 묶고 DSSE in-toto(SVR v0.2)로 서명(4737888)",
+      "evidscope-verify pack: 증거를 다시 검증하고 색인과 두 요약을 재생성해 바이트 단위로 대조, 스스로 확인한 속성만 인정",
+      "대응표: EU AI Act 제12·14·19·26(5)~(6)·72조, 인공지능기본법 요구사항 18개, ISMS-P 정렬 27개 항목, 원문 미확인 부분은 sourceStatus로 표시",
+      "7라운드 재감사: 기간 묶음에서 원장 전체 검사만으로는 증거로 세지 않음(ccad87e), 봉투 전송 대체는 구버전 vault 응답(403·404·413)에서만(d0752ff), 폴링 간격 표를 출처별 공정 몫으로(e9062a3)",
+      "증빙 묶음 2단계: 기간 구간만 담고 레코드마다 tlog-proof 영수증 동봉, 순번 1부터가 아니면 재생은 not_replayable, 대응표 버전을 검증기 데이터로 동봉, 서명기 프로세스(--sign-pack-statements)로 묶음 서명(9c673bf)",
+      "8b3af6c·d7413a0 시점 내보내기와 묶음을 고정 파일로 두고 이후 검증기가 그대로 검증하는지 시험(49e4c50, 8445458)"
+    ],
+    "tech": [
+      "DSSE",
+      "in-toto Statement v1",
+      "in-toto Simple Verification Result v0.2",
+      "C2SP tlog-proof",
+      "ustar tar.gz",
+      "SHA-256",
+      "EU AI Act",
+      "인공지능기본법",
+      "ISMS-P",
+      "YAML"
+    ],
+    "skills": [
+      "compliance",
+      "cryptography_integrity",
+      "standards_integration",
+      "adversarial_testing",
+      "performance_optimization",
+      "documentation"
+    ],
+    "metrics": [
+      {
+        "name": "전체 시험",
+        "before": "1,399",
+        "after": "1,420(통과 1,414)",
+        "unit": "건",
+        "scope": "5라운드 끝에서 6라운드 끝(d7413a0), 실패 0",
+        "source": "docs/improvement-rounds.md 6라운드 측정"
+      },
+      {
+        "name": "카탈로그 YAML 한 줄 파싱 시간(수정 전)",
+        "before": "200 KB 한 줄 21초",
+        "after": "한 번 훑기(선형)",
+        "unit": "초",
+        "scope": "POST /api/registry/import 본문, 6라운드 재감사 F1",
+        "source": "docs/improvement-rounds.md 6라운드, 7ccd1fc"
+      },
+      {
+        "name": "대응표 범위",
+        "before": null,
+        "after": "EU AI Act 6개 조항군, AI 기본법 요구사항 18개, ISMS-P 27개 항목",
+        "unit": null,
+        "scope": "증빙 묶음 mapping v1·v2(두 버전은 version 필드만 다름)",
+        "source": "docs/evidence-pack.md"
+      },
+      {
+        "name": "check-source 300자 초과 줄",
+        "before": "1,440",
+        "after": "1,439",
+        "unit": "줄",
+        "scope": "6라운드 소스 검사 기준선",
+        "source": "docs/improvement-rounds.md 6라운드"
+      }
+    ],
+    "result": "6라운드 끝(d7413a0) 전체 시험은 1,420건(통과 1,414, 실패 0)이었고, 묶음은 원장 전체 묶음과 기간 묶음 두 형태가 되었다. 검증기는 묶는 사람이 다시 서명해도 증거보다 많은 주장을 거부하고, 기간 묶음은 부재를 주장하지 않는다. 재감사로 이차 시간 파싱 DoS, 승인 영구 차단, 기간 증거 과대 주장, 봉투 전송 끄기, 폴링 표 독점을 고쳤다. 7라운드 종료 시점 전체 시험 수는 문서에 없다.",
+    "tradeoffs": [
+      "기간 묶음은 기간 안 증거의 부재를 증명하지 못하고, 앞선 기록이 필요한 재생과 서명 이력은 확인하지 않는다",
+      "대응표는 사람 검토 전 초안이며 EU Digital Omnibus 개정 본문과 AI 기본법 조문은 다시 읽지 못했다",
+      "검증기는 넣은 것이 맞는지만 확인할 뿐, 빠진 사건이 없는지는 알 수 없다",
+      "대응표 v1·v2는 version 필드만 다르고 실제 항목을 고친 버전은 아직 없다",
+      "수집의 완전성은 증명하지 않는다(보내지 않은 행동은 보이지 않음)"
+    ],
+    "lessons": [
+      "검증기가 색인과 요약을 직접 다시 만들어 대조하면 묶는 사람의 서명을 믿을 필요가 없어진다.",
+      "‘모른다’를 별도 상태(no_evidence_in_package, not_replayable)로 표현하는 것이 감사 제품의 신뢰를 만든다.",
+      "자체 파서는 정확성만이 아니라 시간 복잡도까지 공격면이다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "실제 감사인이 DSSE·in-toto 묶음과 CLI 검증기를 받아 쓸 수 있을까, 아니면 사람이 읽는 PDF 보고서가 함께 있어야 할까?",
+        "기간 묶음의 ‘부재 미증명’ 한계를 recordedAt 단조성 서명으로 해결했다면 어떤 새 위험이 생겼을까?",
+        "‘증거 있음’ 표시가 결국 감사 현장에서 ‘충족’처럼 읽히지 않게 하려면 무엇이 더 필요할까?"
+      ],
+      "what_if": [
+        "6라운드 재감사를 묶음 작업 뒤로 미뤘다면, 검토자 한 명이 2 MB 요청 하나로 모든 tenant의 수집을 멈출 수 있는 DoS가 묶음 기능과 함께 배포됐을 것이다."
+      ],
+      "revisit_when": "실제 감사인이나 인증심사원에게 묶음을 보여 주고 사용성 피드백을 받을 때, 또는 규제 원문(EU 개정, AI 기본법 고시)이 확정될 때"
+    },
+    "resume": {
+      "ko": [
+        "감사인이 운영자를 믿지 않고도 오프라인에서 다시 계산·바이트 대조할 수 있는 DSSE/in-toto 기반 규제 증빙 묶음(EU AI Act·AI 기본법·ISMS-P)을 만들고, 재감사로 찾은 기간 증거 과대 주장과 이차 시간 파싱 DoS(200 KB에 21초)를 수정"
+      ],
+      "en": [
+        "Built auditor evidence packages (EU AI Act, Korean AI Basic Act, ISMS-P) signed as DSSE/in-toto statements whose index and summaries the offline verifier regenerates and compares byte for byte, and fixed re-audit findings including a quadratic YAML parsing DoS and an overstated period-evidence claim."
+      ]
+    },
+    "interview": [
+      {
+        "q": "묶는 사람이 내용을 부풀린 뒤 다시 서명하면 어떻게 되나요?",
+        "a_points": [
+          "검증기는 묶음 서명을 믿지 않고 증거에서 색인·요약을 다시 생성",
+          "바이트 단위로 다르면 실패",
+          "검증기가 스스로 확인한 속성만 인정"
+        ]
+      },
+      {
+        "q": "기간 묶음은 왜 ‘증거 없음’을 말하지 않나요?",
+        "a_points": [
+          "부분 원장이라 구간 밖과의 경계를 증명할 수 없음",
+          "울타리 레코드 방식은 다른 기간 기록 노출과 단조성 미보장 때문에 제외",
+          "대신 no_evidence_in_package로 표시"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "7ccd1fc",
+        "55ba722",
+        "98a8bc1",
+        "49e4c50",
+        "7f0026d",
+        "4737888",
+        "5fa3fd7",
+        "7829864",
+        "d7413a0",
+        "e9062a3",
+        "d0752ff",
+        "ccad87e",
+        "5cea6b8",
+        "8445458",
+        "9c673bf",
+        "e3f9032",
+        "d8d5536",
+        "079dd94"
+      ],
+      "docs": [
+        "docs/evidence-pack.md",
+        "docs/improvement-rounds.md",
+        "docs/isms-p-alignment.md",
+        "docs/signer.md",
+        "deploy/verifier/README.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-13",
+      "EL-14",
+      "EL-17",
+      "EL-18",
+      "EL-21",
+      "AM-07"
+    ],
+    "uncertain": [
+      "YAML DoS 수치가 출처마다 다르다: docs/improvement-rounds.md는 ‘200 KB 한 줄 21초’, 커밋 7ccd1fc는 ‘200 KB에 약 20초, 256 KiB 문서 하나로 수십 초’라고 적었다.",
+      "docs/improvement-rounds.md에는 7라운드 절이 없어 7라운드 내용은 커밋 메시지와 docs/evidence-pack.md, 작업 메모에서 모았다. 7라운드 종료 전체 시험 수는 확인하지 못했다.",
+      "tenant 고정(baa453f)도 7라운드 재감사 결과지만 판정 보내기 기능이라 EL-19에 넣었다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "EL-21",
+    "track": "evidence-layer",
+    "date_start": "2026-10-08",
+    "date_end": "2026-10-08",
+    "status": "done",
+    "title": "사용자 피드백 반영: 운영 홈과 두 사람 사전 승인 정기 로테이션(7라운드)",
+    "title_en": "Acting on user feedback: an operations home and two-person pre-approved scheduled rotation (round 7)",
+    "summary": "오너가 PC 사본을 직접 실행해 보고 ‘지금 어떤 에이전트가 도는지 안 보인다, 오래된 이력이 현재 기록을 덮는다, 중요하지 않은 로그는 로테이션돼야 한다’ 등을 지적했다. 이에 최근 창(5분~24시간) 활동 에이전트, 사람이 처리할 항목, 프레임워크별 증거 현황, 모델 상태를 보여 주는 홈 API·콘솔 홈과 최신순 커서 목록을 만들었다. 또 일상 이벤트 분류를 두 사람이 미리 승인한 정책에 따라 정기 파기하는 로테이션을, 기본 꺼짐·중요 기록 지정 불가·오프라인 검증과 함께 구현했다.",
+    "context": "1~6라운드는 보안·신뢰 모델·통제 기능·성능에 집중했고, 사용자가 화면을 열었을 때 무엇을 먼저 봐야 하는지는 다루지 않았다. 7라운드가 시작된 직후 오너는 별도 스레드에서 1라운드 이전의 PC 사본을 실행해 보고 제품 피드백을 전달했다. 이 피드백은 ‘기능은 많은데 지금 상태가 보이지 않는다’는 운영자 관점의 문제였다. 보존 정책과 두 사람 파기 계획은 이미 있었지만 매번 사람이 계획을 세워야 했다. 같은 피드백의 ‘학습 상태를 알 수 없다’는 거버넌스 매핑 모델 작업(JM-04)으로도 이어졌다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "오너가 1라운드 이전 PC 사본을 직접 실행해 보고 전달한 제품 피드백(10-08): 실행 중 에이전트가 안 보임, 오래된 이력이 현재 기록을 덮음, 중요하지 않은 로그는 로테이션 필요, 위협·검토 대기·거버넌스 지원이 안 보임, 학습 상태를 알 수 없음",
+      "quote": null
+    },
+    "problem": "첫 화면에서 지금 어떤 에이전트가 기록을 보내고 있는지, 무엇이 사람의 판단을 기다리는지 알 수 없었다. 이벤트·발견·사건 목록이 오래된 기록부터 보여 현재 기록이 묻혔다. heartbeat 같은 일상 기록도 계속 쌓여, 사람이 매번 파기 계획을 세우지 않으면 줄일 방법이 없었다. 반면 파기는 되돌릴 수 없어서 편의 기능이 증거 계층의 보존 보증을 깨뜨릴 위험이 있었다. AI 검토 모델이 학습됐는지도 화면에서 확인할 수 없었다.",
+    "constraints": [
+      "파기는 되돌릴 수 없으므로 기본값 꺼짐",
+      "정책 결정·승인·정지·안전 기록·수집 공백·거버넌스 검사 같은 중요 기록은 로테이션 대상이 될 수 없음",
+      "원장은 자르지 않음(키와 검색 사본만 파기)",
+      "보존 보류(hold)·미종결 사건·접수 당시 retainUntil이 항상 우선",
+      "홈 화면은 원장에 열람 기록만 남기고, 기존 목록 API 호출의 응답은 바뀌지 않아야 함"
+    ],
+    "options": [
+      {
+        "option": "한 사람(관리자)이 로테이션 정책을 켜기",
+        "pros": "운영 간편",
+        "cons": "되돌릴 수 없는 정기 파기를 한 사람이 시작할 수 있음",
+        "chosen": false,
+        "reason": "되돌릴 수 없는 파기를 한 사람이 시작할 수 있어 버림"
+      },
+      {
+        "option": "검토자가 제안하고 제안자가 아닌 관리자가 활성화하는 두 사람 사전 승인",
+        "pros": "되돌릴 수 없는 정기 파기를 한 사람이 시작할 수 없음",
+        "cons": "정책 유효기간(기본 365일)이 지나면 다시 두 사람 승인이 필요함",
+        "chosen": true,
+        "reason": "편의 기능이라도 파기는 되돌릴 수 없으므로 켜는 쪽은 두 사람이 해야 해서"
+      },
+      {
+        "option": "끄기에도 두 사람 승인 요구",
+        "pros": "규칙이 대칭",
+        "cons": "위험한 상황에서 즉시 멈출 수 없음",
+        "chosen": false,
+        "reason": "위험한 상황에서 즉시 멈출 수 없어 버림"
+      },
+      {
+        "option": "검토자 한 명이 정책을 즉시 중지할 수 있게 함",
+        "pros": "위험한 상황에서 바로 멈출 수 있음",
+        "cons": "다시 켜려면 새 제안과 다른 관리자의 승인이 필요함",
+        "chosen": true,
+        "reason": "끄는 것은 안전한 방향이라 한 사람으로 충분하다고 판단"
+      },
+      {
+        "option": "오래된 원장 구간 자체를 잘라 내는 로테이션",
+        "pros": "저장 공간을 크게 줄임",
+        "cons": "해시 체인과 검증 가능성이 깨짐",
+        "chosen": false,
+        "reason": "증거 계층의 검증 가능성이 깨지므로 버림"
+      },
+      {
+        "option": "내용의 키와 검색 사본만 파기하고 원장 레코드·영수증·파기 기록은 남김",
+        "pros": "해시 체인과 오프라인 검증이 그대로 유지됨",
+        "cons": "기존 export·백업·외부 사본과 디스크 잔존물은 파기되지 않고, 파기된 이벤트를 입력으로 쓴 평가는 재생 시 not_replayable이 됨",
+        "chosen": true,
+        "reason": "보존·검증 보증을 깨지 않는 범위에서 일상 기록을 줄일 수 있어서"
+      },
+      {
+        "option": "‘실행 중’을 생존 신호(heartbeat)로 판정",
+        "pros": "실제 실행 상태에 가까움",
+        "cons": "에이전트가 heartbeat를 보내지 않으면 판정 불가",
+        "chosen": false,
+        "reason": "heartbeat를 보내지 않는 에이전트는 판정할 수 없어 버림"
+      },
+      {
+        "option": "기간 안 수신 기록 유무로 활동 에이전트를 보여 주고, 기록 유무가 실행 여부와 같지 않다고 화면과 문서에 명시",
+        "pros": "heartbeat 없이도 동작하고 색인 범위 하나로 빠르게 조회됨",
+        "cons": "실제 실행 여부가 아니며, 20,000건·32 MiB에서 잘리면 수치가 하한이 됨",
+        "chosen": true,
+        "reason": "이미 있는 기록에서 계산할 수 있고 의미를 과장하지 않을 수 있어서"
+      }
+    ],
+    "decision": {
+      "what": "운영 홈은 이미 있는 기록에서 계산한 ‘지금 확인할 일’과 최근 창 활동 에이전트를 기본 화면으로 두고, 정기 로테이션은 기본 꺼짐, 두 사람 사전 승인, 중요 분류 지정 불가, 하나의 서명된 처분 기록, vault와 오프라인 검증기의 같은 검사로 제한한다.",
+      "why": "피드백이 지적한 가시성 문제는 해결하되, 편의 기능이 증거 계층의 보존·검증 보증을 약하게 만들지 않게 하려는 것이다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "홈 API: /api/home/agents(5m·15m·1h·24h 창, 등록·미등록 구분, 색인 범위 하나로 최대 20,000건·32 MiB), /api/home(위협·역할별 검토 대기·프레임워크별 증거), /api/home/governance(7·30·90일, 60초 캐시), /api/model-status(6e9bab4)",
+      "이벤트·경보·사건 목록에 since·until·cursor·order=desc 최신순 페이지 추가, 기존 호출 응답은 그대로",
+      "콘솔 홈, 실행 중 에이전트 패널(정지 명령 이후 활동·폐기 후 활동 경고, 기록 없는 운영 에이전트 표), 모델 현황 패널(7e40308)",
+      "retention_rotation 정책: 출처 종류·이벤트 종류·민감도 분류와 기간, 검토자 제안 후 다른 관리자 활성화, 한 사람 즉시 중지, 정기 실행을 하나의 서명된 처분·실행 계획으로 기록(c0f9e26)",
+      "봉인된 접근 기록 범위 정리: 서명된 경계 아래만 삭제, 삭제 하한(floor)은 뒤로 가지 않음, tenant 전체 hold 시 정리 금지(45006aa)",
+      "보존 화면에 정책·스케줄러·처분 기록 표시(befbcbf), 검증 불가 이력 보고와 최상위 트랜잭션에서만 실행(486f892), 날짜 없거나 기간을 넘는 활성화 거부(4384323)",
+      "운영 로그(stdout·stderr)를 컨테이너 런타임·journald·logrotate로 제한하는 방법 문서화(182b420)"
+    ],
+    "tech": [
+      "Node.js",
+      "SQLite 색인 범위 조회",
+      "커서 페이지네이션",
+      "Ed25519 서명 원장",
+      "4-eyes",
+      "journald",
+      "logrotate"
+    ],
+    "skills": [
+      "user_feedback",
+      "ux_design",
+      "operations",
+      "access_control",
+      "privacy",
+      "system_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "실행 중 에이전트 API 응답 시간",
+        "before": null,
+        "after": "15분 약 3~4 ms, 1시간 약 4~7 ms, 24시간(3,331건) 약 35 ms",
+        "unit": "ms",
+        "scope": "사건 10만 건(30일 분산) tenant",
+        "source": "docs/feature-guide.md"
+      },
+      {
+        "name": "로테이션 정책 한도",
+        "before": null,
+        "after": "보존 1초~10년, 유효기간 1~1095일(기본 365), 1회 최대 1~1000건, 제안 후 7일 안 승인",
+        "unit": null,
+        "scope": "retention_rotation 정책",
+        "source": "docs/retention-rotation.md"
+      }
+    ],
+    "result": "운영 홈(19c9692)과 정기 로테이션(a2d70d8)이 병합됐다. 로그인하면 ‘지금 확인할 일’이 먼저 열리고, 목록은 최근 기록부터 보이며, 오래된 기록은 숨겨질 뿐 삭제되지 않는다. 로테이션은 설정과 두 사람 승인 없이는 아무것도 파기하지 않고, 정기 실행마다 하나의 서명된 처분 기록을 남기며 오프라인 검증기가 같은 규칙으로 확인한다. 피드백 반영 전후의 사용성 수치는 측정하지 않았다.",
+    "tradeoffs": [
+      "‘실행 중’은 기간 안 수신 기록일 뿐 실제 실행 여부가 아니다",
+      "기존 export·백업·외부 사본과 디스크 잔존물은 로테이션으로 파기되지 않는다",
+      "파기된 이벤트를 입력으로 쓴 평가는 재생 시 not_replayable(erased_input)이 된다",
+      "실행 중 에이전트 수치는 20,000건·32 MiB에서 잘려 하한이 될 수 있다",
+      "피드백을 준 오너가 개선된 화면을 다시 써 본 결과는 기록에 없다"
+    ],
+    "lessons": [
+      "보안 기능을 여러 라운드 쌓아도, 사용자가 처음 여는 화면에서 ‘지금 상태’가 보이지 않으면 제품으로 느껴지지 않는다.",
+      "편의 기능일수록 기본값과 권한 설계(기본 꺼짐, 켜기는 두 사람, 끄기는 한 사람)가 중요하다.",
+      "실사용 피드백은 내부 감사가 놓친 운영자 관점의 공백을 가장 빨리 드러낸다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "오너가 1라운드 이전 사본이 아니라 7라운드 결과를 실행해 봤다면 같은 피드백이 나왔을까, 아니면 새 기능이 오히려 화면을 더 복잡하게 했을까?",
+        "heartbeat 없이 ‘수신 기록’으로만 실행 여부를 보여 주는 방식이 실제 운영자에게 충분한가, 아니면 독립 관측(프로세스·네트워크)이 필요할까?",
+        "작은 조직에서 두 사람 사전 승인이 현실적인가, 아니면 승인 없이 쌓이는 로그가 결국 더 큰 문제가 될까?"
+      ],
+      "what_if": [
+        "사용자 피드백을 받기 전에 운영 홈을 먼저 만들었다면 이후 대시보드형 콘솔 개편(UX-06, UX-12)이 더 적은 반복으로 끝났을 수 있다."
+      ],
+      "revisit_when": "오너나 다른 사용자가 개선된 홈과 로테이션을 실제로 운영해 피드백을 주거나, PC 배포에서 로그 증가량이 측정될 때"
+    },
+    "resume": {
+      "ko": [
+        "사용자 실사용 피드백을 받아 ‘지금 기록을 보내는 에이전트’와 처리 대기 항목 중심의 운영 홈(사건 10만 건 tenant에서 15분 창 조회 약 3~4 ms)을 만들고, 두 사람 사전 승인·오프라인 검증을 갖춘 안전한 로그 로테이션을 구현"
+      ],
+      "en": [
+        "Turned hands-on user feedback into an operations home (recent agents and pending human actions; about 3-4 ms for a 15-minute window on a 100k-case tenant) and a scheduled log rotation that requires two-person pre-approval and is checked offline."
+      ]
+    },
+    "interview": [
+      {
+        "q": "되돌릴 수 없는 파기를 자동화하면서 무엇을 지켰나요?",
+        "a_points": [
+          "기본 꺼짐과 두 사람 사전 승인, 끄기는 한 사람",
+          "중요 기록 분류는 지정 불가하고 서명 키로 넣어도 검증기가 거부",
+          "원장은 자르지 않고 키·검색 사본만 파기, 처분을 서명 기록으로 남김"
+        ]
+      },
+      {
+        "q": "사용자 피드백에서 무엇을 배웠나요?",
+        "a_points": [
+          "보안 기능이 많아도 지금 상태가 보이지 않으면 제품으로 느껴지지 않음",
+          "피드백 항목을 홈·로테이션·모델 상태 작업으로 나눠 같은 라운드에 반영",
+          "‘실행 중’의 의미를 과장하지 않고 화면에 명시"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "6e9bab4",
+        "7e40308",
+        "0931917",
+        "19c9692",
+        "c0f9e26",
+        "45006aa",
+        "befbcbf",
+        "182b420",
+        "486f892",
+        "4384323",
+        "a2d70d8"
+      ],
+      "docs": [
+        "docs/retention-rotation.md",
+        "docs/feature-guide.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "EL-10",
+      "EL-14",
+      "EL-20",
+      "UX-06",
+      "UX-11",
+      "UX-12",
+      "JM-04"
+    ],
+    "uncertain": [
+      "오너 피드백은 영문 작업 메모에 요약으로만 남아 있어 원문 인용은 넣지 않았다. docs/retention-rotation.md의 인용 문장(‘중요 정보가 아니면 로그는 주기적으로 로테이션해야 한다’)이 오너 원문인지는 확인하지 못했다.",
+      "피드백은 별도 스레드에서 전달된 것이며, 오너가 실행한 사본이 1라운드 이전 상태였다는 점은 작업 메모에 근거한다."
+    ],
+    "owner_notes": ""
+  }
+]
