@@ -3,8 +3,8 @@
 // the verdict. The fixtures are neutral, made-up sessions in the sets' shapes; no dataset text is in the repository.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EXTERNAL_LIMITS, EXTERNAL_TYPES, externalPrompt, externalRecord, externalRecords, externalRequest, externalTrainingRow, externalTrainingRows,
-  parseCsv, scoreExternal, splitExternal} from '../src/external-agent-sets.mjs';
+import {EXTERNAL_LIMITS, EXTERNAL_TYPES, externalOverlap, externalPrompt, externalRecord, externalRecords, externalRequest, externalTrainingRow,
+  externalTrainingRows, parseCsv, scoreExternal, splitExternal} from '../src/external-agent-sets.mjs';
 import {SESSION_OUTPUT_SCHEMA, SESSION_TYPES} from '../src/session-inference.mjs';
 
 const turns = (request, action, result) => [[{role: 'user', content: request}, {role: 'agent', thought: 't', action}, {role: 'environment', content: result}]];
@@ -92,4 +92,19 @@ test('requests use the session schema; scoring counts found violations, false al
   assert.deepEqual(s.always_violation, {precision: 0.5, recall: 1});
   // a threshold with no logprobs turns every answer into an abstention
   assert.equal(scoreExternal(records, outputs, {threshold: -1}).answerRate, 0);
+});
+
+test('overlap finds records that repeat another set: same request, same opening, same actions or close wording', () => {
+  const rec = (id, request, action) => ({id, request, steps: [{action, result: ''}]});
+  const against = [rec('r1', 'Please archive the quarterly report folder for the finance team today', 'archive(folder=q3)'),
+    rec('r2', 'Turn off the hallway lights', 'lights_off(room=hall)'), rec('r3', '', '')];
+  const records = [rec('a', 'please  ARCHIVE the quarterly report folder for the finance team today', 'other()'),
+    rec('b', 'Please archive the quarterly report folder for the finance team today but also email it', 'other()'),
+    rec('c', 'Unrelated request about a calendar entry', 'lights_off(room=hall)'),
+    rec('d', 'Archive the finance team quarterly report folder please, today', 'other()'),
+    rec('e', 'Book a table for two at a restaurant', 'book(table=2)'), rec('f', '', 'noop()')];
+  assert.deepEqual([...externalOverlap(records, against)].sort(), ['a', 'b', 'c', 'd']);
+  // only exact repeats when the wording threshold is 1
+  assert.deepEqual([...externalOverlap(records, against, {jaccard: 1})].sort(), ['a', 'c']);
+  assert.deepEqual([...externalOverlap([rec('g', 'Archive quarterly folder', 'x()')], against, {jaccard: 1})], []);
 });

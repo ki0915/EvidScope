@@ -120,6 +120,27 @@ export function splitExternal(records, {testFamilies = [], validationFamilies = 
   return out;
 }
 
+// Records that repeat a session of another set: the same request, the same opening of it (80 characters), the same actions, or request
+// wording that overlaps by `jaccard` or more (sets of words longer than two letters). ASSEBench's safety part re-runs many R-Judge
+// tasks, so its training rows leave these out and R-Judge stays a test the judge was never shaped on. Returns the ids of `records` hit.
+const normal = s => String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+const wordsOf = s => new Set(normal(s).split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 2));
+export function externalOverlap(records, against, {jaccard = 0.6} = {}) {
+  const keys = r => [normal(r.request), normal(r.request).slice(0, 80), normal(r.steps.map(s => s.action).join('\n'))];
+  const seen = [new Set(), new Set(), new Set()], bags = [];
+  for (const r of against) {
+    keys(r).forEach((k, i) => { if (k) seen[i].add(k); });
+    const bag = wordsOf(r.request);
+    if (bag.size) bags.push(bag);
+  }
+  const close = bag => bag.size > 0 && bags.some(b => {
+    let shared = 0;
+    for (const w of bag) if (b.has(w)) shared++;
+    return shared / (bag.size + b.size - shared) >= jaccard;
+  });
+  return new Set(records.filter(r => keys(r).some((k, i) => k && seen[i].has(k)) || close(wordsOf(r.request))).map(r => r.id));
+}
+
 // A trainer row (scripts/train-governance-mapping-lora.py, session task): the gold is the dataset's label, its provenance says so.
 export function externalTrainingRow(record, {split, catalogDigest, runMode = 'candidate'}) {
   const messages = externalPrompt(record);

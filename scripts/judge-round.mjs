@@ -2,7 +2,8 @@
 // 판정 모델 라운드(Qwen3-4B·JEV-9B, 2026-10-17) 준비와 채점. 빌린 GPU(docs/rented-gpu.md)에는 이 스크립트가 만든 in/ 폴더만 올라간다: 설계
 // 시나리오로 만든 학습 행·평가 요청과 공개 세트(ASSEBench·R-Judge) 요청뿐이고, PC가 모은 실제 기록은 들어가지 않는다.
 //   node scripts/judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [--contrast F] [--per-threat N] [--per-benign N]
-//     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--rjudge F] [--probes F] [--shakedown]
+//     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F] [--rjudge F]
+//     [--probes F] [--shakedown]
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
 // 판정자: qwen-zero(학습 전 Qwen3-4B), qwen-cand(학습한 어댑터), jev-zero(JEV-9B 그대로), jev-cand(판정 헤드를 다시 학습한 JEV).
 // 세트: val(기권 문턱 보정용), unseen(처음 보는 계열), unseen.mask(경보 이름 가림), unseen.strip(소견 모두 뺌), probes·probes.strip(감사 탐침),
@@ -16,7 +17,7 @@ import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mj
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 import {allowlistPredict, assessSessionModel, baselinePredict, calibrateSessionThreshold, familyOf, predictFromOutputs, scoreSessions,
   sessionCounts, sessionRequestLines, sessionTrainingSet} from '../src/session-inference.mjs';
-import {externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
+import {externalOverlap, externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
   from '../src/external-agent-sets.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -55,10 +56,11 @@ if (cmd === 'prepare') {
     requests[name] = count;
   };
   // 공개 세트: ASSEBench는 시나리오 단위로 tune/validation/test, R-Judge는 시험만.
-  let extraRows = [], external = {};
+  let extraRows = [], external = {}, security = [];
   if (opt('--assebench')) {
     const bytes = readFileSync(opt('--assebench'));
     const {records, skipped} = externalRecords('assebench', bytes.toString('utf8'));
+    security = records;
     const split = splitExternal(records, {testFamilies: families(opt('--assebench-test')).map(f => `assebench:${f}`),
     validationFamilies: families(opt('--assebench-val')).map(f => `assebench:${f}`)});
     const tune = externalTrainingRows(split.train, {split: 'tune', catalogDigest, runMode});
@@ -71,6 +73,24 @@ if (cmd === 'prepare') {
     const lines = rs => rs.map(r => canonical(externalRequest(r))).join('\n') + '\n';
     put('assebench-val', lines(split.validation), split.validation.length);
     put('assebench-test', lines(split.test), split.test.length);
+  }
+  // ASSEBench의 safety 부분(--assebench-safety)은 학습에만 쓴다. R-Judge 과제를 다시 돌린 기록이 많아 R-Judge와 겹치는 기록(같은 요청·
+  // 같은 첫머리·같은 행동·요청 단어 60% 이상 겹침), security 부분과 겹치는 기록, security의 시험·검증 시나리오에 속한 기록은 모두 뺀다.
+  if (opt('--assebench-safety')) {
+    if (!opt('--assebench') || !opt('--rjudge')) fail('--assebench-safety needs --assebench and --rjudge');
+    const bytes = readFileSync(opt('--assebench-safety'));
+    const {records, skipped} = externalRecords('assebench', bytes.toString('utf8'));
+    const safety = records.map(r => ({...r, id: r.id.replace(/^assebench:/, 'assebench:safety-')}));
+    const rjudge = externalOverlap(safety, externalRecords('rjudge', readFileSync(opt('--rjudge'), 'utf8')).records);
+    const both = externalOverlap(safety.filter(r => !rjudge.has(r.id)), security, {jaccard: 1});
+    const heldOut = new Set([...families(opt('--assebench-test')), ...families(opt('--assebench-val'))].map(f => `assebench:${f}`));
+    const kept = safety.filter(r => !rjudge.has(r.id) && !both.has(r.id));
+    const split = splitExternal(kept.filter(r => !heldOut.has(r.family)), {});
+    const tune = externalTrainingRows(split.train, {split: 'tune', catalogDigest, runMode});
+    if (runMode === 'candidate') extraRows = [...extraRows, ...tune.rows];
+    external.assebenchSafety = {sha256: sha(bytes), records: records.length, skipped: {...skipped, ...split.skipped},
+      dropped: {rjudgeOverlap: rjudge.size, securityOverlap: both.size, heldOutFamilies: kept.filter(r => heldOut.has(r.family)).length},
+      tune: tune.rows.length, violations: tune.rows.filter(r => JSON.parse(r.target).verdict === 'violation').length, rowsSkipped: tune.skipped};
   }
   if (opt('--rjudge')) {
     const bytes = readFileSync(opt('--rjudge'));
@@ -174,7 +194,7 @@ if (cmd === 'prepare') {
     unseen: v.sets.unseen?.model, strip: v.sets['unseen.strip']?.model_without_abstain, rjudge: v.sets.rjudge?.model_without_abstain}])), null, 2));
 } else {
   fail('usage: judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [...] | score --dir DIR [--assebench F --assebench-val a,b'
-    + ' --assebench-test c,d] [--rjudge F]');
+    + ' --assebench-test c,d] [--assebench-safety F] [--rjudge F]');
 }
 
 // 공개 세트의 기권 문턱: 검증 기록에서 답한 판정 정확도가 0.99 이상인 가장 낮은 판정 점수(없으면 가장 정확한 점수). 우리 세션의
