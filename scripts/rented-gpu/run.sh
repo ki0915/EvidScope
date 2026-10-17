@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# The judge round on a rented GPU (docs/rented-gpu.md), after setup.sh and the two fetch_base.py runs: train Qwen3-4B (GPU 0) and
+# JEV-9B (GPU 1) side by side on in/train.jsonl, then run every request set in in/requests through four judges: each base untrained
+# (qwen-zero, jev-zero) and trained (qwen-cand, jev-cand). Results land in results/<judge>/<set>.{outputs,logprobs,receipt}.json for
+# scripts/judge-round.mjs score on the PC; logs in logs/, the current stage in status.txt. A stage that fails stops its own chain only.
+set -uo pipefail
+ROOT=${EVID_ROOT:-/workspace/evid}
+cd "$ROOT"
+PY=$ROOT/venv/bin/python
+S=$ROOT/scripts
+QWEN=$ROOT/models/qwen
+JEV=$ROOT/models/jev
+QRUN=/checkpoints/session-inference/run
+JRUN=$ROOT/jev-run
+export EVIDSCOPE_RENTED_GPU=1 EVIDSCOPE_TRAINING_IMAGE="$(cat "$ROOT/image-id")" PYTHONUNBUFFERED=1
+mkdir -p logs results
+status() { echo "$1 $(date -u +%FT%TZ)" >> status.txt; }
+sha() { sha256sum "$1" | cut -d' ' -f1; }
+
+qwen_chain() {
+  export CUDA_VISIBLE_DEVICES=0
+  local revision; revision=$($PY -c "import json; print(json.load(open('$QWEN/artifact-lock.json'))['revision'])")
+  status "qwen training"
+  EVIDSCOPE_BASE_REPOSITORY=Qwen/Qwen3-4B-Instruct-2507 EVIDSCOPE_BASE_REVISION=$revision EVIDSCOPE_DATASET_SHA256=$(sha in/train.jsonl) \
+  EVIDSCOPE_BASE_ARTIFACT_LOCK_SHA256=$(sha "$QWEN/artifact-lock.json") \
+    $PY "$S/train-governance-mapping-lora.py" --task session-inference --rented-gpu --data in/train.jsonl --model-dir "$QWEN" \
+      --base-repository Qwen/Qwen3-4B-Instruct-2507 --base-revision "$revision" --output "$QRUN" --compute-dtype bfloat16 \
+      --pause-ratio 0 --thermal-max-wait-seconds 0 > logs/train-qwen.log 2>&1 || { status "qwen training failed"; return 1; }
+  status "qwen trained"
+  for judge in qwen-zero qwen-cand; do
+    mkdir -p "results/$judge"
+    for requests in in/requests/*.jsonl; do
+      set_name=$(basename "$requests" .jsonl)
+      adapter=(); [ "$judge" = qwen-cand ] && adapter=(--adapter "$QRUN/candidate")
+      $PY "$S/session_judge_generate.py" --model-dir "$QWEN" "${adapter[@]}" --requests "$requests" --prefix "results/$judge/$set_name" \
+        >> "logs/eval-$judge.log" 2>&1 || status "qwen eval failed $judge $set_name"
+    done
+    status "qwen evaluated $judge"
+  done
+}
+
+jev_chain() {
+  export CUDA_VISIBLE_DEVICES=1
+  status "jev training"
+  $PY "$S/train_jev_decision.py" train --model-dir "$JEV" --data in/train.jsonl --output "$JRUN" > logs/train-jev.log 2>&1 \
+    || { status "jev training failed"; return 1; }
+  status "jev trained"
+  for judge in jev-zero jev-cand; do
+    mkdir -p "results/$judge"
+    if [ "$judge" = jev-zero ]; then a=$JEV/adapter; h=$JEV/head.safetensors; c=$JEV/calibration.json
+    else a=$JRUN/candidate/adapter; h=$JRUN/candidate/head.safetensors; c=$JRUN/candidate/calibration.json; fi
+    for requests in in/requests/*.jsonl; do
+      set_name=$(basename "$requests" .jsonl)
+      $PY "$S/train_jev_decision.py" predict --model-dir "$JEV" --adapter "$a" --head "$h" --calibration "$c" --requests "$requests" \
+        --prefix "results/$judge/$set_name" >> "logs/eval-$judge.log" 2>&1 || status "jev eval failed $judge $set_name"
+    done
+    status "jev evaluated $judge"
+  done
+}
+
+status "round started $(sha in/train.jsonl)"
+qwen_chain & q=$!
+jev_chain & j=$!
+wait $q; qs=$?
+wait $j; js=$?
+status "round finished qwen=$qs jev=$js"

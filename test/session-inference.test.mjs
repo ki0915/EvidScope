@@ -323,6 +323,38 @@ test('mask-share adds masked copies in the same family, deterministically, and n
   assert.ok(!all.rows.some(r => r.familyId === 'exfiltration'));
 });
 
+test('stripped prompts drop every finding but keep the actions, refs and gold evidence; strip-share copies are deterministic', () => {
+  const s = byId('exfil-ssh-then-send');
+  const plain = JSON.parse(sessionPrompt(s, rules).messages[1].content);
+  const stripped = JSON.parse(sessionPrompt(s, rules, {stripFindings: true}).messages[1].content);
+  assert.deepEqual(stripped.actions.map(a => [a.ref, a.action, a.target]), plain.actions.map(a => [a.ref, a.action, a.target]));
+  assert.ok(stripped.actions.every(a => a.findings.length === 0) && plain.actions.some(a => a.findings.length));
+  const row = sessionTrainingRow(s, rules, {split: 'tune', catalogDigest: 'd'.repeat(64), stripFindings: true});
+  assert.equal(row.id, `${s.id}~stripped`);
+  assert.equal(row.target, sessionTrainingRow(s, rules, {split: 'tune', catalogDigest: 'd'.repeat(64)}).target);
+  // 같은 출력이면 조항도 같다: 조항은 프롬프트가 아니라 저장소가 가진 원래 소견에서 계산한다.
+  const g = sessionGold(s, rules);
+  const reply = canonical({verdict: 'violation', type: g.type, evidenceActionIds: JSON.parse(row.target).evidenceActionIds});
+  const p = predictFromOutputs({[s.id]: reply}, rules, {stripFindings: true})(s);
+  assert.deepEqual(p.requirementIds, g.requirementIds);
+  const opts = {runMode: 'candidate', heldOutFamilies: ['exfiltration'], validationFamilies: ['benign'], catalogDigest: 'd'.repeat(64)};
+  const all = sessionTrainingSet(catalog.scenarios, rules, {...opts, stripShare: 1}), none = sessionTrainingSet(catalog.scenarios, rules, opts);
+  assert.equal(all.counts.stripped, none.rows.filter(r => /CUSTOM:|SEQ_/.test(r.messages[1].content)).length);
+  const both = sessionTrainingSet(catalog.scenarios, rules, {...opts, stripShare: 0.5, maskShare: 0.5});
+  assert.deepEqual(sessionTrainingSet(catalog.scenarios, rules, {...opts, stripShare: 0.5, maskShare: 0.5}).rows.map(r => r.id), both.rows.map(r => r.id));
+  assert.ok(both.rows.every(r => !(r.id.endsWith('~masked') && r.id.includes('~stripped'))));
+});
+
+test('extra rows from another source join their split; a row that names no split is refused', () => {
+  const opts = {runMode: 'candidate', heldOutFamilies: ['exfiltration'], validationFamilies: ['benign'], catalogDigest: 'd'.repeat(64)};
+  const extra = split => ({id: `x-${split}`, split, familyId: `bench:${split}`, labelSource: 'public_dataset', target: '{}',
+    messages: [{role: 'system', content: 's'}, {role: 'user', content: `u-${split}`}]});
+  const set = sessionTrainingSet(catalog.scenarios, rules, {...opts, extraRows: [extra('tune'), extra('validation')]});
+  assert.equal(set.counts.external, 2);
+  assert.equal(set.rows.find(r => r.id === 'x-tune').split, 'tune');
+  assert.throws(() => sessionTrainingSet(catalog.scenarios, rules, {...opts, extraRows: [extra('test')]}), /session_extra_row_split_invalid/);
+});
+
 test('the gate refuses a model that calls a threat clean, or that abstains on most sessions', () => {
   const counts = {sessions: 60, clean: 15, hardNegative: 8, threat: 20};
   const gold = s => { const g = sessionGold(s, rules); return {...g, confidence: null}; };

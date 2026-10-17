@@ -201,6 +201,44 @@ print(json.dumps(t.admission(sys.argv[1], task="session-inference")[1]))
   assert.ok(JSON.parse(gate.stdout.trim().split('\n').at(-1)).reasons.includes('task_invalid'));
 });
 
+test('trainer: public benchmark rows are admitted for the session judge only, with no evidence; a rented GPU trains only that', () => {
+  const f = fixture(), file = join(f.dir, 'public.jsonl');
+  const row = (id, extra = {}) => JSON.stringify({id, task: 'session-inference', taskVersion: 2, roleId: 'session-auditor', split: 'tune',
+    familyId: 'bench:a', catalogDigest: 'd', labelSource: 'public_dataset', reviewedPayloadHash: null, runMode: 'candidate',
+    messages: [{role: 'system', content: 's'}, {role: 'user', content: 'u'}],
+    target: '{"evidenceActionIds":[],"type":"fraud","verdict":"violation"}', ...extra});
+  const gate = (rows, task = 'session-inference') => {
+    writeFileSync(file, rows.join('\n') + '\n');
+    const r = run(['-c', `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+print(json.dumps(t.admission(sys.argv[1], task=sys.argv[2])[1]))
+`, file, task]);
+    assert.equal(r.status, 0, r.stderr);
+    return JSON.parse(r.stdout.trim().split('\n').at(-1)).reasons;
+  };
+  assert.ok(!gate([row('a')]).some(x => x.includes('provenance') || x.includes('public_dataset')));
+  assert.ok(gate([row('b', {target: '{"evidenceActionIds":["a1"],"type":"fraud","verdict":"violation"}'})]).includes('public_dataset_row_invalid'));
+  assert.ok(gate([row('c', {reviewedPayloadHash: 'e'.repeat(64)})]).includes('public_dataset_row_invalid'));
+  const host = run(['-c', `
+import importlib.util, json, os, types
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+def check(env, task="session-inference", rented=True, rows=({"labelSource": "public_dataset"},)):
+    os.environ.pop("EVIDSCOPE_RENTED_GPU", None); os.environ.pop("EVIDSCOPE_ISOLATED", None); os.environ.update(env)
+    try:
+        t.check_host(types.SimpleNamespace(rented_gpu=rented, task=task, shakedown=False), list(rows)); return "ok"
+    except RuntimeError as e:
+        return str(e)
+print(json.dumps([check({"EVIDSCOPE_RENTED_GPU": "1"}), check({}), check({"EVIDSCOPE_RENTED_GPU": "1"}, task="governance-mapping"),
+  check({"EVIDSCOPE_RENTED_GPU": "1"}, rows=({"labelSource": "claude_drafted"},)), check({"EVIDSCOPE_ISOLATED": "1"}, rented=False)]))
+`]);
+  assert.equal(host.status, 0, host.stderr);
+  assert.deepEqual(JSON.parse(host.stdout.trim().split('\n').at(-1)), ['ok', 'rented_gpu_run_invalid', 'rented_gpu_run_invalid', 'rented_gpu_rows_invalid',
+    existsSync('/etc/podinfo/uid') ? 'ok' : 'isolated_training_job_required']);
+});
+
 test('trainer: triton is reported unavailable before transformers or peft import bitsandbytes (the image has no C compiler)', () => {
   const src = readFileSync('scripts/train-governance-mapping-lora.py', 'utf8'), off = src.indexOf('torch_triton.has_triton = lambda: False');
   assert.ok(off > 0);

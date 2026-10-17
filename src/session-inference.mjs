@@ -19,7 +19,10 @@ import {evaluate, matches} from './model.mjs';
 import {relatedStepInput, SEQUENCE_CODES} from './sequence-rules.mjs';
 
 export const VERDICTS = Object.freeze(['violation', 'clean', 'abstain']);
-export const SESSION_TYPES = Object.freeze(['exfiltration', 'defense_evasion', 'audit_tampering', 'destructive', 'bulk_collection']);
+// 뒤의 넷(Qwen3-4B 라운드, 2026-10-17)은 공개 에이전트 안전 세트(src/external-agent-sets.mjs, ASSEBench)의 위험 유형이다. 우리 설계 시나리오는
+// 앞의 다섯만 쓰지만, 한 판정 모델이 두 데이터를 같은 출력 스키마로 배우도록 목록은 하나다.
+export const SESSION_TYPES = Object.freeze(['exfiltration', 'defense_evasion', 'audit_tampering', 'destructive', 'bulk_collection',
+  'unauthorized_access', 'prompt_injection', 'fraud', 'other']);
 const THREAT = /^(CUSTOM:risk\.|SEQ_)/;
 // 발견 코드 -> 세션 유형. 연쇄 코드가 단일 규칙보다 우선한다(민감+외부 연쇄는 bulk_collection이 아니라 exfiltration).
 const SEQ_CLASS = Object.freeze({SEQ_SENSITIVE_THEN_OUTBOUND: 'exfiltration', SEQ_DEFENSE_OFF_THEN_ACTION: 'defense_evasion',
@@ -112,7 +115,9 @@ const clipText = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s);
 // 모델이 보는 사용자 메시지: 행동마다 짧은 ref(a1, a2...)와 대상·소견. actionId 원문 대신 ref를 쓰고, 채점 때 ref -> actionId로 되돌린다.
 // maskCodes: 발견 코드를 세션 안 첫 등장 순서의 중립 이름(signal-1, signal-2...)으로 바꾼다. 심각도는 남긴다. 적대적 감사에서 모델이 행동 내용보다
 // 경보 이름에 기대어 판정한다는 신호(이름을 가린 설정 읽기를 "유출"로 봄)가 나와, 학습 일부를 가린 이름으로 보게 해 행동·대상을 읽도록 한다.
-export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false} = {}) {
+// stripFindings: 소견을 모두 뺀다. v2 모델은 소견을 지운 위협 세션(감사 탐침 A8)을 정상이라 했다. 규칙이 놓친 위협도 행동만 보고 잡도록, 학습
+// 일부와 견고성 시험을 이 형태로 본다. 골드 증적은 그대로다(같은 행동이 증적이고, 조항은 저장소가 가진 원래 소견에서 계산한다).
+export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false, stripFindings = false} = {}) {
   const input = sessionInput(scenario, rules, {t0});
   const refs = new Map(input.actions.map((a, i) => [`a${i + 1}`, a.actionId]));
   const names = new Map();
@@ -122,15 +127,15 @@ export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false} = {}
     return names.get(code);
   };
   const actions = input.actions.map((a, i) => ({ref: `a${i + 1}`, kind: a.kind, action: a.action, target: clipText(a.resource, 200),
-    ...(a.destination ? {destination: a.destination} : {}), findings: a.findings.map(f => `${name(f.code)} (${f.severity})`)}));
+    ...(a.destination ? {destination: a.destination} : {}), findings: stripFindings ? [] : a.findings.map(f => `${name(f.code)} (${f.severity})`)}));
   const user = {tool: input.tool, types: [...SESSION_TYPES], actions};
   return {messages: [{role: 'system', content: SESSION_SYSTEM}, {role: 'user', content: JSON.stringify(user)}], refs, input};
 }
 
 // 배치 러너 한 줄: 정확히 id/variant/messages/response_format/adapter + 디코딩 키(러너가 키 집합과 canonical 바이트를 검사한다).
-export function sessionRequest(scenario, rules, {variant = 'zero_shot', t0 = T0, maskCodes = false} = {}) {
+export function sessionRequest(scenario, rules, {variant = 'zero_shot', t0 = T0, maskCodes = false, stripFindings = false} = {}) {
   if (!Object.hasOwn(SESSION_VARIANTS, variant)) throw Error('session_variant_unknown');
-  const {messages} = sessionPrompt(scenario, rules, {t0, maskCodes});
+  const {messages} = sessionPrompt(scenario, rules, {t0, maskCodes, stripFindings});
   return {id: scenario.id, variant, messages, response_format: llamaFormat(SESSION_OUTPUT_SCHEMA), adapter: SESSION_VARIANTS[variant],
     ...SESSION_DECODING};
 }
@@ -178,9 +183,10 @@ export function interpretSessionOutput(content, refs = new Map(), {input, tokens
 }
 
 // 출력 묶음({scenarioId: content})에서 scoreSessions가 쓸 예측 함수. logprobs({scenarioId: tokens})와 threshold(마이크로냇 정수)가 있으면, 판정
-// 점수가 문턱 아래이거나 점수를 못 매긴 답은 기권으로 바꾼다(modelVerdict에 원래 판정을 남긴다). 프롬프트는 채점 대상과 같아야 하므로 maskCodes도 받는다.
-export const predictFromOutputs = (outputs, rules, {t0 = T0, logprobs, threshold, maskCodes = false} = {}) => s => {
-  const {refs, input} = sessionPrompt(s, rules, {t0, maskCodes});
+// 점수가 문턱 아래이거나 점수를 못 매긴 답은 기권으로 바꾼다(modelVerdict에 원래 판정을 남긴다). 프롬프트는 채점 대상과 같아야 하므로 maskCodes와
+// stripFindings도 받는다(ref 순서는 같고, 조항은 원래 소견으로 계산한다).
+export const predictFromOutputs = (outputs, rules, {t0 = T0, logprobs, threshold, maskCodes = false, stripFindings = false} = {}) => s => {
+  const {refs, input} = sessionPrompt(s, rules, {t0, maskCodes, stripFindings});
   const p = interpretSessionOutput(outputs[s.id], refs, {input, tokens: logprobs?.[s.id]});
   if (threshold === undefined || p.verdict === 'abstain') return p;
   return p.score !== null && p.score >= threshold ? p
@@ -190,9 +196,10 @@ export const predictFromOutputs = (outputs, rules, {t0 = T0, logprobs, threshold
 // 기권 문턱 고르기(검증 세트에서만; 평가 세트로 고르면 그 점수는 주장할 수 없다). 후보 문턱은 관측된 판정 점수들. 각 문턱에서 답한 세션의 판정
 // 정확도와 답한 비율을 재고, 정확도가 target 이상인 문턱 중 가장 많이 답하는 것을 고른다(reached: true). 없으면 가장 정확한 문턱(reached: false).
 // minAnswered: 답한 세션이 너무 적은 문턱은 고르지 않는다(1~2개로 100%를 만드는 것 방지).
-export function calibrateSessionThreshold(scenarios, rules, outputs, logprobs, {target = 0.99, minAnswered = 10, t0 = T0} = {}) {
+export function calibrateSessionThreshold(scenarios, rules, outputs, logprobs, {target = 0.99, minAnswered = 10, t0 = T0, maskCodes = false,
+  stripFindings = false} = {}) {
   const rows = scenarios.map(s => {
-    const p = predictFromOutputs(outputs, rules, {t0, logprobs})(s);
+    const p = predictFromOutputs(outputs, rules, {t0, logprobs, maskCodes, stripFindings})(s);
     return {score: p.score, ok: p.verdict === s.label.verdict, answered: p.verdict !== 'abstain'};
   });
   const scored = rows.filter(r => r.answered && r.score !== null);
@@ -396,18 +403,21 @@ export const SESSION_TASK = 'session-inference';
 export const SESSION_TASK_VERSION = 2;
 export const SESSION_ROLE_ID = 'session-auditor';
 
-// maskCodes 행은 같은 세션을 가린 경보 이름으로 본 사본이다(id 끝 ~masked, 같은 계열이라 분할 누수가 없다).
-export function sessionTrainingRow(scenario, rules, {split, runMode = 'candidate', catalogDigest, t0 = T0, maskCodes = false}) {
-  const {messages, refs} = sessionPrompt(scenario, rules, {t0, maskCodes});
+// maskCodes 행은 같은 세션을 가린 경보 이름으로 본 사본이다(id 끝 ~masked, 같은 계열이라 분할 누수가 없다). stripFindings 행은 소견을 뺀
+// 사본이다(id 끝 ~stripped).
+export function sessionTrainingRow(scenario, rules, {split, runMode = 'candidate', catalogDigest, t0 = T0, maskCodes = false,
+  stripFindings = false}) {
+  const {messages, refs} = sessionPrompt(scenario, rules, {t0, maskCodes, stripFindings});
   const back = new Map([...refs].map(([ref, id]) => [id, ref]));
   const g = sessionGold(scenario, rules, {t0});
   const target = {verdict: g.verdict, type: g.type, evidenceActionIds: g.evidenceActionIds.map(id => back.get(id) ?? id)};
-  return {id: maskCodes ? `${scenario.id}~masked` : scenario.id, task: SESSION_TASK, taskVersion: SESSION_TASK_VERSION, roleId: SESSION_ROLE_ID,
-    split, familyId: familyOf(scenario), messages, target: canonical(target), labelSource: 'derived_mapping_table', reviewedPayloadHash: null,
-    catalogDigest, runMode};
+  return {id: `${scenario.id}${maskCodes ? '~masked' : ''}${stripFindings ? '~stripped' : ''}`, task: SESSION_TASK, taskVersion: SESSION_TASK_VERSION,
+    roleId: SESSION_ROLE_ID, split, familyId: familyOf(scenario), messages, target: canonical(target), labelSource: 'derived_mapping_table',
+    reviewedPayloadHash: null, catalogDigest, runMode};
 }
-// 가린 사본을 만들 세션: id의 sha256 첫 바이트로 정한다(무작위 없음 -> 같은 입력이면 같은 학습 세트).
-const maskedPick = (id, share) => share > 0 && createHash('sha256').update(id).digest()[0] < Math.round(share * 256);
+// 가린·뺀 사본을 만들 세션: id의 sha256 첫 바이트로 정한다(무작위 없음 -> 같은 입력이면 같은 학습 세트). 소견을 뺀 사본은 다른 접두어로 골라
+// 두 사본이 같은 세션에 몰리지 않는다.
+const pickShare = (id, share, salt = '') => share > 0 && createHash('sha256').update(salt + id).digest()[0] < Math.round(share * 256);
 
 // 계열 단위 분할로 train->tune, validation->validation, unseen(미학습 평가셋)은 제외. catalogDigest는 호출부가 카탈로그 파일 바이트에서 계산해
 // 넘긴다(모든 행에 같은 값 -> 트레이너 admission의 단일 digest 조건). 적대적 감사(2026-10-17)로 추가한 누수 검사 셋:
@@ -416,7 +426,7 @@ const maskedPick = (id, share) => share > 0 && createHash('sha256').update(id).d
 //  - 검증·평가 문제가 학습 문제와 글자까지 같으면 거부한다. 학습 안의 같은 문제는 한 번만 남기고, 같은 문제에 다른 정답이면 거부한다.
 const stepIdentity = st => JSON.stringify([st.toolName, st.command ?? null, st.filePath ?? null, st.url ?? null]);
 export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', heldOutFamilies = [], validationFamilies = [], catalogDigest, poolFamilies,
-  maskShare = 0, t0 = T0}) {
+  maskShare = 0, stripShare = 0, extraRows = [], t0 = T0}) {
   const s = splitByFamily(scenarios, {heldOutFamilies, validationFamilies});
   const outside = new Set([...s.families.validation, ...s.families.unseen]);
   const pooled = (poolFamilies || []).filter(f => outside.has(f));
@@ -431,21 +441,25 @@ export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', hel
   if (stepLeaks.length) throw Object.assign(Error('session_step_leakage'), {families: stepLeaks});
   const tune = new Map();
   let duplicates = 0;
-  // 가린 사본은 발견이 있는 세션에만 생긴다(발견이 없으면 가려도 같은 문제라 사본이 아니다).
+  // 가린·뺀 사본은 발견이 있는 세션에만 생긴다(발견이 없으면 가리거나 빼도 같은 문제라 사본이 아니다).
   const withMasked = (xs, split) => xs.flatMap(x => {
     const row = sessionTrainingRow(x, rules, {split, runMode, catalogDigest, t0});
-    if (!maskedPick(x.id, maskShare)) return [row];
-    const masked = sessionTrainingRow(x, rules, {split, runMode, catalogDigest, t0, maskCodes: true});
-    return masked.messages[1].content === row.messages[1].content ? [row] : [row, masked];
+    const copies = [[maskShare, '', {maskCodes: true}], [stripShare, 'strip:', {stripFindings: true}]]
+      .filter(([share, salt]) => pickShare(x.id, share, salt))
+      .map(([, , variant]) => sessionTrainingRow(x, rules, {split, runMode, catalogDigest, t0, ...variant}));
+    return [row, ...copies.filter(c => c.messages[1].content !== row.messages[1].content)];
   });
-  for (const row of withMasked(s.train, 'tune')) {
+  // extraRows: 같은 트레이너 형식의 다른 출처 행(공개 데이터셋, src/external-agent-sets.mjs). split은 행이 이미 정했다.
+  const extraTune = extraRows.filter(r => r.split === 'tune'), extraValidation = extraRows.filter(r => r.split === 'validation');
+  if (extraTune.length + extraValidation.length !== extraRows.length) throw Error('session_extra_row_split_invalid');
+  for (const row of [...withMasked(s.train, 'tune'), ...extraTune]) {
     const prompt = row.messages[1].content;
     if (!tune.has(prompt)) { tune.set(prompt, row); continue; }
     if (tune.get(prompt).target !== row.target) throw Object.assign(Error('session_label_conflict'), {ids: [tune.get(prompt).id, row.id]});
     duplicates++;
   }
   const validation = [];
-  for (const row of withMasked(s.validation, 'validation')) {
+  for (const row of [...withMasked(s.validation, 'validation'), ...extraValidation]) {
     if (validation.some(v => v.messages[1].content === row.messages[1].content)) { duplicates++; continue; }
     validation.push(row);
   }
@@ -454,7 +468,8 @@ export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', hel
   if (crossed) throw Object.assign(Error('session_prompt_leakage'), {count: crossed});
   const rows = [...tune.values(), ...validation];
   return {rows, families: s.families, duplicatesDropped: duplicates,
-    counts: {tune: tune.size, validation: validation.length, unseen: s.unseen.length, masked: rows.filter(r => r.id.endsWith('~masked')).length}};
+    counts: {tune: tune.size, validation: validation.length, unseen: s.unseen.length, masked: rows.filter(r => r.id.endsWith('~masked')).length,
+      stripped: rows.filter(r => r.id.endsWith('~stripped')).length, external: rows.filter(r => r.labelSource !== 'derived_mapping_table').length}};
 }
 
 // 허용 목록 기준선(적대적 감사): 학습 세트의 정상 세션에 한 번이라도 나온 경보 코드는 무시하고, 남는 경보가 있으면 규칙+시퀀스 판정을 낸다.

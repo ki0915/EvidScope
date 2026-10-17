@@ -4,7 +4,9 @@ Input rows come from `node scripts/governance-mapping.mjs training-set`: the exa
 messages with the retrieved catalog candidates) and the gold JSON as the target. The base is the safetensors release of the
 runtime model, fdtn-ai/Foundation-Sec-1.1-8B-Instruct, so the adapter applies to the pinned Q4_K_M GGUF after conversion
 with llama.cpp convert_lora_to_gguf.py. Merged weights are never written.
---check-only and --token-check run without GPU libraries; training needs the isolated container (EVIDSCOPE_ISOLATED=1).
+--check-only and --token-check run without GPU libraries; training needs the isolated container (EVIDSCOPE_ISOLATED=1), or, for the
+session judge only, a rented GPU (--rented-gpu with EVIDSCOPE_RENTED_GPU=1, scripts/rented-gpu/): a machine that holds nothing but the
+designed scenarios and public benchmark rows, so the PC's container isolation is not what protects anything there.
 --shakedown trains the same recipe on the derived rows only (`training-set --shakedown`) to measure VRAM and time before the human
 review is done. Its adapter goes to <output>/shakedown-adapter with status shakedown_not_promotable: verify_candidate refuses it,
 it is never promoted and its numbers are not a quality result.
@@ -128,7 +130,10 @@ def valid_target(text):
 # side (src/session-inference.mjs) and confidence is the verdict token's probability, so neither is a training target any more (version 1
 # trained a constant 0.9/0.1 confidence and a table lookup). Only the structure, the verdict/type enums and the clean->empty rule are checked.
 SESSION_VERDICTS = {"violation", "clean", "abstain"}
-SESSION_TYPES = {"exfiltration", "defense_evasion", "audit_tampering", "destructive", "bulk_collection"}
+# The last four are the public agent-safety set's risk types (src/external-agent-sets.mjs, ASSEBench); same list as SESSION_TYPES in
+# src/session-inference.mjs.
+SESSION_TYPES = {"exfiltration", "defense_evasion", "audit_tampering", "destructive", "bulk_collection", "unauthorized_access", "prompt_injection", "fraud",
+                 "other"}
 
 
 def valid_session_target(text):
@@ -174,8 +179,12 @@ def admission(path, shakedown=False, task="governance-mapping"):
             reasons.append("messages_invalid")
         if not valid(row.get("target")):
             reasons.append("target_invalid")
-        if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
+        if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted", "public_dataset") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
             reasons.append("label_provenance_invalid")
+        # A public benchmark's own label (ASSEBench), for the session judge only: it labels whole sessions, so its rows carry no evidence.
+        if row.get("labelSource") == "public_dataset" and (task != "session-inference" or row.get("reviewedPayloadHash") is not None
+                                                           or not valid(row.get("target")) or json.loads(row["target"])["evidenceActionIds"]):
+            reasons.append("public_dataset_row_invalid")
         if shakedown and (row.get("runMode") != "shakedown" or row.get("labelSource") != "derived_mapping_table"):
             reasons.append("shakedown_requires_derived_shakedown_rows")
         if not shakedown and row.get("runMode", "candidate") != "candidate":
@@ -251,7 +260,8 @@ def identity_for(args, root):
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
             "thermalHelperSha256": sha256_file(here.with_name("public-qa-thermal.py")),
             "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", ""), "gpuMemoryFractionPercent": round(args.gpu_memory_fraction * 100),
-            "runMode": "shakedown" if args.shakedown else "candidate", **RECIPE}
+            "runMode": "shakedown" if args.shakedown else "candidate", "computeDtype": getattr(args, "compute_dtype", "float16"),
+            "host": "rented_gpu" if getattr(args, "rented_gpu", False) else "isolated_container", **RECIPE}
 
 
 def check_output(args):
@@ -269,16 +279,32 @@ def check_output(args):
     return output
 
 
+def check_host(args, rows):
+    """The PC trains only inside its isolated container. A rented GPU trains only the session judge (a shakedown first), on rows whose labels
+    are designed (derived_mapping_table) or a public benchmark's own (public_dataset): no drafted or reviewed rows, nothing from the PC's
+    collected records, which never become training rows."""
+    if os.name != "posix":
+        raise RuntimeError("isolated_training_job_required")
+    if not getattr(args, "rented_gpu", False):
+        if os.environ.get("EVIDSCOPE_ISOLATED") != "1" or not Path("/etc/podinfo/uid").is_file():
+            raise RuntimeError("isolated_training_job_required")
+        return
+    if os.environ.get("EVIDSCOPE_RENTED_GPU") != "1" or args.task != "session-inference":
+        raise RuntimeError("rented_gpu_run_invalid")
+    if any(row.get("labelSource") not in ("derived_mapping_table", "public_dataset") for row in rows):
+        raise RuntimeError("rented_gpu_rows_invalid")
+
+
 def train(args, rows):
     started = time.monotonic()
-    if os.name != "posix" or os.environ.get("EVIDSCOPE_ISOLATED") != "1" or not Path("/etc/podinfo/uid").is_file():
-        raise RuntimeError("isolated_training_job_required")
+    check_host(args, rows)
     if not 0.1 <= args.gpu_memory_fraction <= 0.72:
         raise RuntimeError("gpu_memory_fraction_invalid")
     os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", WANDB_DISABLED="true", TOKENIZERS_PARALLELISM="false")
     root = verify_bindings(args)
     identity = identity_for(args, root)
-    # A registry digest (repo@sha256:...) or the local image ID the Docker launcher verified with `docker inspect`.
+    # A registry digest (repo@sha256:...) or the local image ID the Docker launcher verified with `docker inspect`; on a rented GPU the
+    # digest of the installed package list (scripts/rented-gpu/setup.sh: pip-freeze@sha256:...).
     if not re.fullmatch(r"(?:[a-zA-Z0-9./:_-]+@)?sha256:[a-f0-9]{64}", identity["image"]):
         raise RuntimeError("training_image_binding_required")
     output = check_output(args)
@@ -303,6 +329,7 @@ def train(args, rows):
     from peft import LoraConfig, get_peft_model
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir, local_files_only=True, trust_remote_code=False)
     tokenizer.pad_token = tokenizer.eos_token
+    half = torch.bfloat16 if args.compute_dtype == "bfloat16" else torch.float16
     # Reject an over-long row before the model takes VRAM.
     tune = [encode_row(tokenizer, row) for row in rows if row["split"] == "tune"]
     validation = [encode_row(tokenizer, row) for row in rows if row["split"] == "validation"]
@@ -312,10 +339,13 @@ def train(args, rows):
     torch.cuda.set_per_process_memory_fraction(args.gpu_memory_fraction, 0)
     torch.manual_seed(RECIPE["seed"])
     torch.cuda.reset_peak_memory_stats()
-    model = AutoModelForCausalLM.from_pretrained(args.model_dir, local_files_only=True, trust_remote_code=False, device_map={"": 0}, torch_dtype=torch.float16,
+    # transformers 5 renamed torch_dtype to dtype (the PC image has 4.51.3, a rented GPU a 5.x release).
+    import transformers
+    dtype_key = "dtype" if int(transformers.__version__.split(".")[0]) >= 5 else "torch_dtype"
+    model = AutoModelForCausalLM.from_pretrained(args.model_dir, local_files_only=True, trust_remote_code=False, device_map={"": 0}, **{dtype_key: half},
                                                  attn_implementation="sdpa", quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                                 bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=torch.float16))
-    model = kbit.prepare_memory_efficient_kbit(model)
+                                                 bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=half))
+    model = kbit.prepare_memory_efficient_kbit(model, half)
     loaded = time.monotonic()
     torch.cuda.empty_cache()
     model = get_peft_model(model, LoraConfig(r=RECIPE["rank"], lora_alpha=RECIPE["alpha"], lora_dropout=RECIPE["dropout"], target_modules=RECIPE["targetModules"],
@@ -362,7 +392,7 @@ def train(args, rows):
     settings = TrainingArguments(output_dir=str(output), num_train_epochs=RECIPE["epochs"], per_device_train_batch_size=1, per_device_eval_batch_size=1,
                                  gradient_accumulation_steps=RECIPE["gradientAccumulationSteps"], gradient_checkpointing=True,
                                  learning_rate=RECIPE["learningRatePerMillion"] / 1e6, warmup_ratio=RECIPE["warmupStepsPer1000"] / 1000, lr_scheduler_type="cosine",
-                                 fp16=True, report_to=[], save_strategy="steps", save_steps=RECIPE["saveSteps"], save_total_limit=2, eval_strategy="epoch",
+                                 fp16=half == torch.float16, bf16=half == torch.bfloat16, report_to=[], save_strategy="steps", save_steps=RECIPE["saveSteps"], save_total_limit=2, eval_strategy="epoch",
                                  logging_strategy="no", seed=RECIPE["seed"], data_seed=RECIPE["seed"], dataloader_num_workers=0, dataloader_pin_memory=False,
                                  remove_unused_columns=False)
     # The held-out test split is never loaded here; validation loss is a training diagnostic, not a quality measurement.
@@ -410,6 +440,8 @@ def main(argv=None):
     parser.add_argument("--thermal-trigger-c", type=int, default=THERMAL_PACING["triggerC"])
     parser.add_argument("--thermal-target-c", type=int, default=THERMAL_PACING["targetC"])
     parser.add_argument("--thermal-max-wait-seconds", type=float, default=THERMAL_PACING["maxWaitSeconds"])
+    parser.add_argument("--compute-dtype", default="float16", choices=("float16", "bfloat16"))
+    parser.add_argument("--rented-gpu", action="store_true")
     args = parser.parse_args(argv)
     if args.task != "session-inference" and args.base_repository != BASE_REPOSITORY:
         parser.error("--base-repository other than %s is only for --task session-inference" % BASE_REPOSITORY)
