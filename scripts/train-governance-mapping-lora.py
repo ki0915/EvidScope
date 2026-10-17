@@ -235,7 +235,7 @@ def verify_bindings(args):
 
 def identity_for(args, root):
     here = Path(__file__)
-    return {"task": args.task, "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
+    return {"task": getattr(args, "task", TASK), "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
             "datasetSha256": sha256_file(args.data), "trainerSha256": sha256_file(here), "artifactHelperSha256": sha256_file(here.with_name("training_artifacts.py")),
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
             "thermalHelperSha256": sha256_file(here.with_name("public-qa-thermal.py")),
