@@ -7,6 +7,7 @@ import {DECISION_FIELDS,DECISION_KINDS,DECISIONS,decisionFindings} from './decis
 import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs';
 import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
 import {sequenceFindings} from './sequence-rules.mjs';
+import {contentFindings} from './content-rules.mjs';
 import {parseWords,matchesWords} from './rule-words.mjs';
 import {HISTORY_IMPORT,HOOK_AGENTS} from './agent-hook-events.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
@@ -126,9 +127,16 @@ export const EVALUATION_ENGINE_V7='evidscope-evaluate-v7';
 // the snapshot of an action with such a record, and for any other snapshot v8 returns the v1-v7 output; like v5 and v7 the input comes
 // from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v8. v8 includes v5-v7.
 export const EVALUATION_ENGINE_V8='evidscope-evaluate-v8';
+// v9 adds the LLM security findings of AI coding agents (src/content-rules.mjs): the content records the hook sends for a prompt or a
+// tool's answer (signals only, src/agent-content-signals.mjs) become findings, and an injection signal followed by a risky call of the
+// same session is a chain. Its input (contentSignals) occurs only in the snapshot of an action with a signalled content record or with
+// a risky step after such a record, and for any other snapshot v9 returns the v1-v8 output; like v5 the input comes from records
+// older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v9. v9 includes v5-v8.
+export const EVALUATION_ENGINE_V9='evidscope-evaluate-v9';
 export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5,
- EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7,EVALUATION_ENGINE_V8]);
-export const evaluationEngine=data=>data.historyImports!==undefined?EVALUATION_ENGINE_V8:data.agentCommands!==undefined?EVALUATION_ENGINE_V7
+ EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7,EVALUATION_ENGINE_V8,EVALUATION_ENGINE_V9]);
+export const evaluationEngine=data=>data.contentSignals!==undefined?EVALUATION_ENGINE_V9
+ :data.historyImports!==undefined?EVALUATION_ENGINE_V8:data.agentCommands!==undefined?EVALUATION_ENGINE_V7
  :(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
  :data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
  :data.approvals!==undefined?EVALUATION_ENGINE_V3
@@ -158,7 +166,7 @@ export function historyImportInput(events){
 export function suppressingException(exceptions,finding,actionId,now){
  return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
 }
-export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands,historyImports}={}) {
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands,historyImports,contentSignals}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -227,6 +235,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
  approvalFindings(events,queue,{add,clockBound});
  stopOrderFindings(events,stopOrders,{add,clockBound});
  sequenceFindings(events,relatedSteps,{add,rules,matches});
+ contentFindings(events,contentSignals,{add,rules,matches});
  const unique=[...new Map(findings.map(f=>[f.code+'|'+f.evidence.join(','),f])).values()];
  for(const f of unique){
   const exception=suppressingException(exceptions,f,events[0]?.actionId,now);
@@ -239,7 +248,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry
 export function boundedEvaluation(input,limits){
  const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions,
   approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps,agentCommands:input.agentCommands,
-  historyImports:input.historyImports});
+  historyImports:input.historyImports,contentSignals:input.contentSignals});
  const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
  const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
  result.coverage=coverage();

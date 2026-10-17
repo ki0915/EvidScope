@@ -28,7 +28,9 @@ export const AGENT_RISK = Object.freeze({
   destroy: agentRisk('destroy', 'AI 에이전트의 파괴적 명령 탐지'),
   out: agentRisk('out', 'AI 에이전트의 데이터 외부 전송 명령 탐지'),
   defense: agentRisk('defense', 'AI 에이전트의 보안 설정 변경·기록 삭제 명령 탐지'),
-  audit: agentRisk('audit', 'AI 에이전트의 감시 설정 접근 탐지'),
+  audit: agentRisk('audit', 'AI 에이전트의 감시 설정 접근과 수집 중지 시도 탐지'),
+  // Pack version 3 (mapping version 5): interference with other AI agents.
+  agent: agentRisk('agent', 'AI 에이전트의 다른 에이전트 지시 파일·MCP 설정 접근과 에이전트 프로세스 종료 탐지'),
 });
 const AGENT_RISK_ALL = Object.values(AGENT_RISK);
 const SECURITY_TOOL_CHANGES = [agentRule('risk.defense.defender', 'AI 에이전트의 Windows Defender 설정 변경 명령'),
@@ -51,6 +53,29 @@ export const AGENT_SEQUENCE = Object.freeze({
   destructive: agentSequence('SEQ_REPEATED_DESTRUCTIVE', 'AI 에이전트가 짧은 시간에 파괴적 명령을 반복한 패턴 탐지'),
 });
 const AGENT_SEQUENCE_ALL = Object.values(AGENT_SEQUENCE);
+// ---------- AI agent LLM security findings (mapping version 5) ----------
+// Evaluation engine v9 (src/content-rules.mjs) reads the content records the hook sends for a user prompt or a tool's answer (signal
+// labels, counts and a hash; the text is not stored) and flags prompt injection, invisible characters, secret values and personal
+// data in what the model read, and an injection signal followed by a risky call of the same session. Like the other findings they
+// show that the agent's context was screened and flagged, never that an item is met.
+const agentLlm = (code, what) => ({type: 'finding', code, what});
+export const AGENT_LLM = Object.freeze({
+  indirect: agentLlm('LLM_INDIRECT_INJECTION', 'AI 에이전트가 읽은 도구 결과(웹·파일·MCP 응답) 속 지시 변경 문구·역할 표식 탐지'),
+  override: agentLlm('LLM_PROMPT_OVERRIDE', '사용자 프롬프트 속 AI 지시·안전 규칙 무시 문구 탐지'),
+  hidden: agentLlm('LLM_HIDDEN_TEXT', 'AI 에이전트가 읽은 글 속 보이지 않는 문자 탐지'),
+  secretPrompt: agentLlm('LLM_SECRET_IN_PROMPT', '사용자 프롬프트로 AI 서비스에 보낸 비밀 값 형태 탐지'),
+  secretContext: agentLlm('LLM_SECRET_IN_CONTEXT', 'AI 에이전트가 읽어 AI 서비스로 보낸 비밀 값 형태 탐지'),
+  personalPrompt: agentLlm('LLM_PERSONAL_DATA_IN_PROMPT', '사용자 프롬프트로 AI 서비스에 보낸 고유식별번호·카드번호·대량 연락처 탐지'),
+  personalContext: agentLlm('LLM_PERSONAL_DATA_IN_CONTEXT', 'AI 에이전트가 읽어 AI 서비스로 보낸 고유식별번호·카드번호·대량 연락처 탐지'),
+  chain: agentLlm('SEQ_INJECTION_THEN_ACTION', '지시 변경 문구 뒤 같은 세션에서 AI 에이전트의 위험 행동이 이어진 패턴 탐지'),
+});
+// Engine v9 also reads the scope the hook records on each call: a risky call made with approval prompts or the sandbox off, and an
+// edit outside the working folder.
+export const AGENT_SCOPE = Object.freeze({
+  oversightOff: agentLlm('AGENT_RISK_WITHOUT_OVERSIGHT', '승인 확인·샌드박스를 끈 AI 에이전트의 위험 행동 탐지'),
+  outside: agentLlm('AGENT_WRITE_OUTSIDE_WORKSPACE', 'AI 에이전트의 작업 폴더 밖 파일 수정 탐지'),
+});
+const AGENT_LLM_ALL = [...Object.values(AGENT_LLM), ...Object.values(AGENT_SCOPE)];
 // ISMS-P supports added to data/isms-p-alignment.json's, kept out of that file: its evidence texts are also inputs of the
 // governance-mapping dataset (src/governance-mapping-data.mjs), which must not change under a trained model.
 const AGENT_RISK_ISMS = {
@@ -59,7 +84,7 @@ const AGENT_RISK_ISMS = {
   {checkItems: [2], evidence: [AGENT_SEQUENCE.exfil],
     shows: '같은 AI 에이전트가 자격증명·비밀 파일에 접근한 뒤 30분 안에 외부 전송을 하면 두 행동을 묶어 유출 의심 패턴으로 표시'}],
   '2.9.4': [{checkItems: [2], evidence: LOG_TAMPERING,
-    shows: 'AI 에이전트가 이벤트 로그·명령 기록을 지우거나 EvidScope 수집·hook 설정에 접근하면 발견사항으로 표시'},
+    shows: 'AI 에이전트가 이벤트 로그·명령 기록을 지우거나, EvidScope 수집·hook 설정에 접근하거나, EvidScope 자동 실행 작업·프로세스·설치된 hook을 끄거나 고치려 하면 발견사항으로 표시'},
   {checkItems: [2], evidence: [AGENT_SEQUENCE.tamper],
     shows: '같은 AI 에이전트가 위험 행동 뒤 30분 안에 로그·명령 기록을 지우거나 수집·hook 설정에 접근하면 흔적 지우기 의심 패턴으로 표시'}],
   '2.10.1': [{checkItems: [3], evidence: SECURITY_TOOL_CHANGES,
@@ -67,9 +92,13 @@ const AGENT_RISK_ISMS = {
   {checkItems: [3], evidence: [AGENT_SEQUENCE.defenseOff],
     shows: '같은 AI 에이전트가 백신·방화벽 등을 끈 뒤 30분 안에 자격증명 접근·외부 전송·파괴 명령을 하면 방어 해제 후 행동 패턴으로 표시'}],
   '2.11.3': [{checkItems: [1], evidence: AGENT_RISK_ALL,
-    shows: 'AI 에이전트의 도구 호출(명령·파일·URL)을 승인된 위험 규칙으로 분석해 자격증명 접근·파괴 명령·외부 전송·보안 설정 변경·감시 우회를 발견사항으로 표시'},
+    shows: 'AI 에이전트의 도구 호출(명령·파일·URL)을 승인된 위험 규칙으로 분석해 자격증명 접근·파괴 명령·외부 전송·보안 설정 변경·감시 우회·다른 에이전트 간섭을 발견사항으로 표시'},
   {checkItems: [1], evidence: AGENT_SEQUENCE_ALL,
-    shows: '같은 AI 에이전트의 여러 도구 호출을 시간순으로 묶어 유출·방어 해제·흔적 지우기 연쇄와 대량 자격증명 접근·반복 파괴 명령을 이상행위로 표시'}],
+    shows: '같은 AI 에이전트의 여러 도구 호출을 시간순으로 묶어 유출·방어 해제·흔적 지우기 연쇄와 대량 자격증명 접근·반복 파괴 명령을 이상행위로 표시'},
+  {checkItems: [1], evidence: AGENT_LLM_ALL,
+    shows: 'AI 에이전트가 읽은 사용자 프롬프트와 도구 결과를 hook 안에서 검사해(원문은 저장하지 않음) 프롬프트 주입·숨은 문자·비밀 값·개인정보 신호를 '
+      + '발견사항으로 표시하고, 주입 문구 뒤 30분 안에 같은 세션에서 이어진 위험 행동을 연쇄로, 승인 확인을 끈 채 한 위험 행동과 작업 폴더 밖 '
+      + '파일 수정을 범위 이탈로 표시'}],
 };
 
 // ---------- EU AI Act (Regulation (EU) 2024/1689), logging and oversight articles ----------
@@ -90,7 +119,7 @@ function euMapping() {
       eu('EU-AIA-12-2-A', 'Article 12(2)(a)', AMENDED, 'Events relevant for identifying risk situations (Article 79(1)) or a substantial modification',
         '위험 상황(제79조제1항) 또는 실질적 변경을 식별하는 데 관련된 이벤트',
         [record('evaluation'), record('agent_registry'), record('agent_transition'), kind('safety_alert', 'safety'), record('agent_stop_order'),
-          ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL]),
+          ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL, ...AGENT_LLM_ALL]),
       eu('EU-AIA-12-2-B', 'Article 12(2)(b)', AMENDED, 'Events relevant for post-market monitoring (Article 72)', '시판 후 모니터링(제72조)에 관련된 이벤트',
         [record('evaluation'), kind('heartbeat', 'telemetry'), kind('gap', 'telemetry'), finding('COLLECTION_GAP')]),
       eu('EU-AIA-12-2-C', 'Article 12(2)(c)', AMENDED, 'Events relevant for monitoring the operation (Article 26(5))', '운영 모니터링(제26조제5항)에 관련된 이벤트',
@@ -104,7 +133,8 @@ function euMapping() {
         '시판 후 모니터링: 성능 자료의 수집·문서화·분석', [record('evaluation'), record('case'), record('case_decision'), kind('safety_alert', 'safety')]),
       eu('EU-AIA-14-4-A', 'Article 14(4)(a)', READ, 'Overseers monitor the operation and detect anomalies, dysfunctions and unexpected performance',
         '감독자가 운영을 모니터링하고 이상·오작동·예상 밖 성능을 탐지',
-        [record('case'), record('case_decision'), kind('human_oversight_review', 'authority'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL]),
+        [record('case'), record('case_decision'), kind('human_oversight_review', 'authority'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL,
+          ...AGENT_LLM_ALL]),
       eu('EU-AIA-14-4-D', 'Article 14(4)(d)', READ, 'Overseers decide not to use, or disregard, override or reverse the output',
         '감독자가 사용하지 않거나 출력을 무시·무효화·되돌리기로 결정', OVERSIGHT),
       eu('EU-AIA-14-4-E', 'Article 14(4)(e)', READ, 'Overseers intervene or interrupt the system through a stop button or similar procedure',
@@ -127,8 +157,8 @@ function euMapping() {
 const KR_EXTRA = {
   'KR-32-RISK': [record('evaluation'), record('agent_registry_policy')],
   'KR-32-MONITOR': [record('evaluation'), record('case'), record('case_decision'), kind('safety_alert', 'safety'), ...AGENT_RISK_ALL,
-    ...AGENT_SEQUENCE_ALL],
-  'KR-34-RISK': [record('evaluation'), record('agent_registry_policy'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL],
+    ...AGENT_SEQUENCE_ALL, ...AGENT_LLM_ALL],
+  'KR-34-RISK': [record('evaluation'), record('agent_registry_policy'), ...AGENT_RISK_ALL, ...AGENT_SEQUENCE_ALL, ...AGENT_LLM_ALL],
   'KR-34-OVERSIGHT': [...OVERSIGHT, ...STOP.slice(0, 1)],
   'KR-34-DOCUMENT': [record('governance_document'), record('retention_policy'), LEDGER],
   'KR-40-ORDER': [...STOP.slice(0, 4)],
@@ -178,18 +208,21 @@ const BUILDERS = {'eu-ai-act-logging': euMapping, 'kr-ai-basic-act': krMapping, 
 // Version 3 (2026-10-15) adds the AI agent risk findings (AGENT_RISK) to EU 12(2)(a) and 14(4)(a), KR-32-MONITOR and KR-34-RISK, and
 // ISMS-P 2.6.7, 2.9.4, 2.10.1 and 2.11.3. Version 4 (2026-10-15) adds the sequence findings of engine v5 (AGENT_SEQUENCE) to the same
 // items: all five to 2.11.3, EU 12(2)(a) and 14(4)(a), KR-32-MONITOR and KR-34-RISK; the exfiltration chain to 2.6.7, the tampering
-// chain to 2.9.4, the defence-off chain to 2.10.1.
-export const MAPPING_VERSION = 4;
+// chain to 2.9.4, the defence-off chain to 2.10.1. Version 5 (2026-10-17) adds the agent interference rules of risk pack version 3
+// (AGENT_RISK.agent; its collection-stop rules count under AGENT_RISK.audit) and the LLM security findings of engine v9 (AGENT_LLM) to
+// 2.11.3, EU 12(2)(a) and 14(4)(a), KR-32-MONITOR and KR-34-RISK with the scope findings of the same engine (AGENT_SCOPE), and names
+// the collection-stop rules in the 2.9.4 text.
+export const MAPPING_VERSION = 5;
 export const MAPPING_VERSIONS = {
   'eu-ai-act-logging': {1: '54b474415247708702aa4a0df6079cd3447794269ffeceb0a0c6a2a4717e4b5f',
     2: 'e9e4a7305536ec7e09cfbaa2ab07a145b1a7a3a2e031654620283c40da77d0fc', 3: 'ae76367e216bd4fac78a47dacb73417cd471bbbb40087f9e1720969821474a1f',
-    4: '709e23caab7c24daf5afe9bb3720fe71181cdb916adab7d364070e92a22df4a9'},
+    4: '709e23caab7c24daf5afe9bb3720fe71181cdb916adab7d364070e92a22df4a9', 5: '39df6da8d9b321bb383c38a7263882cdc426aff46e0665775d4eb3d3d25da915'},
   'kr-ai-basic-act': {1: '0a3bcb097f605a65393996242d13a6a251b3258b08257d2de46b87da32c49d93',
     2: '0b34923d153fe0fb80cd103efdbd75425b8b6d332621645691a5dcad48f29b6c', 3: 'b6c9f49b5ea0f21659524e6825e4980f447d0b8e8ccd231e0828797d8ba3100e',
-    4: 'a687aa299a1516effec2e2c59999bdd23710b418737b93c01a9631d3ed698cad'},
+    4: 'a687aa299a1516effec2e2c59999bdd23710b418737b93c01a9631d3ed698cad', 5: '116a5b71ede56c10ae9e47037258fc83e1a104959fabcfe18f667bb6fc3a41c2'},
   'isms-p': {1: '2276885b8d3e3a4cbfce6884ddb3411b32dc79167b5e278234172453841b7aaa',
     2: '4bd27ad7a29c036f2f2074e8deca3ff9c72cd5cf9fbf453c25ac88b9d2fdfd21', 3: 'd9539ec10a89c753cc283eb68cc167280ed5331d59359a01b5444f1a7b1de8ce',
-    4: '4c4239fef2679a9b4a22ace122cf2e44fbe91ada7151c7616bbe95c86f9548ab'},
+    4: '4c4239fef2679a9b4a22ace122cf2e44fbe91ada7151c7616bbe95c86f9548ab', 5: '584567fa9aece47e238182a31df07962c858cc9000cf68e75c722070152cdc42'},
 };
 export const mappingVersionFile = (id, version) => `data/evidence-pack-mappings/${id}-v${version}.json`;
 // The shipped bytes of a mapping version, or null when this verifier does not ship it.

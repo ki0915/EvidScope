@@ -15,14 +15,16 @@ export const STEP_CLASSES = Object.freeze({
   sensitive: ['risk.cred.'], outbound: ['risk.out.'], destroy: ['risk.destroy.'],
   defenseOff: ['risk.defense.defender', 'risk.defense.firewall', 'risk.defense.iptables-flush', 'risk.defense.selinux-off'],
   tamper: ['risk.defense.clear-eventlog', 'risk.defense.history-clear', 'risk.audit.'], weaken: ['risk.defense.chmod-777'],
+  // Interference with other AI agents (pack version 3): no chain of this module names it; engine v9 links it to an injection signal.
+  interfere: ['risk.agent.'],
 });
-const classOf = id => Object.keys(STEP_CLASSES).filter(name => STEP_CLASSES[name].some(prefix => id.startsWith(prefix)));
-const stepRules = rules => rules.filter(r => typeof r.id === 'string' && classOf(r.id).length);
-const isStep = e => e?.kind === 'intent' && typeof e.actor === 'string' && e.actor !== '';
+export const classOf = id => Object.keys(STEP_CLASSES).filter(name => STEP_CLASSES[name].some(prefix => id.startsWith(prefix)));
+export const stepRules = rules => rules.filter(r => typeof r.id === 'string' && classOf(r.id).length);
+export const isStep = e => e?.kind === 'intent' && typeof e.actor === 'string' && e.actor !== '';
 const time = e => Date.parse(e.occurredAt);
 // A transfer to the machine itself (curl to a local API under test) is not data leaving it.
 const LOOPBACK = /^(localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0|::1|\[::1\])$/;
-const loopback = destination => typeof destination === 'string' && LOOPBACK.test(destination.toLowerCase());
+export const loopback = destination => typeof destination === 'string' && LOOPBACK.test(destination.toLowerCase());
 
 // Snapshot input: the risky steps of other actions by the same actors within the window around this action's own risky steps, as
 // summaries in ledger order (the latest `related`), each with the id and version of every rule of the pack that matches it.

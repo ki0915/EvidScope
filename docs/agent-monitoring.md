@@ -11,23 +11,29 @@ EvidScope에 보냅니다.
 
 | hook | 기록 | 담는 것 |
 |---|---|---|
-| PreToolUse | `intent` | 행위자(`claude-code@<컴퓨터>` 또는 `codex@<컴퓨터>`), 도구(`claude-code`·`codex`), 행동 분류(`shell_exec`, `file_read`, `file_write`, `file_search`, `web_fetch`, `web_search`, `mcp_call`, `subagent`), 대상(`resource`: 파일 경로·명령·URL), 목적지(URL 호스트), 원문 메모(`note`) |
+| PreToolUse | `intent` | 행위자(`claude-code@<컴퓨터>` 또는 `codex@<컴퓨터>`), 도구(`claude-code`·`codex`), 행동 분류(`shell_exec`, `file_read`, `file_write`, `file_search`, `web_fetch`, `web_search`, `mcp_call`, `subagent`), 대상(`resource`: 파일 경로·명령·URL), 목적지(URL 호스트), 원문 메모(`note`), 작업 범위(`dataCategories`, 아래) |
 | PostToolUse | `self_report` | 같은 `actionId`의 결과(`success`/`failure`). 대상은 다시 싣지 않아 규칙이 호출당 한 번만 걸립니다. |
+| PostToolUse | `self_report`(`content_screen`) | 도구가 AI에게 돌려준 내용(웹 페이지, 파일, MCP 응답, 명령 출력)에서 찾은 LLM 보안 신호의 종류와 개수, 읽은 글자 수, 내용의 SHA-256. 내용 자체는 보내지 않습니다(hook 설정 `screenContent`, 기본 켜짐). |
+| UserPromptSubmit(`--screen-prompts`로 등록할 때만) | `self_report`(`content_screen`) | 사용자 프롬프트의 같은 신호. 프롬프트 글은 보내지 않습니다. |
 
 - Codex의 셸 도구는 `Bash`(명령이 인자 목록이면 공백으로 이어 붙임), 파일 수정은 `apply_patch`입니다. `apply_patch`는 패치에
   적힌 파일 경로(`*** Add File:`·`Update File:`·`Delete File:`·`Move to:`)만 대상으로 싣고, 패치 내용은 기록하지 않습니다.
 - 대상(`resource`)은 소문자·`/` 구분자로 정규화해 256자까지, 메모(`note`, `[도구] 명령 또는 경로`)는 원래 대소문자 그대로 1024자까지
-  싣습니다. 위험 규칙(팩 버전 2)은 메모를 `words` 연산자로 읽습니다.
+  싣습니다. 위험 규칙(팩 버전 3)은 메모를 `words` 연산자로 읽습니다.
+- 작업 범위: 실행 전 기록의 `dataCategories`에 에이전트가 그때 어떤 모드였는지(`agent-mode:<Claude Code 권한 모드>`,
+  `agent-sandbox:<Codex 샌드박스>`, `agent-approval:<Codex 승인 정책>`)와, 파일 도구·패치가 작업 폴더(`cwd`) 밖의 절대 경로를
+  건드렸는지(`boundary:outside_workspace`, 임시 폴더 제외)를 적습니다. 셸 명령 속 경로는 해석하지 않습니다.
 - 명령 속 비밀번호·토큰·`Authorization` 헤더·URL 사용자 정보·잘 알려진 키 형식(`sk-`, `ghp_`, `AKIA` 등)은 `<redacted>`로 가립니다.
   최선 노력이며, 기록은 이 PC의 EvidScope에만 저장됩니다.
-- hook은 도구 호출을 막거나 바꾸지 않습니다. 아무것도 출력하지 않고 항상 0으로 끝납니다. EvidScope가 꺼져 있으면 기록을
+- hook은 기본으로 도구 호출을 막거나 바꾸지 않습니다. 아무것도 출력하지 않고 항상 0으로 끝납니다. 차단 기능(Claude Code만,
+  아래 "확실한 위협 차단")을 켜면 거기 적은 호출만 막습니다. EvidScope가 꺼져 있으면 기록을
   `~/.evidscope/<에이전트>-spool.jsonl`(최대 5 MiB)에 두었다가 다음 호출 때 보냅니다.
 - 이 기록은 `agent` 출처의 자기 보고입니다. hook은 AI 도구 안에서 돌기 때문에 독립 실행 기록(`tool` 출처)이 아닙니다. 그래서 권한
   증거·승인 규칙(도구 출처 실행 기록용)은 걸리지 않고, 등록 자산·목적지 정책·사용자 규칙이 적용됩니다.
 
 ## 위험 규칙
 
-`data/risk-rules/ai-agent-baseline.json`의 60개 규칙을 테넌트 규칙으로 올립니다. 모두 `note words <패턴>` 형식(평가 엔진 v6,
+`data/risk-rules/ai-agent-baseline.json`의 67개 규칙(팩 버전 3)을 테넌트 규칙으로 올립니다. 모두 `note words <패턴>` 형식(평가 엔진 v6,
 `src/rule-words.mjs`)이며 일치는 검토 신호이지 판정이 아닙니다.
 
 - 패턴은 공백으로 나눈 단어를 **순서대로** 찾습니다. 사이에 다른 단어가 있어도 됩니다(`curl -d`는 `curl -s -X POST -d @f`에도 걸림).
@@ -40,7 +46,9 @@ EvidScope에 보냅니다.
 - 팩 버전 1(`resource contains`)은 플래그 순서가 바뀐 명령(`curl -X POST -d`, `rm -r -f /`, `git push origin main --force`),
   256자를 넘는 명령의 뒷부분을 놓쳤고, `.env.example`, 공개 인증서 `.pem`, `--force-with-lease`, 이 PC로 보내는 `curl -d`를 잘못
   걸었습니다. 버전 2는 이를 고쳤고 Firefox 저장 비밀번호, `Set-NetFirewallProfile -Enabled False`, `Clear-History`,
-  순서가 바뀐 `Remove-Item -Force -Recurse`를 더했습니다.
+  순서가 바뀐 `Remove-Item -Force -Recurse`를 더했습니다. 버전 3(2026-10-17)은 다른 AI 에이전트에 대한 간섭 4개(전역 지시 파일,
+  MCP 서버 설정, 다른 에이전트 프로세스 종료 두 형태)와 EvidScope 수집 중단 3개(예약 작업, EvidScope 프로세스, 설치된 hook·시작
+  스크립트)를 더했습니다. 프로젝트 안의 `CLAUDE.md`·`AGENTS.md` 수정, 프로세스 조회, 개발 서버 종료는 걸리지 않습니다.
 
 | 묶음 | 예 |
 |---|---|
@@ -49,7 +57,8 @@ EvidScope에 보냅니다.
 | 파괴적 명령 | `rm -rf /`, `rm -rf ~`, `Remove-Item -Recurse -Force`, `del /s`, `mkfs`, `format c:`, 디스크 `dd`, `git push --force`, `git reset --hard`, `DROP TABLE` |
 | 외부 전송 | `curl -d`, `--data`, `--upload-file`, `curl -T`, `--form`, `wget --post-file`, `-Method Post`, `-InFile`, `scp`, `nc`, `pastebin` |
 | 보안 설정 변경 | Defender·방화벽·iptables·SELinux 변경, 이벤트 로그 삭제, `history -c`, `chmod 777` |
-| 감시 우회 | `~/.evidscope/` 수집 설정, `~/.claude/settings`·`~/.codex/hooks.json`·`~/.codex/config.toml` hook 설정 접근 |
+| 감시 우회 | `~/.evidscope/` 수집 설정, `~/.claude/settings`·`~/.codex/hooks.json`·`~/.codex/config.toml` hook 설정 접근, EvidScope 예약 작업·프로세스 중지, 설치된 hook(`evidscope-work/hook/`)·시작 스크립트 변경 |
+| 에이전트 간섭 | `~/.claude/CLAUDE.md`·`~/.codex/AGENTS.md` 전역 지시 변경, `.mcp.json`·`~/.claude.json`·`claude_desktop_config.json` MCP 설정 접근, `claude`·`codex` 프로세스 종료 |
 
 규칙 하나를 바꾸거나 더하려면 파일을 고치고 설치 스크립트를 다시 실행합니다. 필드·연산자·값·등급·제목이 같은 활성 규칙은 그대로
 두고, 달라진 규칙만 새 버전(검토자 작성·시험, 관리자 승인)으로 올립니다.
@@ -92,20 +101,73 @@ v7 평가에만 이 입력을 다시 만듭니다. 원장에 v7 평가가 생긴
 - 정상 개발 작업에서도 걸릴 수 있습니다. 예를 들어 `.env`를 읽은 뒤 `~/.claude/settings.json`을 고치면 `SEQ_RISK_THEN_TAMPER`가
   표시됩니다. 판정이 아니라 검토 신호입니다.
 
+## LLM 보안 신호와 작업 범위 (평가 엔진 v9)
+
+> 2026-10-17 추가(`src/agent-content-signals.mjs`, `src/content-rules.mjs`).
+
+hook은 AI가 읽을 글(사용자 프롬프트, 도구가 돌려준 내용)을 메모리에서 정해진 패턴으로 검사하고, 찾은 신호의 종류·개수와 글의
+해시만 내용 기록으로 보냅니다. 모델을 쓰지 않는 결정적 검사라, 프롬프트 주입을 설명하는 글도 같은 문구를 담으면 신호가 됩니다.
+그래서 모두 검토 신호입니다.
+
+| 신호 | 뜻 |
+|---|---|
+| `injection_cue` | AI의 지시를 바꾸거나, 페이지를 읽는 AI에게 행동을 시키거나, 사용자에게 숨기게 하거나, 시스템 프롬프트를 묻는 문구 |
+| `role_marker` | 대화 템플릿·가짜 역할 표식 |
+| `hidden_text` | 보이지 않는 문자(유니코드 태그 문자, 방향 제어 문자, 연속된 폭 없는 문자 3개 이상) |
+| `secret_value` | 잘 알려진 비밀 값 형식(개인키 블록, 클라우드·서비스 토큰) |
+| `unique_id`·`card_number`·`contact_bulk` | 주민·외국인등록번호와 운전면허번호, Luhn 검사를 통과한 카드 번호, 한 글에 전화번호·이메일 20개 이상 |
+
+평가 엔진 v9는 이 신호와 작업 범위를 발견사항으로 바꿉니다.
+
+| 코드 | 등급 | 조건 |
+|---|---|---|
+| `LLM_INDIRECT_INJECTION` | medium(역할 표식만이면 low) | 도구가 돌려준 내용에 지시를 바꾸는 문구 |
+| `LLM_PROMPT_OVERRIDE` | medium(역할 표식만이면 low) | 사용자 프롬프트에 기존 지시·안전 규칙을 무시하게 하는 문구 |
+| `LLM_HIDDEN_TEXT` | low | 보이지 않는 문자 |
+| `LLM_SECRET_IN_PROMPT` / `LLM_SECRET_IN_CONTEXT` | high / medium | 프롬프트나 도구 내용의 비밀 값이 AI 서비스로 전송됨 |
+| `LLM_PERSONAL_DATA_IN_PROMPT` / `LLM_PERSONAL_DATA_IN_CONTEXT` | 고유식별번호·카드 번호면 high, 연락처 다수면 medium | 개인정보가 AI 서비스로 전송됨 |
+| `SEQ_INJECTION_THEN_ACTION` | high | 지시를 바꾸는 문구를 읽은 뒤 30분 안에 같은 세션에서 자격증명 접근·외부 전송·파괴 명령·보안 해제·감시 설정 변경·에이전트 간섭 |
+| `AGENT_RISK_WITHOUT_OVERSIGHT` | medium | 승인 확인을 끈 모드(Claude Code `bypassPermissions`, Codex `danger-full-access`)에서 위험 규칙에 걸린 행동 |
+| `AGENT_WRITE_OUTSIDE_WORKSPACE` | medium | 작업 폴더 밖 파일을 고치려 함 |
+
+- 신호가 있는 내용 기록과 범위 발견사항이 있는 실행 전 기록의 원장 번호가 평가 입력 `contentSignals.own`, 같은 세션의 앞뒤 기록
+  요약이 `related`로 들어갑니다. 둘 다 없으면 넣지 않으므로 그 평가는 이전 엔진의 결과와 같습니다.
+- 재생은 v9 평가에만 이 입력을 다시 만들고, 원장에 v9 평가가 생긴 뒤에 그런 행동을 이전 엔진으로 적은 평가는 `mismatch`입니다.
+  v9를 모르는 검증기는 `engine_unavailable`로 밝힙니다.
+
+## 확실한 위협 차단 (Claude Code)
+
+> 2026-10-17 추가(`src/agent-hook-guard.mjs`). 사용자가 "확실한 것만 차단"을 골랐습니다.
+
+hook 설정에 `"guard": true`가 있으면(설치 `--guard`), Claude Code의 PreToolUse hook이 실행 전 기록을 규칙 팩과 맞춰 보고 아래
+호출만 막습니다. 상황과 상관없이 문제인 것들이고, 나머지는 지금처럼 경보만 냅니다.
+
+- 감사·수집 설정 조작: `~/.evidscope/` hook 설정(읽기도 막음, 수집 자격이 들어 있음), `~/.claude/settings*`·`~/.codex/hooks.json`·
+  `~/.codex/config.toml` 변경, EvidScope 예약 작업·프로세스 중지, 설치된 hook·시작 스크립트 변경. 이 설정 파일을 읽는 것(Read·Grep,
+  또는 `cat`·`Get-Content`처럼 보여 주기만 하고 리다이렉트·연결·치환이 없는 셸 명령)은 막지 않습니다.
+- 보안 기능 끄기: Defender 설정 변경, 방화벽 변경(`show` 조회 제외), `iptables -F`, SELinux 끄기, 이벤트 로그 삭제.
+- 비밀을 읽어 바로 외부로 보내는 한 명령: 자격증명 규칙(`risk.cred.*`)과 외부 전송 규칙(`risk.out.*`)이 한 명령에 함께 걸릴 때.
+
+막을 때 hook은 Claude Code가 읽는 거부 응답(`hookSpecificOutput.permissionDecision: "deny"`, 이유는 한국어)을 출력하고 0으로
+끝납니다. Claude Code는 그 호출을 실행하지 않고 이유를 AI에게 돌려줍니다. 실행 전 기록은 그대로 EvidScope로 가고
+`dataCategories`에 `guard:denied`가 붙어, 무엇을 막았는지 원장에 남습니다. 규칙 팩을 읽지 못하면 아무것도 막지 않고 hook 로그에
+적습니다. Codex는 차단 응답 형식을 이 PC에서 확인하지 않아 경보만 냅니다. 정말 필요한 작업이면 사용자가 직접 실행합니다.
+
 ## 관련 기준(감사 증적과의 연결)
 
-위험 규칙의 발견사항은 증거 묶음 대응표 버전 3부터, 여러 행동 이상 징후(`SEQ_*`)는 버전 4부터
+위험 규칙의 발견사항은 증거 묶음 대응표 버전 3부터, 여러 행동 이상 징후(`SEQ_*`)는 버전 4부터, LLM 보안 신호와 작업 범위(v9),
+에이전트 간섭 규칙은 버전 5부터
 ([감사인용 증거 묶음](evidence-pack.md#대응표-버전)) 아래 항목의 증거로 셉니다. "이 항목을 검토할 때 볼 기록"이라는 뜻이며
 준수·위반 판정이 아닙니다. 대응표는 사람 검토 전 초안입니다.
 
 | 기준 | 항목 | 세는 발견사항 |
 |---|---|---|
-| ISMS-P | 2.11.3 이상행위 분석 및 모니터링(①) | 모든 위험 규칙, 모든 이상 징후 |
+| ISMS-P | 2.11.3 이상행위 분석 및 모니터링(①) | 모든 위험 규칙, 모든 이상 징후, LLM 보안 신호와 작업 범위 |
 | ISMS-P | 2.6.7 인터넷 접속 통제(②) | 외부 전송(`risk.out.*`), `SEQ_SENSITIVE_THEN_OUTBOUND` |
 | ISMS-P | 2.10.1 보안시스템 운영(③) | Defender·방화벽·iptables·SELinux 변경, `SEQ_DEFENSE_OFF_THEN_ACTION` |
-| ISMS-P | 2.9.4 로그 및 접속기록 관리(②) | 이벤트 로그·명령 기록 삭제, 감시 설정 접근(`risk.audit.*`), `SEQ_RISK_THEN_TAMPER` |
-| AI 기본법 | KR-32-MONITOR 안전사고 모니터링·대응 체계, KR-34-RISK 고영향 위험관리 | 모든 위험 규칙, 모든 이상 징후 |
-| EU AI Act | 12(2)(a) 위험 상황 식별 이벤트, 14(4)(a) 감독자의 이상 탐지 | 모든 위험 규칙, 모든 이상 징후 |
+| ISMS-P | 2.9.4 로그 및 접속기록 관리(②) | 이벤트 로그·명령 기록 삭제, 감시 설정 접근·수집 중단(`risk.audit.*`), `SEQ_RISK_THEN_TAMPER` |
+| AI 기본법 | KR-32-MONITOR 안전사고 모니터링·대응 체계, KR-34-RISK 고영향 위험관리 | 모든 위험 규칙, 모든 이상 징후, LLM 보안 신호와 작업 범위 |
+| EU AI Act | 12(2)(a) 위험 상황 식별 이벤트, 14(4)(a) 감독자의 이상 탐지 | 모든 위험 규칙, 모든 이상 징후, LLM 보안 신호와 작업 범위 |
 
 에이전트의 행동 기록 자체(`intent`)는 버전 2부터 ISMS-P 2.5.2·2.9.4와 EU AI Act 12(2)(c)의 증거입니다. 콘솔의 탐지 경보와 행동
 조사 화면은 경보마다 이 관련 기준을 보여 주고(`GET /api/home/finding-requirements`), 홈의 항목별 증거와 증거 묶음도 같은 대응표로 셉니다.
@@ -127,11 +189,14 @@ node scripts/install-agent-monitoring.mjs --agent codex --local-dir <EVIDSCOPE_L
 1. 에이전트를 자산으로 등록합니다(행위자 `<에이전트>@<컴퓨터>`, 도구 `claude-code`·`codex`, 정책 버전 `<에이전트>-monitoring-v1`).
 2. 위험 규칙을 검토자가 작성·시험하고 관리자가 승인합니다(규칙 API의 4-eyes).
 3. `~/.evidscope/<에이전트>-hook.json`에 수집 주소(`port-base + 1`)와 테넌트 `agent` 출처 자격을 씁니다.
-4. `--hook-dir`이 있으면 hook과 모듈 둘(`src/agent-hook-runner.mjs`, `src/agent-hook-events.mjs`)을 그 폴더로 복사합니다. 한글·공백이
-   든 경로를 hook 명령줄에 넣지 않기 위해서입니다.
+4. `--hook-dir`이 있으면 hook과 그 모듈, 차단 기능이 읽는 규칙 팩(`HOOK_COPY`, `src/agent-hook-runner.mjs`)을 그 폴더로
+   복사합니다. 한글·공백이 든 경로를 hook 명령줄에 넣지 않기 위해서입니다. 규칙 팩을 고친 뒤에는 설치를 다시 실행해야 차단
+   기능이 새 팩을 읽습니다.
 5. `--claude-settings`(Claude Code)는 `~/.claude/settings.json`, `--codex-hooks`(Codex)는 `~/.codex/hooks.json`의 `hooks`에
    `PreToolUse`·`PostToolUse`를 더합니다. 다른 hook은 그대로 두고, 원래 파일은 `<파일>.before-evidscope-<시각>`으로 남깁니다.
    없으면 넣을 내용을 출력만 합니다.
+6. `--guard`는 차단 기능을 켜고(Claude Code만, hook 설정 `"guard": true`), `--no-guard`는 끕니다. 둘 다 없으면 기존 hook 설정의
+   `guard`·`screenContent` 값을 그대로 둡니다. `--screen-prompts`는 `UserPromptSubmit`도 등록해 사용자 프롬프트를 검사합니다.
 
 설치 뒤 새로 시작한 세션부터 기록됩니다. Codex는 직접 넣지 않은 hook을 사용자가 한 번 신뢰해야 실행합니다: Codex CLI에서
 `/hooks`를 열어 EvidScope hook을 신뢰합니다(hook 파일이 바뀌면 다시 신뢰). 신뢰한 뒤에도 두 항목이 모두 켜져 있는지 확인합니다.

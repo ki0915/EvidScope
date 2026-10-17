@@ -99,7 +99,7 @@ test('package-verifier builds a dependency-free, reproducible verifier folder an
   assert.deepEqual(files.filter(p => p.startsWith('src/')), a.files.map(f => f.path).filter(p => p.startsWith('src/')));
   assert.ok(files.includes('src/verify-cli.mjs') && !files.includes('src/service.mjs') && !files.includes('src/store.mjs'));
   // The mappings of evidence packages read these data files beside src/, as in the repository, and every shipped mapping version.
-  assert.deepEqual(files.filter(p => p.startsWith('data/')), [...['eu-ai-act-logging', 'isms-p', 'kr-ai-basic-act'].flatMap(id => [1, 2, 3, 4]
+  assert.deepEqual(files.filter(p => p.startsWith('data/')), [...['eu-ai-act-logging', 'isms-p', 'kr-ai-basic-act'].flatMap(id => [1, 2, 3, 4, 5]
     .map(v => `data/evidence-pack-mappings/${id}-v${v}.json`)), 'data/isms-p-alignment.json', 'data/requirements.json']);
   for (const p of files.filter(f => f.endsWith('.mjs'))) {
     const text = read(p).toString();

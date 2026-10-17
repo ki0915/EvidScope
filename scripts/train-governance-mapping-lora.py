@@ -25,6 +25,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from training_artifacts import atomic_json, seal_checkpoint, verify_checkpoint, seal_candidate, sha256_file
 
 BASE_REPOSITORY = "fdtn-ai/Foundation-Sec-1.1-8B-Instruct"
+# Bases the session task may train on, for the side-by-side judge comparison (2026-10-17 model plan): the first base, kept so its
+# recorded runs still verify, and the light general model that replaces it as the first judge candidate. Both use the Llama/Qwen
+# projection names in RECIPE. The governance-mapping task stays on BASE_REPOSITORY, because its adapter must apply to the runtime GGUF.
+SESSION_BASE_REPOSITORIES = (BASE_REPOSITORY, "Qwen/Qwen3-4B-Instruct-2507")
 TASK = "governance-mapping"
 RELATIONS = {"supports", "contradicts", "context_only"}
 CONFIDENCE = {"low", "medium", "high"}
@@ -201,11 +205,20 @@ def encode_row(tokenizer, row, sequence_length=RECIPE["sequenceLength"]):
     return {"input_ids": full, "attention_mask": [1] * len(full), "labels": [-100] * len(prefix_ids) + answer_ids}
 
 
+def base_repository_for(args):
+    repository = getattr(args, "base_repository", BASE_REPOSITORY)
+    allowed = SESSION_BASE_REPOSITORIES if getattr(args, "task", TASK) == "session-inference" else (BASE_REPOSITORY,)
+    if repository not in allowed:
+        raise RuntimeError("base_repository_not_allowed_for_task")
+    return repository
+
+
 def verify_bindings(args):
     """Binds the container inputs to the digests the controller inspected; every base file is re-hashed."""
+    repository = base_repository_for(args)
     if not re.fullmatch(r"[a-f0-9]{40}", args.base_revision or ""):
         raise RuntimeError("base_revision_required")
-    if os.environ.get("EVIDSCOPE_BASE_REPOSITORY") != BASE_REPOSITORY or os.environ.get("EVIDSCOPE_BASE_REVISION") != args.base_revision:
+    if os.environ.get("EVIDSCOPE_BASE_REPOSITORY") != repository or os.environ.get("EVIDSCOPE_BASE_REVISION") != args.base_revision:
         raise RuntimeError("training_base_binding_mismatch")
     for name in ("EVIDSCOPE_DATASET_SHA256", "EVIDSCOPE_BASE_ARTIFACT_LOCK_SHA256"):
         if not re.fullmatch(r"[a-f0-9]{64}", os.environ.get(name, "")):
@@ -216,7 +229,7 @@ def verify_bindings(args):
     if sha256_file(root / "artifact-lock.json") != os.environ["EVIDSCOPE_BASE_ARTIFACT_LOCK_SHA256"]:
         raise RuntimeError("base_artifact_lock_binding_mismatch")
     lock = json.loads((root / "artifact-lock.json").read_text(encoding="utf-8"))
-    if lock.get("repository") != BASE_REPOSITORY or lock.get("revision") != args.base_revision or not lock.get("files"):
+    if lock.get("repository") != repository or lock.get("revision") != args.base_revision or not lock.get("files"):
         raise RuntimeError("base_artifact_lock_required")
     checked = set()
     for item in lock["files"]:
@@ -233,7 +246,7 @@ def verify_bindings(args):
 
 def identity_for(args, root):
     here = Path(__file__)
-    return {"task": getattr(args, "task", TASK), "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
+    return {"task": getattr(args, "task", TASK), "baseRepository": base_repository_for(args), "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
             "datasetSha256": sha256_file(args.data), "trainerSha256": sha256_file(here), "artifactHelperSha256": sha256_file(here.with_name("training_artifacts.py")),
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
             "thermalHelperSha256": sha256_file(here.with_name("public-qa-thermal.py")),
@@ -387,6 +400,7 @@ def main(argv=None):
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--token-check", action="store_true")
     parser.add_argument("--model-dir", default="/models/base")
+    parser.add_argument("--base-repository", default=BASE_REPOSITORY, choices=SESSION_BASE_REPOSITORIES)
     parser.add_argument("--base-revision", default="")
     parser.add_argument("--output", default="/checkpoints/governance-mapping/run")
     parser.add_argument("--gpu-memory-fraction", type=float, default=0.72)
@@ -397,6 +411,8 @@ def main(argv=None):
     parser.add_argument("--thermal-target-c", type=int, default=THERMAL_PACING["targetC"])
     parser.add_argument("--thermal-max-wait-seconds", type=float, default=THERMAL_PACING["maxWaitSeconds"])
     args = parser.parse_args(argv)
+    if args.task != "session-inference" and args.base_repository != BASE_REPOSITORY:
+        parser.error("--base-repository other than %s is only for --task session-inference" % BASE_REPOSITORY)
     if not 0 <= args.pause_ratio <= 4:
         parser.error("--pause-ratio must be between 0 and 4")
     # The trigger stays below the external guard's 75 C stop; target < trigger gives hysteresis.

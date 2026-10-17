@@ -1,12 +1,14 @@
 // Mapping version 3: the findings of the AI agent risk rules (data/risk-rules/ai-agent-baseline.json) as evidence of
 // AI 기본법, ISMS-P and EU AI Act items, by code prefix (docs/agent-monitoring.md). Version 4 adds the sequence findings of
-// evaluation engine v5 (src/sequence-rules.mjs) by code.
+// evaluation engine v5 (src/sequence-rules.mjs) by code. Version 5 adds the agent interference rules of risk pack version 3 by prefix
+// and the LLM security findings of engine v9 (src/content-rules.mjs) by code.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {AGENT_RISK, AGENT_SEQUENCE, FRAMEWORKS, MAPPING_VERSION, checkMapping, frameworkMapping, shippedMapping}
+import {AGENT_LLM, AGENT_RISK, AGENT_SCOPE, AGENT_SEQUENCE, FRAMEWORKS, MAPPING_VERSION, checkMapping, frameworkMapping, shippedMapping}
   from '../src/evidence-pack-frameworks.mjs';
 import {SEQUENCE_CODES} from '../src/sequence-rules.mjs';
+import {CONTENT_CODES, SCOPE_CODES} from '../src/content-rules.mjs';
 import {findingMatches, measure} from '../src/evidence-inventory.mjs';
 import {findingRequirements, presence} from '../src/home-service.mjs';
 import {CATALOG_MAPPING_VERSION, governanceCatalog} from '../src/governance-mapping.mjs';
@@ -29,19 +31,44 @@ test('version 3 only adds agent risk prefixes to version 2', () => {
   }
 });
 
-test('version 4 is the shipped current mapping and only adds the sequence codes to version 3', () => {
-  assert.equal(MAPPING_VERSION, 4);
+test('version 4 only adds the sequence codes to version 3', () => {
   const codes = new Set(SEQUENCE_CODES);
   assert.deepEqual(Object.values(AGENT_SEQUENCE).map(e => e.code), SEQUENCE_CODES, 'one entry per code the engine emits');
   for (const id of FRAMEWORKS) {
     const v3 = JSON.parse(shippedMapping(id, 3)), v4 = JSON.parse(shippedMapping(id, 4));
-    assert.deepEqual(JSON.parse(JSON.stringify(frameworkMapping(id))), v4, `${id}: the builder writes version 4`);
     assert.deepEqual(v4.items.map(i => i.id), v3.items.map(i => i.id), id);
     for (const [n, item] of v4.items.entries()) {
       assert.deepEqual(item.evidence.filter(e => !codes.has(e.code)), v3.items[n].evidence, `${id} ${item.id} keeps its version 3 evidence`);
       if (item.supports) assert.deepEqual(item.supports.filter(s => !/^같은 AI 에이전트/.test(s.shows)), v3.items[n].supports, `${id} ${item.id}`);
     }
   }
+});
+
+test('version 5 is the shipped current mapping and only adds the interference prefix and the LLM codes to version 4', () => {
+  assert.equal(MAPPING_VERSION, 5);
+  assert.deepEqual(Object.values(AGENT_LLM).map(e => e.code), [...CONTENT_CODES], 'one entry per code engine v9 emits');
+  assert.deepEqual(Object.values(AGENT_SCOPE).map(e => e.code), [...SCOPE_CODES]);
+  const v9 = [...CONTENT_CODES, ...SCOPE_CODES];
+  const added = e => e.codePrefix === 'CUSTOM:risk.agent.' || v9.includes(e.code), key = e => `${e.type}:${e.code ?? e.codePrefix ?? e.name}`;
+  for (const id of FRAMEWORKS) {
+    const v4 = JSON.parse(shippedMapping(id, 4)), v5 = JSON.parse(shippedMapping(id, 5));
+    assert.deepEqual(JSON.parse(JSON.stringify(frameworkMapping(id))), v5, `${id}: the builder writes version 5`);
+    assert.deepEqual(v5.items.map(i => i.id), v4.items.map(i => i.id), id);
+    for (const [n, item] of v5.items.entries()) {
+      assert.deepEqual(item.evidence.filter(e => !added(e)).map(key), v4.items[n].evidence.map(key), `${id} ${item.id} keeps its version 4 evidence`);
+      const grew = item.evidence.length - v4.items[n].evidence.length;
+      assert.ok(grew === 0 || grew === 1 + v9.length, `${id} ${item.id}: the prefix and every engine v9 code, or nothing`);
+      if (item.supports) assert.ok(item.supports.length - v4.items[n].supports.length <= 1, `${id} ${item.id}`);
+    }
+  }
+  const items = code => itemsFor(code);
+  for (const code of [...v9, 'CUSTOM:risk.agent.kill-agent:v1']) {
+    for (const must of ['ISMS-P-2.11.3', 'KR-32-MONITOR', 'KR-34-RISK', 'EU-AIA-12-2-A', 'EU-AIA-14-4-A']) {
+      assert.ok(items(code).includes(must), `${code} -> ${must}`);
+    }
+    for (const narrow of ['ISMS-P-2.6.7', 'ISMS-P-2.9.4', 'ISMS-P-2.10.1']) assert.ok(!items(code).includes(narrow), `${code} -/-> ${narrow}`);
+  }
+  assert.ok(items('CUSTOM:risk.audit.evidscope-task:v1').includes('ISMS-P-2.9.4'), 'stopping collection counts as monitoring tampering');
 });
 
 test('each sequence finding counts for the items of its pattern', () => {

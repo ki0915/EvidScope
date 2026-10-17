@@ -15,6 +15,7 @@ import {applyGovernanceDocumentRecord,checkGovernanceDocumentRows} from './gover
 import {REGISTRY_INPUT_TYPES,REGISTRY_TYPES,registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
 import {relatedStepInput} from './sequence-rules.mjs';
+import {contentSignalInput} from './content-rules.mjs';
 import {STOP_ORDER_TYPE,stopOrderAnalysisInput} from './stop-orders.mjs';
 import {APPROVAL_TYPE,approvalAnalysisInput} from './approvals.mjs';
 import {agentCommandInput,evaluationEngine,historyImportInput,matches} from './model.mjs';
@@ -402,8 +403,11 @@ export class Store {
   const agentCommands=actionId===null?undefined:agentCommandInput(events);
   // Agent records imported later from the agent's transcript (engine v8) join only when the action has one.
   const historyImports=actionId===null?undefined:historyImportInput(events);
+  // LLM security signals of the action's content records and the session's injection signals before its risky steps (engine v9) join
+  // only when there is one.
+  const contentSignals=actionId===null?undefined:contentSignalInput(events,state.eventsBySequence.values(),rules,matches);
   const extra={...(registry?{registry}:{}),...(relatedDecisions?{relatedDecisions}:{}),...(approvals?{approvals}:{}),...(stopOrders?{stopOrders}:{}),
-   ...(relatedSteps?{relatedSteps}:{}),...(agentCommands?{agentCommands}:{}),...(historyImports?{historyImports}:{})};
+   ...(relatedSteps?{relatedSteps}:{}),...(agentCommands?{agentCommands}:{}),...(historyImports?{historyImports}:{}),...(contentSignals?{contentSignals}:{})};
   const extraBytes=Object.keys(extra).length?Buffer.byteLength(JSON.stringify(extra))+1:0;
   const reasons=[],used=100+extraBytes+[...events,...assets,...rules,...exceptions].reduce((total,value)=>total+Buffer.byteLength(JSON.stringify(value))+1,0),counts={events:events.length,assets:assets.length,rules:rules.length,exceptions:exceptions.length};
   for(const [name,count] of Object.entries(counts))if(count>limits[name])reasons.push(name);if(used>limits.snapshotBytes-4096)reasons.push('snapshotBytes');

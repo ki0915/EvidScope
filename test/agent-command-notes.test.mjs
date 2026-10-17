@@ -29,7 +29,7 @@ test('agentCommandInput names only coding agent commands whose injection-shaped 
   assert.deepEqual(agentCommandInput([plain, instruction, tool, markup]), [1]);
   assert.equal(agentCommandInput([plain, instruction, tool]), undefined);
   assert.equal(evaluationEngine({events: [], agentCommands: [1]}), EVALUATION_ENGINE_V7);
-  assert.equal(EVALUATION_ENGINES.at(-2), EVALUATION_ENGINE_V7);
+  assert.equal(EVALUATION_ENGINES.at(-3), EVALUATION_ENGINE_V7);
   const run = (events, options) => injection(evaluate(events, [], [], [], now.getTime(), options).findings);
   assert.deepEqual(run([markup], {agentCommands: [1]}), [], 'v7: markup in an agent command is code');
   assert.deepEqual(run([markup]), [[`alpha-agent/${markup.id}`]], 'without the input the earlier engines flag it');

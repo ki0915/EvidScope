@@ -15,9 +15,13 @@
 // Engine v7 likewise reads AI coding agent commands without their code markup (agentCommandInput): the input is rebuilt only for
 // evaluations that name v7, and once one is in the ledger an earlier engine named for an action with such a command is a mismatch.
 // Engine v8 likewise reads agent records imported later from the agent's transcript (historyImportInput): the input is rebuilt only for
-// evaluations that name v8, and once one is in the ledger an earlier engine named for an action with such a record is a mismatch.
-import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8, EVALUATION_ENGINES, agentCommandInput,
-  boundedEvaluation, evaluationEngine, historyImportInput, matches as ruleMatches} from './model.mjs';
+// evaluations that name v8 or later, and once one is in the ledger an earlier engine named for an action with such a record is a mismatch.
+// Engine v9 likewise reads the LLM security signals of agent content records (contentSignalInput, src/content-rules.mjs): the input is
+// rebuilt only for evaluations that name v9, and once one is in the ledger an earlier engine named for an action with such input is a
+// mismatch.
+import {EVALUATION_ENGINE, EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8, EVALUATION_ENGINE_V9, EVALUATION_ENGINES,
+  agentCommandInput, boundedEvaluation, evaluationEngine, historyImportInput, matches as ruleMatches} from './model.mjs';
+import {contentSignalInput} from './content-rules.mjs';
 import {canonical, digest, isEncryptedEvent, verifyBundle} from './crypto.mjs';
 import {REGISTRY_INPUT_TYPES, registryAnalysisInput} from './agent-registry.mjs';
 import {relatedDenyInput} from './decision-rules.mjs';
@@ -38,14 +42,16 @@ const eventOrder = (a, b) => a.receivedAt.localeCompare(b.receivedAt) || a.sourc
 const findingKey = finding => `${finding.code}|${(finding.evidence || []).join(',')}`;
 
 // The engines whose snapshots carry the related risky steps of the same actor (src/sequence-rules.mjs).
-const STEP_ENGINES = [EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8];
+const STEP_ENGINES = [EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8, EVALUATION_ENGINE_V9];
 // The engines whose snapshots carry the AI coding agent commands read without their markup (agentCommandInput).
-const COMMAND_ENGINES = [EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8];
+const COMMAND_ENGINES = [EVALUATION_ENGINE_V7, EVALUATION_ENGINE_V8, EVALUATION_ENGINE_V9];
+// The engines whose snapshots carry the agent records imported from transcripts (historyImportInput).
+const IMPORT_ENGINES = [EVALUATION_ENGINE_V8, EVALUATION_ENGINE_V9];
 
 function emptyState() {
   return {events: new Map(), byAction: new Map(), unavailable: new Map(), keyEvents: new Map(), assets: new Map(), rules: new Map(),
     exceptions: new Map(), registry: [], registryRows: [], approvals: new Map(), approvalActions: new Map(), stepsSince: undefined,
-    replaySince: undefined, commandsSince: undefined, importsSince: undefined};
+    replaySince: undefined, commandsSince: undefined, importsSince: undefined, contentSince: undefined};
 }
 
 function addEvent(state, event) {
@@ -86,15 +92,17 @@ function apply(state, row, disclosures) {
   if (row.type === 'evaluation' && STEP_ENGINES.includes(payload.replay?.engine)) state.stepsSince ??= row.seq;
   if (row.type === 'evaluation' && payload.replay) state.replaySince ??= row.seq;
   if (row.type === 'evaluation' && COMMAND_ENGINES.includes(payload.replay?.engine)) state.commandsSince ??= row.seq;
-  if (row.type === 'evaluation' && payload.replay?.engine === EVALUATION_ENGINE_V8) state.importsSince ??= row.seq;
+  if (row.type === 'evaluation' && IMPORT_ENGINES.includes(payload.replay?.engine)) state.importsSince ??= row.seq;
+  if (row.type === 'evaluation' && payload.replay?.engine === EVALUATION_ENGINE_V9) state.contentSince ??= row.seq;
   if (REGISTRY_INPUT_TYPES.includes(row.type) || row.type === STOP_ORDER_TYPE) {
     state.registryRows.push({seq: row.seq, type: row.type, recordedAt: row.recordedAt, hash: row.hash, payload});
   }
 }
 
 // steps: whether the evaluation names engine v5 or later, whose input (relatedSteps) earlier engines never had; commands: whether it
-// names v7 or later (agentCommands); imports: whether it names v8 (historyImports).
-function snapshot(state, actionId, {steps = false, commands = false, imports = false} = {}) {
+// names v7 or later (agentCommands); imports: whether it names v8 or later (historyImports); contents: whether it names v9
+// (contentSignals).
+function snapshot(state, actionId, {steps = false, commands = false, imports = false, contents = false} = {}) {
   const events = [...(state.byAction.get(actionId)?.values() || [])];
   const registry = registryAnalysisInput(state.registry), relatedDecisions = relatedDenyInput(events, state.events.values());
   const approvals = approvalAnalysisInput((state.approvalActions.get(actionId) || []).map(id => state.approvals.get(id)));
@@ -103,6 +111,7 @@ function snapshot(state, actionId, {steps = false, commands = false, imports = f
   const relatedSteps = steps ? relatedStepInput(events, state.events.values(), rules, ruleMatches) : undefined;
   const agentCommands = commands ? agentCommandInput(events) : undefined;
   const historyImports = imports ? historyImportInput(events) : undefined;
+  const contentSignals = contents ? contentSignalInput(events, state.events.values(), rules, ruleMatches) : undefined;
   return {
     events: events.sort(eventOrder),
     assets: [...state.assets.values()],
@@ -115,9 +124,10 @@ function snapshot(state, actionId, {steps = false, commands = false, imports = f
     ...(relatedSteps ? {relatedSteps} : {}),
     ...(agentCommands ? {agentCommands} : {}),
     ...(historyImports ? {historyImports} : {}),
+    ...(contentSignals ? {contentSignals} : {}),
   };
 }
-const EXTRA_INPUTS = ['registry', 'relatedDecisions', 'approvals', 'stopOrders', 'relatedSteps', 'agentCommands', 'historyImports'];
+const EXTRA_INPUTS = ['registry', 'relatedDecisions', 'approvals', 'stopOrders', 'relatedSteps', 'agentCommands', 'historyImports', 'contentSignals'];
 const extraBytes = data => (EXTRA_INPUTS.some(name => data[name])
   ? bytes(Object.fromEntries(EXTRA_INPUTS.filter(name => data[name]).map(name => [name, data[name]]))) + 1 : 0);
 
@@ -172,6 +182,7 @@ function inputSummary(data, matches) {
     ...(data.relatedSteps ? {relatedSteps: data.relatedSteps.map(s => s.seq)} : {}),
     ...(data.agentCommands ? {agentCommands: data.agentCommands} : {}),
     ...(data.historyImports ? {historyImports: data.historyImports} : {}),
+    ...(data.contentSignals ? {contentSignals: {own: data.contentSignals.own, related: data.contentSignals.related.map(r => r.seq)}} : {}),
     snapshotHash: matches ? 'matches_record' : 'differs_from_record'};
 }
 
@@ -183,22 +194,25 @@ function replayOne(state, row, engines) {
   if (typeof evaluation.actionId !== 'string') return notReplayable('invalid_record');
   if (recordedEngine !== undefined && !engines.includes(recordedEngine)) return notReplayable('engine_unavailable');
   const data = snapshot(state, evaluation.actionId, {steps: STEP_ENGINES.includes(recordedEngine), commands: COMMAND_ENGINES.includes(recordedEngine),
-    imports: recordedEngine === EVALUATION_ENGINE_V8});
+    imports: IMPORT_ENGINES.includes(recordedEngine), contents: recordedEngine === EVALUATION_ENGINE_V9});
   const stepsDowngraded = !STEP_ENGINES.includes(recordedEngine) && state.stepsSince !== undefined
     && relatedStepInput(data.events, state.events.values(), data.rules, ruleMatches) !== undefined;
   const commandsDowngraded = !COMMAND_ENGINES.includes(recordedEngine) && state.commandsSince !== undefined
     && agentCommandInput(data.events) !== undefined;
-  const importsDowngraded = recordedEngine !== EVALUATION_ENGINE_V8 && state.importsSince !== undefined && historyImportInput(data.events) !== undefined;
-  const downgrade = stepsDowngraded || commandsDowngraded || importsDowngraded ? {engine: {recorded: recordedEngine ?? 'unrecorded',
+  const importsDowngraded = !IMPORT_ENGINES.includes(recordedEngine) && state.importsSince !== undefined && historyImportInput(data.events) !== undefined;
+  const contentDowngraded = recordedEngine !== EVALUATION_ENGINE_V9 && state.contentSince !== undefined
+    && contentSignalInput(data.events, state.events.values(), data.rules, ruleMatches) !== undefined;
+  const downgrade = stepsDowngraded || commandsDowngraded || importsDowngraded || contentDowngraded ? {engine: {recorded: recordedEngine ?? 'unrecorded',
     replayed: evaluationEngine({...data, ...(stepsDowngraded ? {relatedSteps: []} : {}), ...(commandsDowngraded ? {agentCommands: []} : {}),
-      ...(importsDowngraded ? {historyImports: []} : {})})}} : null;
+      ...(importsDowngraded ? {historyImports: []} : {}), ...(contentDowngraded ? {contentSignals: {own: [], related: []}} : {})})}} : null;
   const hidden = [...state.unavailable.values()].filter(u => u.actionId === null || u.actionId === evaluation.actionId).map(u => u.seq);
   const recordedSeqs = Array.isArray(evaluation.replay?.inputs?.events) ? evaluation.replay.inputs.events : null;
   // Related denies of other actions erased since the evaluation cannot be re-examined either.
-  // So are stop-order activation reports and risky steps of other actions.
+  // So are stop-order activation reports, risky steps of other actions and the content records and risky steps of the same session.
   const related = [...(Array.isArray(evaluation.replay?.inputs?.relatedDecisions) ? evaluation.replay.inputs.relatedDecisions : []),
     ...(Array.isArray(evaluation.replay?.inputs?.stopOrders?.activations) ? evaluation.replay.inputs.stopOrders.activations : []),
-    ...(Array.isArray(evaluation.replay?.inputs?.relatedSteps) ? evaluation.replay.inputs.relatedSteps : [])];
+    ...(Array.isArray(evaluation.replay?.inputs?.relatedSteps) ? evaluation.replay.inputs.relatedSteps : []),
+    ...(Array.isArray(evaluation.replay?.inputs?.contentSignals?.related) ? evaluation.replay.inputs.contentSignals.related : [])];
   const erased = [...(recordedSeqs ? recordedSeqs.filter(seq => hidden.includes(seq)) : hidden),
     ...related.filter(seq => Number.isSafeInteger(seq) && !state.events.has(seq) && !hidden.includes(seq))];
   if (evaluation.status === 'quarantined_resource_limit') {

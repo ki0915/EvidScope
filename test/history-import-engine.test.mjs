@@ -55,7 +55,7 @@ test('engine v8: imported records add no LATE_EVIDENCE of their own; rules and o
   assert.equal(evaluationEngine({events: [], historyImports: [1]}), EVALUATION_ENGINE_V8);
   assert.equal(evaluationEngine({events: [], historyImports: [1], agentCommands: [1], relatedSteps: []}), EVALUATION_ENGINE_V8);
   assert.equal(evaluationEngine({events: [], agentCommands: [1]}), EVALUATION_ENGINE_V7);
-  assert.equal(EVALUATION_ENGINES.at(-1), EVALUATION_ENGINE_V8);
+  assert.equal(EVALUATION_ENGINES.at(-2), EVALUATION_ENGINE_V8);
   const run = (events, options) => evaluate(events, [], rules, [], Date.now(), options).findings;
   const v8 = run([aws], {historyImports: [1]}), earlier = run([aws]);
   assert.deepEqual(late(v8), [], 'v8: no lateness finding for an imported record');

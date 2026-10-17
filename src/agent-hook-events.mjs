@@ -3,9 +3,14 @@
 // src/development-collectors.mjs (allowlist metadata only: tool kind, no target), these events carry the target of each tool call
 // (file path, command, URL) so the risk rules (data/risk-rules) can see what the AI touched: reading /etc/shadow, deleting a tree,
 // posting data out. Commands keep their text with common secret forms redacted.
+// The intent also names the agent's permission or sandbox mode and whether a file it touches lies outside the working folder
+// (hookScope), so engine v9 can flag a risky call made with approval prompts off and an edit outside the workspace.
 // The events are agent-source records (intent before the call, self_report after it): the hook runs inside the AI tool itself,
 // so they are the tool's own account of what it did, not an independent execution record.
+// With content screening on (hookEvents, screen), the text the model reads next (the user's prompt, a tool's answer) is also checked
+// in memory for LLM security signals (src/agent-content-signals.mjs) and sent as a content record of labels, counts and a hash.
 import {createHash} from 'node:crypto';
+import {contentFields, contentSignals} from './agent-content-signals.mjs';
 
 export const HOOK_TOOL = 'claude-code';
 // The agents whose hooks this module reads; each one's events carry it as `tool`.
@@ -78,6 +83,32 @@ export function hookTarget(name, input = {}) {
   return {resource: normalizeTarget(String(name || 'unknown')), text: ''};
 }
 
+// The scope of a call, as dataCategories of its intent (docs/agent-monitoring.md, "작업 범위"): the agent's permission or sandbox mode
+// as the hook reports it (Claude Code permission_mode; sandbox_mode or approval_policy where an agent sends them), and
+// boundary:outside_workspace when a file tool or a patch names an absolute path outside the working folder (cwd) other than a
+// temporary folder. Commands are not parsed for paths. Evaluation engine v9 (src/content-rules.mjs) reads these categories.
+export const SCOPE_OUTSIDE = 'boundary:outside_workspace';
+const modeSlug = v => typeof v === 'string' && v ? v.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 32) : '';
+const modeOf = v => modeSlug(v && typeof v === 'object' ? v.mode ?? v.type : v);
+const plainPath = p => printable(String(p)).replace(/\\/g, '/').replace(/\/+/g, '/').trim().toLowerCase();
+const absolute = p => /^(?:[a-z]:\/|\/|~\/)/.test(p);
+const TEMP = /^(?:\/tmp\/|\/var\/tmp\/|\/private\/tmp\/|[a-z]:\/windows\/temp\/|[a-z]:\/users\/[^/]+\/appdata\/local\/temp\/)/;
+function outsideWorkspace(cwd, paths) {
+  if (typeof cwd !== 'string' || !cwd) return false;
+  const root = plainPath(cwd).replace(/\/$/, '');
+  if (!absolute(root + '/')) return false;
+  return paths.map(plainPath).some(p => absolute(p) && p !== root && !p.startsWith(root + '/') && !TEMP.test(p));
+}
+export function hookScope(raw, name, input = {}) {
+  const i = input && typeof input === 'object' ? input : {}, action = hookAction(name);
+  const categories = [['agent-mode', modeOf(raw?.permission_mode)], ['agent-sandbox', modeOf(raw?.sandbox_mode ?? raw?.sandbox_policy)],
+    ['agent-approval', modeOf(raw?.approval_policy)]].filter(([, v]) => v).map(([k, v]) => `${k}:${v}`);
+  const paths = name === 'apply_patch' ? patchFiles(i.command ?? i.patch ?? i.input)
+    : ['file_read', 'file_write', 'file_search'].includes(action) ? [i.file_path ?? i.notebook_path ?? i.path].filter(v => typeof v === 'string' && v) : [];
+  if (outsideWorkspace(raw?.cwd, paths)) categories.push(SCOPE_OUTSIDE);
+  return categories;
+}
+
 function failed(response) {
   if (!response || typeof response !== 'object') return false;
   const exit = response.exit_code ?? response.exitCode;
@@ -102,7 +133,42 @@ export function hookEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = ne
   const event = {id: safeId(`${prefix}.${shortHash(session)}.${call}.${phase}`), kind: phase === 'pre' ? 'intent' : 'self_report',
     occurredAt: now.toISOString(), traceId: session, actionId: call, actor, tool, action: hookAction(raw.tool_name),
     status: phase === 'pre' ? 'requested' : failed(raw.tool_response) ? 'failure' : 'success', note};
-  if (phase === 'pre') { event.resource = target.resource || 'unknown'; if (target.destination) event.destination = target.destination; }
+  if (phase === 'pre') {
+    event.resource = target.resource || 'unknown'; if (target.destination) event.destination = target.destination;
+    const scope = hookScope(raw, raw.tool_name, raw.tool_input);
+    if (scope.length) event.dataCategories = scope;
+  }
   if (typeof policyVersion === 'string' && policyVersion) event.policyVersion = policyVersion;
   return event;
+}
+
+// A tool whose answer is new context for the model. A file edit's answer echoes what the agent itself wrote, so it is not screened.
+const screenedTool = name => hookAction(name) !== 'file_write';
+// The content record of one hook call (same context as hookEvent): the signals of a UserPromptSubmit's prompt, or of the answer of a
+// PostToolUse whose tool returns new content, as labels with counts (dataCategories) and the SHA-256 of the text (dataRefs); the
+// text itself is never put on the record. A tool answer's record shares the call's actionId, so the call is judged with what it
+// returned; a prompt gets its own action. Null when the call has no text to screen.
+export function contentEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = new Date()} = {}) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !HOOK_AGENTS.includes(tool)) return null;
+  const prompt = raw.hook_event_name === 'UserPromptSubmit';
+  if (prompt ? typeof raw.prompt !== 'string'
+    : raw.hook_event_name !== 'PostToolUse' || typeof raw.tool_name !== 'string' || !raw.tool_name || !screenedTool(raw.tool_name)) return null;
+  const found = contentSignals(prompt ? raw.prompt : raw.tool_response);
+  if (!found.chars) return null;
+  const session = safeId(raw.session_id) || 'unknown-session';
+  const call = prompt ? `prompt-${shortHash(JSON.stringify([raw.session_id, now.toISOString(), found.sha256]))}`
+    : safeId(raw.tool_use_id) || `call-${shortHash(JSON.stringify([raw.session_id, raw.tool_name, raw.tool_input]))}`;
+  const labels = Object.entries(found.signals).map(([k, n]) => `${k}=${n}`).join(' ') || 'no signal';
+  const what = prompt ? 'user prompt' : `${clip(printable(raw.tool_name), 80)} result`;
+  const event = {id: safeId(`${tool === 'codex' ? 'cx' : 'cc'}.${shortHash(session)}.${call}.content`), kind: 'self_report',
+    occurredAt: now.toISOString(), traceId: session, actionId: call, actor, tool, action: 'content_screen', status: 'success',
+    note: `[content] ${what} screened, ${found.chars} characters${found.truncated ? ' (cut)' : ''}, text not stored: ${labels}`,
+    ...contentFields(prompt ? 'prompt' : 'tool_result', found)};
+  if (typeof policyVersion === 'string' && policyVersion) event.policyVersion = policyVersion;
+  return event;
+}
+
+// Every record of one hook call: hookEvent()'s and, with screen on, contentEvent()'s.
+export function hookEvents(raw, {screen = false, ...context} = {}) {
+  return [hookEvent(raw, context), screen ? contentEvent(raw, context) : null].filter(Boolean);
 }
