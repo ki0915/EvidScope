@@ -25,7 +25,9 @@ ALLOWED = {"Qwen/Qwen3-4B-Instruct-2507", "autotrust/JEV-9B"}
 KEEP = {"config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
         "vocab.json", "merges.txt", "chat_template.jinja", "model.safetensors.index.json", "LICENSE", "LICENSE.txt",
         # JEV-9B's System 1 block: the decision head, its slot layout and per-kind temperatures.
-        "head.safetensors", "judge_config.json", "calibration.json"}
+        "head.safetensors", "judge_config.json", "calibration.json",
+        # its LoRA, fetched with --subfolder adapter.
+        "adapter_config.json", "adapter_model.safetensors"}
 SHARD = re.compile(r"model(-\d{5}-of-\d{5})?\.safetensors")
 
 

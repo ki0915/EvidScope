@@ -13,7 +13,7 @@ JEV=$ROOT/models/jev
 QRUN=/checkpoints/session-inference/run
 JRUN=$ROOT/jev-run
 export EVIDSCOPE_RENTED_GPU=1 EVIDSCOPE_TRAINING_IMAGE="$(cat "$ROOT/image-id")" PYTHONUNBUFFERED=1
-mkdir -p logs results
+mkdir -p logs results "$(dirname "$QRUN")"
 status() { echo "$1 $(date -u +%FT%TZ)" >> status.txt; }
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 
