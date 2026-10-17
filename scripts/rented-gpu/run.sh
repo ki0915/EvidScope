@@ -10,8 +10,8 @@ PY=$ROOT/venv/bin/python
 S=$ROOT/scripts
 QWEN=$ROOT/models/qwen
 JEV=$ROOT/models/jev
-QRUN=/checkpoints/session-inference/run
-JRUN=$ROOT/jev-run
+QRUN=${QRUN:-/checkpoints/session-inference/run}
+JRUN=${JRUN:-$ROOT/jev-run}
 export EVIDSCOPE_RENTED_GPU=1 EVIDSCOPE_TRAINING_IMAGE="$(cat "$ROOT/image-id")" PYTHONUNBUFFERED=1
 mkdir -p logs results "$(dirname "$QRUN")"
 status() { echo "$1 $(date -u +%FT%TZ)" >> status.txt; }
@@ -58,9 +58,12 @@ jev_chain() {
   done
 }
 
-status "round started $(sha in/train.jsonl)"
-qwen_chain & q=$!
-jev_chain & j=$!
-wait $q; qs=$?
-wait $j; js=$?
-status "round finished qwen=$qs jev=$js"
+# Both chains by default; "run.sh qwen" or "run.sh jev" reruns one (with QRUN or JRUN pointing at a new output directory).
+chains=${1:-both}
+status "round started $chains $(sha in/train.jsonl)"
+qs=skipped; js=skipped
+[ "$chains" = jev ] || { qwen_chain & q=$!; }
+[ "$chains" = qwen ] || { jev_chain & j=$!; }
+[ -n "${q:-}" ] && { wait "$q"; qs=$?; }
+[ -n "${j:-}" ] && { wait "$j"; js=$?; }
+status "round finished $chains qwen=$qs jev=$js"

@@ -389,9 +389,12 @@ def train(args, rows):
             seal_checkpoint(Path(arguments.output_dir) / f"checkpoint-{state.global_step}", identity, state.global_step)
             return control
 
+    # transformers 5 dropped warmup_ratio; its warmup_steps takes a fraction below 1 as the ratio instead.
+    warmup_key = "warmup_steps" if int(transformers.__version__.split(".")[0]) >= 5 else "warmup_ratio"
+    warmup = {warmup_key: RECIPE["warmupStepsPer1000"] / 1000}
     settings = TrainingArguments(output_dir=str(output), num_train_epochs=RECIPE["epochs"], per_device_train_batch_size=1, per_device_eval_batch_size=1,
                                  gradient_accumulation_steps=RECIPE["gradientAccumulationSteps"], gradient_checkpointing=True,
-                                 learning_rate=RECIPE["learningRatePerMillion"] / 1e6, warmup_ratio=RECIPE["warmupStepsPer1000"] / 1000, lr_scheduler_type="cosine",
+                                 learning_rate=RECIPE["learningRatePerMillion"] / 1e6, **warmup, lr_scheduler_type="cosine",
                                  fp16=half == torch.float16, bf16=half == torch.bfloat16, report_to=[], save_strategy="steps", save_steps=RECIPE["saveSteps"], save_total_limit=2, eval_strategy="epoch",
                                  logging_strategy="no", seed=RECIPE["seed"], data_seed=RECIPE["seed"], dataloader_num_workers=0, dataloader_pin_memory=False,
                                  remove_unused_columns=False)
