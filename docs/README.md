@@ -6,6 +6,8 @@
 
 | 처음 알고 싶은 내용 | 읽을 문서 |
 |---|---|
+| 어떤 문제를 어떻게 고민해 풀어 왔는가 (업데이트별) | [개발 기록](dev-log/README.md), [포트폴리오 컨텍스트(이력서·면접용 요약)](portfolio-context.ko.md) |
+| AI 에이전트 행동을 어떻게 감시·탐지하는가 | [에이전트 모니터링](agent-monitoring.md), [모니터링·탐지 기록](dev-log/02-agent-monitoring.md) |
 | 어떤 포트폴리오이며 무엇을 해결하는가 | [제품 소개·스택·기능·구현 사례·발전 방향](product-overview.md) |
 | 어떻게 구현했고 어디를 신뢰하는가 | [현재 아키텍처](architecture.md), [전체 흐름 SVG](assets/evidence-flow.svg) |
 | 실제 성과와 남은 한계는 무엇인가 | [검증 현황과 원본 근거](verification-status.md) |
