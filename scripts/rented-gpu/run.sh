@@ -58,6 +58,27 @@ jev_chain() {
   done
 }
 
+# "run.sh fill" (after a round) runs only the judge/set pairs whose outputs are missing, for example after a failed evaluation.
+fill() {
+  for judge in qwen-zero qwen-cand jev-zero jev-cand; do
+    for requests in in/requests/*.jsonl; do
+      set_name=$(basename "$requests" .jsonl); prefix=results/$judge/$set_name
+      [ -e "$prefix.outputs.json" ] && continue
+      mkdir -p "results/$judge"
+      case $judge in
+        qwen-zero) CUDA_VISIBLE_DEVICES=0 $PY "$S/session_judge_generate.py" --model-dir "$QWEN" --requests "$requests" --prefix "$prefix" ;;
+        qwen-cand) CUDA_VISIBLE_DEVICES=0 $PY "$S/session_judge_generate.py" --model-dir "$QWEN" --adapter "$QRUN/candidate" --requests "$requests" \
+                     --prefix "$prefix" ;;
+        jev-zero) CUDA_VISIBLE_DEVICES=1 $PY "$S/train_jev_decision.py" predict --model-dir "$JEV" --adapter "$JEV/adapter" --head "$JEV/head.safetensors" \
+                    --calibration "$JEV/calibration.json" --requests "$requests" --prefix "$prefix" ;;
+        jev-cand) CUDA_VISIBLE_DEVICES=1 $PY "$S/train_jev_decision.py" predict --model-dir "$JEV" --adapter "$JRUN/candidate/adapter" \
+                    --head "$JRUN/candidate/head.safetensors" --calibration "$JRUN/candidate/calibration.json" --requests "$requests" --prefix "$prefix" ;;
+      esac >> "logs/fill-$judge.log" 2>&1 && status "filled $judge $set_name" || status "fill failed $judge $set_name"
+    done
+  done
+}
+if [ "${1:-}" = fill ]; then fill; exit 0; fi
+
 # Both chains by default; "run.sh qwen" or "run.sh jev" reruns one (with QRUN or JRUN pointing at a new output directory).
 chains=${1:-both}
 status "round started $chains $(sha in/train.jsonl)"
