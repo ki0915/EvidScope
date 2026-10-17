@@ -8,8 +8,9 @@ import {loadRules, loadCatalog} from '../src/threat-scenarios.mjs';
 import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
   catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
-  sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID}
+  sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, allowlistPredict, sessionCounts}
   from '../src/session-inference.mjs';
+import {buildVariantCatalog} from '../src/session-variants.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rules = loadRules(join(root, 'data/risk-rules/ai-agent-baseline.json'));
@@ -193,4 +194,36 @@ test('the training set splits by family with no leakage, excludes held-out famil
   const val = new Set(set.rows.filter(r => r.split === 'validation').map(r => r.familyId));
   assert.ok(![...tune].some(f => val.has(f)));
   assert.equal(set.rows.length, set.counts.tune + set.counts.validation);
+});
+
+// ---------- 적대적 감사(2026-10-17)가 찾은 누수를 학습 세트 빌더가 거부하는지 ----------
+const held = {runMode: 'candidate', heldOutFamilies: ['exfil-codex', 'neg-read-claude-settings'], validationFamilies: ['neg-ls-build'],
+  catalogDigest: 'd'.repeat(64)};
+
+test('the training set refuses a noise pool that drew from evaluation families (the 1.0 leak)', () => {
+  const v = buildVariantCatalog(catalog, rules, {perThreat: 6, perBenign: 6});
+  assert.throws(() => sessionTrainingSet(v.scenarios, rules, {...held, poolFamilies: v.poolFamilies}), {message: 'session_pool_leakage'});
+  // poolFamilies를 모르는 호출도 평가 쪽 경보 단계가 학습 세션에 들어간 것을 단계 단위로 잡는다.
+  assert.throws(() => sessionTrainingSet(v.scenarios, rules, held), {message: 'session_step_leakage'});
+  const clean = buildVariantCatalog(catalog, rules, {perThreat: 6, perBenign: 6, poolExclude: ['neg-read-claude-settings', 'neg-ls-build']});
+  const set = sessionTrainingSet(clean.scenarios, rules, {...held, poolFamilies: clean.poolFamilies});
+  assert.ok(set.counts.tune > 0 && set.counts.unseen > 0);
+});
+
+test('an evaluation prompt identical to a training prompt is refused', () => {
+  const dup = {...byId('exfil-ssh-then-send'), id: 'dup-exfil', familyId: 'dup-exfil'};
+  assert.throws(() => sessionTrainingSet([...catalog.scenarios, dup], rules, {...held, heldOutFamilies: ['dup-exfil']}),
+    {message: 'session_prompt_leakage'});
+});
+
+test('the allowlist baseline ignores every code seen in a clean training session, and nothing else', () => {
+  const train = catalog.scenarios.filter(s => s.id !== 'neg-read-claude-settings');
+  const allow = allowlistPredict(train, rules);
+  assert.equal(allow(byId('neg-read-dotenv')).verdict, 'clean');
+  assert.equal(allow(byId('neg-read-claude-settings')).verdict, 'violation');
+  assert.equal(allow(byId('exfil-ssh-then-send')).verdict, 'violation');
+});
+
+test('session counts split truly clean, rule-flagged clean (hard negatives) and threats', () => {
+  assert.deepEqual(sessionCounts(catalog.scenarios, rules), {sessions: 17, clean: 4, hardNegative: 3, threat: 10});
 });

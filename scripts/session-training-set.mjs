@@ -24,10 +24,11 @@ const rules = loadRules(rulesPath);
 const catalog = loadCatalog(catalogPath);
 const catalogDigest = createHash('sha256').update(readFileSync(catalogPath)).digest('hex');
 
-const {rows, families, counts} = sessionTrainingSet(catalog.scenarios, rules,
-  {runMode, heldOutFamilies: list(opt('--held')), validationFamilies: list(opt('--val')), catalogDigest});
+// poolFamilies: 변형 카탈로그가 기록한 잡음 풀 계열. 검증·평가 계열이 들어 있으면 sessionTrainingSet이 거부한다(누수).
+const {rows, families, counts, duplicatesDropped} = sessionTrainingSet(catalog.scenarios, rules,
+  {runMode, heldOutFamilies: list(opt('--held')), validationFamilies: list(opt('--val')), catalogDigest, poolFamilies: catalog.poolFamilies});
 writeFileSync(out, rows.map(r => JSON.stringify(r)).join('\n') + '\n', {flag: 'wx'});
 // 트레이너 admission이 쓰는 최소값(candidate: tune>=300, validation>=50; shakedown: 각 1). 여기선 안내만 하고 판정은 트레이너가 한다.
 const minTune = runMode === 'shakedown' ? 1 : 300, minVal = runMode === 'shakedown' ? 1 : 50;
-console.log(JSON.stringify({runMode, counts, families, catalogDigest, out,
+console.log(JSON.stringify({runMode, counts, duplicatesDropped, families, catalogDigest, out,
   meetsTrainerMinimums: counts.tune >= minTune && counts.validation >= minVal}, null, 2));

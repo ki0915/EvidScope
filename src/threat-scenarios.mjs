@@ -22,6 +22,35 @@ export function loadRules(path) {
 
 export const loadCatalog = path => JSON.parse(readFileSync(path, 'utf8'));
 
+// Resolve a contrast catalog (data/threat-scenarios/v1/contrast.json) against the base catalog and append its scenarios. A step is
+// either inline, a reference {from, step} into a base scenario (so no threat command is repeated in the contrast file), or a run
+// {set, count, offset} of a named step set. A reference keeps the base step's command/path; gold, delayMs and expectRule come from
+// the reference (a referenced gold step keeps its own expectRule unless the reference names one).
+export function composeCatalog(base, contrast) {
+  const byId = new Map(base.scenarios.map(s => [s.id, s]));
+  const pick = st => ({toolName: st.toolName, ...(st.command !== undefined ? {command: st.command} : {}),
+    ...(st.filePath !== undefined ? {filePath: st.filePath} : {}), ...(st.url !== undefined ? {url: st.url} : {})});
+  const resolve = (scenarioId, st) => {
+    if (st.set !== undefined) {
+      const set = contrast.stepSets?.[st.set];
+      if (!set) throw Object.assign(Error('contrast_step_set_unknown'), {scenario: scenarioId, set: st.set});
+      return Array.from({length: st.count ?? set.length}, (_, i) => ({...pick(set[((st.offset ?? 0) + i) % set.length]), gold: false, delayMs: 0}));
+    }
+    if (st.from !== undefined) {
+      const src = byId.get(st.from)?.steps[st.step];
+      if (!src) throw Object.assign(Error('contrast_step_ref_unknown'), {scenario: scenarioId, from: st.from, step: st.step});
+      const gold = !!st.gold;
+      const expectRule = gold ? st.expectRule ?? src.expectRule : undefined;
+      return [{...pick(src), gold, delayMs: st.delayMs ?? 0, ...(expectRule ? {expectRule} : {})}];
+    }
+    return [{...st, gold: !!st.gold, delayMs: st.delayMs ?? 0}];
+  };
+  const added = contrast.scenarios.map(s => ({...s, steps: s.steps.flatMap(st => resolve(s.id, st))}));
+  const clash = added.filter(s => byId.has(s.id)).map(s => s.id);
+  if (clash.length) throw Object.assign(Error('contrast_scenario_id_clash'), {ids: clash});
+  return {...base, catalog: `${base.catalog}+${contrast.catalog}`, scenarios: [...base.scenarios, ...added]};
+}
+
 const toolInput = step => {
   if (step.command !== undefined) return {command: step.command};
   if (step.filePath !== undefined) return {file_path: step.filePath};

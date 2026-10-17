@@ -326,11 +326,65 @@ export function sessionTrainingRow(scenario, rules, {split, runMode = 'candidate
     messages, target: canonical(target), labelSource: 'derived_mapping_table', reviewedPayloadHash: null, catalogDigest, runMode};
 }
 
-// 계열 단위 분할로 train->tune, validation->validation, unseen(미학습 평가셋)은 제외. 누수는 splitByFamily가 막는다. catalogDigest는 호출부가
-// 카탈로그 파일 바이트에서 계산해 넘긴다(모든 행에 같은 값 -> 트레이너 admission의 단일 digest 조건).
-export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', heldOutFamilies = [], validationFamilies = [], catalogDigest, t0 = T0}) {
+// 계열 단위 분할로 train->tune, validation->validation, unseen(미학습 평가셋)은 제외. catalogDigest는 호출부가 카탈로그 파일 바이트에서 계산해
+// 넘긴다(모든 행에 같은 값 -> 트레이너 admission의 단일 digest 조건). 적대적 감사(2026-10-17)로 추가한 누수 검사 셋:
+//  - poolFamilies(변형 카탈로그가 기록한 잡음 풀의 계열)에 검증·평가 계열이 있으면 거부한다.
+//  - 검증·평가 쪽 정상 시나리오에서 규칙 경보가 붙는 단계가 학습 세션 안에 (잡음으로라도) 나오면 거부한다. 그 단계가 "처음 보는 과탐"이다.
+//  - 검증·평가 문제가 학습 문제와 글자까지 같으면 거부한다. 학습 안의 같은 문제는 한 번만 남기고, 같은 문제에 다른 정답이면 거부한다.
+const stepIdentity = st => JSON.stringify([st.toolName, st.command ?? null, st.filePath ?? null, st.url ?? null]);
+export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', heldOutFamilies = [], validationFamilies = [], catalogDigest, poolFamilies,
+  t0 = T0}) {
   const s = splitByFamily(scenarios, {heldOutFamilies, validationFamilies});
-  const rows = [...s.train.map(x => sessionTrainingRow(x, rules, {split: 'tune', runMode, catalogDigest, t0})),
-    ...s.validation.map(x => sessionTrainingRow(x, rules, {split: 'validation', runMode, catalogDigest, t0}))];
-  return {rows, families: s.families, counts: {tune: s.train.length, validation: s.validation.length, unseen: s.unseen.length}};
+  const outside = new Set([...s.families.validation, ...s.families.unseen]);
+  const pooled = (poolFamilies || []).filter(f => outside.has(f));
+  if (pooled.length) throw Object.assign(Error('session_pool_leakage'), {families: pooled});
+  const flagged = new Map();
+  for (const x of [...s.validation, ...s.unseen].filter(x => x.label.verdict === 'clean')) {
+    sessionInput(x, rules, {t0}).actions.forEach((a, i) => {
+      if (a.findings.length && !x.steps[i].filler) flagged.set(stepIdentity(x.steps[i]), familyOf(x));
+    });
+  }
+  const stepLeaks = [...new Set(s.train.flatMap(x => x.steps.map(stepIdentity).filter(k => flagged.has(k)).map(k => flagged.get(k))))];
+  if (stepLeaks.length) throw Object.assign(Error('session_step_leakage'), {families: stepLeaks});
+  const tune = new Map();
+  let duplicates = 0;
+  for (const row of s.train.map(x => sessionTrainingRow(x, rules, {split: 'tune', runMode, catalogDigest, t0}))) {
+    const prompt = row.messages[1].content;
+    if (!tune.has(prompt)) { tune.set(prompt, row); continue; }
+    if (tune.get(prompt).target !== row.target) throw Object.assign(Error('session_label_conflict'), {ids: [tune.get(prompt).id, row.id]});
+    duplicates++;
+  }
+  const validation = [];
+  for (const row of s.validation.map(x => sessionTrainingRow(x, rules, {split: 'validation', runMode, catalogDigest, t0}))) {
+    if (validation.some(v => v.messages[1].content === row.messages[1].content)) { duplicates++; continue; }
+    validation.push(row);
+  }
+  const unseenPrompts = s.unseen.map(x => sessionPrompt(x, rules, {t0}).messages[1].content);
+  const crossed = [...validation.map(r => r.messages[1].content), ...unseenPrompts].filter(p => tune.has(p)).length;
+  if (crossed) throw Object.assign(Error('session_prompt_leakage'), {count: crossed});
+  const rows = [...tune.values(), ...validation];
+  return {rows, families: s.families, duplicatesDropped: duplicates,
+    counts: {tune: tune.size, validation: validation.length, unseen: s.unseen.length}};
+}
+
+// 허용 목록 기준선(적대적 감사): 학습 세트의 정상 세션에 한 번이라도 나온 경보 코드는 무시하고, 남는 경보가 있으면 규칙+시퀀스 판정을 낸다.
+// 모델 없이 지난 후보의 1.0을 그대로 재현한 규칙이라, 세션 모델은 반드시 이것을 이겨야 "맥락을 읽는다"고 말할 수 있다.
+export function allowlistPredict(trainScenarios, rules, {t0 = T0} = {}) {
+  const ignore = new Set(trainScenarios.filter(s => s.label.verdict === 'clean')
+    .flatMap(s => sessionInput(s, rules, {t0}).actions.flatMap(a => a.findings.map(f => f.code))));
+  return s => {
+    const left = sessionInput(s, rules, {t0}).actions.some(a => a.findings.some(f => !ignore.has(f.code)));
+    return left ? baselinePredict(s, rules, {t0}) : {verdict: 'clean', type: null, requirementIds: [], evidenceActionIds: [], confidence: 0.1};
+  };
+}
+
+// 게이트 최소 규모용 집계(assessSessionModel의 counts). clean: 규칙 경보 없는 정상(오탐률의 분모), hardNegative: 규칙이 경보를 내는 정상(모델이
+// 정리해야 하는 과탐), threat: 위반.
+export function sessionCounts(scenarios, rules, {t0 = T0} = {}) {
+  const c = {sessions: scenarios.length, clean: 0, hardNegative: 0, threat: 0};
+  for (const s of scenarios) {
+    if (s.label.verdict === 'violation') c.threat++;
+    else if (s.label.verdict === 'clean') c[baselinePredict(s, rules, {t0}).verdict === 'violation' ? 'hardNegative' : 'clean']++;
+  }
+  return c;
 }

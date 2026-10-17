@@ -4,13 +4,16 @@
 //   node scripts/session-inference.mjs input SCENARIO_ID        한 세션의 모델 입력 요약과 골드 답안(검사용)
 //   node scripts/session-inference.mjs schema                   강제 출력 JSON 스키마
 //   node scripts/session-inference.mjs splits                   계열 단위 train/validation/unseen 분할(누수 방지 확인)
-// Flags: --rules F, --catalog F, --held F,F (unseen 계열), --val F,F (validation 계열).
+//   node scripts/session-inference.mjs score-outputs --outputs F [--train-catalog F]   모델 출력 채점 + 기준선 + 게이트 + 경보 처리 원칙 결과
+// Flags: --rules F, --catalog F, --contrast F (대조 카탈로그를 합침), --held F,F (unseen 계열), --val F,F (validation 계열).
+// --train-catalog: 학습에 쓴 (변형) 카탈로그. 주면 허용 목록 기준선(학습 정상 세션에 나온 코드는 무시)을 함께 이겨야 게이트를 통과한다.
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {loadRules, loadCatalog} from '../src/threat-scenarios.mjs';
+import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mjs';
+import {scoreDispositions} from '../src/session-disposition.mjs';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {sessionInput, sessionText, sessionGold, baselinePredict, scoreSessions, SESSION_OUTPUT_SCHEMA, splitByFamily, familyOf,
-  sessionRequestLines, predictFromOutputs, assessSessionModel} from '../src/session-inference.mjs';
+  sessionRequestLines, predictFromOutputs, assessSessionModel, allowlistPredict, sessionCounts} from '../src/session-inference.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -18,7 +21,8 @@ const cmd = args[0];
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
 const list = v => (v ? v.split(',').map(x => x.trim()).filter(Boolean) : []);
 const rules = loadRules(opt('--rules', join(root, 'data/risk-rules/ai-agent-baseline.json')));
-const catalog = loadCatalog(opt('--catalog', join(root, 'data/threat-scenarios/v1/catalog.json')));
+const baseCatalog = loadCatalog(opt('--catalog', join(root, 'data/threat-scenarios/v1/catalog.json')));
+const catalog = opt('--contrast') ? composeCatalog(baseCatalog, loadCatalog(opt('--contrast'))) : baseCatalog;
 const print = v => console.log(JSON.stringify(v, null, 2));
 
 if (cmd === 'baseline') {
@@ -47,9 +51,22 @@ if (cmd === 'baseline') {
   const pick = r => ({verdictF1: r.verdict.f1, verdictPrecision: r.verdict.precision, threatRecall: r.threatRecall, typeAccuracy: r.typeAccuracy,
     hardNegativeFalsePositiveRate: r.hardNegativeFalsePositiveRate, knownGapClearedRate: r.knownGapClearedRate, requirementF1: r.requirement.f1,
     requirementPrecision: r.requirementPrecision, evidenceF1: r.evidence.f1, answerRate: r.answerRate, schemaValidRate: r.schemaValidRate});
-  const gate = assessSessionModel(model, {rules_only: rulesOnly, rules_sequence: rulesSeq});
-  print({sessions: model.sessions, model: pick(model), rules_only: pick(rulesOnly), rules_sequence: pick(rulesSeq),
-    perSession: model.perSession.map(p => ({id: p.id, gold: p.gold, predicted: p.predicted, ok: p.verdictCorrect})),
+  const baselines = {rules_only: rulesOnly, rules_sequence: rulesSeq};
+  const predicts = {model: predictFromOutputs(outputs, rules), rules_sequence: s => baselinePredict(s, rules, {withSequence: true})};
+  if (opt('--train-catalog')) {
+    // 허용 목록은 학습(tune) 계열에서만 만든다: --held/--val 계열을 빼야 평가 정답을 미리 보지 않는다.
+    const train = splitByFamily(loadCatalog(opt('--train-catalog')).scenarios,
+      {heldOutFamilies: list(opt('--held')), validationFamilies: list(opt('--val'))}).train;
+    const allow = allowlistPredict(train, rules);
+    baselines.allowlist = scoreSessions(catalog.scenarios, rules, allow);
+    predicts.allowlist = allow;
+  }
+  const counts = sessionCounts(catalog.scenarios, rules);
+  const gate = assessSessionModel(model, baselines, {counts});
+  // 경보 처리 원칙(모델은 경보를 못 지우고, 보호 경보는 낮추지도 못한다)을 적용한 시스템 결과.
+  const dispositions = Object.fromEntries(Object.entries(predicts).map(([k, f]) => [k, scoreDispositions(catalog.scenarios, rules, f)]));
+  print({sessions: model.sessions, counts, model: pick(model), ...Object.fromEntries(Object.entries(baselines).map(([k, v]) => [k, pick(v)])),
+    dispositions, perSession: model.perSession.map(p => ({id: p.id, gold: p.gold, predicted: p.predicted, ok: p.verdictCorrect})),
     gate: {eligible: gate.eligible, reasons: gate.reasons}});
 } else if (cmd === 'schema') {
   print(SESSION_OUTPUT_SCHEMA);
