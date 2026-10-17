@@ -5,8 +5,10 @@ import assert from 'node:assert/strict';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadRules, loadCatalog} from '../src/threat-scenarios.mjs';
+import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
-  catalogRequirementIds, splitByFamily} from '../src/session-inference.mjs';
+  catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs}
+  from '../src/session-inference.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rules = loadRules(join(root, 'data/risk-rules/ai-agent-baseline.json'));
@@ -103,4 +105,48 @@ test('the gate reports the 0.99 target and coverage even when the pass bar is 0.
   const report = assessSessionModel(seq, {rules_sequence: seq}, {counts: {sessions: 60, clean: 15, hardNegative: 8, threat: 20}});
   assert.ok('requirementPrecision' in report.precisionReport && 'answerRate' in report.precisionReport);
   assert.equal(report.precisionReport.target, 0.99);
+});
+
+test('session requests use the batch runner wire format and never name the scenario', () => {
+  const lines = sessionRequestLines(catalog.scenarios, rules, {variant: 'zero_shot'}).trim().split('\n');
+  assert.equal(lines.length, catalog.scenarios.length);
+  for (const line of lines) {
+    const r = JSON.parse(line);
+    assert.deepEqual(Object.keys(r).sort(), ['adapter', 'id', 'max_tokens', 'messages', 'response_format', 'seed', 'temperature', 'top_k', 'top_p',
+      'variant']);
+    assert.equal(canonical(r), line);
+    assert.equal(r.adapter, false);
+    assert.equal(r.response_format.json_schema.schema.required.length, 5);
+    // 모델 입력에는 시나리오 id·이름·라벨이 없다(라벨 누수 방지).
+    const user = r.messages[1].content;
+    const s = catalog.scenarios.find(x => x.id === r.id);
+    assert.ok(!user.includes(s.id) && !user.includes(s.name) && !user.includes('"label"'));
+  }
+  assert.equal(JSON.parse(sessionRequestLines([byId('destroy-rm-glob')], rules, {variant: 'candidate'})).adapter, true);
+});
+
+test('model outputs are read leniently: unparsable is an abstention, refs map back to action ids', () => {
+  assert.deepEqual(interpretSessionOutput('not json').verdict, 'abstain');
+  assert.equal(interpretSessionOutput('{"verdict":"maybe"}').schemaValid, false);
+  const refs = new Map([['a1', 'x-s0']]);
+  const p = interpretSessionOutput('{"verdict":"violation","type":"destructive","requirementIds":["ISMS-P-2.11.3"],"evidenceActionIds":["a1"],'
+    + '"confidence":0.8}', refs);
+  assert.deepEqual(p.evidenceActionIds, ['x-s0']);
+  assert.equal(p.schemaValid, true);
+});
+
+test('outputs that follow the gold score perfectly through the same path the PC run uses', () => {
+  const outputs = Object.fromEntries(catalog.scenarios.map(s => {
+    const g = sessionGold(s, rules), refs = sessionPrompt(s, rules).refs;
+    const back = new Map([...refs].map(([ref, id]) => [id, ref]));
+    return [s.id, JSON.stringify({verdict: g.verdict, type: g.type, requirementIds: g.requirementIds,
+      evidenceActionIds: g.evidenceActionIds.map(id => back.get(id)), confidence: 0.9})];
+  }));
+  const r = scoreSessions(catalog.scenarios, rules, predictFromOutputs(outputs, rules));
+  assert.equal(r.verdict.f1, 1);
+  assert.equal(r.evidence.f1, 1);
+  assert.equal(r.schemaValidRate, 1);
+  const none = scoreSessions(catalog.scenarios, rules, predictFromOutputs({}, rules));
+  assert.equal(none.answerRate, 0);
+  assert.equal(none.schemaValidRate, 0);
 });
