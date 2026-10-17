@@ -307,3 +307,30 @@ export function assessSessionModel(candidate, baselines, {counts, gate = SESSION
       knownGapClearedRate: candidate.knownGapClearedRate},
     requires: 'promotion gate pass and an independent, signed human approval before any screen uses the session model'};
 }
+
+// ---------- 학습 세트 (격리 트레이너 train-governance-mapping-lora.py --task session-inference 입력) ----------
+// governance-mapping 학습 행과 같은 형식: {id, task, taskVersion, roleId, split, familyId, messages, target(JSON 문자열), labelSource,
+// reviewedPayloadHash, catalogDigest, runMode}. target은 설계 골드를 ref로 되돌린 세션 출력(강제 스키마와 같은 5필드). 조항·증적은 매핑 v4에서
+// 도출되므로 labelSource는 derived_mapping_table(초안·사람검토 아님). verdict/type은 시나리오 생성 시 고정된 설계 라벨이다.
+export const SESSION_TASK = 'session-inference';
+export const SESSION_TASK_VERSION = 1;
+export const SESSION_ROLE_ID = 'session-auditor';
+
+export function sessionTrainingRow(scenario, rules, {split, runMode = 'candidate', catalogDigest, t0 = T0}) {
+  const {messages, refs} = sessionPrompt(scenario, rules, {t0});
+  const back = new Map([...refs].map(([ref, id]) => [id, ref]));
+  const g = sessionGold(scenario, rules, {t0});
+  const target = {verdict: g.verdict, type: g.type, requirementIds: g.requirementIds,
+    evidenceActionIds: g.evidenceActionIds.map(id => back.get(id) ?? id), confidence: g.verdict === 'violation' ? 0.9 : 0.1};
+  return {id: scenario.id, task: SESSION_TASK, taskVersion: SESSION_TASK_VERSION, roleId: SESSION_ROLE_ID, split, familyId: familyOf(scenario),
+    messages, target: canonical(target), labelSource: 'derived_mapping_table', reviewedPayloadHash: null, catalogDigest, runMode};
+}
+
+// 계열 단위 분할로 train->tune, validation->validation, unseen(미학습 평가셋)은 제외. 누수는 splitByFamily가 막는다. catalogDigest는 호출부가
+// 카탈로그 파일 바이트에서 계산해 넘긴다(모든 행에 같은 값 -> 트레이너 admission의 단일 digest 조건).
+export function sessionTrainingSet(scenarios, rules, {runMode = 'candidate', heldOutFamilies = [], validationFamilies = [], catalogDigest, t0 = T0}) {
+  const s = splitByFamily(scenarios, {heldOutFamilies, validationFamilies});
+  const rows = [...s.train.map(x => sessionTrainingRow(x, rules, {split: 'tune', runMode, catalogDigest, t0})),
+    ...s.validation.map(x => sessionTrainingRow(x, rules, {split: 'validation', runMode, catalogDigest, t0}))];
+  return {rows, families: s.families, counts: {tune: s.train.length, validation: s.validation.length, unseen: s.unseen.length}};
+}

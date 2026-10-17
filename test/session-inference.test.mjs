@@ -7,7 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {loadRules, loadCatalog} from '../src/threat-scenarios.mjs';
 import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
-  catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs}
+  catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
+  sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID}
   from '../src/session-inference.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -149,4 +150,47 @@ test('outputs that follow the gold score perfectly through the same path the PC 
   const none = scoreSessions(catalog.scenarios, rules, predictFromOutputs({}, rules));
   assert.equal(none.answerRate, 0);
   assert.equal(none.schemaValidRate, 0);
+});
+
+test('a training row is the trainer wire shape: 2 messages, gold target as JSON with evidence refs, derived label', () => {
+  const row = sessionTrainingRow(byId('exfil-ssh-then-send'), rules, {split: 'tune', runMode: 'candidate', catalogDigest: 'd'.repeat(64)});
+  assert.deepEqual(Object.keys(row).sort(), ['catalogDigest', 'familyId', 'id', 'labelSource', 'messages', 'reviewedPayloadHash', 'roleId',
+    'runMode', 'split', 'target', 'task', 'taskVersion'].sort());
+  assert.equal(row.task, SESSION_TASK);
+  assert.equal(row.roleId, SESSION_ROLE_ID);
+  assert.equal(row.labelSource, 'derived_mapping_table');
+  assert.equal(row.reviewedPayloadHash, null);
+  assert.equal(row.messages.length, 2);
+  assert.deepEqual(row.messages.map(m => m.role), ['system', 'user']);
+  const t = JSON.parse(row.target);
+  assert.deepEqual(Object.keys(t).sort(), ['confidence', 'evidenceActionIds', 'requirementIds', 'type', 'verdict']);
+  assert.equal(t.verdict, 'violation');
+  assert.ok(t.evidenceActionIds.every(r => /^a[0-9]+$/.test(r)));
+  // 학습 target은 설계 골드와 일치한다(증적만 ref로 표현).
+  const g = sessionGold(byId('exfil-ssh-then-send'), rules);
+  assert.deepEqual(t.requirementIds, g.requirementIds);
+  // 모델 입력에는 시나리오 이름·라벨이 없다(누수 방지).
+  assert.ok(!row.messages[1].content.includes(byId('exfil-ssh-then-send').name));
+});
+
+test('a clean training row carries an empty gold whatever the rules fired', () => {
+  const row = sessionTrainingRow(byId('neg-read-dotenv'), rules, {split: 'validation', runMode: 'candidate', catalogDigest: 'd'.repeat(64)});
+  const t = JSON.parse(row.target);
+  assert.equal(t.verdict, 'clean');
+  assert.equal(t.type, null);
+  assert.deepEqual([t.requirementIds, t.evidenceActionIds], [[], []]);
+});
+
+test('the training set splits by family with no leakage, excludes held-out families, and uses one catalog digest', () => {
+  const set = sessionTrainingSet(catalog.scenarios, rules,
+    {runMode: 'candidate', heldOutFamilies: ['exfiltration'], validationFamilies: ['benign'], catalogDigest: 'd'.repeat(64)});
+  assert.equal(set.counts.unseen, catalog.scenarios.filter(s => s.class === 'exfiltration').length);
+  assert.ok(set.rows.every(r => r.catalogDigest === 'd'.repeat(64)));
+  // held-out 계열은 어느 행에도 없다.
+  assert.ok(!set.rows.some(r => r.familyId === 'exfiltration'));
+  // tune·validation 계열이 겹치지 않는다.
+  const tune = new Set(set.rows.filter(r => r.split === 'tune').map(r => r.familyId));
+  const val = new Set(set.rows.filter(r => r.split === 'validation').map(r => r.familyId));
+  assert.ok(![...tune].some(f => val.has(f)));
+  assert.equal(set.rows.length, set.counts.tune + set.counts.validation);
 });

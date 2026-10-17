@@ -119,12 +119,46 @@ def valid_target(text):
     return value["abstain"] == (len(value["mappings"]) == 0) and len(value["mappings"]) <= 5
 
 
-def admission(path, shakedown=False):
+# The session-inference task (improvement plan phase 2): same trainer, a different gold shape. The target is the forced output schema
+# {verdict, type, requirementIds, evidenceActionIds, confidence}; clean/abstain carry empty lists. The closed requirement-id set is
+# enforced at decode time and by the node scorer, so here only the structure, the verdict/type enums and the clean->empty rule are checked.
+SESSION_VERDICTS = {"violation", "clean", "abstain"}
+SESSION_TYPES = {"exfiltration", "defense_evasion", "audit_tampering", "destructive", "bulk_collection"}
+
+
+def valid_session_target(text):
+    try:
+        value = json.loads(text)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(value, dict) or set(value) != {"verdict", "type", "requirementIds", "evidenceActionIds", "confidence"}:
+        return False
+    if value["verdict"] not in SESSION_VERDICTS or not isinstance(value["requirementIds"], list) or not isinstance(value["evidenceActionIds"], list):
+        return False
+    if not all(isinstance(x, str) for x in value["requirementIds"]) or not all(isinstance(x, str) for x in value["evidenceActionIds"]):
+        return False
+    conf = value["confidence"]
+    if isinstance(conf, bool) or not isinstance(conf, (int, float)) or not 0 <= conf <= 1 or len(value["requirementIds"]) > 12:
+        return False
+    violation = value["verdict"] == "violation"
+    if value["type"] is None if violation else value["type"] is not None:
+        return False
+    if violation and value["type"] not in SESSION_TYPES:
+        return False
+    return violation or (not value["requirementIds"] and not value["evidenceActionIds"])
+
+
+# task -> (roleId, target validator). Default keeps governance-mapping behaviour unchanged.
+TASKS = {"governance-mapping": ("governance-assistant", valid_target), "session-inference": ("session-auditor", valid_session_target)}
+
+
+def admission(path, shakedown=False, task="governance-mapping"):
     """Re-checks what the node admission already decided; the held-out test split never reaches this file."""
+    role_id, valid = TASKS[task]
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     reasons, ids, families, digests = [], set(), {}, set()
     for row in rows:
-        if row.get("task") != TASK or row.get("taskVersion") != 1 or row.get("roleId") != "governance-assistant":
+        if row.get("task") != task or row.get("taskVersion") != 1 or row.get("roleId") != role_id:
             reasons.append("task_invalid")
         if row.get("split") not in ("tune", "validation"):
             reasons.append("split_invalid_or_test_present")
@@ -136,7 +170,7 @@ def admission(path, shakedown=False):
         messages = row.get("messages")
         if not isinstance(messages, list) or len(messages) != 2 or [m.get("role") for m in messages] != ["system", "user"] or not all(isinstance(m.get("content"), str) for m in messages):
             reasons.append("messages_invalid")
-        if not valid_target(row.get("target")):
+        if not valid(row.get("target")):
             reasons.append("target_invalid")
         if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
             reasons.append("label_provenance_invalid")
@@ -201,7 +235,7 @@ def verify_bindings(args):
 
 def identity_for(args, root):
     here = Path(__file__)
-    return {"task": TASK, "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
+    return {"task": args.task, "baseRepository": BASE_REPOSITORY, "baseRevision": args.base_revision, "baseArtifactLockSha256": sha256_file(root / "artifact-lock.json"),
             "datasetSha256": sha256_file(args.data), "trainerSha256": sha256_file(here), "artifactHelperSha256": sha256_file(here.with_name("training_artifacts.py")),
             "collateHelperSha256": sha256_file(here.with_name("train-public-qa.py")), "kbitHelperSha256": sha256_file(here.with_name("public-qa-kbit.py")),
             "thermalHelperSha256": sha256_file(here.with_name("public-qa-thermal.py")),
@@ -351,6 +385,7 @@ def train(args, rows):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", required=True)
+    parser.add_argument("--task", default=TASK, choices=sorted(TASKS))
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--token-check", action="store_true")
     parser.add_argument("--model-dir", default="/models/base")
@@ -372,7 +407,7 @@ def main(argv=None):
     # 0 turns pacing off (no sensor reads); the external guard is unchanged either way.
     if not 0 <= args.thermal_max_wait_seconds <= 1800:
         parser.error("--thermal-max-wait-seconds must be between 0 and 1800")
-    rows, gate = admission(args.data, shakedown=args.shakedown)
+    rows, gate = admission(args.data, shakedown=args.shakedown, task=args.task)
     print(json.dumps(gate), flush=True)
     if not gate["admitted"]:
         return 2
