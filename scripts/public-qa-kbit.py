@@ -6,13 +6,8 @@ adapter configuration, data, and resource admission remain the caller's job.
 """
 
 
-def prepare_memory_efficient_kbit(model, half_dtype=None):
-    """half_dtype: the dtype of the frozen non-normalization weights, float16 (default, the RTX 3080 recipe) or bfloat16 (a rented card
-    trained in bf16, scripts/train-governance-mapping-lora.py --compute-dtype bfloat16)."""
+def prepare_memory_efficient_kbit(model):
     import torch
-    half = torch.float16 if half_dtype is None else half_dtype
-    if half not in (torch.float16, torch.bfloat16):
-        raise ValueError("public_qa_half_dtype_invalid")
     from bitsandbytes.nn import Params4bit
 
     if getattr(model, "is_loaded_in_4bit", False) is not True:
@@ -38,7 +33,7 @@ def prepare_memory_efficient_kbit(model, half_dtype=None):
                 continue
             if not parameter.is_floating_point():
                 raise ValueError("public_qa_unexpected_nonquant_parameter_dtype")
-            wanted = torch.float32 if id(parameter) in normalizations else half
+            wanted = torch.float32 if id(parameter) in normalizations else torch.float16
             if parameter.dtype != wanted:
                 parameter.data = parameter.data.to(dtype=wanted)
             if not parameter.is_contiguous():
@@ -55,7 +50,7 @@ def prepare_memory_efficient_kbit(model, half_dtype=None):
         if parameter.requires_grad:
             raise ValueError("public_qa_base_must_remain_frozen")
         if not isinstance(parameter, Params4bit):
-            wanted = torch.float32 if id(parameter) in normalizations else half
+            wanted = torch.float32 if id(parameter) in normalizations else torch.float16
             if parameter.dtype != wanted:
                 raise ValueError("public_qa_base_dtype_invalid")
     return model

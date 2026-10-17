@@ -345,7 +345,13 @@ def train(args, rows):
     model = AutoModelForCausalLM.from_pretrained(args.model_dir, local_files_only=True, trust_remote_code=False, device_map={"": 0}, **{dtype_key: half},
                                                  attn_implementation="sdpa", quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                                  bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=half))
-    model = kbit.prepare_memory_efficient_kbit(model, half)
+    model = kbit.prepare_memory_efficient_kbit(model)
+    if half == torch.bfloat16:
+        # public-qa-kbit.py stays byte-for-byte the pinned public QA runtime, which leaves the frozen non-normalization weights in float16;
+        # a bf16 run (rented card) moves those back to bfloat16 so they match the compute dtype. Normalizations stay float32.
+        for parameter in model.parameters():
+            if parameter.dtype == torch.float16:
+                parameter.data = parameter.data.to(dtype=torch.bfloat16)
     loaded = time.monotonic()
     torch.cuda.empty_cache()
     model = get_peft_model(model, LoraConfig(r=RECIPE["rank"], lora_alpha=RECIPE["alpha"], lora_dropout=RECIPE["dropout"], target_modules=RECIPE["targetModules"],
