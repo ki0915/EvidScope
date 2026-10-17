@@ -168,6 +168,39 @@ print(json.dumps({"gate": gate, "masked": encoded["labels"].count(-100), "prefix
   assert.equal(check.status, 2);
 });
 
+test('trainer: the session task admits version 2 targets (verdict, type, evidence) and refuses version 1 rows', () => {
+  const code = `
+import importlib.util, json
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+v = t.valid_session_target
+print(json.dumps({"version": t.TASKS["session-inference"][2], "checks": [
+  v('{"verdict":"violation","type":"exfiltration","evidenceActionIds":["a1"]}'),
+  v('{"verdict":"clean","type":null,"evidenceActionIds":[]}'),
+  v('{"verdict":"clean","type":null,"evidenceActionIds":["a1"]}'),
+  v('{"verdict":"violation","type":null,"evidenceActionIds":["a1"]}'),
+  v('{"verdict":"violation","type":"exfiltration","requirementIds":[],"evidenceActionIds":["a1"],"confidence":0.9}')]}))
+`;
+  const r = run(['-c', code]);
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout.trim().split('\n').at(-1));
+  assert.equal(out.version, 2);
+  assert.deepEqual(out.checks, [true, true, false, false, false]);
+  const f = fixture(), file = join(f.dir, 'session.jsonl');
+  const row = (id, taskVersion) => JSON.stringify({id, task: 'session-inference', taskVersion, roleId: 'session-auditor', split: 'tune',
+    familyId: id, catalogDigest: 'd', labelSource: 'derived_mapping_table', reviewedPayloadHash: null, runMode: 'candidate',
+    messages: [{role: 'system', content: 's'}, {role: 'user', content: 'u'}], target: '{"evidenceActionIds":[],"type":null,"verdict":"clean"}'});
+  writeFileSync(file, [row('a', 2), row('b', 1)].join('\n') + '\n');
+  const gate = run(['-c', `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
+t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
+print(json.dumps(t.admission(sys.argv[1], task="session-inference")[1]))
+`, file]);
+  assert.equal(gate.status, 0, gate.stderr);
+  assert.ok(JSON.parse(gate.stdout.trim().split('\n').at(-1)).reasons.includes('task_invalid'));
+});
+
 test('trainer: triton is reported unavailable before transformers or peft import bitsandbytes (the image has no C compiler)', () => {
   const src = readFileSync('scripts/train-governance-mapping-lora.py', 'utf8'), off = src.indexOf('torch_triton.has_triton = lambda: False');
   assert.ok(off > 0);

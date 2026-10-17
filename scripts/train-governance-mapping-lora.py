@@ -119,9 +119,10 @@ def valid_target(text):
     return value["abstain"] == (len(value["mappings"]) == 0) and len(value["mappings"]) <= 5
 
 
-# The session-inference task (improvement plan phase 2): same trainer, a different gold shape. The target is the forced output schema
-# {verdict, type, requirementIds, evidenceActionIds, confidence}; clean/abstain carry empty lists. The closed requirement-id set is
-# enforced at decode time and by the node scorer, so here only the structure, the verdict/type enums and the clean->empty rule are checked.
+# The session-inference task (improvement plan phase 2): same trainer, a different gold shape. Task version 2 targets the forced output
+# schema {verdict, type, evidenceActionIds}; clean/abstain carry an empty list. Requirement ids are computed from the evidence by the node
+# side (src/session-inference.mjs) and confidence is the verdict token's probability, so neither is a training target any more (version 1
+# trained a constant 0.9/0.1 confidence and a table lookup). Only the structure, the verdict/type enums and the clean->empty rule are checked.
 SESSION_VERDICTS = {"violation", "clean", "abstain"}
 SESSION_TYPES = {"exfiltration", "defense_evasion", "audit_tampering", "destructive", "bulk_collection"}
 
@@ -131,34 +132,31 @@ def valid_session_target(text):
         value = json.loads(text)
     except (TypeError, ValueError):
         return False
-    if not isinstance(value, dict) or set(value) != {"verdict", "type", "requirementIds", "evidenceActionIds", "confidence"}:
+    if not isinstance(value, dict) or set(value) != {"verdict", "type", "evidenceActionIds"}:
         return False
-    if value["verdict"] not in SESSION_VERDICTS or not isinstance(value["requirementIds"], list) or not isinstance(value["evidenceActionIds"], list):
+    if value["verdict"] not in SESSION_VERDICTS or not isinstance(value["evidenceActionIds"], list) or len(value["evidenceActionIds"]) > 20:
         return False
-    if not all(isinstance(x, str) for x in value["requirementIds"]) or not all(isinstance(x, str) for x in value["evidenceActionIds"]):
-        return False
-    conf = value["confidence"]
-    if isinstance(conf, bool) or not isinstance(conf, (int, float)) or not 0 <= conf <= 1 or len(value["requirementIds"]) > 12:
+    if not all(isinstance(x, str) for x in value["evidenceActionIds"]):
         return False
     violation = value["verdict"] == "violation"
     if value["type"] is None if violation else value["type"] is not None:
         return False
     if violation and value["type"] not in SESSION_TYPES:
         return False
-    return violation or (not value["requirementIds"] and not value["evidenceActionIds"])
+    return violation or not value["evidenceActionIds"]
 
 
-# task -> (roleId, target validator). Default keeps governance-mapping behaviour unchanged.
-TASKS = {"governance-mapping": ("governance-assistant", valid_target), "session-inference": ("session-auditor", valid_session_target)}
+# task -> (roleId, target validator, taskVersion). Default keeps governance-mapping behaviour unchanged.
+TASKS = {"governance-mapping": ("governance-assistant", valid_target, 1), "session-inference": ("session-auditor", valid_session_target, 2)}
 
 
 def admission(path, shakedown=False, task="governance-mapping"):
     """Re-checks what the node admission already decided; the held-out test split never reaches this file."""
-    role_id, valid = TASKS[task]
+    role_id, valid, version = TASKS[task]
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     reasons, ids, families, digests = [], set(), {}, set()
     for row in rows:
-        if row.get("task") != task or row.get("taskVersion") != 1 or row.get("roleId") != role_id:
+        if row.get("task") != task or row.get("taskVersion") != version or row.get("roleId") != role_id:
             reasons.append("task_invalid")
         if row.get("split") not in ("tune", "validation"):
             reasons.append("split_invalid_or_test_present")

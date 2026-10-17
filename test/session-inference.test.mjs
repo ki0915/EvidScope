@@ -8,8 +8,8 @@ import {loadRules, loadCatalog} from '../src/threat-scenarios.mjs';
 import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
   catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
-  sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, allowlistPredict, sessionCounts}
-  from '../src/session-inference.mjs';
+  sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, SESSION_TASK_VERSION, allowlistPredict, sessionCounts,
+  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold} from '../src/session-inference.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,10 +50,24 @@ test('clean sessions (incl. known rule gaps) have an empty gold set whatever rul
   assert.equal(sessionGold(byId('neg-read-dotenv'), rules).knownRuleGap, true);
 });
 
-test('output schema forces the five fields and a closed requirement-id set', () => {
-  assert.deepEqual(SESSION_OUTPUT_SCHEMA.required, ['verdict', 'type', 'requirementIds', 'evidenceActionIds', 'confidence']);
+test('task v2: the model writes verdict, type and evidence only; the prompt carries no requirement list', () => {
+  assert.equal(SESSION_TASK_VERSION, 2);
+  assert.deepEqual(SESSION_OUTPUT_SCHEMA.required, ['verdict', 'type', 'evidenceActionIds']);
+  assert.deepEqual(Object.keys(SESSION_OUTPUT_SCHEMA.properties), ['verdict', 'type', 'evidenceActionIds']);
   assert.equal(SESSION_OUTPUT_SCHEMA.additionalProperties, false);
-  assert.deepEqual(SESSION_OUTPUT_SCHEMA.properties.requirementIds.items.enum, catalogRequirementIds());
+  const user = sessionPrompt(byId('exfil-ssh-then-send'), rules).messages[1].content;
+  assert.ok(!catalogRequirementIds().some(id => user.includes(id)));
+  assert.ok(!('requirementIds' in JSON.parse(user)));
+});
+
+test('requirement ids are computed from the chosen evidence and equal the gold when the evidence is the gold', () => {
+  for (const s of catalog.scenarios.filter(x => x.label.verdict === 'violation')) {
+    const g = sessionGold(s, rules);
+    assert.deepEqual(requirementIdsForEvidence(g.evidenceActionIds, sessionInput(s, rules)), g.requirementIds, s.id);
+  }
+  // 발견이 없는 행동만 고르면 조항도 없다(규칙이 못 잡은 행동에 조항을 지어내지 않는다).
+  const s = byId('neg-ls-build');
+  assert.deepEqual(requirementIdsForEvidence(sessionInput(s, rules).actions.map(a => a.actionId), sessionInput(s, rules)), []);
 });
 
 test('rules+sequence baseline catches every threat but fires on all known rule gaps', () => {
@@ -118,7 +132,7 @@ test('session requests use the batch runner wire format and never name the scena
       'variant']);
     assert.equal(canonical(r), line);
     assert.equal(r.adapter, false);
-    assert.equal(r.response_format.json_schema.schema.required.length, 5);
+    assert.equal(r.response_format.json_schema.schema.required.length, 3);
     // 모델 입력에는 시나리오 id·이름·라벨이 없다(라벨 누수 방지).
     const user = r.messages[1].content;
     const s = catalog.scenarios.find(x => x.id === r.id);
@@ -127,26 +141,85 @@ test('session requests use the batch runner wire format and never name the scena
   assert.equal(JSON.parse(sessionRequestLines([byId('destroy-rm-glob')], rules, {variant: 'candidate'})).adapter, true);
 });
 
-test('model outputs are read leniently: unparsable is an abstention, refs map back to action ids', () => {
+test('model outputs are read leniently: unparsable is an abstention, refs map back to action ids, written clauses are ignored', () => {
   assert.deepEqual(interpretSessionOutput('not json').verdict, 'abstain');
   assert.equal(interpretSessionOutput('{"verdict":"maybe"}').schemaValid, false);
-  const refs = new Map([['a1', 'x-s0']]);
-  const p = interpretSessionOutput('{"verdict":"violation","type":"destructive","requirementIds":["ISMS-P-2.11.3"],"evidenceActionIds":["a1"],'
-    + '"confidence":0.8}', refs);
-  assert.deepEqual(p.evidenceActionIds, ['x-s0']);
+  const s = byId('destroy-rm-glob'), {refs, input} = sessionPrompt(s, rules);
+  // v1 형식 출력: 모델이 쓴 조항(틀린 것)과 확신도는 읽지 않고, 조항은 증적에서 계산한다.
+  const p = interpretSessionOutput('{"verdict":"violation","type":"destructive","requirementIds":["EU-AIA-12-2-A"],"evidenceActionIds":["a1"],'
+    + '"confidence":0.8}', refs, {input});
+  assert.deepEqual(p.evidenceActionIds, [refs.get('a1')]);
+  assert.deepEqual(p.requirementIds, sessionGold(s, rules).requirementIds);
+  assert.equal(p.confidence, null);
   assert.equal(p.schemaValid, true);
+  // clean 판정의 증적은 버린다(정상 세션에 증적이 붙지 않게).
+  assert.deepEqual(interpretSessionOutput('{"verdict":"clean","type":"destructive","evidenceActionIds":["a1"]}', refs, {input}).evidenceActionIds, []);
+});
+
+test('confidence is the probability of the verdict tokens, read from the batch runner logprobs', () => {
+  const content = '{"verdict":"violation","type":"destructive","evidenceActionIds":["a1"]}';
+  const cut = ['{"verdict":"', 'viol', 'ation', '","type":"destructive","evidenceActionIds":["a1"]}'];
+  const tokens = [[cut[0], -1000], [cut[1], -300000], [cut[2], -5000], [cut[3], -2000]];
+  assert.equal(verdictScore(content, tokens), -305000);
+  assert.equal(verdictProbability(-305000), +Math.exp(-0.305).toFixed(4));
+  assert.equal(verdictScore(content, [[content.slice(1), 0]]), null, 'tokens that do not spell the output are not scored');
+  assert.equal(verdictScore('{"type":null}', [['{"type":null}', 0]]), null);
+  const p = interpretSessionOutput(content, new Map(), {tokens});
+  assert.equal(p.score, -305000);
+  assert.equal(p.confidence, verdictProbability(-305000));
+});
+
+test('a threshold turns low-confidence answers into abstentions, and is calibrated on validation outputs only', () => {
+  const scenarios = catalog.scenarios;
+  const outputs = {}, logprobs = {};
+  scenarios.forEach((s, i) => {
+    const g = sessionGold(s, rules), back = new Map([...sessionPrompt(s, rules).refs].map(([r, id]) => [id, r]));
+    // 짝수 번째는 맞고 확신(-0.01), 홀수 번째 정상은 틀리고 덜 확신(-0.9): 문턱이 둘 사이면 틀린 답만 기권한다.
+    const wrong = i % 2 === 1 && g.verdict === 'clean';
+    const v = wrong ? {verdict: 'violation', type: 'destructive', evidenceActionIds: []}
+      : {verdict: g.verdict, type: g.type, evidenceActionIds: g.evidenceActionIds.map(id => back.get(id))};
+    const content = canonical(v), head = '{"evidenceActionIds":';
+    // canonical은 키를 정렬하므로 verdict가 마지막이다: verdict 값만 별도 토큰으로 자른다.
+    const at = content.indexOf('"verdict":"') + '"verdict":"'.length, end = content.indexOf('"', at);
+    outputs[s.id] = content;
+    logprobs[s.id] = [[content.slice(0, at), 0], [content.slice(at, end), wrong ? -900000 : -10000], [content.slice(end), 0]];
+    assert.ok(content.startsWith(head));
+  });
+  const all = scoreSessions(scenarios, rules, predictFromOutputs(outputs, rules, {logprobs}));
+  assert.ok(all.answeredAccuracy < 1);
+  const cal = calibrateSessionThreshold(scenarios, rules, outputs, logprobs, {target: 0.99, minAnswered: 5});
+  assert.equal(cal.reached, true);
+  assert.equal(cal.threshold, -10000);
+  assert.equal(cal.accuracy, 1);
+  const gated = scoreSessions(scenarios, rules, predictFromOutputs(outputs, rules, {logprobs, threshold: cal.threshold}));
+  assert.equal(gated.answeredAccuracy, 1);
+  assert.ok(gated.answerRate < 1 && gated.answerRate > 0.5);
+  assert.equal(gated.threatClearedRate, 0);
+  // logprobs 없이 문턱만 주면 점수를 못 매기므로 전부 기권이다.
+  assert.equal(scoreSessions(scenarios, rules, predictFromOutputs(outputs, rules, {threshold: -10000})).answerRate, 0);
+});
+
+test('masked prompts hide finding names behind neutral signals but keep severity, actions and refs', () => {
+  const s = byId('exfil-ssh-then-send');
+  const plain = JSON.parse(sessionPrompt(s, rules).messages[1].content), masked = JSON.parse(sessionPrompt(s, rules, {maskCodes: true}).messages[1].content);
+  assert.deepEqual(masked.actions.map(a => [a.ref, a.action, a.target]), plain.actions.map(a => [a.ref, a.action, a.target]));
+  const flat = masked.actions.flatMap(a => a.findings);
+  assert.ok(flat.length > 0 && flat.every(f => /^signal-[0-9]+ \((high|medium|low|unknown)\)$/.test(f)));
+  assert.ok(!JSON.stringify(masked).includes('CUSTOM:') && !JSON.stringify(masked).includes('SEQ_'));
+  assert.equal(new Set(flat.map(f => f.split(' ')[0])).size, new Set(plain.actions.flatMap(a => a.findings).map(f => f.split(' ')[0])).size);
 });
 
 test('outputs that follow the gold score perfectly through the same path the PC run uses', () => {
   const outputs = Object.fromEntries(catalog.scenarios.map(s => {
     const g = sessionGold(s, rules), refs = sessionPrompt(s, rules).refs;
     const back = new Map([...refs].map(([ref, id]) => [id, ref]));
-    return [s.id, JSON.stringify({verdict: g.verdict, type: g.type, requirementIds: g.requirementIds,
-      evidenceActionIds: g.evidenceActionIds.map(id => back.get(id)), confidence: 0.9})];
+    return [s.id, JSON.stringify({verdict: g.verdict, type: g.type, evidenceActionIds: g.evidenceActionIds.map(id => back.get(id))})];
   }));
   const r = scoreSessions(catalog.scenarios, rules, predictFromOutputs(outputs, rules));
   assert.equal(r.verdict.f1, 1);
   assert.equal(r.evidence.f1, 1);
+  assert.equal(r.requirementPrecision, 1);
+  assert.equal(r.requirement.f1, 1);
   assert.equal(r.schemaValidRate, 1);
   const none = scoreSessions(catalog.scenarios, rules, predictFromOutputs({}, rules));
   assert.equal(none.answerRate, 0);
@@ -164,12 +237,13 @@ test('a training row is the trainer wire shape: 2 messages, gold target as JSON 
   assert.equal(row.messages.length, 2);
   assert.deepEqual(row.messages.map(m => m.role), ['system', 'user']);
   const t = JSON.parse(row.target);
-  assert.deepEqual(Object.keys(t).sort(), ['confidence', 'evidenceActionIds', 'requirementIds', 'type', 'verdict']);
+  assert.equal(row.taskVersion, 2);
+  assert.deepEqual(Object.keys(t).sort(), ['evidenceActionIds', 'type', 'verdict']);
   assert.equal(t.verdict, 'violation');
   assert.ok(t.evidenceActionIds.every(r => /^a[0-9]+$/.test(r)));
   // 학습 target은 설계 골드와 일치한다(증적만 ref로 표현).
   const g = sessionGold(byId('exfil-ssh-then-send'), rules);
-  assert.deepEqual(t.requirementIds, g.requirementIds);
+  assert.equal(t.evidenceActionIds.length, g.evidenceActionIds.length);
   // 모델 입력에는 시나리오 이름·라벨이 없다(누수 방지).
   assert.ok(!row.messages[1].content.includes(byId('exfil-ssh-then-send').name));
 });
@@ -179,7 +253,7 @@ test('a clean training row carries an empty gold whatever the rules fired', () =
   const t = JSON.parse(row.target);
   assert.equal(t.verdict, 'clean');
   assert.equal(t.type, null);
-  assert.deepEqual([t.requirementIds, t.evidenceActionIds], [[], []]);
+  assert.deepEqual(t.evidenceActionIds, []);
 });
 
 test('the training set splits by family with no leakage, excludes held-out families, and uses one catalog digest', () => {
@@ -226,4 +300,39 @@ test('the allowlist baseline ignores every code seen in a clean training session
 
 test('session counts split truly clean, rule-flagged clean (hard negatives) and threats', () => {
   assert.deepEqual(sessionCounts(catalog.scenarios, rules), {sessions: 17, clean: 4, hardNegative: 3, threat: 10});
+});
+
+test('mask-share adds masked copies in the same family, deterministically, and never to the unseen split', () => {
+  const opts = {runMode: 'candidate', heldOutFamilies: ['exfiltration'], validationFamilies: ['benign'], catalogDigest: 'd'.repeat(64)};
+  const none = sessionTrainingSet(catalog.scenarios, rules, opts);
+  const half = sessionTrainingSet(catalog.scenarios, rules, {...opts, maskShare: 0.5});
+  const all = sessionTrainingSet(catalog.scenarios, rules, {...opts, maskShare: 1});
+  assert.equal(none.counts.masked, 0);
+  // 발견이 있는 세션마다 하나(발견이 없는 세션은 가려도 같은 문제라 사본을 만들지 않는다).
+  assert.equal(all.counts.masked, none.rows.filter(r => /CUSTOM:|SEQ_/.test(r.messages[1].content)).length);
+  assert.equal(all.duplicatesDropped, none.duplicatesDropped);
+  assert.ok(half.counts.masked > 0 && half.counts.masked < all.counts.masked);
+  assert.deepEqual(sessionTrainingSet(catalog.scenarios, rules, {...opts, maskShare: 0.5}).rows.map(r => r.id), half.rows.map(r => r.id));
+  for (const m of all.rows.filter(r => r.id.endsWith('~masked'))) {
+    const orig = all.rows.find(r => r.id === m.id.replace(/~masked$/, ''));
+    assert.equal(m.familyId, orig.familyId);
+    assert.equal(m.split, orig.split);
+    assert.equal(m.target, orig.target);
+    assert.notEqual(m.messages[1].content, orig.messages[1].content);
+  }
+  assert.ok(!all.rows.some(r => r.familyId === 'exfiltration'));
+});
+
+test('the gate refuses a model that calls a threat clean, or that abstains on most sessions', () => {
+  const counts = {sessions: 60, clean: 15, hardNegative: 8, threat: 20};
+  const gold = s => { const g = sessionGold(s, rules); return {...g, confidence: null}; };
+  const seq = seqBaseline();
+  const clearsThreat = scoreSessions(catalog.scenarios, rules, s => (s.id === 'exfil-codex'
+    ? {verdict: 'clean', type: null, requirementIds: [], evidenceActionIds: []} : gold(s)));
+  assert.ok(assessSessionModel(clearsThreat, {rules_sequence: seq}, {counts}).reasons.some(r => r.startsWith('threats called clean')));
+  const quiet = scoreSessions(catalog.scenarios, rules, s => (s.label.verdict === 'violation' || s.knownRuleGap ? gold(s)
+    : {verdict: 'abstain', type: null, requirementIds: [], evidenceActionIds: []}));
+  assert.equal(quiet.threatClearedRate, 0);
+  const tooQuiet = scoreSessions(catalog.scenarios, rules, s => ({verdict: 'abstain', type: null, requirementIds: [], evidenceActionIds: []}));
+  assert.ok(assessSessionModel(tooQuiet, {rules_sequence: seq}, {counts}).reasons.some(r => r.startsWith('answer rate below')));
 });
