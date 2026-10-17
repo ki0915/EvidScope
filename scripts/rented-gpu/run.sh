@@ -25,7 +25,7 @@ qwen_chain() {
   EVIDSCOPE_BASE_ARTIFACT_LOCK_SHA256=$(sha "$QWEN/artifact-lock.json") \
     $PY "$S/train-governance-mapping-lora.py" --task session-inference --rented-gpu --data in/train.jsonl --model-dir "$QWEN" \
       --base-repository Qwen/Qwen3-4B-Instruct-2507 --base-revision "$revision" --output "$QRUN" --compute-dtype bfloat16 \
-      --pause-ratio 0 --thermal-max-wait-seconds 0 --epochs "${EPOCHS:-1}" > logs/train-qwen.log 2>&1 || { status "qwen training failed"; return 1; }
+      --pause-ratio 0 --thermal-max-wait-seconds 0 --epochs "${QWEN_EPOCHS:-1}" > logs/train-qwen.log 2>&1 || { status "qwen training failed"; return 1; }
   status "qwen trained"
   for judge in qwen-zero qwen-cand; do
     mkdir -p "results/$judge"
@@ -42,7 +42,7 @@ qwen_chain() {
 jev_chain() {
   export CUDA_VISIBLE_DEVICES=1
   status "jev training"
-  $PY "$S/train_jev_decision.py" train --model-dir "$JEV" --data in/train.jsonl --output "$JRUN" --epochs "${EPOCHS:-1}" > logs/train-jev.log 2>&1 \
+  $PY "$S/train_jev_decision.py" train --model-dir "$JEV" --data in/train.jsonl --output "$JRUN" --epochs "${JEV_EPOCHS:-1}" > logs/train-jev.log 2>&1 \
     || { status "jev training failed"; return 1; }
   status "jev trained"
   for judge in jev-zero jev-cand; do
