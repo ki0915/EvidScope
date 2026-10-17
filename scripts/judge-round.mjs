@@ -2,7 +2,8 @@
 // 판정 모델 라운드(Qwen3-4B·JEV-9B, 2026-10-17) 준비와 채점. 빌린 GPU(docs/rented-gpu.md)에는 이 스크립트가 만든 in/ 폴더만 올라간다: 설계
 // 시나리오로 만든 학습 행·평가 요청과 공개 세트(ASSEBench·R-Judge) 요청뿐이고, PC가 모은 실제 기록은 들어가지 않는다.
 //   node scripts/judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [--contrast F] [--per-threat N] [--per-benign N]
-//     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F] [--rjudge F]
+//     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F [--safety-repeat N]] [--rjudge F]
+//     [--allow-ungated]
 //     [--probes F] [--shakedown]
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
 //   node scripts/judge-round.mjs orchestra --dir DIR [--first jev-cand] [--second qwen-cand] [--raw]   두 판정자를 잇는 오케스트라
@@ -18,7 +19,7 @@ import {canonical} from '../src/crypto.mjs';
 import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 import {allowlistPredict, assessSessionModel, baselinePredict, calibrateSessionThreshold, familyOf, predictFromOutputs, scoreSessions,
-  sessionCounts, sessionRequestLines, sessionTrainingSet} from '../src/session-inference.mjs';
+  repeatRows, sessionCounts, sessionGateShortfall, sessionRequestLines, sessionTrainingSet} from '../src/session-inference.mjs';
 import {scoreOrchestra} from '../src/judge-orchestra.mjs';
 import {externalOverlap, externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
   from '../src/external-agent-sets.mjs';
@@ -41,15 +42,23 @@ if (cmd === 'prepare') {
   if (!out || !held.length || !val.length || !opt('--qwen-lock')) fail('prepare needs --out DIR --held a,b --val c,d --qwen-lock F');
   if (existsSync(out)) fail('output directory exists: ' + out);
   const runMode = args.includes('--shakedown') ? 'shakedown' : 'candidate';
-  mkdirSync(join(out, 'in', 'requests'), {recursive: true});
+  const safetyRepeat = Number(opt('--safety-repeat', '1'));
+  if (!Number.isInteger(safetyRepeat) || safetyRepeat < 1 || safetyRepeat > 4) fail('--safety-repeat must be 1..4');
+  if (safetyRepeat > 1 && !opt('--assebench-safety')) fail('--safety-repeat needs --assebench-safety');
   const base = loadCatalog(opt('--catalog', join(root, 'data/threat-scenarios/v1/catalog.json')));
   const catalog = opt('--contrast') ? composeCatalog(base, loadCatalog(opt('--contrast'))) : base;
   const variants = buildVariantCatalog(catalog, rules, {perThreat: Number(opt('--per-threat', '30')), perBenign: Number(opt('--per-benign', '30')),
     poolExclude: [...held, ...val]});
-  const variantsText = JSON.stringify(variants);
-  writeFileSync(join(out, 'variants.json'), variantsText, {flag: 'wx'});
   const subset = families => ({...variants, scenarios: variants.scenarios.filter(s => families.includes(familyOf(s)))});
   const valCatalog = subset(val), unseenCatalog = subset(held);
+  // 학습을 돌리기 전에 평가 세트가 게이트를 낼 수 있는지 본다(5회차는 다 돌린 뒤에야 'clean 0/15'로 막힌 것을 알았다).
+  const shortfall = sessionGateShortfall(unseenCatalog.scenarios, rules);
+  if (shortfall.length && runMode === 'candidate' && !args.includes('--allow-ungated')) {
+    fail(`unseen set cannot be gated (${shortfall.join(', ')}); hold out more families or pass --allow-ungated`);
+  }
+  mkdirSync(join(out, 'in', 'requests'), {recursive: true});
+  const variantsText = JSON.stringify(variants);
+  writeFileSync(join(out, 'variants.json'), variantsText, {flag: 'wx'});
   writeFileSync(join(out, 'val.json'), JSON.stringify(valCatalog), {flag: 'wx'});
   writeFileSync(join(out, 'unseen.json'), JSON.stringify(unseenCatalog), {flag: 'wx'});
   const catalogDigest = sha(variantsText);
@@ -105,7 +114,13 @@ if (cmd === 'prepare') {
   }
   const set = sessionTrainingSet(variants.scenarios, rules, {runMode, heldOutFamilies: held, validationFamilies: val, catalogDigest,
     poolFamilies: variants.poolFamilies, maskShare: Number(opt('--mask-share', '0.3')), stripShare: Number(opt('--strip-share', '0.3')), extraRows});
-  writeFileSync(join(out, 'in', 'train.jsonl'), set.rows.map(r => JSON.stringify(r)).join('\n') + '\n', {flag: 'wx'});
+  // --safety-repeat N: ASSEBench safety 학습 행을 N벌로 늘린다. 우리 합성 세션이 늘수록 다른 종류 에이전트 기록의 비중이 줄어 R-Judge의 안전
+  // 세션을 위험으로 보는 일이 늘었기 때문(4회차 43 → 5회차 77/269). 중복 제거 뒤에 늘려야 사본이 남는다.
+  const rows = repeatRows(set.rows, safetyRepeat, r => r.split === 'tune' && r.id.startsWith('assebench:safety-'));
+  const repeated = rows.length - set.rows.length;
+  if (external.assebenchSafety) external.assebenchSafety.repeat = {times: safetyRepeat, addedRows: repeated};
+  const counts = {...set.counts, tune: set.counts.tune + repeated, external: set.counts.external + repeated};
+  writeFileSync(join(out, 'in', 'train.jsonl'), rows.map(r => JSON.stringify(r)).join('\n') + '\n', {flag: 'wx'});
   put('val', sessionRequestLines(valCatalog.scenarios, rules, {}), valCatalog.scenarios.length);
   put('unseen', sessionRequestLines(unseenCatalog.scenarios, rules, {}), unseenCatalog.scenarios.length);
   put('unseen.mask', sessionRequestLines(unseenCatalog.scenarios, rules, {maskCodes: true}), unseenCatalog.scenarios.length);
@@ -121,11 +136,12 @@ if (cmd === 'prepare') {
   const walk = dir => readdirSync(dir, {withFileTypes: true}).forEach(e => (e.isDirectory() ? walk(join(dir, e.name))
     : files[join(dir, e.name).slice(join(out, 'in').length + 1).replaceAll('\\', '/')] = sha(readFileSync(join(dir, e.name)))));
   walk(join(out, 'in'));
-  const manifest = {runMode, held, val, catalogDigest, counts: set.counts, families: set.families, duplicatesDropped: set.duplicatesDropped,
+  const manifest = {runMode, held, val, catalogDigest, counts, families: set.families, duplicatesDropped: set.duplicatesDropped,
+    unseenGate: {counts: sessionCounts(unseenCatalog.scenarios, rules), shortfall},
     variants: {scenarios: variants.scenarios.length, dropped: variants.dropped}, external, requests, files};
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', {flag: 'wx'});
   console.log(JSON.stringify({...manifest, files: Object.keys(files).length,
-    meetsTrainerMinimums: runMode === 'shakedown' || (set.counts.tune >= 300 && set.counts.validation >= 50)}, null, 2));
+    meetsTrainerMinimums: runMode === 'shakedown' || (counts.tune >= 300 && counts.validation >= 50)}, null, 2));
 } else if (cmd === 'score') {
   const dir = opt('--dir');
   if (!dir) fail('score needs --dir DIR');

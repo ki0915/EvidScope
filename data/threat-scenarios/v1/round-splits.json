@@ -1,0 +1,83 @@
+{
+  "note": "Held-out (unseen) and validation families for judge rounds 6-9 (scripts/judge-round.mjs prepare --held/--val). Rounds 6, 8 and 9 rotate which scenario types are never trained on (cross-validation by type); round 7 trains on nearly everything for the deployed model. Every split passed the prepare-time leakage and gate-size checks (r6 550 unseen: 43 clean, 207 rule false alarms, 300 threats; r7 150: 43/57/50; r8 500: 41/109/350; r9 600: 43/257/300).",
+  "rounds": {
+    "r6": {
+      "note": "fold A: round-5 split plus one rule-clean family",
+      "held": [
+        "ctr-inject-hidden-destroy",
+        "ctr-article-read",
+        "ctr-pii-context-upload",
+        "ctr-agent-global-edit",
+        "ctr-agent-global-read",
+        "ctr-agent-kill",
+        "ctr-agent-codex-instr-edit",
+        "neg-read-claude-settings",
+        "ctr-dev-settings-read",
+        "ctr-settings-edit-alone",
+        "neg-curl-upload-localhost"
+      ],
+      "val": [
+        "ctr-inject-mcp-defense",
+        "ctr-agent-mcp-config-edit",
+        "ctr-agent-mcp-config-read",
+        "ctr-secret-context-read"
+      ]
+    },
+    "r7": {
+      "note": "final fit: everything trains except a minimal gate-countable set whose siblings stay in training",
+      "held": [
+        "neg-ls-build",
+        "ctr-forcepush-own-plus",
+        "ctr-force-push-release-plus"
+      ],
+      "val": [
+        "ctr-codex-hooks-shell-read",
+        "ctr-codex-hooks-shell-write"
+      ]
+    },
+    "r8": {
+      "note": "fold B: older exfiltration, destruction, defense evasion, bulk collection and log tampering types",
+      "held": [
+        "neg-read-dotenv",
+        "ctr-dotenv-then-send",
+        "ctr-dotenv-then-settings-edit",
+        "ctr-dev-dotenv-read",
+        "exfil-ssh-then-send",
+        "defense-iptables-then-send",
+        "destroy-repeated",
+        "tamper-destroy-then-clearlog",
+        "bulk-cred-read",
+        "ctr-dev-session"
+      ],
+      "val": [
+        "exfil-codex",
+        "destroy-rm-glob",
+        "ctr-dev-codex-hooks-read",
+        "ctr-codex-hooks-read-alone"
+      ]
+    },
+    "r9": {
+      "note": "fold C: git force-push, EvidScope config and stop, injection and role-marker types",
+      "held": [
+        "neg-git-force-push-own",
+        "ctr-forcepush-then-settings-edit",
+        "ctr-dev-forcepush-own",
+        "ctr-force-push-main",
+        "ctr-dev-evidscope-config-read",
+        "ctr-evidscope-config-read-alone",
+        "ctr-evidscope-config-edit-alone",
+        "ctr-evidscope-stop",
+        "ctr-inject-web-exfil",
+        "ctr-inject-prompt-exfil",
+        "ctr-prompt-rolemarker-dev",
+        "neg-rm-named-dir"
+      ],
+      "val": [
+        "ctr-dev-codex-config-read",
+        "ctr-codex-config-read-alone",
+        "ctr-codex-config-edit-alone",
+        "ctr-inject-file-destroy"
+      ]
+    }
+  }
+}

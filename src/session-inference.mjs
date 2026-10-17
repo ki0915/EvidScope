@@ -518,3 +518,18 @@ export function sessionCounts(scenarios, rules, {t0 = T0} = {}) {
   }
   return c;
 }
+
+// 평가 세트가 게이트를 낼 수 있는지 미리 본다(5회차 교훈: 정상이 전부 규칙 경보를 받는 평가 세트는 학습을 다 돌려도 게이트가 'clean 0/15'로 막힌다).
+// 최소 규모와 known rule gap 한 건 이상(없으면 정리율이 null이라 게이트가 항상 막힌다). 빈 배열이면 게이트를 계산할 수 있다.
+export function sessionGateShortfall(scenarios, rules, {gate = SESSION_GATE, t0 = T0} = {}) {
+  const c = {...sessionCounts(scenarios, rules, {t0}), knownGap: scenarios.filter(s => s.label.verdict === 'clean' && s.knownRuleGap).length};
+  return [['sessions', gate.minSessions], ['clean', gate.minClean], ['hardNegative', gate.minHardNegative], ['threat', gate.minThreat], ['knownGap', 1]]
+    .filter(([key, min]) => c[key] < min).map(([key, min]) => `${key} ${c[key]}/${min}`);
+}
+
+// 학습 비중 조정: pick이 고른 행을 times벌로 늘린다. 트레이너는 id만 유일하면 되므로 사본은 id에 ~rep2, ~rep3..을 붙여 원본 바로 뒤에 둔다
+// (두 트레이너 모두 에폭마다 섞는다). 학습 세트 빌더의 중복 제거 뒤에 써야 한다(앞에 쓰면 같은 문장이라 사본이 버려진다).
+export function repeatRows(rows, times, pick) {
+  if (!Number.isInteger(times) || times < 1 || times > 4) throw Error('session_repeat_invalid');
+  return rows.flatMap(r => (pick(r) ? [r, ...Array.from({length: times - 1}, (_, i) => ({...r, id: `${r.id}~rep${i + 2}`}))] : [r]));
+}

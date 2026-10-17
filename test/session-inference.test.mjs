@@ -9,7 +9,7 @@ import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
   catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
   sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, SESSION_TASK_VERSION, allowlistPredict, sessionCounts,
-  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold} from '../src/session-inference.mjs';
+  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold, sessionGateShortfall, repeatRows} from '../src/session-inference.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -300,6 +300,25 @@ test('the allowlist baseline ignores every code seen in a clean training session
 
 test('session counts split truly clean, rule-flagged clean (hard negatives) and threats', () => {
   assert.deepEqual(sessionCounts(catalog.scenarios, rules), {sessions: 17, clean: 4, hardNegative: 3, threat: 10});
+});
+
+test('the gate shortfall names what an evaluation set lacks before any training runs', () => {
+  assert.deepEqual(sessionGateShortfall(catalog.scenarios, rules), ['sessions 17/60', 'clean 4/15', 'hardNegative 3/8', 'threat 10/20']);
+  const small = {...SESSION_GATE, minSessions: 1, minClean: 1, minHardNegative: 1, minThreat: 1};
+  assert.deepEqual(sessionGateShortfall(catalog.scenarios, rules, {gate: small}), []);
+  // 위협만 든 평가 세트(5회차처럼 정상이 빠진 경우)는 정상, 하드 네거티브, known rule gap이 모두 모자라다고 나온다.
+  assert.deepEqual(sessionGateShortfall(catalog.scenarios.filter(s => s.label.verdict === 'violation'), rules, {gate: small}),
+    ['clean 0/1', 'hardNegative 0/1', 'knownGap 0/1']);
+});
+
+test('repeatRows copies only the picked rows, with unique ids, right after each original', () => {
+  const rows = [{id: 'a', split: 'tune'}, {id: 'assebench:safety-1', split: 'tune'}, {id: 'assebench:safety-2', split: 'validation'}];
+  const pick = r => r.split === 'tune' && r.id.startsWith('assebench:safety-');
+  assert.deepEqual(repeatRows(rows, 1, pick), rows);
+  assert.deepEqual(repeatRows(rows, 3, pick).map(r => r.id),
+    ['a', 'assebench:safety-1', 'assebench:safety-1~rep2', 'assebench:safety-1~rep3', 'assebench:safety-2']);
+  assert.throws(() => repeatRows(rows, 0, pick), {message: 'session_repeat_invalid'});
+  assert.throws(() => repeatRows(rows, 5, pick), {message: 'session_repeat_invalid'});
 });
 
 test('mask-share adds masked copies in the same family, deterministically, and never to the unseen split', () => {
