@@ -44,6 +44,20 @@ function requirementIdsForCodes(codes) {
   }
   return [...ids].sort();
 }
+// 규칙이 근거를 못 낸 모델 단독 발견의 조항 후보: 그 유형의 규칙 그룹(접두사)과 연쇄 코드가 매핑 v4에서 걸리는 조항. 근거 단계에서 계산한
+// 조항이 아니라 유형 수준이라 사람이 확인한다. 규칙 그룹이 없는 유형(prompt_injection·fraud·other·unauthorized_access)은 빈 목록.
+export function requirementIdsForType(type) {
+  const groups = [...CLASS_BY_PREFIX.filter(([, t]) => t === type).map(([p]) => p),
+    ...Object.entries(SEQ_CLASS).filter(([, t]) => t === type).map(([c]) => c)];
+  if (!groups.length) return [];
+  codeLinks ??= findingRequirements().links;
+  const ids = new Set();
+  for (const link of codeLinks) {
+    const key = link.match.code ?? link.match.codePrefix;
+    if (typeof key === 'string' && groups.some(g => key.startsWith(g))) for (const item of link.items) ids.add(item.id);
+  }
+  return [...ids].sort();
+}
 // 출력 스키마가 허용하는 전체 조항 id(강제 디코딩에서 모델이 이 밖의 id를 못 내도록). 매핑 v4가 아는 모든 항목.
 export function catalogRequirementIds() {
   codeLinks ??= findingRequirements().links;

@@ -5,6 +5,8 @@
 //     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F] [--rjudge F]
 //     [--probes F] [--shakedown]
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
+//   node scripts/judge-round.mjs orchestra --dir DIR [--first jev-cand] [--second qwen-cand] [--raw]   두 판정자를 잇는 오케스트라
+//     (src/judge-orchestra.mjs)를 기록된 출력으로 끝까지 돌려 DIR/orchestra.json에 쓴다. 기본은 각 판정자의 검증 세트 문턱, --raw는 문턱 없이.
 // 판정자: qwen-zero(학습 전 Qwen3-4B), qwen-cand(학습한 어댑터), jev-zero(JEV-9B 그대로), jev-cand(판정 헤드를 다시 학습한 JEV).
 // 세트: val(기권 문턱 보정용), unseen(처음 보는 계열), unseen.mask(경보 이름 가림), unseen.strip(소견 모두 뺌), probes·probes.strip(감사 탐침),
 // assebench-val(공개 세트 문턱 보정), assebench-test(공개 세트, 학습 제외 시나리오), rjudge(학습에 전혀 안 쓴 외부 세트).
@@ -17,6 +19,7 @@ import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mj
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 import {allowlistPredict, assessSessionModel, baselinePredict, calibrateSessionThreshold, familyOf, predictFromOutputs, scoreSessions,
   sessionCounts, sessionRequestLines, sessionTrainingSet} from '../src/session-inference.mjs';
+import {scoreOrchestra} from '../src/judge-orchestra.mjs';
 import {externalOverlap, externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
   from '../src/external-agent-sets.mjs';
 
@@ -192,9 +195,39 @@ if (cmd === 'prepare') {
   writeFileSync(join(dir, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
   console.log(JSON.stringify(Object.fromEntries(Object.entries(summary.judges).map(([k, v]) => [k, {gate: v.gate,
     unseen: v.sets.unseen?.model, strip: v.sets['unseen.strip']?.model_without_abstain, rjudge: v.sets.rjudge?.model_without_abstain}])), null, 2));
+} else if (cmd === 'orchestra') {
+  const dir = opt('--dir');
+  if (!dir) fail('orchestra needs --dir DIR');
+  const names = {first: opt('--first', 'jev-cand'), second: opt('--second', 'qwen-cand')}, raw = args.includes('--raw');
+  const valCatalog = loadCatalog(join(dir, 'val.json')), unseen = loadCatalog(join(dir, 'unseen.json'));
+  const load = (judge, set) => {
+    const prefix = join(dir, 'results', judge, set);
+    return existsSync(`${prefix}.outputs.json`) ? {outputs: readJson(`${prefix}.outputs.json`), logprobs: readJson(`${prefix}.logprobs.json`)} : null;
+  };
+  const thresholds = {};
+  for (const [role, judge] of Object.entries(names)) {
+    const cal = load(judge, 'val');
+    if (!cal) fail(`missing results/${judge}/val`);
+    thresholds[role] = raw ? undefined : calibrateSessionThreshold(valCatalog.scenarios, rules, cal.outputs, cal.logprobs).threshold ?? undefined;
+  }
+  const sets = [['unseen', unseen, {}], ['unseen.mask', unseen, {maskCodes: true}], ['unseen.strip', unseen, {stripFindings: true}]];
+  if (existsSync(join(dir, 'probes.json'))) {
+    const probes = loadCatalog(join(dir, 'probes.json'));
+    sets.push(['probes', probes, {}], ['probes.strip', probes, {stripFindings: true}]);
+  }
+  const out = {judges: names, thresholds: raw ? 'none' : thresholds, sets: {}};
+  for (const [set, cat, variant] of sets) {
+    const a = load(names.first, set), b = load(names.second, set);
+    if (!a || !b) continue;
+    out.sets[set] = scoreOrchestra(cat.scenarios, rules, {
+      first: predictFromOutputs(a.outputs, rules, {logprobs: a.logprobs, threshold: thresholds.first, ...variant}),
+      second: predictFromOutputs(b.outputs, rules, {logprobs: b.logprobs, threshold: thresholds.second, ...variant})});
+  }
+  writeFileSync(join(dir, raw ? 'orchestra-raw.json' : 'orchestra.json'), JSON.stringify(out, null, 2) + '\n');
+  console.log(JSON.stringify(Object.fromEntries(Object.entries(out.sets).map(([k, v]) => [k, {...v, wrong: v.wrong.length}])), null, 2));
 } else {
   fail('usage: judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [...] | score --dir DIR [--assebench F --assebench-val a,b'
-    + ' --assebench-test c,d] [--assebench-safety F] [--rjudge F]');
+    + ' --assebench-test c,d] [--assebench-safety F] [--rjudge F] | orchestra --dir DIR [--first J] [--second J] [--raw]');
 }
 
 // 공개 세트의 기권 문턱: 검증 기록에서 답한 판정 정확도가 0.99 이상인 가장 낮은 판정 점수(없으면 가장 정확한 점수). 우리 세션의
