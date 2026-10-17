@@ -123,6 +123,24 @@ export function contentSignals(value) {
   return {signals: scanText(text), chars: text.length, truncated, sha256: createHash('sha256').update(text).digest('hex')};
 }
 
+// A screened text's result built from labels alone, for synthetic answer-key scenarios (src/threat-scenarios.mjs): the designer names
+// which signals the text held and how many characters it was, and the text itself is never written. The hash is a deterministic
+// digest of the seed and the labels (it stands in for the SHA-256 of a real text, so two scenarios with the same labels and seed get
+// the same ref). Counts must be 1-999 for a known signal, the same bounds the hook records.
+export function syntheticContent(signals, {chars = 2000, seed = ''} = {}) {
+  const clean = {};
+  for (const k of CONTENT_SIGNALS) {
+    const n = signals?.[k];
+    if (n === undefined) continue;
+    if (!Number.isInteger(n) || n < 1 || n > CONTENT_LIMITS.count) throw Object.assign(Error('synthetic_signal_count_invalid'), {signal: k, count: n});
+    clean[k] = n;
+  }
+  for (const k of Object.keys(signals || {})) if (!CONTENT_SIGNALS.includes(k)) throw Object.assign(Error('synthetic_signal_unknown'), {signal: k});
+  if (!Number.isInteger(chars) || chars < 0) throw Error('synthetic_chars_invalid');
+  const sha256 = createHash('sha256').update(JSON.stringify([seed, clean, chars])).digest('hex');
+  return {signals: clean, chars, truncated: false, sha256};
+}
+
 // The record fields of one screened text (src/agent-hook-events.mjs puts them on the content record): dataCategories name the source
 // and each signal with its count ("content:tool_result", "signal:injection_cue:2"), and one dataRef carries the hash.
 export function contentFields(source, found) {

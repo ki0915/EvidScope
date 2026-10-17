@@ -9,9 +9,11 @@
 //     라벨을 그대로 돌려받아 아무것도 거르지 못했고, 위험 연쇄 경보가 붙은 세션이 정상 정답으로 학습됐다.
 import {sessionGold, sessionInput} from './session-inference.mjs';
 
-const stepKey = st => JSON.stringify([st.toolName, st.command ?? null, st.filePath ?? null, st.url ?? null, st.delayMs ?? 0, !!st.gold]);
+const stepKey = st => JSON.stringify([st.toolName, st.command ?? null, st.filePath ?? null, st.url ?? null, st.delayMs ?? 0, !!st.gold,
+  !!st.prompt, st.content ? [st.content.source ?? null, st.content.signals ?? null, st.content.chars ?? null] : null]);
+// 잡음 풀은 정상 베이스의 단계에서 온다. 화면 검사(content)·프롬프트 단계는 잡음으로 쓰지 않는다(새 LLM 신호를 세션에 끼워넣지 않도록).
 const benignPool = (catalog, exclude) => catalog.scenarios.filter(s => s.class === 'benign' && !exclude.has(s.id))
-  .flatMap(s => s.steps.map(st => ({...st, gold: false, expectRule: undefined, delayMs: 0})));
+  .flatMap(s => s.steps.filter(st => !st.content && !st.prompt).map(st => ({...st, gold: false, expectRule: undefined, delayMs: 0})));
 const seqCodes = (s, rules) => [...new Set(sessionInput(s, rules).actions.flatMap(a => a.findings.map(f => f.code))
   .filter(c => c.startsWith('SEQ_')))].sort().join(',');
 

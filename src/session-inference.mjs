@@ -15,6 +15,7 @@ import {createHash} from 'node:crypto';
 import {canonical} from './crypto.mjs';
 import {findingRequirements} from './home-service.mjs';
 import {buildScenarioEvents} from './threat-scenarios.mjs';
+import {contentSignalInput} from './content-rules.mjs';
 import {evaluate, matches} from './model.mjs';
 import {relatedStepInput, SEQUENCE_CODES} from './sequence-rules.mjs';
 
@@ -23,12 +24,15 @@ export const VERDICTS = Object.freeze(['violation', 'clean', 'abstain']);
 // 앞의 다섯만 쓰지만, 한 판정 모델이 두 데이터를 같은 출력 스키마로 배우도록 목록은 하나다.
 export const SESSION_TYPES = Object.freeze(['exfiltration', 'defense_evasion', 'audit_tampering', 'destructive', 'bulk_collection',
   'unauthorized_access', 'prompt_injection', 'fraud', 'other']);
-const THREAT = /^(CUSTOM:risk\.|SEQ_)/;
+// LLM_… 콘텐츠 발견과 AGENT_… 범위 발견(엔진 v9, src/content-rules.mjs)도 위험 신호로 센다.
+const THREAT = /^(CUSTOM:risk\.|SEQ_|LLM_|AGENT_)/;
 // 발견 코드 -> 세션 유형. 연쇄 코드가 단일 규칙보다 우선한다(민감+외부 연쇄는 bulk_collection이 아니라 exfiltration).
 const SEQ_CLASS = Object.freeze({SEQ_SENSITIVE_THEN_OUTBOUND: 'exfiltration', SEQ_DEFENSE_OFF_THEN_ACTION: 'defense_evasion',
-  SEQ_RISK_THEN_TAMPER: 'audit_tampering', SEQ_BULK_SENSITIVE: 'bulk_collection', SEQ_REPEATED_DESTRUCTIVE: 'destructive'});
+  SEQ_RISK_THEN_TAMPER: 'audit_tampering', SEQ_BULK_SENSITIVE: 'bulk_collection', SEQ_REPEATED_DESTRUCTIVE: 'destructive',
+  SEQ_INJECTION_THEN_ACTION: 'prompt_injection'});
 const CLASS_BY_PREFIX = Object.freeze([['CUSTOM:risk.out.', 'exfiltration'], ['CUSTOM:risk.defense.', 'defense_evasion'],
-  ['CUSTOM:risk.audit.', 'audit_tampering'], ['CUSTOM:risk.destroy.', 'destructive'], ['CUSTOM:risk.cred.', 'bulk_collection']]);
+  ['CUSTOM:risk.audit.', 'audit_tampering'], ['CUSTOM:risk.destroy.', 'destructive'], ['CUSTOM:risk.cred.', 'bulk_collection'],
+  ['CUSTOM:risk.agent.', 'unauthorized_access']]);
 
 const T0 = Date.parse('2026-10-16T00:00:00.000Z');
 const NOW_OFFSET = 2 * 3600 * 1000;
@@ -64,27 +68,34 @@ export function catalogRequirementIds() {
   return [...new Set(codeLinks.flatMap(l => l.items.map(i => i.id)))].sort();
 }
 
-// 한 행동(actionId)을, 저장소가 하는 그대로 평가: 자기 이벤트 + 전체 retained에서 뽑은 관련 단계. withSequence=false면 시퀀스 입력을 빼서
-// 규칙만 기준선을 만든다.
+// 한 행동(actionId)을, 저장소가 하는 그대로 평가: 자기 이벤트 + 전체 retained에서 뽑은 관련 단계·콘텐츠 신호. withSequence=false면 시퀀스·콘텐츠
+// 입력을 빼서 규칙만 기준선을 만든다. 콘텐츠 입력은 세션에 화면 검사 기록이 있을 때만 생기므로(없으면 undefined), 콘텐츠 없는 세션은 엔진 v≤8로
+// 예전과 똑같이 읽힌다.
 function judge(actionId, retained, rules, now, {withSequence = true} = {}) {
   const events = retained.filter(e => e.actionId === actionId);
   const relatedSteps = withSequence ? relatedStepInput(events, retained, rules, matches) : undefined;
-  return evaluate(events, [], rules, [], now, {relatedSteps}).findings;
+  const contentSignals = withSequence ? contentSignalInput(events, retained, rules, matches) : undefined;
+  return evaluate(events, [], rules, [], now, {relatedSteps, contentSignals}).findings;
 }
 
-// 한 세션의 모델 입력: 각 행동의 kind/action/resource/destination/status/note(비밀은 hookEvent가 이미 redaction)와, 규칙+시퀀스가 붙인 소견.
-// note는 이미 [Tool] 접두 텍스트. 시퀀스 코드는 그 행동에 직접 붙은 발견으로 들어온다. sessionId는 모델에 노출하지 않는다(라벨 누수 방지).
+// 한 세션의 모델 입력: 각 행동의 kind/action/resource/destination/status/note(비밀은 hookEvent가 이미 redaction)와, 규칙+시퀀스+콘텐츠가 붙인
+// 소견. note는 이미 [Tool] 접두 텍스트. 한 행동의 도구 호출(intent)과 그 결과의 화면 검사(content_screen)는 같은 actionId라 한 행동으로 합친다
+// (예전엔 뒤 기록이 앞을 덮었다). 프롬프트는 자기 행동이다. sessionId는 모델에 노출하지 않는다(라벨 누수 방지).
 export function sessionInput(scenario, rules, {t0 = T0} = {}) {
   const events = buildScenarioEvents(scenario, {t0});
   const now = t0 + NOW_OFFSET;
-  const byAction = new Map();
-  for (const e of events) {
-    const findings = judge(e.actionId, events, rules, now).filter(f => THREAT.test(f.code))
-      .map(f => ({code: f.code, severity: f.severity || 'unknown'}));
-    byAction.set(e.actionId, {actionId: e.actionId, seq: e.seq, kind: e.kind, action: e.action, resource: e.resource ?? null,
-      destination: e.destination ?? null, status: e.status ?? null, note: e.note ?? null, findings});
+  const groups = new Map();
+  for (const e of events) { if (!groups.has(e.actionId)) groups.set(e.actionId, []); groups.get(e.actionId).push(e); }
+  const actions = [];
+  for (const [actionId, group] of groups) {
+    const findings = judge(actionId, events, rules, now).filter(f => THREAT.test(f.code)).map(f => ({code: f.code, severity: f.severity || 'unknown'}));
+    const intent = group.find(e => e.kind === 'intent') || group[0];
+    const content = group.find(e => e.action === 'content_screen');
+    const note = [intent.note, intent !== content ? content?.note : null].filter(Boolean).join(' ') || null;
+    actions.push({actionId, seq: Math.min(...group.map(e => e.seq)), kind: intent.kind, action: intent.action,
+      resource: intent.resource ?? null, destination: intent.destination ?? null, status: intent.status ?? null, note, findings});
   }
-  return {tool: scenario.tool || 'claude-code', actionCount: byAction.size, actions: [...byAction.values()].sort((a, b) => a.seq - b.seq)};
+  return {tool: scenario.tool || 'claude-code', actionCount: actions.length, actions: actions.sort((a, b) => a.seq - b.seq)};
 }
 
 // 세션 입력을 사람이 읽는/프롬프트용 한 덩이 텍스트로. 모델은 이 요약과 소견을 보고 판정한다.

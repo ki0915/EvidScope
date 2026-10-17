@@ -6,7 +6,7 @@
 import {sessionInput} from './session-inference.mjs';
 
 const READ_ACTIONS = new Set(['file_read', 'file_search']);
-const ALWAYS_PROTECTED_SEQ = new Set(['SEQ_SENSITIVE_THEN_OUTBOUND', 'SEQ_DEFENSE_OFF_THEN_ACTION']);
+const ALWAYS_PROTECTED_SEQ = new Set(['SEQ_SENSITIVE_THEN_OUTBOUND', 'SEQ_DEFENSE_OFF_THEN_ACTION', 'SEQ_INJECTION_THEN_ACTION']);
 
 // 이 발견을 모델이 낮출 수 없는지. action은 그 발견이 붙은 행동의 종류(hookAction).
 export function protectedFinding(code, action) {

@@ -4,7 +4,9 @@
 // (src/sequence-rules.mjs) see them exactly as a real session. This is the "채점 답안" machinery of the improvement plan: the
 // scorer here measures the rules+sequence baseline, which the session-inference model must beat.
 import {readFileSync} from 'node:fs';
-import {hookEvent} from './agent-hook-events.mjs';
+import {contentEventFrom, hookEvent, safeId} from './agent-hook-events.mjs';
+import {syntheticContent} from './agent-content-signals.mjs';
+import {contentSignalInput} from './content-rules.mjs';
 import {evaluate, matches, validateRule} from './model.mjs';
 import {relatedStepInput} from './sequence-rules.mjs';
 
@@ -58,37 +60,57 @@ const toolInput = step => {
   return {};
 };
 
-// Build the ordered intent records for one scenario, each at its own time, with a ledger seq. Pre(intent) carries the target that
-// the rules match; a self_report repeats the note, so the baseline needs only the intent. Returns events in ledger order.
+// Build the ordered records for one scenario, each at its own time, with a ledger seq. A tool step becomes a pre(intent) record that
+// carries the target the rules match. A step may also name `content` (what the model read next): source 'tool_result' adds a
+// content_screen self_report sharing the call's actionId (so the call is judged with what it returned), and a `prompt` step is a
+// screened user prompt with its own action and no tool call. The content is given by labels (src/agent-content-signals.mjs
+// syntheticContent: which LLM-security signals and how many characters), never any text. Returns events in ledger order.
 export function buildScenarioEvents(scenario, {t0 = T0, seq0 = 0} = {}) {
   const tool = scenario.tool || 'claude-code';
   const actor = `${tool}@threat-sim`;
+  const session = safeId(scenario.id) || 'unknown-session';
   let seq = seq0, at = t0;
-  return scenario.steps.map((step, i) => {
+  const wrap = (ev, i, step) => ({...ev, seq: ++seq, tenant: TENANT, source: 'alpha-agent', sourceKind: 'agent', receivedAt: ev.occurredAt,
+    stepIndex: i, gold: !!step.gold, expectRule: step.expectRule});
+  const screened = (step, i) => syntheticContent(step.content?.signals || {}, {chars: step.content?.chars ?? 2000, seed: `${scenario.id}#${i}`});
+  return scenario.steps.flatMap((step, i) => {
     at += step.delayMs || 0;
+    const now = new Date(at);
+    if (step.prompt || step.content?.source === 'prompt') {
+      const ev = contentEventFrom({session, call: safeId(`${scenario.id}-p${i}`), source: 'prompt', found: screened(step, i), actor, tool, now});
+      return [wrap(ev, i, step)];
+    }
     const raw = {hook_event_name: 'PreToolUse', session_id: scenario.id, tool_use_id: `${scenario.id}-s${i}`,
       tool_name: step.toolName, tool_input: toolInput(step)};
-    const ev = hookEvent(raw, {actor, tool, now: new Date(at)});
-    return {...ev, seq: ++seq, tenant: TENANT, source: 'alpha-agent', sourceKind: 'agent', receivedAt: ev.occurredAt,
-      stepIndex: i, gold: !!step.gold, expectRule: step.expectRule};
+    const intent = wrap(hookEvent(raw, {actor, tool, now}), i, step);
+    if (step.content?.source !== 'tool_result') return [intent];
+    const ev = contentEventFrom({session: intent.traceId, call: intent.actionId, source: 'tool_result', toolName: step.toolName,
+      found: screened(step, i), actor, tool, now});
+    return [intent, wrap(ev, i, step)];
   });
 }
 
-const THREAT = /^(CUSTOM:risk\.|SEQ_)/;
+// LLM_… are engine v9 content findings, AGENT_… its scope findings; both count as threat signals alongside the risk rules and the
+// sequence chains (src/content-rules.mjs CONTENT_CODES, SCOPE_CODES).
+const THREAT = /^(CUSTOM:risk\.|SEQ_|LLM_|AGENT_)/;
 // An inferred class from a finding code, for the rules+sequence baseline's session type. A chain code wins over a single rule
 // (a sensitive+outbound chain is exfiltration, not bulk collection).
 const CLASS_BY_PREFIX = [
   ['CUSTOM:risk.out.', 'exfiltration'], ['CUSTOM:risk.defense.', 'defense_evasion'],
   ['CUSTOM:risk.audit.', 'audit_tampering'], ['CUSTOM:risk.destroy.', 'destructive'], ['CUSTOM:risk.cred.', 'bulk_collection'],
+  ['CUSTOM:risk.agent.', 'unauthorized_access'],
 ];
 const SEQ_CLASS = {SEQ_SENSITIVE_THEN_OUTBOUND: 'exfiltration', SEQ_DEFENSE_OFF_THEN_ACTION: 'defense_evasion',
-  SEQ_RISK_THEN_TAMPER: 'audit_tampering', SEQ_BULK_SENSITIVE: 'bulk_collection', SEQ_REPEATED_DESTRUCTIVE: 'destructive'};
+  SEQ_RISK_THEN_TAMPER: 'audit_tampering', SEQ_BULK_SENSITIVE: 'bulk_collection', SEQ_REPEATED_DESTRUCTIVE: 'destructive',
+  SEQ_INJECTION_THEN_ACTION: 'prompt_injection'};
 
-// Evaluate one action the way the vault does: its own events plus the related steps from the whole retained set.
+// Evaluate one action the way the vault does: its own events plus the related steps and the content signals from the whole retained
+// set (engine v9 when the session has screened content, v≤8 otherwise -- so scenarios with no content read exactly as before).
 function judge(actionId, retained, rules, now) {
   const events = retained.filter(e => e.actionId === actionId);
   const relatedSteps = relatedStepInput(events, retained, rules, matches);
-  return evaluate(events, [], rules, [], now, {relatedSteps}).findings;
+  const contentSignals = contentSignalInput(events, retained, rules, matches);
+  return evaluate(events, [], rules, [], now, {relatedSteps, contentSignals}).findings;
 }
 
 // Score one scenario against the rules+sequence baseline, collecting every threat finding across the session's actions.

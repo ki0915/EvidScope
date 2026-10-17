@@ -49,7 +49,7 @@ export function redact(text) {
 // Lower-case, forward slashes, single spaces: the risk rules match with a case-sensitive `contains` (src/model.mjs matches()), and
 // Windows paths arrive with backslashes and any casing.
 export const normalizeTarget = s => clip(printable(redact(s)).replace(/\\/g, '/').replace(/\s+/g, ' ').trim().toLowerCase(), HOOK_LIMITS.resourceChars);
-const safeId = s => String(s || '').replace(/[^a-zA-Z0-9._:@/-]/g, '-').slice(0, HOOK_LIMITS.idChars);
+export const safeId = s => String(s || '').replace(/[^a-zA-Z0-9._:@/-]/g, '-').slice(0, HOOK_LIMITS.idChars);
 const shortHash = s => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
 function urlParts(raw) {
@@ -158,12 +158,20 @@ export function contentEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now =
   const session = safeId(raw.session_id) || 'unknown-session';
   const call = prompt ? `prompt-${shortHash(JSON.stringify([raw.session_id, now.toISOString(), found.sha256]))}`
     : safeId(raw.tool_use_id) || `call-${shortHash(JSON.stringify([raw.session_id, raw.tool_name, raw.tool_input]))}`;
+  return contentEventFrom({session, call, source: prompt ? 'prompt' : 'tool_result', toolName: raw.tool_name, found, actor, policyVersion, tool, now});
+}
+
+// The content record for a screened text, from an already-computed `found` (src/agent-content-signals.mjs contentSignals or
+// syntheticContent) and an explicit session, call (the action it shares, or a prompt-… of its own) and source. contentEvent builds
+// `found` from the live hook input; the synthetic answer-key scenarios (src/threat-scenarios.mjs) build it from labels, so both get
+// the same id, note and category format. session and call are already safe ids.
+export function contentEventFrom({session, call, source, toolName, found, actor, policyVersion, tool = HOOK_TOOL, now = new Date()}) {
   const labels = Object.entries(found.signals).map(([k, n]) => `${k}=${n}`).join(' ') || 'no signal';
-  const what = prompt ? 'user prompt' : `${clip(printable(raw.tool_name), 80)} result`;
+  const what = source === 'prompt' ? 'user prompt' : `${clip(printable(String(toolName || 'tool')), 80)} result`;
   const event = {id: safeId(`${tool === 'codex' ? 'cx' : 'cc'}.${shortHash(session)}.${call}.content`), kind: 'self_report',
     occurredAt: now.toISOString(), traceId: session, actionId: call, actor, tool, action: 'content_screen', status: 'success',
     note: `[content] ${what} screened, ${found.chars} characters${found.truncated ? ' (cut)' : ''}, text not stored: ${labels}`,
-    ...contentFields(prompt ? 'prompt' : 'tool_result', found)};
+    ...contentFields(source, found)};
   if (typeof policyVersion === 'string' && policyVersion) event.policyVersion = policyVersion;
   return event;
 }

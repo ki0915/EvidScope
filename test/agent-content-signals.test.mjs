@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {CONTENT_LIMITS, CONTENT_SIGNALS, CONTENT_SIGNALS_VERSION, contentFields, contentSignals, contentText, recordContent, scanText}
-  from '../src/agent-content-signals.mjs';
-import {contentEvent, hookEvent, hookEvents} from '../src/agent-hook-events.mjs';
+import {CONTENT_LIMITS, CONTENT_SIGNALS, CONTENT_SIGNALS_VERSION, contentFields, contentSignals, contentText, recordContent, scanText,
+  syntheticContent} from '../src/agent-content-signals.mjs';
+import {contentEvent, contentEventFrom, hookEvent, hookEvents} from '../src/agent-hook-events.mjs';
 import {validateEvent} from '../src/model.mjs';
 import * as F from './content-signal-fixtures.mjs';
 
@@ -103,4 +103,23 @@ test('a UserPromptSubmit prompt gets its own action; file edits and empty answer
     tool_response: {stdout: F.BENIGN_TEXTS.gitlog}}), {actor, now});
   assert.deepEqual(clean.dataCategories, ['content:tool_result']);
   assert.match(clean.note, /no signal$/);
+});
+
+test('syntheticContent builds a found from labels alone, deterministic and bounded', () => {
+  const a = syntheticContent({injection_cue: 2, hidden_text: 3}, {chars: 1200, seed: 's1'});
+  const b = syntheticContent({injection_cue: 2, hidden_text: 3}, {chars: 1200, seed: 's1'});
+  assert.deepEqual(a.signals, {injection_cue: 2, hidden_text: 3});
+  assert.equal(a.chars, 1200);
+  assert.equal(a.truncated, false);
+  assert.match(a.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(a.sha256, b.sha256); // deterministic from seed + labels
+  assert.notEqual(a.sha256, syntheticContent({injection_cue: 2, hidden_text: 3}, {chars: 1200, seed: 's2'}).sha256);
+  assert.throws(() => syntheticContent({nope: 1}), {message: 'synthetic_signal_unknown'});
+  assert.throws(() => syntheticContent({injection_cue: 0}), {message: 'synthetic_signal_count_invalid'});
+  assert.throws(() => syntheticContent({injection_cue: CONTENT_LIMITS.count + 1}), {message: 'synthetic_signal_count_invalid'});
+  // contentEventFrom turns it into the same record format as the live hook's contentEvent.
+  const ev = contentEventFrom({session: 'scn', call: 'scn-s0', source: 'tool_result', toolName: 'WebFetch', found: a, actor, now});
+  assert.equal(ev.action, 'content_screen');
+  assert.equal(ev.actionId, 'scn-s0');
+  assert.deepEqual(recordContent(ev), {source: 'tool_result', signals: {injection_cue: 2, hidden_text: 3}, hash: a.sha256});
 });
