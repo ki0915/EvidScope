@@ -451,7 +451,14 @@ def main(argv=None):
     parser.add_argument("--thermal-max-wait-seconds", type=float, default=THERMAL_PACING["maxWaitSeconds"])
     parser.add_argument("--compute-dtype", default="float16", choices=("float16", "bfloat16"))
     parser.add_argument("--rented-gpu", action="store_true")
+    parser.add_argument("--epochs", type=int, default=RECIPE["epochs"])
     args = parser.parse_args(argv)
+    # More passes are for the session judge on a rented card only; the governance-mapping recipe stays one epoch. The value lands in the
+    # identity through RECIPE.
+    if args.epochs != RECIPE["epochs"]:
+        if args.task != "session-inference" or not args.rented_gpu or not 1 <= args.epochs <= 4:
+            parser.error("--epochs other than %d is only for --task session-inference --rented-gpu, between 1 and 4" % RECIPE["epochs"])
+        RECIPE["epochs"] = args.epochs
     if args.task != "session-inference" and args.base_repository != BASE_REPOSITORY:
         parser.error("--base-repository other than %s is only for --task session-inference" % BASE_REPOSITORY)
     if not 0 <= args.pause_ratio <= 4:

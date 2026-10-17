@@ -143,6 +143,9 @@ def train(args):
     rows = [json.loads(line) for line in Path(args.data).read_text(encoding="utf-8").splitlines() if line.strip()]
     if any(r.get("labelSource") not in ("derived_mapping_table", "public_dataset") or r.get("task") != "session-inference" for r in rows):
         raise RuntimeError("jev_rows_invalid")
+    if not 1 <= args.epochs <= 4:
+        raise RuntimeError("jev_epochs_invalid")
+    RECIPE["epochs"] = args.epochs
     output = Path(args.output).resolve()
     random.seed(RECIPE["seed"])
     torch.manual_seed(RECIPE["seed"])
@@ -153,8 +156,9 @@ def train(args):
     judge = Judge(args.model_dir, adapter, head, trainable=True)
     tune = [e for r in rows if r["split"] == "tune" for e in examples_for(r["messages"], r["target"], judge.tokenizer, RECIPE["maxTokens"])]
     validation = [e for r in rows if r["split"] == "validation" for e in examples_for(r["messages"], r["target"], judge.tokenizer, RECIPE["maxTokens"])]
-    random.shuffle(tune)
-    steps = math.ceil(len(tune) / RECIPE["gradientAccumulation"]) * RECIPE["epochs"]
+    # Each epoch is its own shuffle of the examples, laid end to end, so the loop (and its resume point) stays one pass over one list.
+    tune = [e for _ in range(RECIPE["epochs"]) for e in random.sample(tune, len(tune))]
+    steps = math.ceil(len(tune) / RECIPE["gradientAccumulation"])
     optimizer = torch.optim.AdamW([{"params": judge.lora_parameters(), "lr": RECIPE["lrLora"]},
                                    {"params": list(judge.head.parameters()), "lr": RECIPE["lrHead"]}], betas=(0.9, 0.98), weight_decay=0.0)
     # Adam's first steps move every LoRA weight by about the full rate (smoke test: one step at 1e-4 took P(true) from 0.02 to 2.5e-8), so the
@@ -286,6 +290,7 @@ def main(argv=None):
     t.add_argument("--model-dir", required=True)
     t.add_argument("--data", required=True)
     t.add_argument("--output", required=True)
+    t.add_argument("--epochs", type=int, default=RECIPE["epochs"])
     p = sub.add_parser("predict")
     p.add_argument("--model-dir", required=True)
     p.add_argument("--adapter", required=True)
