@@ -3472,13 +3472,15 @@
     {
       "id": "JM-22",
       "date": "2026-10-17",
-      "title": "판정 5회차(진행 중): LLM 보안·에이전트 간섭·EvidScope 기록 변조로 판정 범위 확장",
-      "title_en": "Judge round 5 (in progress): extending the judges to LLM security, agent interference and EvidScope record tampering",
+      "title": "판정 5회차: LLM 보안·에이전트 간섭·EvidScope 기록 변조로 판정 범위 확장",
+      "title_en": "Judge round 5: extending the judges to LLM security, agent interference and EvidScope record tampering",
       "ko": [
-        "판정 범위를 에이전트 행동에서 LLM 보안(주입·간접 지시·맥락 속 민감 데이터)과 감사 기록 변조로 넓히는 대조 시나리오 18개와 학습 6,367행·처음 보는 500세션 답안지를 본문 텍스트 없이 신호 라벨만으로 설계(결과 대기 중)"
+        "판정 범위를 에이전트 행동에서 LLM 보안(주입·간접 지시·맥락 속 민감 데이터)과 감사 기록 변조로 넓히는 대조 시나리오 18개와 처음 보는 500세션 답안지를 본문 텍스트 없이 신호 라벨만으로 설계하고, JEV-9B가 새 계열이 든 500세션 세 변형을 모두 맞힘(위협 놓침 0)",
+        "새 유형 학습 뒤 예전 시험지로 다시 풀어 퇴보를 점검하는 교차 확인을 넣어, 점수는 같지만 규칙 오경보 정리에 대한 확신이 줄어든 것을 찾아 배포 판단 근거로 남김"
       ],
       "en": [
-        "Designed an answer key extending session judges to LLM security, agent interference and audit-record tampering (18 new contrast scenarios, 6,367 training rows, 500 unseen sessions) using only signal labels, never prompt text; results pending."
+        "Designed an answer key extending session judges to LLM security, agent interference and audit-record tampering (18 new contrast scenarios, 500 unseen sessions) using only signal labels, never prompt text; JEV-9B got all 500 sessions right in three variants with zero missed threats.",
+        "Added a cross-check of each new round on the previous round's test set, which showed identical accuracy but lower confidence on clearing rule false alarms, and recorded it as a deployment decision input."
       ]
     },
     {
@@ -6320,11 +6322,47 @@
     },
     {
       "id": "JM-22",
-      "name": "판정 결과",
+      "name": "JEV 처음 보는 세션(새 계열 10개 포함)",
       "before": null,
-      "after": "진행 중(결과 없음)",
+      "after": "원본·가림·제거 각 500세션 모두 답변·모두 정답, 위협을 정상이라 한 것 0",
+      "unit": "세션",
+      "scope": "5회차 시험지, 보류 모드",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-22",
+      "name": "JEV 유형 정확도·증거 단계 F1",
+      "before": "유형 1.0, F1 0.98(4회차 시험지)",
+      "after": "유형 0.50·0.49·0.33, F1 0.82·0.82·0",
       "unit": null,
-      "scope": "5회차",
+      "scope": "5회차 시험지 원본·가림·제거",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-22",
+      "name": "5회차 JEV를 4회차 시험지로",
+      "before": "4회차 JEV: 모두 답변·정답, 규칙 오경보 모두 해소",
+      "after": "보류 없이는 같은 점수, 보류 모드에서 규칙 오경보 74~95%만 해소(나머지 보류)",
+      "unit": null,
+      "scope": "4회차 처음 보는 350세션 × 3변형",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-22",
+      "name": "JEV R-Judge",
+      "before": "87%, 안전 세션 오탐 43/269(4회차)",
+      "after": "81%, 안전 세션 오탐 77/269, 보류 모드 74% 답변·88% 정답",
+      "unit": "%",
+      "scope": "R-Judge 568건",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-22",
+      "name": "JEV ASSEBench 시험",
+      "before": "96.9%(4회차)",
+      "after": "90.2%, 보류 모드 80% 답변·98% 정답",
+      "unit": "%",
+      "scope": "학습에 쓰지 않은 적용 분야 133건",
       "source": "작업 메모"
     },
     {
@@ -7746,6 +7784,18 @@
       "text": "공격 형태 본문 없이 신호 라벨로 시나리오를 만들면, 데이터 최소화 원칙과 학습 데이터 설계를 함께 지킬 수 있다."
     },
     {
+      "id": "JM-22",
+      "text": "새 유형을 더한 회차는 새 시험지만 보면 안 된다. 예전 시험지로 다시 풀어야 퇴보(여기서는 확신 감소)가 보인다."
+    },
+    {
+      "id": "JM-22",
+      "text": "시험지에 규칙이 조용한 정상 세션을 일정 수 이상 남겨 두지 않으면 게이트가 아예 판정을 못 한다. 분할 단계에서 세션 종류별 최소 수를 검사해야 한다."
+    },
+    {
+      "id": "JM-22",
+      "text": "새 회차 폴더를 만들 때 학습 환경 고정 파일까지 옮겨야 한다. 안전 검사가 제 역할을 해서 10초 만에 멈췄고, 원인도 바로 찾았다."
+    },
+    {
       "id": "JM-23",
       "text": "학습 환경과 실행 환경의 버전 차이는 배포 작업의 일부로 미리 계획해야 한다(PC 이미지가 JEV를 모름)."
     },
@@ -8529,7 +8579,11 @@
     },
     {
       "id": "JM-22",
-      "text": "다른 에이전트 설정을 읽기만 하는 정상 세션과 수정하는 세션을 이번 대조로 충분히 가를 수 있을까, 아니면 2회차처럼 더 많은 모양이 필요할까?"
+      "text": "새 유형을 배우면서 예전 규칙 오경보에 덜 확신하게 된 것은 학습 비중 문제일까, 보정(문턱) 문제일까? 예전 회차 데이터를 더 섞거나 문턱을 유형별로 두면 둘 다 지킬 수 있을까?"
+    },
+    {
+      "id": "JM-22",
+      "text": "배포할 JEV는 4회차(예전 유형과 외부 시험에 강함)와 5회차(새 유형까지 학습) 중 무엇이어야 할까? 아니면 두 회차를 함께 돌려 하나라도 보류하면 사람에게 넘기는 방식이 나을까?"
     },
     {
       "id": "JM-22",
