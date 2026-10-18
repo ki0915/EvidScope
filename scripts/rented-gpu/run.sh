@@ -18,7 +18,7 @@ status() { echo "$1 $(date -u +%FT%TZ)" >> status.txt; }
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 
 qwen_chain() {
-  export CUDA_VISIBLE_DEVICES=0
+  export CUDA_VISIBLE_DEVICES=${QWEN_GPU:-0}
   local revision; revision=$($PY -c "import json; print(json.load(open('$QWEN/artifact-lock.json'))['revision'])")
   status "qwen training"
   EVIDSCOPE_BASE_REPOSITORY=Qwen/Qwen3-4B-Instruct-2507 EVIDSCOPE_BASE_REVISION=$revision EVIDSCOPE_DATASET_SHA256=$(sha in/train.jsonl) \
@@ -41,7 +41,7 @@ qwen_chain() {
 }
 
 jev_chain() {
-  export CUDA_VISIBLE_DEVICES=1
+  export CUDA_VISIBLE_DEVICES=${JEV_GPU:-1}
   status "jev training"
   $PY "$S/train_jev_decision.py" train --model-dir "$JEV" --data in/train.jsonl --output "$JRUN" --epochs "${JEV_EPOCHS:-1}" > logs/train-jev.log 2>&1 \
     || { status "jev training failed"; return 1; }
@@ -82,6 +82,7 @@ fill() {
 if [ "${1:-}" = fill ]; then fill; exit 0; fi
 
 # Both chains by default; "run.sh qwen" or "run.sh jev" reruns one (with QRUN or JRUN pointing at a new output directory).
+# QWEN_GPU / JEV_GPU move a chain to another card (for example Qwen on GPU 1 once the JEV rounds are done).
 # SKIP_ZERO=1 leaves out the untrained judges, for a later round on the same request files: their outputs would not change.
 chains=${1:-both}
 status "round started $chains $(sha in/train.jsonl)"
