@@ -1655,7 +1655,7 @@
 
 **기술.** Node.js, HTTP reverse proxy, Server-Sent Events, Ollama API, OpenAI-compatible API, SHA-256 hash chain  
 **역량.** 시스템 아키텍처, 암호·무결성 설계, 보안 아키텍처, 탐지 엔지니어링, 테스트·QA, 사용자 피드백 반영  
-**근거.** [docs/local-model-proxy.md](../local-model-proxy.md), [docs/agent-monitoring.md](../agent-monitoring.md), 작업 메모  
+**근거.** 커밋 `70ca3a0`, [docs/local-model-proxy.md](../local-model-proxy.md), [docs/agent-monitoring.md](../agent-monitoring.md), 작업 메모  
 **관련 항목.** [AM-15](#am-15), [AM-14](#am-14)  
 
 **확인하지 못한 것**

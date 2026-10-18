@@ -2746,7 +2746,9 @@
       }
     ],
     "evidence": {
-      "commits": [],
+      "commits": [
+        "70ca3a0"
+      ],
       "docs": [
         "docs/local-model-proxy.md",
         "docs/agent-monitoring.md"
