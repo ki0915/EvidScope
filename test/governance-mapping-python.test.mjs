@@ -221,6 +221,10 @@ print(json.dumps(t.admission(sys.argv[1], task=sys.argv[2])[1]))
   assert.ok(!gate([row('a')]).some(x => x.includes('provenance') || x.includes('public_dataset')));
   assert.ok(gate([row('b', {target: '{"evidenceActionIds":["a1"],"type":"fraud","verdict":"violation"}'})]).includes('public_dataset_row_invalid'));
   assert.ok(gate([row('c', {reviewedPayloadHash: 'e'.repeat(64)})]).includes('public_dataset_row_invalid'));
+  assert.ok(!gate([row('d', {labelSource: 'by_construction'})]).some(x => x.includes('provenance') || x.includes('public_dataset')));
+  assert.ok(gate([row('e', {labelSource: 'by_construction', target: '{"evidenceActionIds":["a1"],"type":"fraud","verdict":"violation"}'})])
+    .includes('public_dataset_row_invalid'));
+  assert.ok(gate([row('f', {labelSource: 'human_reviewed'})]).includes('label_provenance_invalid'));
   const host = run(['-c', `
 import importlib.util, json, os, types
 spec = importlib.util.spec_from_file_location("t", "scripts/train-governance-mapping-lora.py")
@@ -232,11 +236,12 @@ def check(env, task="session-inference", rented=True, rows=({"labelSource": "pub
     except RuntimeError as e:
         return str(e)
 print(json.dumps([check({"EVIDSCOPE_RENTED_GPU": "1"}), check({}), check({"EVIDSCOPE_RENTED_GPU": "1"}, task="governance-mapping"),
-  check({"EVIDSCOPE_RENTED_GPU": "1"}, rows=({"labelSource": "claude_drafted"},)), check({"EVIDSCOPE_ISOLATED": "1"}, rented=False)]))
+  check({"EVIDSCOPE_RENTED_GPU": "1"}, rows=({"labelSource": "claude_drafted"},)), check({"EVIDSCOPE_ISOLATED": "1"}, rented=False),
+  check({"EVIDSCOPE_RENTED_GPU": "1"}, rows=({"labelSource": "by_construction"},))]))
 `]);
   assert.equal(host.status, 0, host.stderr);
   assert.deepEqual(JSON.parse(host.stdout.trim().split('\n').at(-1)), ['ok', 'rented_gpu_run_invalid', 'rented_gpu_run_invalid', 'rented_gpu_rows_invalid',
-    existsSync('/etc/podinfo/uid') ? 'ok' : 'isolated_training_job_required']);
+    existsSync('/etc/podinfo/uid') ? 'ok' : 'isolated_training_job_required', 'ok']);
 });
 
 test('trainer: triton is reported unavailable before transformers or peft import bitsandbytes (the image has no C compiler)', () => {

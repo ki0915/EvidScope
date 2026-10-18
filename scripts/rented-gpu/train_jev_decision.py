@@ -141,7 +141,9 @@ def fit_temperature(logit_rows):
 def train(args):
     import torch
     rows = [json.loads(line) for line in Path(args.data).read_text(encoding="utf-8").splitlines() if line.strip()]
-    if any(r.get("labelSource") not in ("derived_mapping_table", "public_dataset") or r.get("task") != "session-inference" for r in rows):
+    # Same provenance rule as the Qwen trainer's check_host: designed, a public benchmark's own, or fixed by construction from public seeds.
+    if any(r.get("labelSource") not in ("derived_mapping_table", "public_dataset", "by_construction") or r.get("task") != "session-inference"
+           for r in rows):
         raise RuntimeError("jev_rows_invalid")
     if not 1 <= args.epochs <= 4:
         raise RuntimeError("jev_epochs_invalid")

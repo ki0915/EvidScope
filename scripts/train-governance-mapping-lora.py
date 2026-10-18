@@ -179,11 +179,12 @@ def admission(path, shakedown=False, task="governance-mapping"):
             reasons.append("messages_invalid")
         if not valid(row.get("target")):
             reasons.append("target_invalid")
-        if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted", "public_dataset") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
+        if row.get("labelSource") not in ("derived_mapping_table", "claude_drafted", "public_dataset", "by_construction") or (row.get("labelSource") == "claude_drafted" and not re.fullmatch(r"[a-f0-9]{64}", str(row.get("reviewedPayloadHash")))):
             reasons.append("label_provenance_invalid")
-        # A public benchmark's own label (ASSEBench), for the session judge only: it labels whole sessions, so its rows carry no evidence.
-        if row.get("labelSource") == "public_dataset" and (task != "session-inference" or row.get("reviewedPayloadHash") is not None
-                                                           or not valid(row.get("target")) or json.loads(row["target"])["evidenceActionIds"]):
+        # A public benchmark's own label (ASSEBench), or a session built from a public set's seed with its label fixed by construction
+        # (src/ipi-pairs.mjs), for the session judge only: whole-session labels, so these rows carry no evidence.
+        if row.get("labelSource") in ("public_dataset", "by_construction") and (task != "session-inference" or row.get("reviewedPayloadHash") is not None
+                                                                              or not valid(row.get("target")) or json.loads(row["target"])["evidenceActionIds"]):
             reasons.append("public_dataset_row_invalid")
         if shakedown and (row.get("runMode") != "shakedown" or row.get("labelSource") != "derived_mapping_table"):
             reasons.append("shakedown_requires_derived_shakedown_rows")
@@ -281,8 +282,9 @@ def check_output(args):
 
 def check_host(args, rows):
     """The PC trains only inside its isolated container. A rented GPU trains only the session judge (a shakedown first), on rows whose labels
-    are designed (derived_mapping_table) or a public benchmark's own (public_dataset): no drafted or reviewed rows, nothing from the PC's
-    collected records, which never become training rows."""
+    are designed (derived_mapping_table), a public benchmark's own (public_dataset) or fixed by construction in sessions built from public
+    seeds (by_construction, allowed by the owner 2026-10-18): no drafted or reviewed rows, nothing from the PC's collected records, which
+    never become training rows."""
     if os.name != "posix":
         raise RuntimeError("isolated_training_job_required")
     if not getattr(args, "rented_gpu", False):
@@ -291,7 +293,7 @@ def check_host(args, rows):
         return
     if os.environ.get("EVIDSCOPE_RENTED_GPU") != "1" or args.task != "session-inference":
         raise RuntimeError("rented_gpu_run_invalid")
-    if any(row.get("labelSource") not in ("derived_mapping_table", "public_dataset") for row in rows):
+    if any(row.get("labelSource") not in ("derived_mapping_table", "public_dataset", "by_construction") for row in rows):
         raise RuntimeError("rented_gpu_rows_invalid")
 
 
