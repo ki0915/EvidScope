@@ -13,12 +13,14 @@
 // port base + 1), the credentials an `agent` source's; screenContent (default on) sends the content record of prompts and tool answers
 // (labels, counts and a hash, never the text; src/agent-content-signals.mjs), false turns it off; guard (default off) reads the rule pack
 // at ../data/risk-rules/ai-agent-baseline.json beside this module; executor (default on) puts who runs the agent on every record
-// (hookExecutor: OS account, PC, the git repository of the working folder and the git user), false leaves it out. Only node built-ins, ./agent-hook-events.mjs,
+// (hookExecutor: OS account, PC, the git repository of the working folder and the git user), false leaves it out; chain (default on)
+// numbers every record and links it to the one before (hookChain, docs/agent-monitoring.md "수집 연속성"), so the vault can tell a
+// record lost or changed between this PC and the vault, false leaves it out. Only node built-ins, ./agent-hook-events.mjs,
 // ./agent-content-signals.mjs, ./agent-hook-guard.mjs and ./rule-words.mjs are imported, so the installer can copy the hook to a plain
 // ASCII path: a Korean or spaced user folder in a hook command line is fragile across the shells agents run hooks with.
 // scripts/import-agent-history.mjs reuses the config, actor and signed request below to send past tool calls the same way.
-import {readFileSync, appendFileSync, renameSync, statSync, mkdirSync, existsSync, unlinkSync} from 'node:fs';
-import {createHmac, randomUUID} from 'node:crypto';
+import {readFileSync, appendFileSync, renameSync, statSync, mkdirSync, existsSync, unlinkSync, openSync, closeSync, writeFileSync} from 'node:fs';
+import {createHash, createHmac, randomUUID} from 'node:crypto';
 import {homedir, hostname, userInfo} from 'node:os';
 import {join, dirname, resolve, isAbsolute} from 'node:path';
 import {HOOK_AGENTS, hookEvents} from './agent-hook-events.mjs';
@@ -86,6 +88,50 @@ export function hookExecutor(raw, {home = homedir(), account, host} = {}) {
 }
 
 // The rule pack the guard reads: beside the hook's src/ folder, in the repository and in a --hook-dir copy alike.
+// ---------- record chain (docs/agent-monitoring.md "수집 연속성") ----------
+// Same key-sorted JSON as src/crypto.mjs canonical(), copied because the hook imports no EvidScope module beyond its own copy set.
+export function canonicalJson(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(x => { const c = canonicalJson(x); return c === undefined ? 'null' : c; }).join(',') + ']';
+  return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + canonicalJson(v[k])).join(',') + '}';
+}
+// The digest the vault stores as the record's raw fingerprint (src/model.mjs validateEvent: sha256 of the canonical parsed body), so
+// taken over the record as JSON carries it.
+export const recordDigest = event => createHash('sha256').update(canonicalJson(JSON.parse(JSON.stringify(event)))).digest('hex');
+export const hookChainPath = (agent, configPath) => join(dirname(configPath), `${agent}-chain.json`);
+const CHAIN_LOCK_STALE_MS = 5000, CHAIN_LOCK_TRIES = 100;
+const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+// Numbers the records of one hook call in the agent's chain: each gets chain {stream, seq, prev}, prev being 'genesis' or the digest
+// of the record numbered just before it (as sent, chain included). Concurrent hook processes take turns through a lock file; the state
+// file {stream, seq, last} is replaced atomically. A state file that is missing or unreadable starts a new stream at 1, which the vault
+// shows as a restart. Returns false (records left unnumbered) when the lock or the state cannot be had.
+export function hookChain(path, events) {
+  const lock = `${path}.lock`;
+  let fd = null;
+  for (let n = 0; n < CHAIN_LOCK_TRIES && fd === null; n++) {
+    try { fd = openSync(lock, 'wx'); } catch {
+      try { if (Date.now() - statSync(lock).mtimeMs > CHAIN_LOCK_STALE_MS) unlinkSync(lock); } catch {}
+      pause(10);
+    }
+  }
+  if (fd === null) return false;
+  try {
+    let state = null;
+    try { state = JSON.parse(readFileSync(path, 'utf8')); } catch {}
+    if (!state || typeof state.stream !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(state.stream) || !Number.isSafeInteger(state.seq)
+      || state.seq < 0 || !(state.last === 'genesis' || /^[a-f0-9]{64}$/.test(state.last))) state = {stream: randomUUID(), seq: 0, last: 'genesis'};
+    for (const event of events) {
+      event.chain = {stream: state.stream, seq: ++state.seq, prev: state.last};
+      state.last = recordDigest(event);
+    }
+    const tmp = `${path}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(state));
+    renameSync(tmp, path);
+    return true;
+  } catch { for (const event of events) delete event.chain; return false; }
+  finally { try { closeSync(fd); } catch {} try { unlinkSync(lock); } catch {} }
+}
+
 export const GUARD_PACK = new URL('../data/risk-rules/ai-agent-baseline.json', import.meta.url);
 // What a --hook-dir copy needs besides the agent's hook script (scripts/install-agent-monitoring.mjs): this module, the modules it
 // imports and the guard's rule pack, at the same relative paths.
@@ -114,8 +160,10 @@ export async function runHook(agent, {input = null, env = process.env, write = t
   async function send(config, event) {
     try {
       let {status, text} = await postEvent(config, event);
-      // An EvidScope from before the executor field refuses it: send the record again without it.
-      if (status === 400 && event.executor && /executor/.test(text)) { delete event.executor; ({status} = await postEvent(config, event)); }
+      // An EvidScope from before the executor or chain field refuses it: send the record again without both.
+      if (status === 400 && (event.executor || event.chain) && /executor|chain/.test(text)) {
+        delete event.executor; delete event.chain; ({status} = await postEvent(config, event));
+      }
       if (status === 202 || status === 409) return 'done';
       if (status >= 400 && status < 500 && status !== 408 && status !== 429) { note(`dropped ${event.id}: HTTP ${status}`); return 'done'; }
       return 'retry';
@@ -152,6 +200,8 @@ export async function runHook(agent, {input = null, env = process.env, write = t
         note(`guard denied ${events[0].id}: ${decision.rules.join(',')}`);
       }
     }
+    if (config.chain !== false && events.length && !hookChain(hookChainPath(agent, configPath), events))
+      note('chain: state busy or unwritable, sent unnumbered');
     const unsent = [];
     for (const event of events) if (unsent.length || await send(config, event) === 'retry') unsent.push(event);
     if (!events.length || unsent.length) { keep(unsent); return; }

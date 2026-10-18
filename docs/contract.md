@@ -26,7 +26,7 @@ X-Evid-Signature: <HMAC-SHA256 hex>
 }
 ```
 
-필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. `executor`는 agent 출처만, `account`·`host`·`repository`·`gitUser` 문자열(각 256자)로 된 객체다(hook이 보고한 실행자, [에이전트 레지스트리](agent-registry.md#실행자와-책임자)). `collection`은 agent 출처만, 값은 `history_import`뿐이다(AI 도구의 대화 기록에서 사후에 가져온 기록, [에이전트 감시](agent-monitoring.md)). 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
+필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. `executor`는 agent 출처만, `account`·`host`·`repository`·`gitUser` 문자열(각 256자)로 된 객체다(hook이 보고한 실행자, [에이전트 레지스트리](agent-registry.md#실행자와-책임자)). `chain`은 agent 출처만, `{stream, seq, prev}`(stream은 영숫자·`-` 8~64자, seq는 1 이상 정수, prev는 SHA-256 hex 또는 `genesis`)이다(hook 기록 순번과 앞 기록 지문, [수집 연속성](agent-monitoring.md#수집-연속성)). `collection`은 agent 출처만, 값은 `history_import`뿐이다(AI 도구의 대화 기록에서 사후에 가져온 기록, [에이전트 감시](agent-monitoring.md)). 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
 
 `dataRefs`는 최대16개 참조 배열이다. 각 항목은 `{id,kind,version,hash,role,locator?,description?}`. kind=document/dataset/record/retrieval/artifact, role=input/retrieved/output, hash는 SHA-256 hex 또는 not_provided다. 자료 본문·prompt·secret·verification 필드는 받지 않는다. locator는 자동 조회하지 않는다. `/api/actions/:id`는 참조마다 source/eventId/assurance/observedAt/verification을 서버에서 붙이고, 수신 업무 이벤트 중 참조가 있는 건수와 제한된 분모를 표시한다. 전체 모델 지식/자료의 coverage 비율이 아니다.
 
@@ -56,6 +56,8 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET /api/events?q=&traceId=&kind=&limit=100&offset=0 | 문자열 검색·필터·최대 500건 반환 |
 | GET /api/actions/:actionId | 이벤트 및 최신순 평가 이력 |
 | GET /api/agents?range=7d&focus=all&sort=attention | 기간별 에이전트 현황; 상세 id, 종료 end, 검색 q, limit/offset 지원. [산정 기준](agent-policy-metrics.md) |
+| GET /api/collection/chains | 사람 역할. hook 기록 스트림별 순번·빠진 구간·연결 불일치·재시작 ([수집 연속성](agent-monitoring.md#수집-연속성)) |
+| POST /api/collection/chains/check | 검토자. 새 문제를 서명된 gap 기록으로 한 번씩 남김 |
 | GET /api/monitoring?range=1h | 수신 시각 기반 운영 시계열; range=10m/1h/24h/7d, 선택적 source |
 | GET /api/alerts | 최신 평가의 경보, 예외 억제 상태; 경보마다 synthetic, data=real\|synthetic으로 실제·합성 기록 구분(보기 분류일 뿐 평가·원장은 그대로) |
 | GET/POST /api/assets | 자산 등록·소유자·목적·버전·허용 목적지; synthetic:true는 데모·시험 행위자(검토자만 표시, 출처가 스스로 표시할 수 없음) |
