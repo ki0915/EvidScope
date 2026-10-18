@@ -15,6 +15,10 @@ import {contentFields, contentSignals} from './agent-content-signals.mjs';
 export const HOOK_TOOL = 'claude-code';
 // The agents whose hooks this module reads; each one's events carry it as `tool`.
 export const HOOK_AGENTS = Object.freeze(['claude-code', 'codex']);
+// The recording proxy in front of local model servers (src/local-model-proxy.mjs) sends content records in the same format, so the
+// engine v9 content findings (src/content-rules.mjs) read them too.
+export const MODEL_PROXY_TOOL = 'local-model-proxy';
+export const CONTENT_TOOLS = Object.freeze([...HOOK_AGENTS, MODEL_PROXY_TOOL]);
 export const HOOK_LIMITS = Object.freeze({resourceChars: 256, noteChars: 1024, idChars: 120});
 // The `collection` of a record built from the agent's transcript after the fact (src/agent-history.mjs) instead of by the live hook.
 export const HISTORY_IMPORT = 'history_import';
