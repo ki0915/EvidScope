@@ -15,6 +15,7 @@
 | 증거를 밖에서 어떻게 검증하는가 | [투명성 로그](transparency-log.md), [heads 서명기](signer.md), [표준 영수증과 검증기](receipts.md), [감사인용 증거 묶음](evidence-pack.md), [이벤트 키 감싸기](event-key-wrapping.md), [개선 라운드 기록](improvement-rounds.md) |
 | 기록을 얼마나 보관하고 언제 파기하는가 | [정기 로테이션·접근 기록 정리·프로세스 로그](retention-rotation.md) |
 | 에이전트를 어떻게 등록·정지·승인하는가 | [에이전트 레지스트리·정책 결정 수집](agent-registry.md), [킬 스위치](kill-switch.md), [사람 승인 대기열](approval-queue.md) |
+| 판정 모델이 무엇으로 배우고 어떻게 채점되는가 (모델과 상관없는 데이터셋) | [감사 세션 데이터셋](audit-dataset.md) |
 | 얼마나 빠르고 기존 관측 도구와 어떻게 붙는가 | [수집 처리량](performance.md), [관측 도구 연동(Langfuse·Phoenix)](observability-integration.md) |
 | 한국 거버넌스에서 무엇을 지원하는가 | [증거 계약](kr-governance-evidence.md), [공급사 조치 활용](kr-supplier-reliance.md), [ISMS-P 참고 정렬](isms-p-alignment.md) |
 
