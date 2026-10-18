@@ -23,6 +23,11 @@ EvidScope에 보냅니다.
 - 작업 범위: 실행 전 기록의 `dataCategories`에 에이전트가 그때 어떤 모드였는지(`agent-mode:<Claude Code 권한 모드>`,
   `agent-sandbox:<Codex 샌드박스>`, `agent-approval:<Codex 승인 정책>`)와, 파일 도구·패치가 작업 폴더(`cwd`) 밖의 절대 경로를
   건드렸는지(`boundary:outside_workspace`, 임시 폴더 제외)를 적습니다. 셸 명령 속 경로는 해석하지 않습니다.
+- 실행자: 모든 기록의 `executor`에 hook이 실행된 OS 계정(`account`), PC 이름(`host`), 작업 폴더가 속한 git 저장소의 origin 주소
+  (`repository`, 예: `github.com/team/repo`. 주소 속 사용자 이름·토큰과 `.git`은 뺍니다), git 사용자 이메일(없으면 이름, `gitUser`)을
+  적습니다. git 명령을 실행하지 않고 `.git/config`와 `~/.gitconfig` 파일만 읽습니다(`includeIf`와 시스템 설정은 읽지 않음). 레지스트리가
+  이 값으로 누구의 에이전트인지 추정합니다([실행자와 책임자](agent-registry.md#실행자와-책임자)). hook 설정 `"executor": false`로 끕니다.
+  이 필드를 모르는 예전 EvidScope가 거부하면 hook은 그 기록을 `executor` 없이 다시 보냅니다.
 - 명령 속 비밀번호·토큰·`Authorization` 헤더·URL 사용자 정보·잘 알려진 키 형식(`sk-`, `ghp_`, `AKIA` 등)은 `<redacted>`로 가립니다.
   최선 노력이며, 기록은 이 PC의 EvidScope에만 저장됩니다.
 - hook은 기본으로 도구 호출을 막거나 바꾸지 않습니다. 아무것도 출력하지 않고 항상 0으로 끝납니다. 차단 기능(Claude Code만,

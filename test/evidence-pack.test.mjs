@@ -60,8 +60,8 @@ test('an 8b3af6c-era export builds and verifies a package for each framework, wi
     assert.equal(r.valid, true, framework);
     assert.equal(r.framework, framework);
     assert.deepEqual([r.tenant, r.export.count, r.mapping.source, r.packSigner.key], ['alpha', fixture.exportBundle.records.length, 'verifier', 'pack_key']);
-    assert.deepEqual([...files.keys()].sort(), ['SHA256SUMS', 'evidence/case-reports/case-1.json', 'evidence/export.json', 'index.json', 'mapping.json',
-      'pack.intoto.json', 'summary.en.md', 'summary.ko.md']);
+    assert.deepEqual([...files.keys()].sort(), ['SHA256SUMS', 'accountability.json', 'evidence/case-reports/case-1.json', 'evidence/export.json',
+      'index.json', 'mapping.json', 'pack.intoto.json', 'summary.en.md', 'summary.ko.md']);
     assert.ok(files.get(P.FILES.export).equals(exportBytes) && files.get('evidence/case-reports/case-1.json').equals(reportBytes));
     // In-toto Statement v1 with the Simple Verification Result predicate naming every other file.
     const statement = JSON.parse(Buffer.from(json(files, P.FILES.envelope).payload, 'base64').toString('utf8'));
@@ -90,6 +90,18 @@ test('an 8b3af6c-era export builds and verifies a package for each framework, wi
   assert.deepEqual(oversight.humanJudgement.map(j => [j.requirementId, j.assessment, j.legalReviewRecord?.decision !== undefined]),
     [['KR-34-OVERSIGHT', 'insufficient', true]]);
   assert.equal(kr.items.find(i => i.id === 'KR-31-1').status, 'no_evidence_recorded');
+});
+
+test('the accountability report is regenerated from the export; a changed one is refused, a package without one still verifies', async () => {
+  const files = await pack('kr-ai-basic-act'), report = json(files, P.FILES.accountability);
+  assert.equal(report.format, 'evidscope-accountability-v1');
+  assert.ok(report.counts.agents > 0);
+  assert.deepEqual(check(files).accountability, report.counts);
+  const lied = copy(files);put(lied, P.FILES.accountability, {...report, counts: {...report.counts, confirmed: report.counts.agents + 1}});
+  const relied = await resign(lied);
+  assert.throws(() => check(relied), /accountability\.json differs/);
+  const without = copy(files);without.delete(P.FILES.accountability);
+  assert.equal(check(await resign(without)).accountability, 'absent', 'a package built before the report verifies as before');
 });
 
 test('every file kind, the index, the summaries and the statement are refused when changed, added or removed', async () => {

@@ -1,6 +1,7 @@
 // Agent registry API (docs/agent-registry.md). One signed registry object per agent with every version kept in the ledger,
 // a lifecycle whose transitions are separate signed records, gate conditions and risk-tier rules kept as data, and a list
-// of discovered candidates that is never registered automatically. Reviewers and admins write; every human role reads;
+// of discovered candidates that a registry policy can register automatically as discovered entries without an owner, and an owner
+// map that infers who answers for an agent from who runs it; only a reviewer confirms an owner (src/agent-ownership.mjs). Reviewers and admins write; every human role reads;
 // the registry policy (enforcement mode, gates, risk rules) is admin-only. EvidScope records and evaluates; it blocks nothing.
 import {randomUUID} from 'node:crypto';
 import {canonical,digest} from './crypto.mjs';
@@ -12,8 +13,13 @@ import {createStopOrders} from './stop-order-service.mjs';
 import {STOP_PROPAGATION_DEFAULTS} from './stop-orders.mjs';
 import {normalizeApprovalPolicy} from './approval-service.mjs';
 import {createCatalogImport} from './catalog-import-service.mjs';
+import {AUTO_DISCOVERY_PRINCIPAL,OWNER_MAP_LIMITS,OWNER_MAP_TYPE,OWNER_MATCH_FIELDS,OWNER_MATCH_OPS,agentActivity,belongsTo,entryFor,executorOf,
+ groupExecutors,inferOwner,ownershipOf,recordAccountability} from './agent-ownership.mjs';
 
-const RESERVED=new Set(['candidates','policy','transitions','stops','import']);
+const RESERVED=new Set(['candidates','policy','transitions','stops','import','owners','discover']);
+// Registry policy autoRegister (docs/agent-registry.md, "자동 등록"): off, or register each new candidate as a discovered entry.
+export const AUTO_REGISTER_MODES=Object.freeze(['off','discovered']);
+const AUTO_REGISTER_MAX=50;
 const SOURCE_KINDS=['agent','tool','authority','safety','telemetry','otlp','enforcement'];
 const ENTRY_FIELDS=['name','owner','purpose','sources','actors','assetIds','systemId','models','tools','dataCategories','destinations','fingerprint'];
 const GATE_FIELDS=['owner','purpose','systemId','assetIds','fingerprint','models','tools','dataCategories','destinations'];
@@ -230,7 +236,10 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    if(['approved','production'].includes(previous.state)&&changed.length)
     fail(409,`approved/production 상태에서는 구성(${changed.join(', ')})을 바꿀 수 없습니다. 정지(suspended) 후 수정하고 다시 승인받으세요`);
    links(p,content,previous.id);supersede(p,previous.id,'registry_version_changed');
-   return putVersion(p,version(p,previous,{...content,editedBy:p.id,editedAt:now()},'updated'));
+   // A reviewer who types a new owner confirms it (src/agent-ownership.mjs); the team of an earlier confirmation stays only for the same owner.
+   const at=now(),ownership=content.owner&&content.owner!==previous.owner?{ownership:{status:'confirmed',owner:content.owner,
+    team:previous.ownership?.owner===content.owner?previous.ownership.team??null:null,by:p.id,at,basis:'entered_by_reviewer'}}:{};
+   return putVersion(p,version(p,previous,{...content,...ownership,editedBy:p.id,editedAt:at},'updated'));
   });
  }
  function overrideRisk(p,id,x){
@@ -296,7 +305,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   });
  }
  function setPolicy(p,x){
-  admin(p);only(x,['enforcement','gates','riskRules','approvals','stopPropagation'],'레지스트리 정책');
+  admin(p);only(x,['enforcement','gates','riskRules','approvals','stopPropagation','autoRegister'],'레지스트리 정책');
+  if(x.autoRegister!==undefined&&!AUTO_REGISTER_MODES.includes(x.autoRegister))fail(400,'autoRegister는 off 또는 discovered입니다');
   if(x.enforcement!==undefined&&!ENFORCEMENT_MODES.includes(x.enforcement))fail(400,'enforcement는 off 또는 unregistered_activity입니다');
   const gates=x.gates===undefined?undefined:normalizeGates(x.gates);
   const riskRules=x.riskRules===undefined?undefined:list(x.riskRules,100,normalizeRiskRule,'riskRules');
@@ -309,7 +319,9 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    const stopPropagation=x.stopPropagation===undefined?previous.stopPropagation:normalizeStopPropagation(p,x.stopPropagation,previous.stopPropagation);
    const next={id:'current',version:previous.version+1,enforcement:x.enforcement??previous.enforcement,gates:gates??previous.gates,
     riskRules:riskRules??previous.riskRules,...(approvals??previous.approvals?{approvals:approvals??previous.approvals}:{}),
-    ...(stopPropagation?{stopPropagation}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
+    ...(stopPropagation?{stopPropagation}:{}),
+    // autoRegister is written only once set, like approvals and stopPropagation.
+    ...((x.autoRegister??previous.autoRegister)!==undefined?{autoRegister:x.autoRegister??previous.autoRegister}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
    store.put(p,'agent_registry_policy','current',next);dirty(p.tenant);return next;
   });
  }
@@ -319,38 +331,135 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   for(const id of points)if(!sources(p).some(q=>q.id===id&&q.kind==='enforcement'))fail(400,`등록되지 않은 집행 지점(enforcement 출처 자격)입니다: ${id}`);
   return {windowSeconds:x.windowSeconds===undefined?base.windowSeconds:integer(x.windowSeconds,10,86400,'windowSeconds'),enforcementPoints:[...points].sort()};
  }
+ // ---------- executors and owners (src/agent-ownership.mjs) ----------
+ const ownerMap=p=>policyObjects(p,OWNER_MAP_TYPE).get('current')||null;
+ // Executors seen for every entry, from the retained agent records: Map(entry id -> grouped executors).
+ function executorsByEntry(p,entries){
+  const seen=new Map();
+  for(const e of retained(p)){
+   if(!agentActivity(e))continue;const entry=entryFor(entries,e);if(!entry)continue;
+   if(!seen.has(entry.id))seen.set(entry.id,[]);seen.get(entry.id).push({executor:executorOf(e),actor:e.actor||null,source:e.source,at:e.receivedAt});
+  }
+  return new Map([...seen].map(([id,list])=>[id,groupExecutors(list)]));
+ }
+ const ownership=(entry,map,executors)=>ownershipOf(entry,inferOwner(map,executors||[]));
+ function normalizeOwnerRule(r){
+  only(r,['id','field','op','value','team','owner'],'책임자 매핑 규칙');
+  if(!OWNER_MATCH_FIELDS.includes(r.field))fail(400,`매핑 field는 ${OWNER_MATCH_FIELDS.join(', ')} 중 하나입니다`);
+  const op=r.op??'eq';if(!OWNER_MATCH_OPS.includes(op))fail(400,'매핑 op는 eq, prefix, suffix 중 하나입니다');
+  const value=cleanText(r.value,OWNER_MAP_LIMITS.value),owner=cleanText(r.owner,OWNER_MAP_LIMITS.label);
+  if(!value.trim()||!owner.trim())fail(400,'매핑 규칙에는 value와 owner가 필요합니다');
+  return {id:identifier(r.id),field:r.field,op,value,team:r.team===undefined||r.team===null?null:cleanText(r.team,OWNER_MAP_LIMITS.label),owner};
+ }
+ // The owner map (admin only): rules in priority order, each mapping an executor field, actor or source to a team and an owner.
+ // It changes no entry and no evaluation; it only feeds the inferred owner shown beside the confirmed one.
+ function setOwnerMap(p,x){
+  admin(p);only(x,['rules'],'책임자 매핑 표');
+  const rules=list(x.rules,OWNER_MAP_LIMITS.rules,normalizeOwnerRule,'rules');
+  if(new Set(rules.map(r=>r.id)).size!==rules.length)fail(400,'매핑 규칙 id가 중복됩니다');
+  return store.transaction(()=>{
+   const previous=ownerMap(p);
+   return store.put(p,OWNER_MAP_TYPE,'current',{id:'current',version:(previous?.version||0)+1,rules,updatedBy:p.id,updatedAt:now()});
+  });
+ }
+ function owners(p){
+  const map=ownerMap(p),entries=[...policyObjects(p,'agent_registry').values()],seen=executorsByEntry(p,entries);
+  const items=entries.filter(v=>v.state!=='retired').map(v=>({id:v.id,name:v.name,state:v.state,owner:ownership(v,map,seen.get(v.id)),
+   executors:seen.get(v.id)||[]}));
+  const tally=s=>items.filter(i=>i.owner.status===s).length;
+  return {map:map||{id:'current',version:0,rules:[]},items,counts:{agents:items.length,confirmed:tally('confirmed'),inferred:tally('inferred'),
+   conflict:tally('conflict'),unknown:tally('unknown')},fields:OWNER_MATCH_FIELDS,ops:OWNER_MATCH_OPS,
+   limitations:['실행자(OS 계정·PC·저장소·git 사용자)는 에이전트 훅의 자기 보고입니다','추정(inferred)은 매핑 표의 결과일 뿐 책임 확정이 아닙니다. 확정은 검토자가 기록합니다',
+    '매핑 표는 관리자 한 사람이 바꿉니다(4-eyes 없음). 표를 바꾸면 추정이 다시 계산되며 확정된 책임자는 그대로입니다']};
+ }
+ // A reviewer confirms who answers for the agent: the owner given, or (without one) the owner the map infers now. The new version records
+ // who confirmed it, when, why and on what basis; configuration and state stay as they are.
+ function confirmOwner(p,id,x){
+  only(x,['owner','team','reason'],'책임자 확정');const reason=cleanText(x.reason??'',1000);if(!reason.trim())fail(400,'확정 사유가 필요합니다');
+  return store.transaction(()=>{
+   const previous=entryOf(p,id);if(previous.state==='retired')fail(409,'폐기된 등록 항목입니다');
+   const inferred=x.owner===undefined?ownership(previous,ownerMap(p),executorsByEntry(p,[...policyObjects(p,'agent_registry').values()]).get(previous.id)):null;
+   if(inferred&&inferred.status!=='inferred')
+    fail(409,inferred.status==='conflict'?'추정 책임자가 여럿입니다. owner를 직접 지정하세요':inferred.status==='confirmed'?'이미 확정된 책임자입니다':'추정 책임자가 없습니다. owner를 지정하세요');
+   const owner=x.owner===undefined?inferred.owner:cleanText(x.owner,200);if(!owner.trim())fail(400,'책임자(owner)가 필요합니다');
+   const team=x.team===undefined?inferred?.team??null:x.team===null?null:cleanText(x.team,200),at=now();
+   const basis=inferred?{kind:inferred.basis,...(inferred.rule?{rule:inferred.rule}:{})}:{kind:'entered_by_reviewer'};
+   supersede(p,previous.id,'registry_version_changed');
+   return putVersion(p,version(p,previous,{owner,ownership:{status:'confirmed',owner,team,by:p.id,at,reason,basis}},'owner_confirmed'));
+  });
+ }
+ // Auto-registration (registry policy autoRegister 'discovered', or a reviewer's POST /api/registry/discover): every candidate that no
+ // entry covers or was registered from becomes a discovered entry with no owner, sources or actors, so it changes no finding. A
+ // candidate a retired entry covers or was registered from is not registered again.
+ function discover(p,{dryRun=false,max=AUTO_REGISTER_MAX}={}){
+  return store.transaction(()=>{
+   const all=[...policyObjects(p,'agent_registry').values()],found=candidates(p).items,ids=new Set(all.map(v=>v.id)),registered=[],skipped=[];
+   const map=ownerMap(p),system={id:AUTO_DISCOVERY_PRINCIPAL,tenant:p.tenant};
+   for(const c of found){
+    const who={source:c.source,actor:c.actor};
+    if(registered.length>=max){skipped.push({...who,reason:'run_limit'});continue;}
+    if(all.some(v=>v.state==='retired'&&belongsTo(v,who))){skipped.push({...who,reason:'retired_before'});continue;}
+    let id=c.suggestedId;for(let n=2;ids.has(id)||RESERVED.has(id);n++)id=`${c.suggestedId.slice(0,100)}-${n}`;ids.add(id);
+    const at=now(),base={id,name:c.actor||c.source,owner:'',purpose:'',sources:[],actors:[],assetIds:[],systemId:null,models:[],tools:[],
+     dataCategories:[],destinations:[],fingerprint:{},state:'discovered',registeredBy:system.id,registeredAt:at,editedBy:system.id,editedAt:at,version:1,
+     effectiveFrom:at,change:'created',discoveredFrom:who,
+     discovery:{reasons:c.reasons,events:c.events,firstSeen:c.firstSeen,lastSeen:c.lastSeen,observedTools:c.tools.slice(0,20),observedModels:c.models.slice(0,20)}};
+    const entry={...base,risk:riskRecord(system,base)};
+    if(!dryRun)putVersion(system,entry);
+    registered.push({id,...who,owner:ownershipOf(entry,inferOwner(map,c.executors))});
+   }
+   return {dryRun,registered,skipped,principal:system.id};
+  });
+ }
+ // Accountability of records (alerts): the entry, the executor and the owner of the first agent record among the refs (`source/id`).
+ function accountabilityFor(p){
+  const entries=[...policyObjects(p,'agent_registry').values()],map=ownerMap(p);let seen=null,byRef=null;
+  return refs=>{
+   byRef??=new Map(retained(p).map(e=>[`${e.source}/${e.id}`,e]));
+   const e=(refs||[]).map(r=>byRef.get(r)).find(x=>x&&agentActivity(x));if(!e)return null;
+   seen??=executorsByEntry(p,entries);
+   return recordAccountability(entries,map,e,seen);
+  };
+ }
  // Unregistered agents EvidScope already sees: agent/OTLP sources and reported actors with activity, tool records' actors,
  // UNREGISTERED_ASSET / AI_UNREGISTERED_ASSET findings, and agent source principals without any entry. Listed, never registered.
  function candidates(p){
   const entries=[...policyObjects(p,'agent_registry').values()].filter(v=>v.state!=='retired');
-  const covered=(source,actor)=>entries.some(v=>source&&v.sources.includes(source)||actor&&v.actors.includes(actor));
-  const groups=new Map(),byRef=new Map();
+  // Covered: an entry names the source or actor, or a live entry was registered from this candidate (discoveredFrom).
+  const covered=(source,actor)=>entries.some(v=>source&&v.sources.includes(source)||actor&&v.actors.includes(actor)||
+   v.discoveredFrom&&belongsTo({discoveredFrom:v.discoveredFrom},{source,actor}));
+  const map=ownerMap(p);
+  const groups=new Map(),byRef=new Map(),active=new Set();
   const group=(source,actor)=>{
    const key=canonical([source,actor]);
    if(!groups.has(key))groups.set(key,{source,actor,sourceKinds:new Set(),events:0,actions:new Set(),tools:new Set(),models:new Set(),reasons:new Set(),
-    firstSeen:null,lastSeen:null});
+    firstSeen:null,lastSeen:null,observed:[]});
    return groups.get(key);
   };
   for(const e of retained(p)){
    if(!ACTIVITY_KINDS.includes(e.kind)||!['agent','otlp','tool'].includes(e.sourceKind))continue;
    const source=e.sourceKind==='tool'?null:e.source,actor=e.actor&&e.actor!=='unknown'?e.actor:null;
+   if(source)active.add(source);
    if(!source&&!actor||covered(source,actor))continue;
    const g=group(source,actor);g.sourceKinds.add(e.sourceKind);g.events++;g.actions.add(e.actionId);g.reasons.add('observed_activity');
    if(e.tool)g.tools.add(e.tool);if(e.model)g.models.add(e.model);
+   g.observed.push({executor:executorOf(e),actor:e.actor||null,source:e.source,at:e.receivedAt});
    if(!g.firstSeen||e.receivedAt<g.firstSeen)g.firstSeen=e.receivedAt;if(!g.lastSeen||e.receivedAt>g.lastSeen)g.lastSeen=e.receivedAt;
    byRef.set(`${e.source}/${e.id}`,g);
   }
   let evaluations=[];try{const result=store.cachedEvaluations(p.tenant,{latest:true});evaluations=result.oversized?[]:result.values;}catch{}
   for(const v of evaluations)for(const f of v.findings||[])
    if(['UNREGISTERED_ASSET','AI_UNREGISTERED_ASSET'].includes(f.code))for(const ref of f.evidence||[])byRef.get(ref)?.reasons.add(f.code);
-  for(const q of sources(p).filter(q=>q.kind==='agent'))if(!covered(q.id,null)&&![...groups.values()].some(g=>g.source===q.id))
+  for(const q of sources(p).filter(q=>q.kind==='agent'))if(!covered(q.id,null)&&!active.has(q.id))
    group(q.id,null).reasons.add('configured_source_without_activity');
   const suggestedId=g=>String(g.actor||g.source).toLowerCase().replace(/[^a-z0-9._:@/-]+/g,'-').slice(0,100)||'agent';
-  const items=[...groups.values()].map(g=>({source:g.source,actor:g.actor,state:'discovered',registered:false,suggestedId:suggestedId(g),
+  const items=[...groups.values()].map(g=>{const executors=groupExecutors(g.observed,10);return {source:g.source,actor:g.actor,state:'discovered',
+   registered:false,suggestedId:suggestedId(g),executors,owner:inferOwner(map,executors),
    sourceKinds:[...g.sourceKinds].sort(),events:g.events,actions:g.actions.size,tools:[...g.tools].sort().slice(0,50),models:[...g.models].sort().slice(0,20),
-   reasons:[...g.reasons].sort(),firstSeen:g.firstSeen,lastSeen:g.lastSeen}))
+   reasons:[...g.reasons].sort(),firstSeen:g.firstSeen,lastSeen:g.lastSeen};})
    .sort((a,b)=>(b.lastSeen||'').localeCompare(a.lastSeen||'')||canonical([a.source,a.actor]).localeCompare(canonical([b.source,b.actor])));
-  return {items:items.slice(0,200),total:items.length,limitations:['후보 목록이며 자동 등록하지 않습니다. 행위자 이름은 출처의 자기 보고입니다',
+  return {items:items.slice(0,200),total:items.length,autoRegister:policy(p).autoRegister||'off',
+   limitations:['자동 등록(autoRegister)이 꺼져 있으면 목록만 보여 줍니다. 켜져 있으면 discovered 항목으로 등록되며 책임자는 사람이 확정해야 합니다. 행위자 이름과 실행자는 출처의 자기 보고입니다',
    '보관 중인 이벤트와 최신 평가만 봅니다. 파기된 이벤트나 수집되지 않은 에이전트는 나타나지 않습니다']};
  }
  function detail(p,id){
@@ -361,7 +470,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   const next=REGISTRY_STATES.filter(to=>allowedTransition(entry.state,to))
    .map(to=>({to,approvalRequired:approvalRequired(entry.state,to),gate:gate(p,entry,to,[],current)}));
   const transitionRecords=records.map(r=>({seq:r.seq,recordedAt:r.recordedAt,principal:r.principal,...r.payload}));
-  return {entry,risk:effectiveRisk(entry,current),versions,transitions,transitionRecords,next,lifecycle:verifyRegistryHistory(registryRows),
+  const seen=executorsByEntry(p,[...policyObjects(p,'agent_registry').values()]).get(entry.id)||[];
+  return {entry,risk:effectiveRisk(entry,current),ownership:ownership(entry,ownerMap(p),seen),executors:seen,versions,transitions,transitionRecords,next,lifecycle:verifyRegistryHistory(registryRows),
    policy:{version:current.version,source:current.source,enforcement:current.enforcement},stopOrders:stops.forAgent(p,entry.id)};
  }
  // Stop orders and their propagation (src/stop-order-service.mjs, docs/kill-switch.md) share this storage and four-eyes path.
@@ -375,13 +485,15 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    return store.transaction(()=>{
     if(!parts.length){const current=policy(p),pending=[...policyObjects(p,'agent_transition').values()].filter(t=>t.status==='pending');
      const stopped=entry=>{const n=stops.activeOf(p,entry.id).length;return n?{activeStopOrders:n}:{};};
-     return {items:[...policyObjects(p,'agent_registry').values()].map(entry=>({...entry,effectiveRisk:effectiveRisk(entry,current).tier,
-      pendingTransition:pending.find(t=>t.agentId===entry.id)||null,...stopped(entry)})),
-     policy:{version:current.version,source:current.source,enforcement:current.enforcement},
+     const all=[...policyObjects(p,'agent_registry').values()],map=ownerMap(p),seen=executorsByEntry(p,all);
+     return {items:all.map(entry=>({...entry,effectiveRisk:effectiveRisk(entry,current).tier,
+      pendingTransition:pending.find(t=>t.agentId===entry.id)||null,...stopped(entry),ownerStatus:ownership(entry,map,seen.get(entry.id))})),
+     policy:{version:current.version,source:current.source,enforcement:current.enforcement,autoRegister:current.autoRegister||'off'},
       states:REGISTRY_STATES,limitations:['등록·상태 전이는 서명 원장의 기록입니다. EvidScope는 실행을 차단하지 않으며 차단은 게이트웨이·정책 엔진이 합니다',
        '위험 등급은 등록된 도구·데이터 범주·목적지에 대한 규칙 계산이며 법적 위험 판정이 아닙니다']};}
     if(parts.length===1&&parts[0]==='candidates')return candidates(p);
     if(parts.length===1&&parts[0]==='policy')return policy(p);
+    if(parts.length===1&&parts[0]==='owners')return owners(p);
     if(parts[0]==='stops')return stops.handle(p,'GET',parts,x);
     if(parts.length===1)return detail(p,parts[0]);
     fail(404,'지원하지 않는 레지스트리 경로입니다');
@@ -389,7 +501,9 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   }
   if(method!=='POST')fail(405,'허용되지 않은 메서드');
   if(parts.length===1&&parts[0]==='policy')return setPolicy(p,x);
+  if(parts.length===1&&parts[0]==='owners')return setOwnerMap(p,x);
   reviewer(p);
+  if(parts.length===1&&parts[0]==='discover'){only(x,['dryRun'],'자동 등록 요청');return discover(p,{dryRun:x.dryRun===true});}
   if(!parts.length)return create(p,x);
   if(parts.length===1&&parts[0]==='import')return catalog.importCatalog(p,x);
   if(parts.length===3&&parts[0]==='transitions'&&['approve','refuse'].includes(parts[2]))return decide(p,parts[1],parts[2],x);
@@ -397,9 +511,12 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
   if(parts.length===2&&parts[1]==='stop')return stops.issue(p,parts[0],x);
   if(parts.length===1&&!RESERVED.has(parts[0]))return update(p,parts[0],x);
   if(parts.length===2&&parts[1]==='risk')return overrideRisk(p,parts[0],x);
+  if(parts.length===2&&parts[1]==='owner')return confirmOwner(p,parts[0],x);
   if(parts.length===2&&parts[1]==='transitions')return request(p,parts[0],x);
   fail(404,'지원하지 않는 레지스트리 경로입니다');
  }
  // Read-only view for the console home (src/home-service.mjs): stop-order propagation.
- return {handle,stopPropagation:p=>stops.propagation(p)};
+ // autoRegister: the discovery run of one tenant (src/service.mjs runs it on a timer); null when the tenant's policy has it off.
+ return {handle,stopPropagation:p=>stops.propagation(p),accountabilityFor,
+  autoRegister:tenant=>{const p={id:AUTO_DISCOVERY_PRINCIPAL,tenant};return policy(p).autoRegister==='discovered'?discover(p):null;}};
 }

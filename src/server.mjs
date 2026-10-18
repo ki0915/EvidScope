@@ -175,13 +175,13 @@ async function route(req,res){
  finally{active--;}
 }
 const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
-server.listen(port,host,()=>{service?.transparency.start();service?.accessLog.start();service?.retention.rotation.start();
+server.listen(port,host,()=>{service?.transparency.start();service?.accessLog.start();service?.retention.rotation.start();service?.registryDiscovery.start();
  const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
 const workerTimer=mode==='worker'?setInterval(async()=>{if(workerBusy||stopping)return;workerBusy=true;
  try{const result=await tick(base,process.env.WORKER_TOKEN);lastWorkerSuccess=Date.now();
   // Results the vault's own recomputation rejected (S6), e.g. a worker on another engine version.
   if(result.rejected)process.stderr.write(JSON.stringify({component:'worker',rejectedResults:result.rejected})+'\n');}
  catch(e){process.stderr.write(`worker unavailable ${e.name} ${e.status||''}\n`);}finally{workerBusy=false;}},200):null;
-function shutdown(){if(stopping)return;stopping=true;if(workerTimer)clearInterval(workerTimer);service?.retention.rotation.stop();const transparencyStopped=service?.transparency.stop();
+function shutdown(){if(stopping)return;stopping=true;if(workerTimer)clearInterval(workerTimer);service?.retention.rotation.stop();service?.registryDiscovery.stop();const transparencyStopped=service?.transparency.stop();
  server.close(async()=>{await transparencyStopped;try{service?.accessLog.stop();}catch{}service?.store.close();process.exit(0);});setTimeout(()=>process.exit(1),8000).unref();}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);process.on('message',m=>{if(m==='shutdown')shutdown();});

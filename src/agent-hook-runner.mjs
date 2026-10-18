@@ -8,17 +8,18 @@
 // exits 0; a guard that cannot read the rule pack lets every call run. Events wait in a local spool and go out with the next call that
 // can reach EvidScope.
 // Config (EVIDSCOPE_HOOK_CONFIG or ~/.evidscope/<agent>-hook.json): {"url":"http://127.0.0.1:8091","token":"…","hmacSecret":"…",
-// "actor":"<agent>@pc","policyVersion":"<agent>-monitoring-v1","screenContent":true,"guard":false}: the url is the ingest gateway (local launcher
+// "actor":"<agent>@pc","policyVersion":"<agent>-monitoring-v1","screenContent":true,"guard":false,"executor":true}: the url is the ingest gateway (local launcher
 // port base + 1), the credentials an `agent` source's; screenContent (default on) sends the content record of prompts and tool answers
 // (labels, counts and a hash, never the text; src/agent-content-signals.mjs), false turns it off; guard (default off) reads the rule pack
-// at ../data/risk-rules/ai-agent-baseline.json beside this module. Only node built-ins, ./agent-hook-events.mjs,
+// at ../data/risk-rules/ai-agent-baseline.json beside this module; executor (default on) puts who runs the agent on every record
+// (hookExecutor: OS account, PC, the git repository of the working folder and the git user), false leaves it out. Only node built-ins, ./agent-hook-events.mjs,
 // ./agent-content-signals.mjs, ./agent-hook-guard.mjs and ./rule-words.mjs are imported, so the installer can copy the hook to a plain
 // ASCII path: a Korean or spaced user folder in a hook command line is fragile across the shells agents run hooks with.
 // scripts/import-agent-history.mjs reuses the config, actor and signed request below to send past tool calls the same way.
 import {readFileSync, appendFileSync, renameSync, statSync, mkdirSync, existsSync, unlinkSync} from 'node:fs';
 import {createHmac, randomUUID} from 'node:crypto';
-import {homedir, hostname} from 'node:os';
-import {join, dirname} from 'node:path';
+import {homedir, hostname, userInfo} from 'node:os';
+import {join, dirname, resolve, isAbsolute} from 'node:path';
 import {HOOK_AGENTS, hookEvents} from './agent-hook-events.mjs';
 import {GUARD_DENIED, denyOutput, guardDecision} from './agent-hook-guard.mjs';
 
@@ -28,6 +29,59 @@ export const hookConfigPath = (agent, env = process.env) => env.EVIDSCOPE_HOOK_C
 // The spool of records the hook could not send yet (next to its config).
 export const hookSpoolPath = (agent, configPath) => join(dirname(configPath), `${agent}-spool.jsonl`);
 export const hookActor = (agent, config = {}) => config.actor || `${agent}@${hostname().toLowerCase().replace(/[^a-z0-9.-]/g, '-')}`;
+// Who runs the agent, for the owner map (src/agent-ownership.mjs): the OS account and PC the hook runs as, and, read from the files
+// (no git process per tool call), the origin remote of the git repository holding the working folder (cwd of the hook input) without
+// credentials or .git, and the git user email (else name) of that repository or of ~/.gitconfig. includeIf and system git config
+// are not read. Every value is the hook's own report, like the actor name. Fields that cannot be read are left out.
+const iniValue = (text, section, key) => {
+  let inside = false;
+  for (const line of String(text).split(/\r?\n/)) {
+    const head = /^\s*\[([^\]]+)\]\s*$/.exec(line);
+    if (head) { inside = head[1].trim().toLowerCase().replace(/\s+/g, ' ') === section; continue; }
+    const m = inside && /^\s*([A-Za-z0-9-]+)\s*=\s*(.*?)\s*$/.exec(line);
+    if (m && m[1].toLowerCase() === key) return m[2].replace(/^"(.*)"$/, '$1');
+  }
+  return null;
+};
+const readText = path => { try { return readFileSync(path, 'utf8'); } catch { return null; } };
+// The config file of the repository holding dir: .git as a folder, or as a worktree/submodule file naming its gitdir (and commondir).
+function gitConfigOf(dir) {
+  for (let d = resolve(dir), n = 0; n < 40; n++) {
+    const dotgit = join(d, '.git');
+    if (existsSync(dotgit)) {
+      let gitdir = dotgit;
+      try { if (statSync(dotgit).isFile()) { const m = /^gitdir:\s*(.+)$/m.exec(readText(dotgit) || ''); if (!m) return null; gitdir = resolve(d, m[1].trim()); } }
+      catch { return null; }
+      const common = (readText(join(gitdir, 'commondir')) || '').trim();
+      return readText(join(common ? resolve(gitdir, common) : gitdir, 'config'));
+    }
+    const up = dirname(d); if (up === d) return null; d = up;
+  }
+  return null;
+}
+// https://user:token@host/org/repo.git, git@host:org/repo.git, ssh://git@host/org/repo -> host/org/repo (lower case).
+export function repositoryName(url) {
+  const s = String(url || '').trim();
+  const scp = /^[^@/\s]+@([^:/\s]+):(.+)$/.exec(s);
+  let host, path;
+  if (scp) [host, path] = [scp[1], scp[2]];
+  else { try { const u = new URL(s); if (u.protocol === 'file:') return null; host = u.hostname; path = u.pathname; } catch { return null; } }
+  path = path.replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+  return host && path ? `${host}/${path}`.toLowerCase().slice(0, 256) : null;
+}
+export function hookExecutor(raw, {home = homedir(), account, host} = {}) {
+  const out = {};
+  try { const name = account ?? userInfo().username; if (name) out.account = String(name).toLowerCase().slice(0, 256); } catch {}
+  const pc = host ?? hostname(); if (pc) out.host = String(pc).toLowerCase().replace(/[^a-z0-9.-]/g, '-').slice(0, 256);
+  const cwd = typeof raw?.cwd === 'string' && isAbsolute(raw.cwd) ? raw.cwd : null;
+  const repo = cwd ? gitConfigOf(cwd) : null, global = readText(join(home, '.gitconfig'));
+  const origin = repo && repositoryName(iniValue(repo, 'remote "origin"', 'url'));
+  if (origin) out.repository = origin;
+  const user = [repo, global].map(t => t && (iniValue(t, 'user', 'email') || iniValue(t, 'user', 'name'))).find(Boolean);
+  if (user) out.gitUser = String(user).toLowerCase().replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/gu, '').slice(0, 256);
+  return out;
+}
+
 // The rule pack the guard reads: beside the hook's src/ folder, in the repository and in a --hook-dir copy alike.
 export const GUARD_PACK = new URL('../data/risk-rules/ai-agent-baseline.json', import.meta.url);
 // What a --hook-dir copy needs besides the agent's hook script (scripts/install-agent-monitoring.mjs): this module, the modules it
@@ -56,7 +110,9 @@ export async function runHook(agent, {input = null, env = process.env, write = t
   const note = message => { try { appendFileSync(log, `${new Date().toISOString()} ${message}\n`); } catch {} };
   async function send(config, event) {
     try {
-      const {status} = await postEvent(config, event);
+      let {status, text} = await postEvent(config, event);
+      // An EvidScope from before the executor field refuses it: send the record again without it.
+      if (status === 400 && event.executor && /executor/.test(text)) { delete event.executor; ({status} = await postEvent(config, event)); }
       if (status === 202 || status === 409) return 'done';
       if (status >= 400 && status < 500 && status !== 408 && status !== 429) { note(`dropped ${event.id}: HTTP ${status}`); return 'done'; }
       return 'retry';
@@ -83,7 +139,7 @@ export async function runHook(agent, {input = null, env = process.env, write = t
     let raw;
     try { raw = JSON.parse(input ?? readFileSync(0, 'utf8')); } catch { return; }
     const events = hookEvents(raw, {actor: hookActor(agent, config), policyVersion: config.policyVersion, tool: agent,
-      screen: config.screenContent !== false});
+      screen: config.screenContent !== false, executor: config.executor === false ? undefined : hookExecutor(raw, {home: env.EVIDSCOPE_HOOK_HOME})});
     if (config.guard === true && agent === 'claude-code' && events[0]?.kind === 'intent') {
       const rules = guardRules(), decision = rules ? guardDecision(events[0], rules) : null;
       if (!rules) note('guard: rule pack unreadable, nothing denied');
