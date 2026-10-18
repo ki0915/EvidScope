@@ -111,7 +111,7 @@
     {
       "key": "judge-models",
       "name": "판정 모델과 학습",
-      "entries": 25,
+      "entries": 27,
       "from": "2026-09-08",
       "to": "2026-10-18",
       "record": "docs/dev-log/03-judge-models.md"
@@ -127,7 +127,7 @@
   ],
   "status_counts": {
     "done": 64,
-    "in_progress": 3,
+    "in_progress": 5,
     "planned": 1,
     "invalidated": 1,
     "superseded": 4
@@ -199,6 +199,36 @@
       ]
     },
     {
+      "key": "ml_evaluation",
+      "name": "모델 평가·게이트",
+      "count": 23,
+      "entries": [
+        "EL-03",
+        "AM-10",
+        "AM-11",
+        "JM-03",
+        "JM-04",
+        "JM-05",
+        "JM-06",
+        "JM-07",
+        "JM-08",
+        "JM-09",
+        "JM-10",
+        "JM-11",
+        "JM-12",
+        "JM-13",
+        "JM-14",
+        "JM-17",
+        "JM-18",
+        "JM-20",
+        "JM-21",
+        "JM-24",
+        "JM-25",
+        "JM-26",
+        "UX-07"
+      ]
+    },
+    {
       "key": "qa_testing",
       "name": "테스트·QA",
       "count": 23,
@@ -229,38 +259,9 @@
       ]
     },
     {
-      "key": "ml_evaluation",
-      "name": "모델 평가·게이트",
-      "count": 22,
-      "entries": [
-        "EL-03",
-        "AM-10",
-        "AM-11",
-        "JM-03",
-        "JM-04",
-        "JM-05",
-        "JM-06",
-        "JM-07",
-        "JM-08",
-        "JM-09",
-        "JM-10",
-        "JM-11",
-        "JM-12",
-        "JM-13",
-        "JM-14",
-        "JM-17",
-        "JM-18",
-        "JM-20",
-        "JM-21",
-        "JM-24",
-        "JM-25",
-        "UX-07"
-      ]
-    },
-    {
       "key": "data_quality",
       "name": "데이터 품질·누수 방지",
-      "count": 20,
+      "count": 22,
       "entries": [
         "AM-08",
         "AM-09",
@@ -279,9 +280,39 @@
         "JM-22",
         "JM-24",
         "JM-25",
+        "JM-26",
+        "JM-27",
         "UX-07",
         "UX-08",
         "UX-11"
+      ]
+    },
+    {
+      "key": "decision_making",
+      "name": "의사결정·우선순위",
+      "count": 21,
+      "entries": [
+        "EL-02",
+        "EL-06",
+        "EL-14",
+        "EL-16",
+        "EL-18",
+        "EL-19",
+        "AM-01",
+        "AM-11",
+        "AM-13",
+        "JM-02",
+        "JM-06",
+        "JM-12",
+        "JM-14",
+        "JM-15",
+        "JM-16",
+        "JM-19",
+        "JM-23",
+        "JM-25",
+        "JM-26",
+        "JM-27",
+        "UX-12"
       ]
     },
     {
@@ -312,35 +343,9 @@
       ]
     },
     {
-      "key": "decision_making",
-      "name": "의사결정·우선순위",
-      "count": 19,
-      "entries": [
-        "EL-02",
-        "EL-06",
-        "EL-14",
-        "EL-16",
-        "EL-18",
-        "EL-19",
-        "AM-01",
-        "AM-11",
-        "AM-13",
-        "JM-02",
-        "JM-06",
-        "JM-12",
-        "JM-14",
-        "JM-15",
-        "JM-16",
-        "JM-19",
-        "JM-23",
-        "JM-25",
-        "UX-12"
-      ]
-    },
-    {
       "key": "dataset_design",
       "name": "데이터셋·답안지 설계",
-      "count": 18,
+      "count": 19,
       "entries": [
         "AM-10",
         "AM-12",
@@ -359,6 +364,7 @@
         "JM-21",
         "JM-22",
         "JM-24",
+        "JM-27",
         "UX-07"
       ]
     },
@@ -384,6 +390,29 @@
         "AM-08",
         "AM-14",
         "AM-15"
+      ]
+    },
+    {
+      "key": "standards_integration",
+      "name": "표준·외부 도구 연동",
+      "count": 16,
+      "entries": [
+        "EL-04",
+        "EL-06",
+        "EL-07",
+        "EL-09",
+        "EL-11",
+        "EL-13",
+        "EL-14",
+        "EL-15",
+        "EL-16",
+        "EL-17",
+        "EL-19",
+        "EL-20",
+        "AM-03",
+        "AM-07",
+        "JM-27",
+        "UX-05"
       ]
     },
     {
@@ -476,28 +505,6 @@
       ]
     },
     {
-      "key": "standards_integration",
-      "name": "표준·외부 도구 연동",
-      "count": 15,
-      "entries": [
-        "EL-04",
-        "EL-06",
-        "EL-07",
-        "EL-09",
-        "EL-11",
-        "EL-13",
-        "EL-14",
-        "EL-15",
-        "EL-16",
-        "EL-17",
-        "EL-19",
-        "EL-20",
-        "AM-03",
-        "AM-07",
-        "UX-05"
-      ]
-    },
-    {
       "key": "ux_design",
       "name": "UX 설계",
       "count": 15,
@@ -562,6 +569,27 @@
       ]
     },
     {
+      "key": "ml_training",
+      "name": "모델 학습(QLoRA)",
+      "count": 14,
+      "entries": [
+        "JM-03",
+        "JM-05",
+        "JM-07",
+        "JM-11",
+        "JM-13",
+        "JM-14",
+        "JM-17",
+        "JM-18",
+        "JM-20",
+        "JM-21",
+        "JM-22",
+        "JM-24",
+        "JM-25",
+        "JM-27"
+      ]
+    },
+    {
       "key": "privacy",
       "name": "개인정보·데이터 최소화",
       "count": 14,
@@ -600,26 +628,6 @@
         "AM-11",
         "JM-12",
         "JM-13"
-      ]
-    },
-    {
-      "key": "ml_training",
-      "name": "모델 학습(QLoRA)",
-      "count": 13,
-      "entries": [
-        "JM-03",
-        "JM-05",
-        "JM-07",
-        "JM-11",
-        "JM-13",
-        "JM-14",
-        "JM-17",
-        "JM-18",
-        "JM-20",
-        "JM-21",
-        "JM-22",
-        "JM-24",
-        "JM-25"
       ]
     },
     {
@@ -678,6 +686,39 @@
       ]
     },
     {
+      "key": "llm_security",
+      "name": "LLM 보안",
+      "count": 10,
+      "entries": [
+        "EL-02",
+        "AM-11",
+        "AM-12",
+        "JM-01",
+        "JM-12",
+        "JM-15",
+        "JM-22",
+        "JM-26",
+        "JM-27",
+        "UX-03"
+      ]
+    },
+    {
+      "key": "calibration",
+      "name": "확신도 보정·판단 보류",
+      "count": 9,
+      "entries": [
+        "JM-06",
+        "JM-07",
+        "JM-08",
+        "JM-14",
+        "JM-17",
+        "JM-18",
+        "JM-20",
+        "JM-21",
+        "JM-26"
+      ]
+    },
+    {
       "key": "mlops_infra",
       "name": "GPU·학습 인프라",
       "count": 9,
@@ -705,36 +746,6 @@
         "AM-04",
         "JM-15",
         "JM-16",
-        "UX-03"
-      ]
-    },
-    {
-      "key": "calibration",
-      "name": "확신도 보정·판단 보류",
-      "count": 8,
-      "entries": [
-        "JM-06",
-        "JM-07",
-        "JM-08",
-        "JM-14",
-        "JM-17",
-        "JM-18",
-        "JM-20",
-        "JM-21"
-      ]
-    },
-    {
-      "key": "llm_security",
-      "name": "LLM 보안",
-      "count": 8,
-      "entries": [
-        "EL-02",
-        "AM-11",
-        "AM-12",
-        "JM-01",
-        "JM-12",
-        "JM-15",
-        "JM-22",
         "UX-03"
       ]
     },
@@ -769,13 +780,14 @@
     {
       "key": "statistics",
       "name": "통계적 검증",
-      "count": 5,
+      "count": 6,
       "entries": [
         "JM-07",
         "JM-08",
         "JM-12",
         "JM-18",
-        "JM-25"
+        "JM-25",
+        "JM-26"
       ]
     },
     {
@@ -801,7 +813,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 33,
+      "count": 35,
       "entries": [
         "EL-02",
         "EL-04",
@@ -835,7 +847,26 @@
         "JM-23",
         "JM-24",
         "JM-25",
+        "JM-26",
+        "JM-27",
         "UX-06"
+      ]
+    },
+    {
+      "name": "JEV-9B",
+      "count": 11,
+      "entries": [
+        "JM-17",
+        "JM-18",
+        "JM-19",
+        "JM-20",
+        "JM-21",
+        "JM-22",
+        "JM-23",
+        "JM-24",
+        "JM-25",
+        "JM-26",
+        "JM-27"
       ]
     },
     {
@@ -857,7 +888,7 @@
     },
     {
       "name": "Qwen3-4B-Instruct-2507",
-      "count": 10,
+      "count": 11,
       "entries": [
         "JM-15",
         "JM-17",
@@ -868,7 +899,8 @@
         "JM-22",
         "JM-23",
         "JM-24",
-        "JM-25"
+        "JM-25",
+        "JM-26"
       ]
     },
     {
@@ -888,23 +920,23 @@
       ]
     },
     {
-      "name": "JEV-9B",
+      "name": "R-Judge",
       "count": 9,
       "entries": [
+        "JM-15",
         "JM-17",
         "JM-18",
-        "JM-19",
-        "JM-20",
         "JM-21",
         "JM-22",
-        "JM-23",
         "JM-24",
-        "JM-25"
+        "JM-25",
+        "JM-26",
+        "JM-27"
       ]
     },
     {
       "name": "vast.ai",
-      "count": 8,
+      "count": 9,
       "entries": [
         "JM-16",
         "JM-17",
@@ -913,7 +945,21 @@
         "JM-21",
         "JM-22",
         "JM-24",
-        "JM-25"
+        "JM-25",
+        "JM-26"
+      ]
+    },
+    {
+      "name": "ASSEBench",
+      "count": 7,
+      "entries": [
+        "JM-15",
+        "JM-17",
+        "JM-21",
+        "JM-22",
+        "JM-24",
+        "JM-25",
+        "JM-26"
       ]
     },
     {
@@ -940,31 +986,6 @@
         "EL-16",
         "EL-18",
         "JM-04"
-      ]
-    },
-    {
-      "name": "R-Judge",
-      "count": 7,
-      "entries": [
-        "JM-15",
-        "JM-17",
-        "JM-18",
-        "JM-21",
-        "JM-22",
-        "JM-24",
-        "JM-25"
-      ]
-    },
-    {
-      "name": "ASSEBench",
-      "count": 6,
-      "entries": [
-        "JM-15",
-        "JM-17",
-        "JM-21",
-        "JM-22",
-        "JM-24",
-        "JM-25"
       ]
     },
     {
@@ -1238,6 +1259,14 @@
       ]
     },
     {
+      "name": "Hugging Face",
+      "count": 2,
+      "entries": [
+        "JM-02",
+        "JM-27"
+      ]
+    },
+    {
       "name": "k3d",
       "count": 2,
       "entries": [
@@ -1489,6 +1518,13 @@
       "count": 1,
       "entries": [
         "UX-05"
+      ]
+    },
+    {
+      "name": "ATBench",
+      "count": 1,
+      "entries": [
+        "JM-27"
       ]
     },
     {
@@ -1856,13 +1892,6 @@
       ]
     },
     {
-      "name": "Hugging Face",
-      "count": 1,
-      "entries": [
-        "JM-02"
-      ]
-    },
-    {
       "name": "in-toto / DSSE",
       "count": 1,
       "entries": [
@@ -2133,6 +2162,13 @@
       "count": 1,
       "entries": [
         "EL-03"
+      ]
+    },
+    {
+      "name": "Nemotron IPI",
+      "count": 1,
+      "entries": [
+        "JM-27"
       ]
     },
     {
@@ -2581,6 +2617,13 @@
       "count": 1,
       "entries": [
         "EL-13"
+      ]
+    },
+    {
+      "name": "StepGuard",
+      "count": 1,
+      "entries": [
+        "JM-27"
       ]
     },
     {
@@ -3579,6 +3622,30 @@
       ],
       "en": [
         "Traced a regression in both judge models to a training-data change through per-family error analysis, and switched the remaining training queue on a pre-set numeric rule to limit wasted GPU credit."
+      ]
+    },
+    {
+      "id": "JM-26",
+      "date": "2026-10-18",
+      "title": "외부 시험 오탐의 원인 찾기: 앙상블·문턱·재학습으로는 안 고쳐지고, 주입 문구를 무시한 정상 세션이 핵심",
+      "title_en": "Tracing the external false alarms: ensembles, cut-offs and retraining did not fix them; the core is safe sessions that ignored an injected instruction",
+      "ko": [
+        "외부 벤치마크 오탐 증가의 원인을 앙상블·문턱·재현 학습·하위 집합 분석으로 차례로 배제·확인해, 학습 데이터에 빠진 신호(무시된 프롬프트 주입)를 찾아냈다."
+      ],
+      "en": [
+        "Isolated the cause of rising external-benchmark false alarms by ruling out ensembling, threshold tuning and run-to-run noise in turn, and traced it to a missing training signal (injected instructions the agent ignored)."
+      ]
+    },
+    {
+      "id": "JM-27",
+      "date": "2026-10-18",
+      "title": "어떤 모델이 나와도 쓸 수 있는 학습 데이터셋: 공개 데이터 확보, 모델과 무관한 형식, 주입 짝 세션",
+      "title_en": "A training dataset any future model can use: public data acquisition, a model-agnostic format, and injection pair sessions",
+      "ko": [
+        "모델과 무관한 감사 세션 데이터셋 형식과 변환기를 설계해, 기존 학습 행과 바이트 단위로 같음을 테스트로 보장하면서 공개 데이터셋 4종과 구성 라벨 합성 세션을 오염 검사와 함께 통합했다."
+      ],
+      "en": [
+        "Designed a model-agnostic audit-session dataset format with exporters proven byte-identical to the existing training rows, and integrated four public datasets plus construction-labelled synthetic sessions with contamination checks."
       ]
     },
     {
@@ -6626,6 +6693,78 @@
       "source": "작업 메모"
     },
     {
+      "id": "JM-26",
+      "name": "R-Judge 안전 기록 오탐(JEV, 보류 없이)",
+      "before": "4회차 43, 5회차 77",
+      "after": "6회차 151, 7회차 153, 8회차 65",
+      "unit": "건(269건 중)",
+      "scope": "외부 시험",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-26",
+      "name": "R-Judge 안전·위험 줄 세우기(AUC)",
+      "before": "4회차 0.939, 5회차 0.917",
+      "after": "6회차 0.883, 7회차 0.878",
+      "unit": "AUC",
+      "scope": "JEV 판정 점수, 외부 시험 568건",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-26",
+      "name": "가장 좋은 앙상블의 오탐",
+      "before": "4회차 JEV 혼자 43(정답률 0.8715)",
+      "after": "4회차 JEV와 6회차 Qwen이 모두 위협일 때 35(0.875)",
+      "unit": "건(269건 중)",
+      "scope": "외부 시험",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-26",
+      "name": "같은 데이터 재학습의 흔들림",
+      "before": "5회차: 오탐 77, 처음 보는 위협 놓침 0",
+      "after": "재현: 오탐 116, 놓침 46",
+      "unit": "건",
+      "scope": "R-Judge 269 안전 / 합성 500세션",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-26",
+      "name": "오탐 중 '공격 문구를 무시한 정상 세션' 비율",
+      "before": "없음",
+      "after": "4회차 35/43, 5회차 70/77, 7회차 143/153, 8회차 58/65",
+      "unit": "건",
+      "scope": "R-Judge 안전 기록 중 공격 문구가 있는 214건",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-27",
+      "name": "받은 공개 데이터셋",
+      "before": "ASSEBench, R-Judge",
+      "after": "+ StepGuard 7,000, ATBench 1,000(+500), ATBench-Codex 500, 주입 환경 1,272",
+      "unit": "기록",
+      "scope": "PC",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-27",
+      "name": "R-Judge와 첫 메시지가 같은 기록",
+      "before": "없음",
+      "after": "0",
+      "unit": "건",
+      "scope": "새로 받은 5개 데이터셋",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-27",
+      "name": "감사 데이터셋 표본 빌드",
+      "before": "없음",
+      "after": "2,250 레코드(학습 2,100 / 검증 60 / 시험 90), 대화 학습 행 3,206",
+      "unit": "레코드",
+      "scope": "7회차 분할, 설계 시나리오만",
+      "source": "작업 메모"
+    },
+    {
       "id": "UX-01",
       "name": "탭당 시간당 자동 조회 횟수",
       "before": "720",
@@ -7408,6 +7547,18 @@
       "decided_by": "ai_agent"
     },
     {
+      "id": "JM-26",
+      "what": "앙상블과 외부 문턱은 채택하지 않았다. 합성 행을 절반으로 줄인 7회차(r7t)와 5회차 재현(r5rep)을 대기열에 넣고, R-Judge 정상 세션을 종류별로 나눠 오탐이 몰린 곳을 찾았다.",
+      "why": "출력 후처리로는 고쳐지지 않았고, 데이터 가설과 우연의 크기를 같은 시험에서 재야 다음 데이터를 정할 수 있었기 때문이다.",
+      "decided_by": "ai_agent"
+    },
+    {
+      "id": "JM-27",
+      "what": "StepGuard(학습), ATBench와 ATBench-Codex(외부 시험), NVIDIA 간접 주입 환경(짝 세션 생성)을 받고, 모든 세션을 evidscope.audit-session/1 레코드로 모으는 형식과 변환기·채점기를 만들었다. 이미 준비된 회차에 공개 데이터를 더하는 extend 명령으로 r7d를 만들었다.",
+      "why": "빠진 학습 신호를 오염 없이 주고, 데이터를 특정 모델에 묶지 않기 위해서다.",
+      "decided_by": "joint"
+    },
+    {
       "id": "UX-01",
       "what": "자동 조회를 용도별 4단계 주기로 나누고, 응답이 끝난 뒤 다음 타이머를 시작하며, 실패 시 지수 백오프와 401/403 즉시 중단, 숨긴 탭·일시정지·화면 이탈·로그아웃에서는 조회를 멈추고 늦은 응답을 버린다.",
       "why": "감사 화면이 조회 자체로 감사 기록을 부풀리지 않게 하고, 실패·지연 상태를 정직하게 보여 주기 위해",
@@ -8104,6 +8255,30 @@
     {
       "id": "JM-25",
       "text": "판단 기준(유지·교체)을 결과를 보기 전에 숫자로 정해 두면 결정이 흔들리지 않는다."
+    },
+    {
+      "id": "JM-26",
+      "text": "같은 데이터로 다시 학습해도 결과가 크게 흔들린다. 한 번의 비교로 이겼다고 말하려면 그 흔들림보다 큰 차이가 필요하다."
+    },
+    {
+      "id": "JM-26",
+      "text": "오탐이 어떤 기록에 몰렸는지 나눠 보면, 모델을 고치는 것보다 데이터에 빠진 신호를 찾는 쪽이 빠르다."
+    },
+    {
+      "id": "JM-26",
+      "text": "판정자들의 오탐이 서로 포함 관계면 앙상블은 거의 도움이 안 된다."
+    },
+    {
+      "id": "JM-27",
+      "text": "데이터를 모델의 프롬프트 형식과 분리해 두면, 모델을 바꿔도 같은 데이터와 같은 채점기로 비교할 수 있다."
+    },
+    {
+      "id": "JM-27",
+      "text": "외부 시험을 지키려면 개별 기록 중복 검사만으로는 부족하고, 그 시험의 원천 데이터셋 계열을 통째로 빼야 한다."
+    },
+    {
+      "id": "JM-27",
+      "text": "라벨을 누가 정했는지(구성, 세트 라벨, 사람 확인)를 레코드마다 남겨야 나중에 데이터를 골라 쓸 수 있다."
     },
     {
       "id": "UX-01",
@@ -8950,6 +9125,22 @@
     {
       "id": "JM-25",
       "text": "ASSEBench 안전 기록 안의 정상·위협 비율이 판정자의 기울기를 설명할까?"
+    },
+    {
+      "id": "JM-26",
+      "text": "'공격 문구를 무시한 정상 세션'을 학습에 넣으면, 우리 합성 위협(주입 뒤 행동)을 놓치는 쪽으로 기울지는 않을까?"
+    },
+    {
+      "id": "JM-26",
+      "text": "Qwen의 판정 점수는 다른 에이전트 기록을 거의 줄 세우지 못하는데(AUC 0.42~0.58), 이것도 같은 원인일까?"
+    },
+    {
+      "id": "JM-27",
+      "text": "주입 짝 세션이 외부 오탐을 줄이면서 우리 합성 위협을 놓치게 만들지는 않을까?"
+    },
+    {
+      "id": "JM-27",
+      "text": "한국어 에이전트 안전 궤적 데이터가 없는데, AI기본법·ISMS-P 관점의 라벨은 어디서 얻을까?"
     },
     {
       "id": "UX-01",

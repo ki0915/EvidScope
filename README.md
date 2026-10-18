@@ -32,7 +32,7 @@
 
 ## 포트폴리오 소개: 로컬 모델의 실패에서 판정 오케스트라까지
 
-EvidScope는 AI 코딩 에이전트가 실제로 한 행동을 실시간으로 받아 위험을 탐지하고, 운영자도 몰래 바꿀 수 없는 서명 원장에 남겨 ISMS-P·인공지능기본법·EU AI Act 검토 증거로 쓰게 하는 AI 거버넌스·보안 감사 도구입니다. 아래는 판정 모델을 만들며 부딪힌 문제와 푼 방법, 그리고 화면을 고쳐 온 과정입니다. 업데이트마다 무엇이 바뀌었고 어떤 문제를 어떻게 고민해 풀었는지는 [개발 기록](docs/dev-log/README.md)(항목 73개, 대안·결정 주체·지표 출처·면접 질문 포함)에, 다시 생각해 볼 질문은 [회고 노트](docs/dev-log/reflection.md)에, 이력서·면접 준비용 요약은 [포트폴리오 컨텍스트](docs/portfolio-context.ko.md)에 있습니다. 이력서 도구나 경력 분석 엔진은 같은 내용을 [career-profile.json](docs/dev-log/career-profile.json)과 [entries.jsonl](docs/dev-log/entries.jsonl)에서 구조화된 데이터로 읽을 수 있습니다.
+EvidScope는 AI 코딩 에이전트가 실제로 한 행동을 실시간으로 받아 위험을 탐지하고, 운영자도 몰래 바꿀 수 없는 서명 원장에 남겨 ISMS-P·인공지능기본법·EU AI Act 검토 증거로 쓰게 하는 AI 거버넌스·보안 감사 도구입니다. 아래는 판정 모델을 만들며 부딪힌 문제와 푼 방법, 그리고 화면을 고쳐 온 과정입니다. 업데이트마다 무엇이 바뀌었고 어떤 문제를 어떻게 고민해 풀었는지는 [개발 기록](docs/dev-log/README.md)(항목 75개, 대안·결정 주체·지표 출처·면접 질문 포함)에, 다시 생각해 볼 질문은 [회고 노트](docs/dev-log/reflection.md)에, 이력서·면접 준비용 요약은 [포트폴리오 컨텍스트](docs/portfolio-context.ko.md)에 있습니다. 이력서 도구나 경력 분석 엔진은 같은 내용을 [career-profile.json](docs/dev-log/career-profile.json)과 [entries.jsonl](docs/dev-log/entries.jsonl)에서 구조화된 데이터로 읽을 수 있습니다.
 
 ### 1. 보안 때문에 로컬 모델을 골랐다
 
