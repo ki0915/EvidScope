@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The audit dataset builder (src/audit-dataset.mjs): one records file any model can be trained or tested from.
 //   node scripts/audit-dataset.mjs build --out DIR [--fold r7 | --held a,b --val c,d] [--per-threat 30] [--per-benign 30]
-//     [--public set=FILE ...] [--public-test 'set:family|...'] [--public-val 'set:family|...'] [--test-sets a,b] [--rjudge FILE]
+//     [--public set[:part]=FILE ...] [--public-test 'set:family|...'] [--public-val 'set:family|...'] [--test-sets a,b] [--rjudge FILE]
 //   node scripts/audit-dataset.mjs export --in DIR --format chat|classification|pairs --split train|validation|test --out FILE
 //     [--mask-share 0.3] [--strip-share 0.3]
 //   node scripts/audit-dataset.mjs score --in DIR --answers FILE [--split test]
@@ -58,11 +58,14 @@ if (cmd === 'build') {
   const testSets = new Set(list(opt('--test-sets'))), ids = new Set(records.map(r => r.id));
   const rjudge = opt('--rjudge') ? externalRecords('rjudge', readFileSync(opt('--rjudge'), 'utf8')).records : [];
   for (const spec of all('--public')) {
-    const [set, file] = [spec.slice(0, spec.indexOf('=')), spec.slice(spec.indexOf('=') + 1)];
+    // set:part=FILE names one part of a set (ASSEBench's safety file): its ids become set:part-<id>, as the round builder does.
+    const [name, file] = [spec.slice(0, spec.indexOf('=')), spec.slice(spec.indexOf('=') + 1)];
+    const [set, part] = name.split(':');
     if (!EXTERNAL_SETS[set]) fail('unknown public set ' + set);
     if (set === 'rjudge') fail('pass R-Judge with --rjudge; it is test-only');
     const text = readFileSync(file, 'utf8');
-    const {records: rs, skipped} = externalRecords(set, text);
+    const read = externalRecords(set, text), skipped = read.skipped;
+    const rs = part ? read.records.map(r => ({...r, id: r.id.replace(`${set}:`, `${set}:${part}-`)})) : read.records;
     const overlap = rjudge.length ? externalOverlap(rs, rjudge) : new Set();
     const testOnly = EXTERNAL_SETS[set].use === 'external test only' || testSets.has(set);
     let kept = 0, repeated = 0;
@@ -73,8 +76,8 @@ if (cmd === 'build') {
       const split = testOnly || testFams.has(r.family) ? 'test' : valFams.has(r.family) ? 'validation' : 'train';
       records.push(publicRecord(r, {split, fold: foldName})); kept++;
     }
-    let key = set;
-    for (let n = 2; report.public[key]; n++) key = `${set}#${n}`;
+    let key = name;
+    for (let n = 2; report.public[key]; n++) key = `${name}#${n}`;
     report.public[key] = {fileSha256: sha(text), records: rs.length, skipped, rjudgeOverlapDropped: overlap.size, repeated, kept,
       test: testOnly};
   }

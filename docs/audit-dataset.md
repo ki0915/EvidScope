@@ -76,7 +76,8 @@ node scripts/judge-round.mjs score --dir 새회차 [...] --public-test atbench=t
 
 ```
 node scripts/audit-dataset.mjs build --out DIR --fold r7 --per-threat 30 --per-benign 30 \
-  --public assebench=AgentJudge-security.json --public-test 'assebench:Legal, Compliance & Audit|…' \
+  --public assebench=AgentJudge-security.json --public assebench:safety=AgentJudge-safety.json \
+  --public-test 'assebench:Legal, Compliance & Audit|…' \
   --public stepguard=sft.jsonl --public stepguard=rl.jsonl --public ipi-pairs=envs.jsonl \
   --public atbench=test.json --public atbench-codex=codex.json --test-sets atbench --rjudge data.csv
 node scripts/audit-dataset.mjs export --in DIR --format chat --split train --out train.jsonl --mask-share 0.3 --strip-share 0.3
