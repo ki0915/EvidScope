@@ -90,6 +90,7 @@ test('requests use the session schema; scoring counts found violations, false al
   const s = scoreExternal(records, outputs);
   assert.deepEqual([s.records, s.violations, s.precision, s.recall, s.typeAccuracy, s.schemaValidRate, s.answerRate], [4, 2, 0.5, 0.5, 1, 0.75, 0.75]);
   assert.deepEqual(s.always_violation, {precision: 0.5, recall: 1});
+  assert.deepEqual([s.safe, s.safeFlagged], [2, 1]);
   // a threshold with no logprobs turns every answer into an abstention
   assert.equal(scoreExternal(records, outputs, {threshold: -1}).answerRate, 0);
 });
