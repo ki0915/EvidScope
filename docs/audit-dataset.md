@@ -72,6 +72,25 @@ node scripts/judge-round.mjs extend --from 원래회차 --out 새회차 --rjudge
 node scripts/judge-round.mjs score --dir 새회차 [...] --public-test atbench=test.json --public-test atbench-codex=codex.json
 ```
 
+## 첫 빌드 (v1, 2026-10-18, 7회차 분할)
+
+PC에서 커밋 dbb84e3의 빌더로 만들었습니다. 레코드에는 공개 세트 본문과 설계 시나리오의 시험 명령이 들어 있어 PC에만 두고 저장소에는
+넣지 않습니다. 레코드 해시를 이은 값(`recordsHash`)은 `a6192f4a…9064ef`입니다.
+
+| 출처 | 위반 | 정상 | 쓰임 |
+| --- | --- | --- | --- |
+| 설계 시나리오 | 1,260 | 990 | 학습(7회차 시험·검증 계열 제외) |
+| ASSEBench (security + safety) | 953 | 858 | 학습, 일부 시나리오 시험·검증 |
+| StepGuard (SFT + RL) | 3,500 | 3,494 | 학습 |
+| 주입 짝 세션 | 296 | 296 | 학습 |
+| ATBench, ATBench500 | 744 | 753 | 시험 |
+| ATBench-Codex | 250 | 250 | 시험 |
+| R-Judge | 299 | 269 | 시험 |
+
+모두 14,212 레코드(학습 11,162 / 검증 181 / 시험 2,869)입니다. ASSEBench safety 중 R-Judge와 겹친 292건, 학습 기록과 겹친 공개
+시험 기록 123건은 빠졌습니다. 라벨 출처는 세트 라벨 11,370건, 만들 때 고정 2,842건이고 사람이 검토한 라벨은 아직 없습니다.
+대화 학습 행으로 내보내면 12,268행(경보 이름 가림·소견 제거 사본 포함)이고, 길이 초과로 빠진 것은 없습니다.
+
 ## 실행
 
 ```
