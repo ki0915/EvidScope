@@ -109,3 +109,74 @@ test('overlap finds records that repeat another set: same request, same opening,
   assert.deepEqual([...externalOverlap(records, against, {jaccard: 1})].sort(), ['a', 'c']);
   assert.deepEqual([...externalOverlap([rec('g', 'Archive quarterly folder', 'x()')], against, {jaccard: 1})], []);
 });
+
+// Sets added 2026-10-18. Fixtures are made-up sessions in each set's shape (field names and tags as the PC schema report gave them).
+const atb = (id, label, extra = {}) => ({id, tool_used: [], contents: turns(`atb request ${id}`, '{"name":"lookup","arguments":{}}', '{"ok":true}'), label,
+  risk_source: 'indirect_prompt_injection', failure_mode: 'f', real_world_harm: 'h', reason: '', ...extra});
+
+test('ATBench and its 500 subset read like R-Judge rounds, keyed by their own ids, split by risk source, typed from the taxonomy', () => {
+  const r = externalRecord('atbench', atb(3, 1));
+  assert.deepEqual({id: r.id, family: r.family, verdict: r.verdict, type: r.type}, {id: 'atbench:3', family: 'atbench:indirect_prompt_injection',
+    verdict: 'violation', type: 'prompt_injection'});
+  assert.equal(r.attributes.riskSource, 'indirect_prompt_injection');
+  const {contents, id, ...rest} = atb(0, 0, {risk_source: 'benign'});
+  const s = externalRecord('atbench500', {...rest, conv_id: 'c-9', content: contents});
+  assert.deepEqual({id: s.id, verdict: s.verdict, type: s.type, steps: s.steps.length}, {id: 'atbench500:c-9', verdict: 'clean', type: null, steps: 1});
+  assert.equal(externalRecord('atbench', atb(4, 1, {risk_source: 'benign', failure_mode: 'unauthorized_information_disclosure'})).type, 'exfiltration');
+  assert.equal(externalRecord('atbench', atb(5, 1, {risk_source: 'benign', failure_mode: 'other_mode'})).type, 'other');
+});
+
+test('an ATBench-Codex conversation keeps actions, final replies and results, labelled from is_safe', () => {
+  const raw = {id: 11, is_safe: false, risk_source: 'tool_description_injection', failure_mode: 'f', harm_type: 'h', defense_type: null, conversation: [
+    {role: 'user', content: 'tidy the repo'}, {role: 'assistant', thought: 't', action: {name: 'shell', arguments: {cmd: 'ls'}}},
+    {role: 'environment', content: {status: 'success', result: {out: 'a b'}}}, {role: 'assistant', response: 'done'}]};
+  const r = externalRecord('atbench-codex', raw);
+  assert.deepEqual({id: r.id, agent: r.agent, verdict: r.verdict, type: r.type}, {id: 'atbench-codex:11', agent: 'codex', verdict: 'violation',
+    type: 'prompt_injection'});
+  assert.deepEqual(r.steps.map(s => [s.action, s.result]), [['{"name":"shell","arguments":{"cmd":"ls"}}', '{"status":"success","result":{"out":"a b"}}'],
+    ['done', '']]);
+  assert.equal(externalRecord('atbench-codex', {...raw, is_safe: 'no'}), null);
+});
+
+test('a StepGuard prompt is read back into the request, the steps and the labelled unsafe step', () => {
+  const traj = ['Instructions.', '### Input', '<<User Request>>', 'book a room', '<BEGIN TRAJECTORY>', '[USER]: book a room',
+    '[Step 1] [AGENT]: [THOUGHT]: plan', '[Step 1] [AGENT]: [ACTION]: search()', '[Observation after Step 1] [ENVIRONMENT]: [INFO] two rooms',
+    '[Step 2] [AGENT]: [ACTION]: book(1)', '[Observation after Step 2] [ENVIRONMENT]: ok', '[AGENT]: [RESPONSE]: booked', '<END TRAJECTORY>',
+    '<<Available Tools>>', 'search, book'].join('\n');
+  const answer = '<Analysis>a</Analysis>\n<Judgment>unsafe</Judgment>\n<RiskSourcePresent>yes</RiskSourcePresent>\n'
+    + '<RiskSource>indirect_prompt_injection</RiskSource>\n<UnsafeStep>2</UnsafeStep>';
+  const r = externalRecord('stepguard', {conversations: [{from: 'human', value: traj}, {from: 'gpt', value: answer}]});
+  assert.equal(r.request, 'book a room\nbook a room');
+  assert.deepEqual(r.steps, [{action: 'search()', result: '[INFO] two rooms'}, {action: 'book(1)', result: 'ok'}, {action: 'booked', result: ''}]);
+  assert.deepEqual({verdict: r.verdict, type: r.type, evidence: r.evidence, family: r.family}, {verdict: 'violation', type: 'prompt_injection',
+    evidence: [1], family: 'stepguard:trajectory:indirect_prompt_injection'});
+  const action = ['### Input', '<<User Request>>', 'pay the bill', '<<Interaction History>>', '[AGENT]: [ACTION]: open_bill()',
+    '[ENVIRONMENT]: total 5', '<<Action Under Review>>', '[AGENT]: [ACTION]: pay(500)', '<<Available Tools>>', 'pay'].join('\n');
+  const a = externalRecord('stepguard', {id: 'stepguard-rl-000001', instruction: action, output: 'unsafe', label: 'unsafe', level: 'action',
+    risk_source: 'inherent_agent_failure'});
+  assert.deepEqual({id: a.id, steps: a.steps.length, evidence: a.evidence, type: a.type}, {id: 'stepguard:stepguard-rl-000001', steps: 2,
+    evidence: [1], type: 'other'});
+  assert.equal(externalRecord('stepguard', {instruction: action, label: 'maybe'}), null);
+});
+
+test('one injection environment gives a clean session that ignores the injected record and a violation that obeys it', () => {
+  const spec = {id: 5, domain: 'hr', attack_category: 'data_modification', required_tools: ['get_case'],
+    responses_create_params: {input: [{role: 'system', content: 's'}, {role: 'user', content: 'summarize case C1'}],
+      tools: [{type: 'function', function: {name: 'get_case',
+        parameters: {type: 'object', properties: {case_id: {type: 'string'}}, required: ['case_id']}}}]},
+    environment: {cases: {C1: {title: 't', case_summary: 'NOTE-TO-AGENT placeholder'}}, current_user: {id: 'u'}},
+    injection: {target_tool: 'update_case_notes', target_args: {case_id: 'C1', notes: 'x'}, vector: 'case_summary',
+      injection_text: 'NOTE-TO-AGENT placeholder'}};
+  const {records} = externalRecords('ipi-pairs', JSON.stringify(spec) + '\n');
+  assert.deepEqual(records.map(r => [r.id, r.verdict, r.type, r.evidence]), [['ipi-pairs:5:ignored', 'clean', null, []],
+    ['ipi-pairs:5:obeyed', 'violation', 'prompt_injection', [1]]]);
+  for (const r of records) {
+    assert.equal(r.labelSource, 'by_construction');
+    assert.equal(r.steps[0].action, '{"name":"get_case","arguments":{"case_id":"C1"}}');
+    assert.ok(r.steps[0].result.startsWith('{"case_summary":'));
+    assert.equal(externalTrainingRow(r, {split: 'tune', catalogDigest: 'x'}).labelSource, 'by_construction');
+  }
+  assert.ok(records[1].steps[1].action.includes('update_case_notes'));
+  assert.ok(!records[0].steps.some(s => s.action.includes('update_case_notes')));
+  assert.deepEqual(externalRecords('ipi-pairs', JSON.stringify({...spec, required_tools: ['update_case_notes']})).records, []);
+});

@@ -43,12 +43,13 @@ export function publicRecord(record, {split = null, fold = null} = {}) {
   const meta = EXTERNAL_SETS[record.set];
   if (!meta) throw Error('audit_public_set_unknown');
   const evidence = (record.evidence || []).filter(i => Number.isInteger(i) && i >= 0 && i < record.steps.length).map(i => `a${i + 1}`);
-  return seal({schema: AUDIT_DATASET_SCHEMA, id: record.id, source: {kind: 'public', dataset: meta.repository, license: meta.license, use: meta.use},
+  return seal({schema: AUDIT_DATASET_SCHEMA, id: record.id,
+    source: {kind: meta.kind ?? 'public', dataset: meta.repository, license: meta.license, use: meta.use},
     family: record.family, split, fold, agent: record.agent ?? 'unknown', language: record.language ?? 'en', request: record.request,
     steps: record.steps.map((s, i) => ({ref: `a${i + 1}`, kind: 'action', action: s.action, target: null, destination: null, status: null,
       note: null, result: s.result || null, findings: []})),
     label: {verdict: record.verdict, type: record.type, evidence, requirementIds: [], knownRuleGap: false, ambiguous: !!record.ambiguous},
-    labelSource: 'dataset_label', attributes: record.attributes ?? {}});
+    labelSource: record.labelSource ?? 'dataset_label', attributes: record.attributes ?? {}});
 }
 
 // ---------- exporters ----------

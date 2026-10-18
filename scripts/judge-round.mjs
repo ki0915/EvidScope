@@ -5,7 +5,10 @@
 //     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F [--safety-repeat N]] [--rjudge F]
 //     [--allow-ungated] [--tune-keep x]
 //     [--probes F] [--shakedown]
+//   node scripts/judge-round.mjs extend --from DIR --out DIR --rjudge F [--public-train set=F ...] [--public-test set=F ...] [--public-max set=N]
+//     준비된 회차를 복사하고 공개 세트 학습 행과 시험 요청(in/requests/public-<세트>.jsonl)을 더한다(src/round-extend.mjs). 결과는 비우고 시작한다.
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
+//     [--public-test set=F ...]                       extend로 더한 공개 시험도 채점한다
 //   node scripts/judge-round.mjs orchestra --dir DIR [--first jev-cand] [--second qwen-cand] [--raw]   두 판정자를 잇는 오케스트라
 //     (src/judge-orchestra.mjs)를 기록된 출력으로 끝까지 돌려 DIR/orchestra.json에 쓴다. 기본은 각 판정자의 검증 세트 문턱, --raw는 문턱 없이.
 //   node scripts/judge-round.mjs folds --dirs A,B,C [--judges jev-cand,qwen-cand] [--out F]   빼는 유형을 바꿔 돌린 회차들의 summary.json·
@@ -26,6 +29,7 @@ import {scoreOrchestra} from '../src/judge-orchestra.mjs';
 import {summarizeFolds} from '../src/judge-folds.mjs';
 import {externalOverlap, externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
   from '../src/external-agent-sets.mjs';
+import {extendRound} from '../src/round-extend.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -34,6 +38,15 @@ const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[
 const list = v => (v ? v.split(',').map(x => x.trim()).filter(Boolean) : []);
 // 공개 세트의 시나리오 이름에는 쉼표가 있어(예: "Legal, Compliance & Audit") '|'로 나눈다.
 const families = v => (v ? v.split('|').map(x => x.trim()).filter(Boolean) : []);
+const all = name => args.flatMap((a, i) => (a === name ? [args[i + 1]] : []));
+const setFile = spec => [spec.slice(0, spec.indexOf('=')), spec.slice(spec.indexOf('=') + 1)];
+const fileHashes = dir => {
+  const files = {};
+  const walk = d => readdirSync(d, {withFileTypes: true}).forEach(e => (e.isDirectory() ? walk(join(d, e.name))
+    : files[join(d, e.name).slice(dir.length + 1).replaceAll('\\', '/')] = sha(readFileSync(join(d, e.name)))));
+  walk(dir);
+  return files;
+};
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const readJson = f => JSON.parse(readFileSync(f, 'utf8'));
 const rules = loadRules(opt('--rules', join(root, 'data/risk-rules/ai-agent-baseline.json')));
@@ -142,16 +155,43 @@ if (cmd === 'prepare') {
     put('probes.strip', sessionRequestLines(probes.scenarios, rules, {stripFindings: true}), probes.scenarios.length);
   }
   copyFileSync(opt('--qwen-lock'), join(out, 'in', 'qwen-artifact-lock.json'));
-  const files = {};
-  const walk = dir => readdirSync(dir, {withFileTypes: true}).forEach(e => (e.isDirectory() ? walk(join(dir, e.name))
-    : files[join(dir, e.name).slice(join(out, 'in').length + 1).replaceAll('\\', '/')] = sha(readFileSync(join(dir, e.name)))));
-  walk(join(out, 'in'));
+  const files = fileHashes(join(out, 'in'));
   const manifest = {runMode, held, val, catalogDigest, counts, families: set.families, duplicatesDropped: set.duplicatesDropped,
     unseenGate: {counts: sessionCounts(unseenCatalog.scenarios, rules), shortfall},
     variants: {scenarios: variants.scenarios.length, dropped: variants.dropped}, external, requests, files};
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', {flag: 'wx'});
   console.log(JSON.stringify({...manifest, files: Object.keys(files).length,
     meetsTrainerMinimums: runMode === 'shakedown' || (counts.tune >= 300 && counts.validation >= 50)}, null, 2));
+} else if (cmd === 'extend') {
+  const from = opt('--from'), out = opt('--out');
+  if (!from || !out || !opt('--rjudge')) fail('extend needs --from DIR --out DIR --rjudge F');
+  if (existsSync(out)) fail('output directory exists: ' + out);
+  const base = readJson(join(from, 'manifest.json'));
+  const read = spec => { const [set, file] = setFile(spec); return {set, file, text: readFileSync(file, 'utf8')}; };
+  const train = all('--public-train').map(read), test = all('--public-test').map(read);
+  const max = Object.fromEntries(all('--public-max').map(spec => { const [set, n] = setFile(spec); return [set, Number(n)]; }));
+  const rjudgeBytes = readFileSync(opt('--rjudge'));
+  const existingRows = readFileSync(join(from, 'in', 'train.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
+  const {rows, requests, report} = extendRound({train, test, rjudge: externalRecords('rjudge', rjudgeBytes.toString('utf8')).records, existingRows,
+    catalogDigest: base.catalogDigest, runMode: base.runMode, max});
+  mkdirSync(join(out, 'in', 'requests'), {recursive: true});
+  for (const f of ['variants.json', 'val.json', 'unseen.json', 'probes.json']) if (existsSync(join(from, f))) copyFileSync(join(from, f), join(out, f));
+  for (const f of readdirSync(join(from, 'in', 'requests'))) copyFileSync(join(from, 'in', 'requests', f), join(out, 'in', 'requests', f));
+  copyFileSync(join(from, 'in', 'qwen-artifact-lock.json'), join(out, 'in', 'qwen-artifact-lock.json'));
+  writeFileSync(join(out, 'in', 'train.jsonl'), [...existingRows, ...rows].map(r => JSON.stringify(r)).join('\n') + '\n', {flag: 'wx'});
+  const added = {};
+  for (const [name, text] of Object.entries(requests)) {
+    writeFileSync(join(out, 'in', 'requests', `${name}.jsonl`), text, {flag: 'wx'});
+    added[name] = text.split('\n').filter(Boolean).length;
+  }
+  for (const s of [...train, ...test]) (report[train.includes(s) ? 'train' : 'test'][s.set].sha256 = sha(s.text));
+  const manifest = {...base, counts: {...base.counts, tune: base.counts.tune + rows.length, external: (base.counts.external ?? 0) + rows.length},
+    extendedFrom: {dir: from.split(/[\\/]/).filter(Boolean).pop(), manifestSha256: sha(readFileSync(join(from, 'manifest.json'))),
+      trainRows: existingRows.length}, publicAdditions: {...report, rjudgeSha256: sha(rjudgeBytes), max},
+    requests: {...base.requests, ...added}, files: fileHashes(join(out, 'in'))};
+  writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', {flag: 'wx'});
+  console.log(JSON.stringify({extendedFrom: manifest.extendedFrom, counts: manifest.counts, publicAdditions: manifest.publicAdditions, requests: added,
+    files: Object.keys(manifest.files).length}, null, 2));
 } else if (cmd === 'score') {
   const dir = opt('--dir');
   if (!dir) fail('score needs --dir DIR');
@@ -217,10 +257,22 @@ if (cmd === 'prepare') {
       j.sets[name] = {model: scoreExternal(records, r.outputs, {logprobs: r.logprobs, threshold: extThreshold}),
         model_without_abstain: scoreExternal(records, r.outputs, {logprobs: r.logprobs})};
     }
+    // extend로 더한 공개 시험: 요청 파일에 실린 기록만(학습에 더한 기록과 겹친 것은 빠져 있다).
+    for (const spec of all('--public-test')) {
+      const [set, file] = setFile(spec), name = `public-${set}`, r = result(judge, name);
+      const requested = join(dir, 'in', 'requests', `${name}.jsonl`);
+      if (!r || !existsSync(requested)) continue;
+      const ids = new Set(readFileSync(requested, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l).id));
+      const records = externalFor(set, file, null).filter(x => ids.has(x.id));
+      j.sets[name] = {records: records.length, model: scoreExternal(records, r.outputs, {logprobs: r.logprobs, threshold: extThreshold}),
+        model_without_abstain: scoreExternal(records, r.outputs, {logprobs: r.logprobs})};
+    }
   }
   writeFileSync(join(dir, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
   console.log(JSON.stringify(Object.fromEntries(Object.entries(summary.judges).map(([k, v]) => [k, {gate: v.gate,
-    unseen: v.sets.unseen?.model, strip: v.sets['unseen.strip']?.model_without_abstain, rjudge: v.sets.rjudge?.model_without_abstain}])), null, 2));
+    unseen: v.sets.unseen?.model, strip: v.sets['unseen.strip']?.model_without_abstain, rjudge: v.sets.rjudge?.model_without_abstain,
+    ...Object.fromEntries(Object.entries(v.sets).filter(([k]) => k.startsWith('public-')).map(([k, x]) => [k, x.model_without_abstain]))}])),
+  null, 2));
 } else if (cmd === 'orchestra') {
   const dir = opt('--dir');
   if (!dir) fail('orchestra needs --dir DIR');
@@ -264,8 +316,10 @@ if (cmd === 'prepare') {
   if (opt('--out')) writeFileSync(opt('--out'), JSON.stringify(out, null, 2) + '\n');
   console.log(JSON.stringify(out, null, 2));
 } else {
-  fail('usage: judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [...] | score --dir DIR [--assebench F --assebench-val a,b'
-    + ' --assebench-test c,d] [--assebench-safety F] [--rjudge F] | orchestra --dir DIR [--first J] [--second J] [--raw] | folds --dirs A,B,C');
+  fail('usage: judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [...] | extend --from DIR --out DIR --rjudge F'
+    + ' [--public-train set=F] [--public-test set=F] [--public-max set=N] | score --dir DIR [--assebench F --assebench-val a,b'
+    + ' --assebench-test c,d] [--assebench-safety F] [--rjudge F] [--public-test set=F] | orchestra --dir DIR [--first J] [--second J] [--raw]'
+    + ' | folds --dirs A,B,C');
 }
 
 // 공개 세트의 기권 문턱: 검증 기록에서 답한 판정 정확도가 0.99 이상인 가장 낮은 판정 점수(없으면 가장 정확한 점수). 우리 세션의

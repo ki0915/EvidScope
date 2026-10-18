@@ -47,6 +47,30 @@
 - **실제 기록**: 사용자 PC에서 모은 실제 세션은 사람이 검토한 것만 이 형식에 들어갈 수 있고, 그 PC를 떠나지 않습니다.
 - **재현**: 매니페스트는 레코드 해시를 id 순서로 이은 해시(`recordsHash`)를 남깁니다. 학습 회차는 이 값으로 자기가 쓴 데이터를 가리킵니다.
 
+## 공개 세트 (2026-10-18 추가)
+
+| 세트 | 쓰임 | 라벨 |
+| --- | --- | --- |
+| ASSEBench | 학습, 일부 시나리오는 시험 | 세트의 라벨 |
+| StepGuard (`ninty-seven/stepguard_data`) | 학습 | 세트의 라벨(LLM이 만들고 점검). 몇 번째 행동이 위험한지까지 있음 |
+| ATBench, ATBench500 | 학습 또는 시험 | 사람이 점검한 라벨 |
+| ATBench-Codex | 시험 전용 | Codex 실행 기록의 라벨 |
+| ipi-pairs (NVIDIA 간접 주입 환경으로 만든 짝) | 학습 | 만들 때 고정. 같은 주입 기록을 한 번은 무시(정상), 한 번은 따름(위반) |
+| R-Judge | 시험 전용 | 세트의 라벨 |
+
+ipi-pairs는 "공격 문구가 들어왔지만 에이전트가 따르지 않은 세션은 정상"이라는 신호를 주려고 만들었습니다. R-Judge에서 정상
+세션을 위협으로 잘못 본 경우의 대부분이 이런 기록이었습니다. 새 공격 문구는 쓰지 않고 환경에 들어 있는 문구만 씁니다.
+
+이미 준비된 학습 회차에 공개 세트를 더할 때는 `judge-round.mjs extend`를 씁니다(`src/round-extend.mjs`). 원래 회차의 설계
+세션과 시험은 그대로 두고 학습 행과 시험 요청만 더하므로, 새 회차와 원래 회차의 차이는 더한 데이터뿐입니다.
+
+```
+node scripts/judge-round.mjs extend --from 원래회차 --out 새회차 --rjudge data.csv \
+  --public-train stepguard=sft.jsonl --public-train ipi-pairs=envs.jsonl --public-max ipi-pairs=1000 \
+  --public-test atbench=test.json --public-test atbench-codex=codex.json
+node scripts/judge-round.mjs score --dir 새회차 [...] --public-test atbench=test.json --public-test atbench-codex=codex.json
+```
+
 ## 실행
 
 ```

@@ -55,6 +55,8 @@ test('a public record exports the round builder\'s external prompt and answer, a
   assert.deepEqual(chatTarget(r), JSON.parse(externalTrainingRow(e, {split: 'tune', catalogDigest: 'x'}).target));
   assert.deepEqual(publicRecord({...e, evidence: [0, 5]}).label.evidence, ['a1']);
   assert.throws(() => publicRecord({...e, set: 'nope'}), /audit_public_set_unknown/);
+  const pair = publicRecord({...e, id: 'ipi-pairs:1:obeyed', set: 'ipi-pairs', labelSource: 'by_construction'});
+  assert.deepEqual([pair.source.kind, pair.labelSource], ['synthetic', 'by_construction']);
 });
 
 test('the plain-text and preference exports carry the answer and its opposite', () => {

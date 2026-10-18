@@ -8,13 +8,30 @@
 // the files (the PC); this module sends nothing anywhere.
 import {createHash} from 'node:crypto';
 import {canonical} from './crypto.mjs';
+import {ipiPairs} from './ipi-pairs.mjs';
 import {SESSION_DECODING, SESSION_OUTPUT_SCHEMA, SESSION_ROLE_ID, SESSION_TASK, SESSION_TASK_VERSION, SESSION_TYPES, SESSION_VARIANTS,
   interpretSessionOutput} from './session-inference.mjs';
 
+// Sets added 2026-10-18 (HF survey; R-Judge-source families InjecAgent, ToolEmu and AgentMonitor are never added): ATBench and its 500
+// subset (human-audited trajectories in R-Judge's round format), ATBench-Codex (Codex rollouts, kept as a test the judges are not trained
+// on), StepGuard (guard prompts with step labels, unpacked back into steps) and ipi-pairs (sessions EvidScope builds from NVIDIA's indirect
+// prompt-injection environments: the same injected record once ignored and once obeyed, labels fixed by construction; src/ipi-pairs.mjs).
 export const EXTERNAL_SETS = Object.freeze({
   assebench: Object.freeze({repository: 'Atarogic/ASSEBench', license: 'Apache-2.0', use: 'train and held-out test'}),
-  rjudge: Object.freeze({repository: 'Glide-py/r_judge_labelled (R-Judge)', license: 'CC-BY-4.0', use: 'external test only'})});
+  rjudge: Object.freeze({repository: 'Glide-py/r_judge_labelled (R-Judge)', license: 'CC-BY-4.0', use: 'external test only'}),
+  atbench: Object.freeze({repository: 'AI45Research/ATBench', license: 'Apache-2.0', use: 'train and held-out test'}),
+  atbench500: Object.freeze({repository: 'AI45Research/ATBench (ATBench500)', license: 'Apache-2.0', use: 'train and held-out test'}),
+  'atbench-codex': Object.freeze({repository: 'AI45Research/ATBench-Codex', license: 'Apache-2.0', use: 'external test only'}),
+  stepguard: Object.freeze({repository: 'ninty-seven/stepguard_data', license: 'Apache-2.0', use: 'train and held-out test'}),
+  'ipi-pairs': Object.freeze({repository: 'nvidia/Nemotron-RL-Agentic-Indirect-Prompt-Injection-v1 (seeds; sessions built by EvidScope)',
+    license: 'CC-BY-4.0', use: 'train and held-out test', kind: 'synthetic'})});
 // ASSEBench risk_type -> session type. R-Judge names no type, so its violations are scored on the verdict only.
+// ATBench-family taxonomies -> session type: a violation that came through an injected text is prompt_injection; otherwise what the agent
+// did decides (disclosure -> exfiltration, workspace destruction -> destructive), and the rest is other.
+const INJECTION_SOURCES = new Set(['direct_prompt_injection', 'indirect_prompt_injection', 'tool_description_injection', 'repository_artifact_injection',
+  'dependency_mcp_supply_chain_compromise']);
+const FAILURE_TYPES = Object.freeze({unauthorized_information_disclosure: 'exfiltration', destructive_workspace_mutation: 'destructive'});
+export const riskSourceType = (riskSource, failureMode) => (INJECTION_SOURCES.has(riskSource) ? 'prompt_injection' : FAILURE_TYPES[failureMode] ?? 'other');
 export const EXTERNAL_TYPES = Object.freeze({'Data Exfiltration & Leakage': 'exfiltration', 'Data Tampering & Destruction': 'destructive',
   'Unauthorized Access & Control': 'unauthorized_access', 'Fraud & Credential Abuse': 'fraud', 'Prompt Injection': 'prompt_injection',
   'Other Security Risk': 'other'});
@@ -38,11 +55,15 @@ const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 const turnsOf = contents => (Array.isArray(contents) ? contents.flat(Infinity) : []).filter(t => t && typeof t === 'object');
 const digest = s => createHash('sha256').update(s).digest('hex');
 
-// One record of either set as {id, set, family, verdict, type, ambiguous, request, steps: [{action, result}]}, or null when it has no
-// label or no agent action. family: the application scenario, the unit of the held-out split.
+// One record as {id, set, family, verdict, type, ambiguous, request, steps: [{action, result}]} plus, where the set has them, evidence (0-based
+// step indexes), attributes (the set's own taxonomy) and labelSource; null when it has no label or no agent action. family: the application
+// scenario (ASSEBench, R-Judge) or the risk source (ATBench family, StepGuard), the unit of the held-out split.
 export function externalRecord(set, raw) {
   if (!Object.hasOwn(EXTERNAL_SETS, set) || !raw || typeof raw !== 'object') return null;
-  let contents = raw.contents;
+  if (set === 'stepguard') return stepguardRecord(raw);
+  if (set === 'atbench-codex') return codexRecord(raw);
+  if (set === 'ipi-pairs') return raw.set === 'ipi-pairs' && raw.verdict ? raw : null;
+  let contents = raw.contents ?? raw.content;
   if (typeof contents === 'string') { try { contents = JSON.parse(contents); } catch { return null; } }
   const turns = turnsOf(contents), request = [], steps = [];
   for (const t of turns) {
@@ -53,10 +74,99 @@ export function externalRecord(set, raw) {
   const label = String(raw.label).trim();
   const verdict = label === '1' ? 'violation' : label === '0' ? 'clean' : null;
   if (!verdict || !steps.some(s => s.action)) return null;
-  const scenario = text(raw.application_scenario || raw.application || 'unknown').trim() || 'unknown';
-  return {id: `${set}:${set === 'assebench' && Number.isInteger(raw.id) ? raw.id : digest(canonical(contents)).slice(0, 16)}`, set,
-    family: `${set}:${scenario}`, verdict, type: verdict === 'violation' && set === 'assebench' ? EXTERNAL_TYPES[raw.risk_type] ?? 'other' : null,
-    ambiguous: Number(raw.ambiguous) === 1, request: request.join('\n'), steps};
+  const atb = set === 'atbench' || set === 'atbench500';
+  const scenario = text(raw.application_scenario || raw.application || (atb ? raw.risk_source : '') || 'unknown').trim() || 'unknown';
+  const key = set === 'assebench' && Number.isInteger(raw.id) ? raw.id : atb && (raw.conv_id ?? raw.id) !== undefined ? String(raw.conv_id ?? raw.id)
+    : digest(canonical(contents)).slice(0, 16);
+  const type = verdict !== 'violation' ? null : set === 'assebench' ? EXTERNAL_TYPES[raw.risk_type] ?? 'other'
+    : atb ? riskSourceType(raw.risk_source, raw.failure_mode) : null;
+  return {id: `${set}:${key}`, set, family: `${set}:${scenario}`, verdict, type, ambiguous: Number(raw.ambiguous) === 1, request: request.join('\n'), steps,
+    ...(atb ? {attributes: {riskSource: raw.risk_source ?? null, failureMode: raw.failure_mode ?? null, harm: raw.real_world_harm ?? null}} : {})};
+}
+
+// ATBench-Codex: a flat conversation (user / assistant with an action object or a final response / environment with a result object) and
+// is_safe. Final responses become steps too, as ATBench's Complete{...} answers do.
+function codexRecord(raw) {
+  if (!Array.isArray(raw.conversation) || typeof raw.is_safe !== 'boolean') return null;
+  const request = [], steps = [];
+  for (const t of raw.conversation) {
+    if (!t || typeof t !== 'object') continue;
+    if (t.role === 'user') request.push(text(t.content));
+    else if (t.role === 'assistant' && (t.action || t.response)) steps.push({action: text(t.action ?? t.response), result: ''});
+    else if (t.role === 'environment' && steps.length) steps.at(-1).result += text(t.content);
+  }
+  if (!steps.length) return null;
+  const verdict = raw.is_safe ? 'clean' : 'violation';
+  return {id: `atbench-codex:${raw.id ?? digest(canonical(raw.conversation)).slice(0, 16)}`, set: 'atbench-codex', agent: 'codex',
+    family: `atbench-codex:${text(raw.risk_source || 'unknown')}`, verdict,
+    type: verdict === 'violation' ? riskSourceType(raw.risk_source, raw.failure_mode) : null,
+    ambiguous: false, request: request.join('\n'), steps,
+    attributes: {riskSource: raw.risk_source ?? null, failureMode: raw.failure_mode ?? null, harm: raw.harm_type ?? null, defense: raw.defense_type ?? null}};
+}
+
+// StepGuard rows (SFT ShareGPT {conversations: [human, gpt]} or RL {instruction, label, level, risk_source}) carry a rendered guard prompt.
+// The request, the trajectory (or the history plus the action under review) and its turns are read back from the prompt's fixed headers
+// and line-start tags; the tool list and the instructions are dropped. evidence: the answer's <UnsafeStep>N (the Nth agent action, or the
+// action numbered [Step N]) for trajectories, the action under review for unsafe action-level rows.
+const SG_ROLES = 'USER|AGENT|ENVIRONMENT|THOUGHT|ACTION|RESPONSE|FINAL|MESSAGE';
+const SG_TAG = new RegExp(`^(?:\\[(?:Step (\\d+)|Observation after Step \\d+|Turn \\d+)\\]\\s*)?((?:\\[(?:${SG_ROLES})\\]:\\s*)+)(.*)$`);
+const between = (s, start, ends) => {
+  const i = s.indexOf(start);
+  if (i < 0) return null;
+  const from = i + start.length;
+  const stops = ends.map(e => s.indexOf(e, from)).filter(j => j >= 0);
+  return s.slice(from, stops.length ? Math.min(...stops) : s.length);
+};
+const answerTag = (answer, name) => answer?.match(new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`))?.[1] ?? null;
+export function stepguardTurns(section) {
+  const turns = [];
+  let current = null;
+  for (const line of String(section ?? '').split('\n')) {
+    const m = line.match(SG_TAG);
+    if (!m) { if (current && line.trim()) current.text += (current.text ? '\n' : '') + line.trim(); continue; }
+    const tags = m[2].match(/[A-Z]+(?=\]:)/g);
+    const role = tags.includes('USER') ? 'user' : tags.includes('ENVIRONMENT') ? 'environment' : tags.includes('ACTION') ? 'action'
+      : tags.some(t => t === 'RESPONSE' || t === 'FINAL' || t === 'MESSAGE') ? 'response' : tags.includes('THOUGHT') ? 'thought' : 'agent';
+    current = {role, text: m[3].trim(), step: m[1] ? Number(m[1]) : null};
+    turns.push(current);
+  }
+  return turns.filter(t => t.role !== 'thought' && !(t.role === 'agent' && !t.text));
+}
+function stepguardRecord(raw) {
+  const prompt = raw.instruction ?? raw.conversations?.find(c => c.from === 'human')?.value;
+  const answer = raw.conversations?.find(c => c.from === 'gpt')?.value ?? null;
+  if (typeof prompt !== 'string') return null;
+  const judgment = String(raw.label ?? answerTag(answer, 'Judgment') ?? '').trim();
+  const verdict = judgment === 'unsafe' ? 'violation' : judgment === 'safe' ? 'clean' : null;
+  if (!verdict) return null;
+  const trajectory = raw.level ? raw.level === 'trajectory' : prompt.includes('<BEGIN TRAJECTORY>');
+  const headers = ['<<User Request>>', '<<Interaction History>>', '<<Action Under Review>>', '<<Available Tools>>', '<BEGIN TRAJECTORY>', '<END TRAJECTORY>'];
+  const request = [text(between(prompt, '<<User Request>>', headers.slice(1))).trim()];
+  const turns = trajectory ? stepguardTurns(between(prompt, '<BEGIN TRAJECTORY>', ['<END TRAJECTORY>']))
+    : [...stepguardTurns(between(prompt, '<<Interaction History>>', ['<<Action Under Review>>'])),
+      ...stepguardTurns(between(prompt, '<<Action Under Review>>', ['<<Available Tools>>']))
+        .map((t, i) => (i === 0 && t.role !== 'environment' ? {...t, review: true} : t))];
+  const steps = [], actionIndex = [], numbered = new Map();
+  let review = null;
+  for (const t of turns) {
+    if (t.role === 'user') { request.push(t.text); continue; }
+    if (t.role === 'environment') { if (steps.length) steps.at(-1).result += (steps.at(-1).result ? '\n' : '') + t.text; continue; }
+    steps.push({action: t.text, result: ''});
+    if (t.role === 'action') { actionIndex.push(steps.length - 1); if (t.step !== null) numbered.set(t.step, steps.length - 1); }
+    if (t.review) review = steps.length - 1;
+  }
+  if (!steps.some(s => s.action)) return null;
+  const riskSource = raw.risk_source ?? answerTag(answer, 'RiskSource') ?? 'unknown';
+  let evidence = [];
+  if (verdict === 'violation' && trajectory) {
+    const n = Number(answerTag(answer, 'UnsafeStep'));
+    const i = Number.isInteger(n) && n > 0 ? (numbered.get(n) ?? actionIndex[n - 1]) : undefined;
+    if (i !== undefined) evidence = [i];
+  } else if (verdict === 'violation' && review !== null) evidence = [review];
+  const key = raw.id ?? `sft-${digest(prompt).slice(0, 16)}`;
+  return {id: `stepguard:${key}`, set: 'stepguard', family: `stepguard:${trajectory ? 'trajectory' : 'action'}:${riskSource}`, verdict,
+    type: verdict === 'violation' ? riskSourceType(riskSource === 'inherent_agent_failure' ? 'inherent_agent_failures' : riskSource) : null,
+    ambiguous: false, request: request.filter(Boolean).join('\n'), steps, evidence, attributes: {riskSource, level: trajectory ? 'trajectory' : 'action'}};
 }
 
 // R-Judge ships as CSV with JSON in quoted fields: a small RFC 4180 reader (quotes, doubled quotes, newlines inside quotes).
@@ -78,10 +188,14 @@ export function parseCsv(textValue) {
   return body.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
 }
 
-// Records of one set file (ASSEBench JSON array, R-Judge CSV), deduplicated by id, with what was left out.
+// Records of one set file (JSON array, JSONL, or R-Judge's CSV; ipi-pairs reads the environment file and builds its pairs), deduplicated by
+// id, with what was left out.
 export function externalRecords(set, fileText) {
-  const raws = set === 'rjudge' ? parseCsv(fileText) : JSON.parse(fileText);
+  const body = String(fileText).replace(/^\uFEFF/, '');
+  const raws = set === 'rjudge' ? parseCsv(body) : body.trimStart().startsWith('[') ? JSON.parse(body)
+    : body.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
   if (!Array.isArray(raws)) throw Error('external_set_not_a_list');
+  if (set === 'ipi-pairs' && raws.some(r => r && r.injection)) raws.splice(0, raws.length, ...raws.flatMap(r => ipiPairs(r)));
   const seen = new Set(), records = [];
   let unlabelled = 0, duplicate = 0;
   for (const raw of raws) {
@@ -146,7 +260,7 @@ export function externalTrainingRow(record, {split, catalogDigest, runMode = 'ca
   const messages = externalPrompt(record);
   if (!messages) throw Object.assign(Error('external_record_too_long'), {id: record.id});
   return {id: record.id, task: SESSION_TASK, taskVersion: SESSION_TASK_VERSION, roleId: SESSION_ROLE_ID, split, familyId: record.family,
-    messages, target: canonical({verdict: record.verdict, type: record.type, evidenceActionIds: []}), labelSource: EXTERNAL_LABEL_SOURCE,
+    messages, target: canonical({verdict: record.verdict, type: record.type, evidenceActionIds: []}), labelSource: record.labelSource ?? EXTERNAL_LABEL_SOURCE,
     reviewedPayloadHash: null, catalogDigest, runMode};
 }
 
