@@ -9,7 +9,8 @@ import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
   catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
   sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, SESSION_TASK_VERSION, allowlistPredict, sessionCounts,
-  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold, sessionGateShortfall, repeatRows, thinRows} from '../src/session-inference.mjs';
+  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold, sessionGateShortfall, repeatRows,
+  thinRows} from '../src/session-inference.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -324,7 +325,8 @@ test('repeatRows copies only the picked rows, with unique ids, right after each 
 test('thinRows keeps about the given share of the picked rows, deterministically, with masked and stripped copies beside their original', () => {
   const synth = Array.from({length: 400}, (_, i) => ['', '~masked', '~stripped']
     .map(suffix => ({id: `s${i}${suffix}`, split: 'tune', labelSource: 'derived_mapping_table'}))).flat();
-  const rows = [...synth, {id: 'assebench:safety-1', split: 'tune', labelSource: 'public'}, {id: 'v1', split: 'validation', labelSource: 'derived_mapping_table'}];
+  const rows = [...synth, {id: 'assebench:safety-1', split: 'tune', labelSource: 'public'},
+    {id: 'v1', split: 'validation', labelSource: 'derived_mapping_table'}];
   const pick = r => r.split === 'tune' && r.labelSource === 'derived_mapping_table';
   assert.equal(thinRows(rows, 1, pick), rows);
   const half = thinRows(rows, 0.5, pick);
