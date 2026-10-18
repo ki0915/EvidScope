@@ -111,9 +111,9 @@
     {
       "key": "judge-models",
       "name": "판정 모델과 학습",
-      "entries": 24,
+      "entries": 25,
       "from": "2026-09-08",
-      "to": "2026-10-17",
+      "to": "2026-10-18",
       "record": "docs/dev-log/03-judge-models.md"
     },
     {
@@ -127,7 +127,7 @@
   ],
   "status_counts": {
     "done": 64,
-    "in_progress": 2,
+    "in_progress": 3,
     "planned": 1,
     "invalidated": 1,
     "superseded": 4
@@ -231,7 +231,7 @@
     {
       "key": "ml_evaluation",
       "name": "모델 평가·게이트",
-      "count": 21,
+      "count": 22,
       "entries": [
         "EL-03",
         "AM-10",
@@ -253,7 +253,35 @@
         "JM-20",
         "JM-21",
         "JM-24",
+        "JM-25",
         "UX-07"
+      ]
+    },
+    {
+      "key": "data_quality",
+      "name": "데이터 품질·누수 방지",
+      "count": 20,
+      "entries": [
+        "AM-08",
+        "AM-09",
+        "AM-10",
+        "JM-03",
+        "JM-04",
+        "JM-05",
+        "JM-06",
+        "JM-07",
+        "JM-10",
+        "JM-12",
+        "JM-13",
+        "JM-17",
+        "JM-18",
+        "JM-21",
+        "JM-22",
+        "JM-24",
+        "JM-25",
+        "UX-07",
+        "UX-08",
+        "UX-11"
       ]
     },
     {
@@ -284,29 +312,29 @@
       ]
     },
     {
-      "key": "data_quality",
-      "name": "데이터 품질·누수 방지",
+      "key": "decision_making",
+      "name": "의사결정·우선순위",
       "count": 19,
       "entries": [
-        "AM-08",
-        "AM-09",
-        "AM-10",
-        "JM-03",
-        "JM-04",
-        "JM-05",
+        "EL-02",
+        "EL-06",
+        "EL-14",
+        "EL-16",
+        "EL-18",
+        "EL-19",
+        "AM-01",
+        "AM-11",
+        "AM-13",
+        "JM-02",
         "JM-06",
-        "JM-07",
-        "JM-10",
         "JM-12",
-        "JM-13",
-        "JM-17",
-        "JM-18",
-        "JM-21",
-        "JM-22",
-        "JM-24",
-        "UX-07",
-        "UX-08",
-        "UX-11"
+        "JM-14",
+        "JM-15",
+        "JM-16",
+        "JM-19",
+        "JM-23",
+        "JM-25",
+        "UX-12"
       ]
     },
     {
@@ -332,31 +360,6 @@
         "JM-22",
         "JM-24",
         "UX-07"
-      ]
-    },
-    {
-      "key": "decision_making",
-      "name": "의사결정·우선순위",
-      "count": 18,
-      "entries": [
-        "EL-02",
-        "EL-06",
-        "EL-14",
-        "EL-16",
-        "EL-18",
-        "EL-19",
-        "AM-01",
-        "AM-11",
-        "AM-13",
-        "JM-02",
-        "JM-06",
-        "JM-12",
-        "JM-14",
-        "JM-15",
-        "JM-16",
-        "JM-19",
-        "JM-23",
-        "UX-12"
       ]
     },
     {
@@ -600,6 +603,26 @@
       ]
     },
     {
+      "key": "ml_training",
+      "name": "모델 학습(QLoRA)",
+      "count": 13,
+      "entries": [
+        "JM-03",
+        "JM-05",
+        "JM-07",
+        "JM-11",
+        "JM-13",
+        "JM-14",
+        "JM-17",
+        "JM-18",
+        "JM-20",
+        "JM-21",
+        "JM-22",
+        "JM-24",
+        "JM-25"
+      ]
+    },
+    {
       "key": "frontend",
       "name": "프런트엔드 구현",
       "count": 12,
@@ -616,25 +639,6 @@
         "UX-10",
         "UX-11",
         "UX-12"
-      ]
-    },
-    {
-      "key": "ml_training",
-      "name": "모델 학습(QLoRA)",
-      "count": 12,
-      "entries": [
-        "JM-03",
-        "JM-05",
-        "JM-07",
-        "JM-11",
-        "JM-13",
-        "JM-14",
-        "JM-17",
-        "JM-18",
-        "JM-20",
-        "JM-21",
-        "JM-22",
-        "JM-24"
       ]
     },
     {
@@ -752,13 +756,26 @@
     {
       "key": "cost_management",
       "name": "비용 관리",
-      "count": 5,
+      "count": 6,
       "entries": [
         "EL-02",
         "JM-01",
         "JM-15",
         "JM-16",
-        "JM-24"
+        "JM-24",
+        "JM-25"
+      ]
+    },
+    {
+      "key": "statistics",
+      "name": "통계적 검증",
+      "count": 5,
+      "entries": [
+        "JM-07",
+        "JM-08",
+        "JM-12",
+        "JM-18",
+        "JM-25"
       ]
     },
     {
@@ -773,17 +790,6 @@
       ]
     },
     {
-      "key": "statistics",
-      "name": "통계적 검증",
-      "count": 4,
-      "entries": [
-        "JM-07",
-        "JM-08",
-        "JM-12",
-        "JM-18"
-      ]
-    },
-    {
       "key": "ci_cd",
       "name": "CI/CD·품질 게이트",
       "count": 1,
@@ -795,7 +801,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 32,
+      "count": 33,
       "entries": [
         "EL-02",
         "EL-04",
@@ -828,6 +834,7 @@
         "JM-22",
         "JM-23",
         "JM-24",
+        "JM-25",
         "UX-06"
       ]
     },
@@ -849,6 +856,22 @@
       ]
     },
     {
+      "name": "Qwen3-4B-Instruct-2507",
+      "count": 10,
+      "entries": [
+        "JM-15",
+        "JM-17",
+        "JM-18",
+        "JM-19",
+        "JM-20",
+        "JM-21",
+        "JM-22",
+        "JM-23",
+        "JM-24",
+        "JM-25"
+      ]
+    },
+    {
       "name": "Vanilla JavaScript",
       "count": 10,
       "entries": [
@@ -865,10 +888,9 @@
       ]
     },
     {
-      "name": "Qwen3-4B-Instruct-2507",
+      "name": "JEV-9B",
       "count": 9,
       "entries": [
-        "JM-15",
         "JM-17",
         "JM-18",
         "JM-19",
@@ -876,21 +898,22 @@
         "JM-21",
         "JM-22",
         "JM-23",
-        "JM-24"
+        "JM-24",
+        "JM-25"
       ]
     },
     {
-      "name": "JEV-9B",
+      "name": "vast.ai",
       "count": 8,
       "entries": [
+        "JM-16",
         "JM-17",
         "JM-18",
-        "JM-19",
         "JM-20",
         "JM-21",
         "JM-22",
-        "JM-23",
-        "JM-24"
+        "JM-24",
+        "JM-25"
       ]
     },
     {
@@ -920,39 +943,28 @@
       ]
     },
     {
-      "name": "vast.ai",
-      "count": 7,
-      "entries": [
-        "JM-16",
-        "JM-17",
-        "JM-18",
-        "JM-20",
-        "JM-21",
-        "JM-22",
-        "JM-24"
-      ]
-    },
-    {
       "name": "R-Judge",
-      "count": 6,
+      "count": 7,
       "entries": [
         "JM-15",
         "JM-17",
         "JM-18",
         "JM-21",
         "JM-22",
-        "JM-24"
+        "JM-24",
+        "JM-25"
       ]
     },
     {
       "name": "ASSEBench",
-      "count": 5,
+      "count": 6,
       "entries": [
         "JM-15",
         "JM-17",
         "JM-21",
         "JM-22",
-        "JM-24"
+        "JM-24",
+        "JM-25"
       ]
     },
     {
@@ -3555,6 +3567,18 @@
       ],
       "en": [
         "Moved judge-model evaluation from a single split to cross-validation over rotating held-out scenario types, and made the data pipeline check before training that an evaluation set can produce a promotion-gate verdict."
+      ]
+    },
+    {
+      "id": "JM-25",
+      "date": "2026-10-18",
+      "title": "6회차: 안전 기록 2배 가중이 두 판정자를 모두 나쁘게 만들어 되돌림",
+      "title_en": "Round 6: doubling the safety rows made both judges worse, so the change was reverted",
+      "ko": [
+        "학습 조건 변경이 두 판정 모델의 성능을 떨어뜨린 것을 계열별 오류 분석으로 찾아내고, 미리 정한 수치 기준으로 남은 학습 대기열을 즉시 바꿔 크레딧 낭비를 줄였다."
+      ],
+      "en": [
+        "Traced a regression in both judge models to a training-data change through per-family error analysis, and switched the remaining training queue on a pre-set numeric rule to limit wasted GPU credit."
       ]
     },
     {
@@ -6548,6 +6572,60 @@
       "source": "fcb1fca"
     },
     {
+      "id": "JM-25",
+      "name": "처음 보는 세션 정답률(보류 없이)",
+      "before": "JEV 1.0(5회차, 500세션), Qwen 1.0(4회차, 350세션)",
+      "after": "JEV 0.9818, Qwen 0.9327",
+      "unit": "비율",
+      "scope": "6회차, 합성 550세션",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-25",
+      "name": "위협을 정상으로 본 세션",
+      "before": "0",
+      "after": "JEV 1, Qwen 0",
+      "unit": "세션",
+      "scope": "6회차 처음 보는 세션 중 위협 300",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-25",
+      "name": "규칙 오경보 정상을 정상으로 되돌린 비율",
+      "before": "JEV 1.0(5회차)",
+      "after": "JEV 0.955, Qwen 0.885",
+      "unit": "비율",
+      "scope": "6회차 알려진 규칙 공백 200세션",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-25",
+      "name": "R-Judge 정답률(보류 없이)",
+      "before": "JEV 0.806(5회차), Qwen 0.613(4회차)",
+      "after": "JEV 0.706, Qwen 0.692",
+      "unit": "비율",
+      "scope": "외부 시험 568건",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-25",
+      "name": "R-Judge 안전 기록 오탐",
+      "before": "JEV 77(5회차)",
+      "after": "JEV 151, Qwen 160",
+      "unit": "건(269건 중)",
+      "scope": "외부 시험",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-25",
+      "name": "오케스트라 정답률",
+      "before": "없음",
+      "after": "0.9145(위협 놓침 0, 정상에 경보 47)",
+      "unit": "비율",
+      "scope": "6회차 처음 보는 550세션, 보정 문턱 적용",
+      "source": "작업 메모"
+    },
+    {
       "id": "UX-01",
       "name": "탭당 시간당 자동 조회 횟수",
       "before": "720",
@@ -7324,6 +7402,12 @@
       "decided_by": "ai_agent"
     },
     {
+      "id": "JM-25",
+      "what": "7~9회차 학습 데이터를 안전 기록 1배로 다시 만들어 두 판정자의 대기열을 그쪽으로 바꾸고, 2배로 돌던 7회차 학습은 멈췄다. 6회차를 1배로 다시 돌리는 회차를 두 대기열 끝에 더했다.",
+      "why": "5회차 조건으로 돌아가 최종 모델을 지키고, 같은 시험에서 1배와 2배를 비교해 원인을 확인하기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    {
       "id": "UX-01",
       "what": "자동 조회를 용도별 4단계 주기로 나누고, 응답이 끝난 뒤 다음 타이머를 시작하며, 실패 시 지수 백오프와 401/403 즉시 중단, 숨긴 탭·일시정지·화면 이탈·로그아웃에서는 조회를 멈추고 늦은 응답을 버린다.",
       "why": "감사 화면이 조회 자체로 감사 기록을 부풀리지 않게 하고, 실패·지연 상태를 정직하게 보여 주기 위해",
@@ -8008,6 +8092,18 @@
     {
       "id": "JM-24",
       "text": "임대 GPU는 정지하면 그 GPU를 다른 사람이 가져갈 수 있다. 결과는 회차마다 바로 PC로 옮겨야 한다."
+    },
+    {
+      "id": "JM-25",
+      "text": "외부 데이터를 더 넣는다고 외부 시험 점수가 오르지는 않는다. 넣은 데이터의 정상·위협 비율과 형식이 판정자를 어느 쪽으로 기울이는지 먼저 봐야 한다."
+    },
+    {
+      "id": "JM-25",
+      "text": "학습 조건을 바꾸면 이전 회차와 같은 시험에서 비교할 수 있게 해야 원인을 가를 수 있다."
+    },
+    {
+      "id": "JM-25",
+      "text": "판단 기준(유지·교체)을 결과를 보기 전에 숫자로 정해 두면 결정이 흔들리지 않는다."
     },
     {
       "id": "UX-01",
@@ -8846,6 +8942,14 @@
     {
       "id": "JM-24",
       "text": "거의 모든 계열을 학습한 최종 모델의 보류 문턱은 무엇으로 보정해야 할까?"
+    },
+    {
+      "id": "JM-25",
+      "text": "6회차 1배 재학습도 설정 읽기 정상 계열에서 틀린다면, 원인은 가중이 아니라 그 계열 자체의 어려움일까?"
+    },
+    {
+      "id": "JM-25",
+      "text": "ASSEBench 안전 기록 안의 정상·위협 비율이 판정자의 기울기를 설명할까?"
     },
     {
       "id": "UX-01",
