@@ -243,10 +243,34 @@ async function graphsView() {
       if (current !== epoch || access !== authEpoch || viewEpoch !== renderEpoch || !token) return;
       monitor = window.EvidScopeMonitor.mount({dataNotice:overviewData.limitations?.find(text=>text.includes('합성')),fetchData:(range, source)=>api(`/api/monitoring?${new URLSearchParams({range,source})}`),isCurrent:()=>viewEpoch===renderEpoch&&current===epoch&&access===authEpoch&&Boolean(token)});
       disposeView = () => { epoch++; monitor?.dispose(); };
-      content.replaceChildren(monitor.root, window.EvidScopeLiveGraphs.render({ overview: overviewData, investigations, onOpenAction: actionDetail }));
+      content.replaceChildren(monitor.root, chainCard(), window.EvidScopeLiveGraphs.render({ overview: overviewData, investigations, onOpenAction: actionDetail }));
     } catch (error) { if (current === epoch && access === authEpoch) content.replaceChildren(empty('그래프를 표시하지 못했습니다', error.message)); }
   }
   await choose(token ? 'live' : 'cluster'); return root;
+}
+// Collection continuity of agent hooks (GET /api/collection/chains): numbered records, holes, broken links and restarts per stream.
+const holeLabels = { pending: '도착 대기', confirmed: '빠짐 확정' };
+function chainCard() {
+  const node = card('수집 연속성', '에이전트 훅은 기록마다 순번과 앞 기록의 지문을 붙입니다. 순번이 비거나 앞 기록과 맞지 않으면 PC와 EvidScope 사이에서 기록이 빠졌거나 바뀐 것입니다.');
+  const body = el('div'); node.append(body);
+  async function load() {
+    body.replaceChildren(el('p', 'muted', '불러오는 중…'));
+    try {
+      const r = await api('/api/collection/chains'), c = r.counts;
+      const stats = el('p', '', `훅 기록 ${c.agentRecords}건 중 번호 붙은 기록 ${c.chained}건 · 스트림 ${c.streams}개 · 빠짐 확정 ${c.confirmedMissingRanges}구간(${c.missingRecords}건 중) · `
+        + `도착 대기 ${c.pendingMissingRanges}구간 · 연결 불일치 ${c.brokenLinks}건 · 번호 중복 ${c.reusedNumbers}건 · 재시작 ${c.restarts}회`);
+      const rows = r.streams.map(s => [s.source, s.actor || '—', `${s.firstSeq}~${s.lastSeq}`, s.records,
+        s.missing.length ? s.missing.map(h => `${h.from}~${h.to} ${holeLabels[h.status] || h.status}`).join(', ') : '없음',
+        s.broken.length ? s.broken.map(b => `${b.seq}번${b.result === 'unverifiable' ? '(키 파기로 확인 불가)' : ''}`).join(', ') : '없음', s.lastReceivedAt]);
+      const check = button('지금 점검해 경보로 기록', async () => {
+        try { const out = await api('/api/collection/chains/check', 'POST', {}); check.textContent = `새로 기록한 문제 ${out.recorded.length}건`; }
+        catch (error) { check.textContent = error.message; }
+      });
+      const notes = el('ul', 'muted'); (r.limitations || []).forEach(text => notes.append(el('li', '', text)));
+      body.replaceChildren(stats, table(['출처', '행위자', '순번', '기록', '빠진 구간', '연결 불일치', '마지막 수신'], rows), check, notes);
+    } catch (error) { body.replaceChildren(empty('수집 연속성을 불러오지 못했습니다', error.message)); }
+  }
+  load(); return node;
 }
 const reviewLabels = { unreviewed: '미검토', reviewed: '현재 근거 검토됨', stale: '새 근거·기한에 따른 재검토', inconclusive: '판단 유보 · 검토 필요' };
 function reviewBadge(state) { return el('span', `badge review-${Object.hasOwn(reviewLabels, state) ? state : 'unreviewed'}`, reviewLabels[state] || '검토 상태 미확인'); }

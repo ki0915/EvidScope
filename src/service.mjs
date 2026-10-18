@@ -29,7 +29,8 @@ import {checkDocumentFiles} from './document-integrity.mjs';
 import {checkReceiptProjection} from './receipt-integrity.mjs';
 import {createKeyring,ensureDataKeyUsageTable,recordDataKeyUsage,assertDataKeysAvailable} from './data-keys.mjs';
 import {createOtlpIngest,otlpSource} from './otlp-ingest.mjs';
-import {beginIngestBatch,endIngestBatch,ingestSourceEvent} from './event-ingest.mjs';
+import {beginIngestBatch,endIngestBatch,ingestSourceEvent,appendSourceEvent} from './event-ingest.mjs';
+import {analyzeChains,chainProblems,chainGapEvent,CHAIN_CHECK_PRINCIPAL,CHAIN_GRACE_MS} from './collection-chain.mjs';
 import {INGEST_FORWARD_PATH} from './ingest-forward.mjs';
 import {createGroupCommit} from './ingest-batch.mjs';
 import {eventKeyStatus} from './event-keys.mjs';
@@ -155,6 +156,33 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
     catch(error){process.stderr.write(JSON.stringify({component:'registry-discovery',tenant,error:error?.status?error.message:error?.code||error?.name})+'\n');}}
    return out;},
   start(){if(this.timer)return;const ms=Number(process.env.REGISTRY_DISCOVERY_INTERVAL_MS)||60000;this.timer=setInterval(()=>this.run(),Math.max(1000,ms));this.timer.unref?.();},
+  stop(){clearInterval(this.timer);this.timer=null;}};
+ // Collection continuity of agent hooks (src/collection-chain.mjs): the report of every numbered hook stream, and a check (timer, or a
+ // reviewer's POST) that records each new hole, broken link or reused number once as a signed telemetry gap record of the vault's own
+ // chain-check principal, which the evaluation engine turns into a COLLECTION_GAP finding.
+ const chainGraceMs=()=>{const n=Number(process.env.COLLECTION_CHAIN_GRACE_MS);return Number.isSafeInteger(n)&&n>=0?n:CHAIN_GRACE_MS;};
+ function chainReport(tenant,now=Date.now()){
+  let events;try{events=[...store.verifiedFacets(tenant,['keys','events']).eventsBySequence.values()];}
+  catch{fail(409,'이벤트 조회 사본 또는 색인이 서명 원장과 일치하지 않습니다');}
+  return analyzeChains(events,{now,graceMs:chainGraceMs(),compare:(stored,raw)=>store.compareEventFingerprint(tenant,stored,raw)});
+ }
+ function chainCheck(tenant,now=Date.now()){
+  return store.transaction(()=>{
+   const report=chainReport(tenant,now),system={id:CHAIN_CHECK_PRINCIPAL,tenant,kind:'telemetry',role:'source'},recorded=[];
+   const seen=store.db.prepare('SELECT 1 FROM receipts WHERE tenant=? AND source=? AND id=?');
+   for(const problem of chainProblems(report)){
+    if(seen.get(tenant,system.id,problem.id))continue;
+    appendSourceEvent(store,system,validateEvent(chainGapEvent(problem,new Date(now).toISOString()),system));
+    recorded.push({id:problem.id,problem:problem.problem,source:problem.source,stream:problem.stream});
+   }
+   return {recorded,counts:report.counts};
+  });
+ }
+ const collectionChain={timer:null,report:chainReport,check:chainCheck,run(){
+   const out=[];for(const tenant of tenants){try{const r=chainCheck(tenant);if(r.recorded.length)out.push({tenant,recorded:r.recorded.length});}
+    catch(error){process.stderr.write(JSON.stringify({component:'collection-chain',tenant,error:error?.status?error.message:error?.code||error?.name})+'\n');}}
+   return out;},
+  start(){if(this.timer)return;const ms=Number(process.env.COLLECTION_CHAIN_INTERVAL_MS)||300000;this.timer=setInterval(()=>this.run(),Math.max(1000,ms));this.timer.unref?.();},
   stop(){clearInterval(this.timer);this.timer=null;}};
  // Pull distribution and activation reports for enforcement points (src/enforcement-service.mjs, docs/kill-switch.md). The
  // optional OPA bundle signing key is RSA or P-256 (OPA verifies no Ed25519), never the vault key.
@@ -380,6 +408,8 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
    const sources=principals.filter(s=>s.tenant===p.tenant&&s.role==='source').map(s=>{const row=store.db.prepare(SOURCE_LAST_SEEN_SQL).get(p.tenant,s.id);return {id:s.id,tenant:s.tenant,kind:s.kind,lastSeen:row.lastSeen,status:!row.lastSeen?'not_connected':Date.now()-Date.parse(row.lastSeen)>300000?'stale':'receiving'};});
    return {counts:{events,alerts:alerts.length,syntheticAlerts:actions.filter(a=>synthetic.has(a.id)).reduce((n,a)=>n+(evaluations.get(a.id)?.findings?.length||0),0),cases:verifiedPolicyObjects(p,'case').size,backlog:actions.filter(a=>a.analyzed<a.version).length},sources,limitations:['등록된 출처 기준 상태이며 전체 AI 사용의 가시성 비율은 산출하지 않습니다','미연결·수집 공백은 무사고를 의미하지 않습니다','연동 수집기는 운영자가 배치·등록해야 하며, 합성 시험 기록을 실제 공급자 연결로 해석하지 않습니다']};});
   }
+  if(path==='/api/collection/chains'&&method==='GET'){human(p);return store.transaction(()=>chainReport(p.tenant));}
+  if(path==='/api/collection/chains/check'&&method==='POST'){reviewer(p);return chainCheck(p.tenant);}
   if(path==='/api/monitoring'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);return monitoring(store,principals,p.tenant,url.searchParams);});
   if(path==='/api/ai-visibility'&&method==='GET')return store.transaction(()=>{verifiedEvents(p);const registrations=[...verifiedPolicyObjects(p,'asset').values()];return aiVisibility(store,p.tenant,url.searchParams,{runtimeStatus:runtimeStatus(),registrations});});
   if(path.startsWith('/api/governance-model/')){const result=governanceModelConsole.handle(p,method,url,x);if(result!==undefined)return result;}
@@ -544,5 +574,5 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch,retention,registryDiscovery};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch,retention,registryDiscovery,collectionChain};
 }
