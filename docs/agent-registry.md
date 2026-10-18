@@ -120,8 +120,55 @@ discovered → draft → testing → approved → production ⇄ suspended
 ## 미등록 후보
 
 `GET /api/registry/candidates`는 EvidScope가 이미 보는 미등록 에이전트를 나열합니다. 보관 중인 agent·OTLP·tool 활동의 출처와 행위자,
-최신 평가의 `UNREGISTERED_ASSET`·`AI_UNREGISTERED_ASSET` 발견, 활동이 없는 agent 출처 자격이 근거입니다(최대 200개). **자동 등록하지
-않습니다.** 후보에서 등록할 때 `discoveredFrom`을 남기면 출처를 추적할 수 있습니다.
+최신 평가의 `UNREGISTERED_ASSET`·`AI_UNREGISTERED_ASSET` 발견, 활동이 없는 agent 출처 자격이 근거입니다(최대 200개). 후보마다 본 실행자와
+매핑 표의 추정 책임자(`executors`, `owner`)를 함께 보여 줍니다. 후보에서 등록할 때 `discoveredFrom`을 남기면 출처를 추적할 수 있고, 그렇게
+등록한(또는 자동 등록한) 후보는 목록에서 빠집니다. 레지스트리 정책의 `autoRegister`가 꺼져 있으면(기본) 목록만 보여 줍니다.
+
+## 자동 등록
+
+> 2026-10-18 추가.
+
+`POST /api/registry/policy`(관리자)에 `{"autoRegister":"discovered"}`를 주면, vault가 1분마다(`REGISTRY_DISCOVERY_INTERVAL_MS`) 그 tenant의
+새 후보를 `discovered` 상태의 등록 항목으로 서명해 둡니다. 검토자는 `POST /api/registry/discover`(`{"dryRun":true}`는 미리보기)로 바로 한 번
+돌릴 수 있습니다. 한 번에 50개까지 등록합니다.
+
+- 기록 주체는 사람이 아닌 `registry-auto-discovery`입니다. 항목 id는 후보의 `suggestedId`(겹치면 `-2`, `-3`…), `discoveredFrom`은 후보의
+  출처·행위자, `discovery`에 근거·이벤트 수·처음과 마지막 수신·본 도구를 남깁니다.
+- **책임자(`owner`), 목적, 출처 자격(`sources`), 행위자(`actors`)와 구성은 비워 둡니다.** 그래서 자동 등록 항목은 어떤 활동도 포함하지 않고
+  발견(finding)을 바꾸지 않습니다. `unregistered_activity` 적용 중이면 그 활동은 계속 미등록 활동으로 보고되고, 사람이 검토해 `actors`·`sources`를
+  넣어야 포함됩니다. 승인 게이트의 책임자 조건도 사람이 확정하기 전에는 충족되지 않습니다.
+- 한 번 등록한 후보는 다시 등록하지 않습니다. 폐기(retired)한 항목이 포함하거나 그 항목이 발견된 후보도 다시 등록하지 않습니다("에이전트가
+  아님"을 폐기로 표시할 수 있습니다).
+- 오프라인 검증(`verifyRegistryHistory`)은 자동 등록 항목이 책임자·구성이 빈 `discovered` 항목으로 시작했는지 확인합니다.
+
+## 실행자와 책임자
+
+> 2026-10-18 추가. "이 에이전트는 누구 것이고, 누가 책임지는가"를 답합니다.
+
+**실행자(executor).** AI 코딩 에이전트 hook이 모든 기록에 OS 계정, PC, 작업 폴더의 git 저장소(origin), git 사용자를 적습니다
+([에이전트 감시](agent-monitoring.md)). 에이전트 자신의 보고이므로 행위자 이름처럼 자기 보고로 다룹니다.
+
+**책임자 매핑 표.** `POST /api/registry/owners`(관리자)로 규칙을 순서대로 둡니다. 규칙은
+`{"id","field","op","value","team","owner"}`이며 `field`는 `account`·`host`·`repository`·`gitUser`·`actor`·`source`, `op`는 `eq`·`prefix`·`suffix`
+(대소문자 무시), 위에 있는 규칙이 먼저입니다. 예: `{"id":"pay-repo","field":"repository","op":"prefix","value":"github.com/acme/payments/",
+"team":"payments","owner":"pay-lead"}`. 표는 서명된 `agent_owner_map` 객체(버전 기록)이며 평가를 바꾸지 않습니다. `GET /api/registry/owners`는
+표와 에이전트별 책임자 상태를 보여 줍니다.
+
+**책임자 상태.** 등록 항목마다 네 가지 중 하나입니다(`ownerStatus`·`ownership`).
+
+| 상태 | 뜻 |
+|---|---|
+| `unknown` | 책임자가 기록되지 않았고, 이 에이전트가 실행된 실행자에 맞는 규칙이 없음 |
+| `inferred` | 매핑 표 규칙이 맞음(규칙 id·값·표 버전을 근거로 보여 줌), 또는 카탈로그 문서가 책임자를 적음. **추정이며 승인이 아님** |
+| `conflict` | 실행자에 따라 서로 다른 책임자가 추정됨(후보와 기록 수를 보여 줌). 시스템이 고르지 않음 |
+| `confirmed` | 검토자가 확정함: `POST /api/registry/:id/owner`(`{"reason"}`만 주면 지금의 추정을, `{"owner","team","reason"}`이면 그 값을 확정), 또는 수정 요청으로 `owner`를 입력함. 확정한 사람·시각·사유·근거가 새 버전(`change:"owner_confirmed"`)에 남음 |
+
+이 기능 전에 사람이 등록하면서 적은 책임자는 `confirmed`(근거 `entered_at_registration`)로 봅니다. 시스템은 책임자를 스스로 확정하지
+않습니다. 매핑 표가 바뀌면 추정은 다시 계산되고, 확정된 책임자는 그대로입니다.
+
+**어디에 보이나.** 레지스트리 목록·상세·후보, `GET /api/alerts`의 경보마다 `accountability`(에이전트 항목, 실행자, 책임자와 상태), 콘솔의
+경보 표 "에이전트·실행자·책임자" 열, 그리고 증거 묶음의 `accountability.json`([증거 묶음](evidence-pack.md)).
+
 
 ## 카탈로그 가져오기
 
@@ -489,6 +536,10 @@ v1·v2 평가를 모두 원장 접두사에서 다시 계산합니다. 레지스
 | `POST /api/registry/transitions/:tid/approve`, `/refuse` | 검토자·관리자 | 승인·거절 |
 | `POST /api/registry/policy` | 관리자 | 적용 방식·게이트·위험 규칙 |
 | `POST /api/registry/import` | 검토자·관리자 | A2A Agent Card·Backstage 엔터티를 discovered 항목으로 가져오기(`dryRun` 미리보기) |
+| `POST /api/registry/discover` | 검토자·관리자 | 후보를 지금 discovered 항목으로 자동 등록(`dryRun` 미리보기) |
+| `GET /api/registry/owners` | 사람 역할 | 책임자 매핑 표와 에이전트별 책임자 상태·실행자 |
+| `POST /api/registry/owners` | 관리자 | 책임자 매핑 표 |
+| `POST /api/registry/:id/owner` | 검토자·관리자 | 책임자 확정(추정 확정 또는 직접 지정, 사유 필수) |
 
 화면은 감사 워크스페이스의 **AI 자산·수집 → 에이전트 레지스트리** 탭(`public/registry.js`)입니다. 목록과 미등록 후보, 상세(버전·전이 이력,
 게이트 충족 여부, 카탈로그 출처), 등록 초안, 카탈로그 가져오기, 전이 요청과 승인·거절을 제공합니다. 역할·4-eyes·게이트는 서버가 판단하고 화면은 그 응답을 보여 줍니다.
@@ -513,4 +564,11 @@ v1·v2 평가를 모두 원장 접두사에서 다시 계산합니다. 레지스
   보내도 내용이 같으면 `unchanged`이므로 기록된 서명 상태는 바뀌지 않습니다.
 - 가져온 항목도 다른 등록 항목처럼 평가 스냅샷의 레지스트리 요약에 들어갑니다. 항목을 많이 가져오면 스냅샷 한도에 빨리 닿습니다.
 - 예약어가 된 `import` id의 기존 등록 항목은 조회할 수 있지만 `POST /api/registry/import`로 수정할 수 없습니다.
+- 실행자(OS 계정·PC·저장소·git 사용자)는 hook의 자기 보고입니다. 같은 PC를 여럿이 한 계정으로 쓰거나, 사내 프록시·SSO 계정과 다르면
+  매핑이 틀릴 수 있습니다. OS·IdP 쪽의 독립 관측과 대조하는 기능은 없습니다. git 설정은 `includeIf`와 시스템 설정을 읽지 않습니다.
+- 매핑 표는 관리자 한 사람이 바꾸고(4-eyes 없음), 책임자 확정도 검토자 한 사람이 합니다. 확정은 승인 게이트의 책임자 조건을 채우지만
+  전이 승인은 여전히 다른 검토자가 해야 합니다.
+- 자동 등록은 1분 간격 실행이라 새 에이전트가 목록에 오르기까지 최대 1분 걸립니다. 자동 등록 항목도 평가 스냅샷의 레지스트리 요약에 들어가며,
+  항목이 생길 때마다 tenant 전체를 다시 평가합니다.
+- 경보의 책임자는 경보 근거 중 첫 에이전트 기록으로 정합니다. 보관 기간이 지나 파기된 기록은 실행자를 보여 주지 못합니다.
 - 에이전트 목록(`/api/agents`)의 준수 상태는 새 발견 코드를 아직 따로 분류하지 않고 "개별 검토 필요(unconfirmed)"로 둡니다.

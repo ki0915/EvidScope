@@ -2,6 +2,7 @@
 // verifier: the state machine, risk-tier rules, the compact analysis input, the point-in-time registry state of an event,
 // the registry findings and the check of the signed lifecycle history. No I/O.
 import {canonical,digest} from './crypto.mjs';
+import {AUTO_DISCOVERY_PRINCIPAL} from './agent-ownership.mjs';
 
 export const REGISTRY_STATES=Object.freeze(['discovered','draft','testing','approved','production','suspended','retired']);
 export const REGISTRY_TYPES=Object.freeze(['agent_registry','agent_transition','agent_registry_policy']);
@@ -184,6 +185,10 @@ export function verifyRegistryHistory(rows){
    if(!previous){
     if(v.version!==1||v.change!=='created'||!['discovered','draft'].includes(v.state))problem(row,'registry entry does not start as a created draft');
     if(row.principal!==v.registeredBy||v.editedBy!==v.registeredBy)problem(row,'registry creation principal differs');
+    // Auto-registration (src/agent-ownership.mjs) writes a discovered entry with no owner, no ownership and empty configuration.
+    if(v.registeredBy===AUTO_DISCOVERY_PRINCIPAL&&(v.state!=='discovered'||v.owner||v.ownership||v.catalog
+     ||IMPORT_UNTOUCHED.some(k=>canonical(v[k]??null)!==canonical(k==='systemId'?null:[]))))
+     problem(row,'auto-registered entry is not an empty discovered entry');
    }else{
     if(v.version!==previous.version+1)problem(row,'registry version is not consecutive');
     if(previous.state==='retired')problem(row,'retired registry entry changed');
@@ -197,8 +202,16 @@ export function verifyRegistryHistory(rows){
       if(row.principal!==(t.status==='approved'?t.reviewedBy:t.requestedBy))problem(row,'state change principal differs from the transition');
      }
      if(v.editedBy!==previous.editedBy||configuration(v)!==configuration(previous))problem(row,'transition version changed the configuration');
+    }else if(v.change==='owner_confirmed'){
+     // A reviewer's owner confirmation: who, the owner it confirms; configuration, state and editor unchanged.
+     const o=v.ownership;
+     if(row.principal===AUTO_DISCOVERY_PRINCIPAL||o?.status!=='confirmed'||row.principal!==o.by||!v.owner||o.owner!==v.owner)
+      problem(row,'owner confirmation not recorded by the reviewer who confirmed it');
+     if(v.editedBy!==previous.editedBy||configuration(v)!==configuration(previous))problem(row,'owner confirmation changed the configuration');
     }else if(v.change==='updated'){
      if(row.principal!==v.editedBy)problem(row,'registry edit principal differs from editedBy');
+     if(canonical(v.ownership??null)!==canonical(previous.ownership??null)&&(v.ownership?.by!==row.principal||v.ownership?.owner!==v.owner))
+      problem(row,'registry edit recorded an owner confirmation of someone else');
      if(['approved','production'].includes(v.state)&&configuration(v)!==configuration(previous))problem(row,'configuration changed in approved or production');
     }else if(v.change==='risk_override'){
      const by=v.risk?.override?.by??v.risk?.cleared?.by;

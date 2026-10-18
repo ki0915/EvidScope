@@ -154,3 +154,40 @@ test('catalog import posts the pasted document, renders the report as text and s
   for (const expected of ['카탈로그 출처', 'A2A Agent Card (1.0)', '불일치', 'sha256:bb', '서명 있음·확인할 키 없음', 'ES256 k1', 'alice · t', '버린 필드skills', hostile])
     assert.ok(shown.includes(expected), expected);
 });
+
+test('owners: candidates show executors and inferred owners; an entry confirms its owner; the map is posted as rules', async () => {
+  const executor = {account: 'dev', host: 'pc-1', repository: 'git.example.com/payments/api', gitUser: hostile};
+  const inferred = {status: 'inferred', owner: 'pay-lead', team: 'payments', basis: 'owner_map', rule: {id: 'payments-repo', field: 'repository', value: 'x'}};
+  const f = fixture((path, method) => {
+    if (path === '/api/registry') {
+      return {items: [{...entry, owner: '', ownerStatus: inferred}], policy: {version: 1, source: 'signed', autoRegister: 'discovered'}};
+    }
+    if (path === '/api/registry/candidates') return {items: [{source: 'alpha-agent', actor: 'codex@pc-2', reasons: [], actions: 1, events: 1, tools: [],
+      executors: [{executor, events: 1}], owner: {status: 'conflict', candidates: [{owner: 'a'}, {owner: 'b'}]}}], autoRegister: 'discovered'};
+    if (path === '/api/registry/owners' && method === 'GET') return {map: {version: 1, rules: [{id: 'payments-repo', field: 'repository', op: 'prefix',
+      value: 'git.example.com/payments/', team: 'payments', owner: 'pay-lead'}]}, items: [], counts: {inferred: 1}, limitations: []};
+    if (method === 'POST') return {owner: 'pay-lead', version: 4, registered: [], skipped: []};
+    return {...detail, entry: {...entry, owner: '', discoveredFrom: {source: 'alpha-agent', actor: 'pay-agent'}}, ownership: inferred,
+      executors: [{executor, actor: 'pay-agent', source: 'alpha-agent', events: 2, lastSeen: 't'}]};
+  });
+  const list = await f.routes.get('registry').render(), text = list.textContent;
+  for (const expected of ['자동 등록 켜짐', '추정', 'pay-lead (payments)', 'dev@pc-1 · git.example.com/payments/api', '추정 충돌: a, b', hostile])
+    assert.ok(text.includes(expected), expected);
+  await f.ui.openEntry('pay-agent');
+  const node = f.last(), confirm = forms(node).find(x => x.textContent.includes('책임자 확정'));
+  assert.ok(node.textContent.includes('매핑 표 · 규칙 payments-repo'));
+  await confirm.events.submit({owner: '', team: '', reason: '팀장 확인'});
+  assert.deepEqual(f.calls.filter(c => c.method === 'POST').at(-1), {path: '/api/registry/pay-agent/owner', method: 'POST', body: {reason: '팀장 확인'}},
+    'an empty owner confirms the inferred one');
+  await button(list, '책임자 매핑').events.click();
+  const [mapForm] = forms(f.last());
+  assert.equal(all(mapForm).find(n => n.name === 'rules').value, 'payments-repo, repository, prefix, git.example.com/payments/, payments, pay-lead');
+  await mapForm.events.submit({rules: 'r1, account, eq, dev, platform, platform-lead\nr2, host, suffix, .lab, , lab-lead'});
+  assert.deepEqual(f.calls.filter(c => c.method === 'POST').at(-1).body, {rules: [
+    {id: 'r1', field: 'account', op: 'eq', value: 'dev', team: 'platform', owner: 'platform-lead'},
+    {id: 'r2', field: 'host', op: 'suffix', value: '.lab', owner: 'lab-lead'}]});
+  await button(list, '자동 등록').events.click();
+  const [run] = forms(f.last());
+  await run.events.submit({mode: 'run'});
+  assert.deepEqual(f.calls.filter(c => c.method === 'POST').at(-1), {path: '/api/registry/discover', method: 'POST', body: {dryRun: false}});
+});

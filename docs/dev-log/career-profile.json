@@ -1,6 +1,6 @@
 {
   "schema": "evidscope-career-profile/1",
-  "as_of": "2026-10-17",
+  "as_of": "2026-10-18",
   "project": {
     "name": "EvidScope",
     "one_liner": {
@@ -103,9 +103,9 @@
     {
       "key": "agent-monitoring",
       "name": "AI 에이전트 모니터링·탐지",
-      "entries": 13,
+      "entries": 14,
       "from": "2026-10-15",
-      "to": "2026-10-17",
+      "to": "2026-10-18",
       "record": "docs/dev-log/02-agent-monitoring.md"
     },
     {
@@ -126,7 +126,7 @@
     }
   ],
   "status_counts": {
-    "done": 62,
+    "done": 63,
     "in_progress": 2,
     "planned": 1,
     "invalidated": 1,
@@ -136,7 +136,7 @@
     {
       "key": "system_architecture",
       "name": "시스템 아키텍처",
-      "count": 25,
+      "count": 26,
       "entries": [
         "EL-01",
         "EL-03",
@@ -156,6 +156,7 @@
         "AM-07",
         "AM-09",
         "AM-11",
+        "AM-14",
         "JM-01",
         "JM-04",
         "JM-14",
@@ -196,6 +197,35 @@
       ]
     },
     {
+      "key": "qa_testing",
+      "name": "테스트·QA",
+      "count": 22,
+      "entries": [
+        "EL-04",
+        "EL-05",
+        "EL-06",
+        "EL-07",
+        "EL-10",
+        "EL-11",
+        "EL-12",
+        "EL-13",
+        "EL-14",
+        "EL-17",
+        "EL-18",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-13",
+        "AM-14",
+        "JM-05",
+        "JM-09",
+        "JM-19",
+        "UX-01",
+        "UX-10",
+        "UX-11"
+      ]
+    },
+    {
       "key": "ml_evaluation",
       "name": "모델 평가·게이트",
       "count": 21,
@@ -221,34 +251,6 @@
         "JM-21",
         "JM-24",
         "UX-07"
-      ]
-    },
-    {
-      "key": "qa_testing",
-      "name": "테스트·QA",
-      "count": 21,
-      "entries": [
-        "EL-04",
-        "EL-05",
-        "EL-06",
-        "EL-07",
-        "EL-10",
-        "EL-11",
-        "EL-12",
-        "EL-13",
-        "EL-14",
-        "EL-17",
-        "EL-18",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-13",
-        "JM-05",
-        "JM-09",
-        "JM-19",
-        "UX-01",
-        "UX-10",
-        "UX-11"
       ]
     },
     {
@@ -355,6 +357,29 @@
       ]
     },
     {
+      "key": "cryptography_integrity",
+      "name": "암호·무결성 설계",
+      "count": 16,
+      "entries": [
+        "EL-01",
+        "EL-02",
+        "EL-04",
+        "EL-07",
+        "EL-08",
+        "EL-10",
+        "EL-11",
+        "EL-13",
+        "EL-18",
+        "EL-20",
+        "AM-03",
+        "AM-05",
+        "AM-06",
+        "AM-07",
+        "AM-08",
+        "AM-14"
+      ]
+    },
+    {
       "key": "compliance",
       "name": "규제·컴플라이언스",
       "count": 15,
@@ -374,28 +399,6 @@
         "UX-06",
         "UX-08",
         "UX-09"
-      ]
-    },
-    {
-      "key": "cryptography_integrity",
-      "name": "암호·무결성 설계",
-      "count": 15,
-      "entries": [
-        "EL-01",
-        "EL-02",
-        "EL-04",
-        "EL-07",
-        "EL-08",
-        "EL-10",
-        "EL-11",
-        "EL-13",
-        "EL-18",
-        "EL-20",
-        "AM-03",
-        "AM-05",
-        "AM-06",
-        "AM-07",
-        "AM-08"
       ]
     },
     {
@@ -467,13 +470,14 @@
     {
       "key": "user_feedback",
       "name": "사용자 피드백 반영",
-      "count": 14,
+      "count": 15,
       "entries": [
         "EL-21",
         "AM-01",
         "AM-06",
         "AM-08",
         "AM-09",
+        "AM-14",
         "JM-03",
         "JM-05",
         "JM-08",
@@ -488,10 +492,11 @@
     {
       "key": "ux_design",
       "name": "UX 설계",
-      "count": 14,
+      "count": 15,
       "entries": [
         "EL-03",
         "EL-21",
+        "AM-14",
         "UX-01",
         "UX-02",
         "UX-03",
@@ -509,7 +514,7 @@
     {
       "key": "access_control",
       "name": "권한·접근 통제",
-      "count": 13,
+      "count": 14,
       "entries": [
         "EL-01",
         "EL-05",
@@ -520,10 +525,32 @@
         "EL-21",
         "AM-02",
         "AM-13",
+        "AM-14",
         "JM-01",
         "UX-03",
         "UX-05",
         "UX-06"
+      ]
+    },
+    {
+      "key": "privacy",
+      "name": "개인정보·데이터 최소화",
+      "count": 14,
+      "entries": [
+        "EL-03",
+        "EL-08",
+        "EL-09",
+        "EL-19",
+        "EL-21",
+        "AM-02",
+        "AM-09",
+        "AM-12",
+        "AM-14",
+        "JM-01",
+        "JM-06",
+        "JM-16",
+        "JM-22",
+        "JM-23"
       ]
     },
     {
@@ -567,26 +594,6 @@
       ]
     },
     {
-      "key": "privacy",
-      "name": "개인정보·데이터 최소화",
-      "count": 13,
-      "entries": [
-        "EL-03",
-        "EL-08",
-        "EL-09",
-        "EL-19",
-        "EL-21",
-        "AM-02",
-        "AM-09",
-        "AM-12",
-        "JM-01",
-        "JM-06",
-        "JM-16",
-        "JM-22",
-        "JM-23"
-      ]
-    },
-    {
       "key": "frontend",
       "name": "프런트엔드 구현",
       "count": 12,
@@ -625,6 +632,24 @@
       ]
     },
     {
+      "key": "requirements",
+      "name": "요구사항·범위 설계",
+      "count": 11,
+      "entries": [
+        "EL-03",
+        "EL-04",
+        "EL-14",
+        "EL-15",
+        "AM-01",
+        "AM-14",
+        "JM-02",
+        "JM-04",
+        "JM-10",
+        "JM-15",
+        "UX-04"
+      ]
+    },
+    {
       "key": "threat_modeling",
       "name": "위협 모델링",
       "count": 11,
@@ -640,23 +665,6 @@
         "AM-12",
         "JM-09",
         "JM-22"
-      ]
-    },
-    {
-      "key": "requirements",
-      "name": "요구사항·범위 설계",
-      "count": 10,
-      "entries": [
-        "EL-03",
-        "EL-04",
-        "EL-14",
-        "EL-15",
-        "AM-01",
-        "JM-02",
-        "JM-04",
-        "JM-10",
-        "JM-15",
-        "UX-04"
       ]
     },
     {
@@ -781,7 +789,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 30,
+      "count": 31,
       "entries": [
         "EL-02",
         "EL-04",
@@ -801,6 +809,7 @@
         "AM-11",
         "AM-12",
         "AM-13",
+        "AM-14",
         "JM-01",
         "JM-09",
         "JM-10",
@@ -1158,6 +1167,14 @@
       "entries": [
         "EL-06",
         "EL-11"
+      ]
+    },
+    {
+      "name": "Claude Code hooks",
+      "count": 2,
+      "entries": [
+        "AM-01",
+        "AM-14"
       ]
     },
     {
@@ -1566,13 +1583,6 @@
       ]
     },
     {
-      "name": "Claude Code hooks",
-      "count": 1,
-      "entries": [
-        "AM-01"
-      ]
-    },
-    {
       "name": "covering index",
       "count": 1,
       "entries": [
@@ -1822,6 +1832,13 @@
       "count": 1,
       "entries": [
         "JM-02"
+      ]
+    },
+    {
+      "name": "in-toto / DSSE",
+      "count": 1,
+      "entries": [
+        "AM-14"
       ]
     },
     {
@@ -3236,6 +3253,18 @@
       ],
       "en": [
         "Designed a minimal pre-execution guard that denies only audit tampering, defence shutdown and one-command credential exfiltration, logs every denial to the signed ledger, and verified it on the installed hook"
+      ]
+    },
+    {
+      "id": "AM-14",
+      "date": "2026-10-18",
+      "title": "에이전트 자동 등록과 책임자 연결",
+      "title_en": "Agent auto-registration and accountable-owner mapping",
+      "ko": [
+        "AI 에이전트 hook 기록에 실행자(계정·PC·저장소·git 사용자)를 싣고, 새 에이전트 자동 등록과 매핑 표 기반 책임자 추정을 만들되 확정은 검토자 서명으로만 남게 설계해, 경보와 오프라인 검증되는 증거 묶음에 에이전트·실행자·책임자를 함께 제공"
+      ],
+      "en": [
+        "Added executor identity (account, host, repository, git user) to AI agent hook records, auto-registration of newly seen agents and owner inference from a mapping table, with ownership confirmed only by a reviewer's signed record, surfaced on alerts and in offline-verified evidence packages"
       ]
     },
     {
@@ -4966,6 +4995,33 @@
       "unit": null,
       "scope": "PC에 설치된 hook, 10-17",
       "source": "작업 메모"
+    },
+    {
+      "id": "AM-14",
+      "name": "에이전트 책임자 상태",
+      "before": "owner 문자열 하나(사람 입력 또는 카탈로그)",
+      "after": "미확인·추정·충돌·확정 4단계와 근거",
+      "unit": null,
+      "scope": "레지스트리 항목",
+      "source": "08f18fe"
+    },
+    {
+      "id": "AM-14",
+      "name": "기록당 실행자 정보",
+      "before": "에이전트@PC이름",
+      "after": "OS 계정·PC·저장소·git 사용자",
+      "unit": null,
+      "scope": "Claude Code·Codex hook 기록",
+      "source": "08f18fe"
+    },
+    {
+      "id": "AM-14",
+      "name": "새 기능 테스트",
+      "before": null,
+      "after": "책임 판정 4개 + 증거 묶음 1개 + 화면 1개",
+      "unit": "테스트",
+      "scope": "컨테이너 실행",
+      "source": "test/agent-ownership.test.mjs"
     },
     {
       "id": "JM-01",
@@ -7064,6 +7120,12 @@
       "decided_by": "owner"
     },
     {
+      "id": "AM-14",
+      "what": "hook이 기록마다 executor(OS 계정·PC·origin 저장소·git 사용자)를 싣는다. 레지스트리 정책 autoRegister를 켜면 1분마다 새 후보를 책임자·출처·행위자·구성이 빈 ‘발견됨’ 항목으로 등록한다. 관리자가 정한 매핑 표(계정·PC·저장소·git 사용자·행위자·출처 → 팀·책임자, 순서가 우선순위)로 책임자를 추정하고, 서로 다른 책임자가 나오면 ‘충돌’로 둔다. 검토자가 사유와 함께 확정해야 ‘확정’이 되고, 승인 게이트는 확정된 책임자만 인정한다. 경보 API·콘솔 경보 표·증거 묶음 accountability.json에 함께 싣는다.",
+      "why": "누구의 에이전트인지 근거와 함께 보여 주되, 책임 확정은 사람의 서명 기록으로만 남기기 위해서다.",
+      "decided_by": "joint"
+    },
+    {
       "id": "JM-01",
       "what": "모델의 성공을 증거 수집·규칙 평가·사람 판단의 필수 조건으로 두지 않고, 로컬 모델은 사람이 고른 최소화 스냅샷으로 제안(초안)만 쓰게 한다.",
       "why": "에이전트 기록의 민감성, 추가 비용 0원 원칙, 그리고 모델이 틀리거나 멈춰도 감사 기능은 계속 동작해야 한다는 요구 때문이다.",
@@ -7620,6 +7682,14 @@
     {
       "id": "AM-13",
       "text": "막은 사실 자체도 증거다. 차단과 기록을 함께 설계해야 감사 공백이 생기지 않는다."
+    },
+    {
+      "id": "AM-14",
+      "text": "‘자동’과 ‘확정’을 같은 필드에 두면 추정이 승인처럼 보인다. 상태와 근거를 분리해야 감사에서 설명할 수 있다."
+    },
+    {
+      "id": "AM-14",
+      "text": "새 기능이 기존 평가·재생·증거 묶음을 바꾸지 않게 하는 가장 싼 방법은 새 입력이 기존 판단에 닿지 않게 설계하는 것이다."
     },
     {
       "id": "JM-01",
@@ -8394,6 +8464,18 @@
     {
       "id": "AM-13",
       "text": "실제 운영에서 차단이 몇 번이나 일어나고, 그중 오차단은 얼마나 될까?"
+    },
+    {
+      "id": "AM-14",
+      "text": "회사 내부망에서는 OS 계정 대신 IdP(SSO) 계정이나 사내 프록시 로그로 실행자를 독립 확인해야 하지 않을까?"
+    },
+    {
+      "id": "AM-14",
+      "text": "자동 등록 항목에 행위자를 채우는 일을 ‘책임자 확정’과 묶었다면 검토가 한 번으로 끝났을까, 아니면 다른 판단을 섞었을까?"
+    },
+    {
+      "id": "AM-14",
+      "text": "책임자 확정에도 4-eyes를 요구해야 할 조직 규모는 어느 정도일까?"
     },
     {
       "id": "JM-01",

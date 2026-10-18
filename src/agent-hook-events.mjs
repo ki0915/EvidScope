@@ -121,7 +121,8 @@ function failed(response) {
 // Only the PreToolUse intent carries the target (resource, destination): the PostToolUse self_report records the outcome under the
 // same actionId, so a risk rule fires once per tool call, not twice. policyVersion names the asset registration the installer made
 // (scripts/install-agent-monitoring.mjs); without it a call with a destination reads as "policy context unverified".
-export function hookEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = new Date()} = {}) {
+// executor: who runs the agent (src/agent-hook-runner.mjs hookExecutor: OS account, PC, repository, git user), put on every record.
+export function hookEvent(raw, {actor, policyVersion, executor, tool = HOOK_TOOL, now = new Date()} = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !HOOK_AGENTS.includes(tool)) return null;
   const phase = raw.hook_event_name === 'PreToolUse' ? 'pre' : raw.hook_event_name === 'PostToolUse' ? 'post' : null;
   if (!phase || typeof raw.tool_name !== 'string' || !raw.tool_name) return null;
@@ -139,8 +140,9 @@ export function hookEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = ne
     if (scope.length) event.dataCategories = scope;
   }
   if (typeof policyVersion === 'string' && policyVersion) event.policyVersion = policyVersion;
-  return event;
+  return withExecutor(event, executor);
 }
+const withExecutor = (event, executor) => executor && Object.keys(executor).length ? {...event, executor: {...executor}} : event;
 
 // A tool whose answer is new context for the model. A file edit's answer echoes what the agent itself wrote, so it is not screened.
 const screenedTool = name => hookAction(name) !== 'file_write';
@@ -148,7 +150,7 @@ const screenedTool = name => hookAction(name) !== 'file_write';
 // PostToolUse whose tool returns new content, as labels with counts (dataCategories) and the SHA-256 of the text (dataRefs); the
 // text itself is never put on the record. A tool answer's record shares the call's actionId, so the call is judged with what it
 // returned; a prompt gets its own action. Null when the call has no text to screen.
-export function contentEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now = new Date()} = {}) {
+export function contentEvent(raw, {actor, policyVersion, executor, tool = HOOK_TOOL, now = new Date()} = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !HOOK_AGENTS.includes(tool)) return null;
   const prompt = raw.hook_event_name === 'UserPromptSubmit';
   if (prompt ? typeof raw.prompt !== 'string'
@@ -158,7 +160,8 @@ export function contentEvent(raw, {actor, policyVersion, tool = HOOK_TOOL, now =
   const session = safeId(raw.session_id) || 'unknown-session';
   const call = prompt ? `prompt-${shortHash(JSON.stringify([raw.session_id, now.toISOString(), found.sha256]))}`
     : safeId(raw.tool_use_id) || `call-${shortHash(JSON.stringify([raw.session_id, raw.tool_name, raw.tool_input]))}`;
-  return contentEventFrom({session, call, source: prompt ? 'prompt' : 'tool_result', toolName: raw.tool_name, found, actor, policyVersion, tool, now});
+  return withExecutor(contentEventFrom({session, call, source: prompt ? 'prompt' : 'tool_result', toolName: raw.tool_name, found, actor, policyVersion,
+    tool, now}), executor);
 }
 
 // The content record for a screened text, from an already-computed `found` (src/agent-content-signals.mjs contentSignals or

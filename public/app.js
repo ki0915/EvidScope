@@ -521,14 +521,25 @@ async function alertsView() {
   node.append(synthetic);
   const related = el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다(번호에 마우스를 올리면 항목 이름). 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.');
   node.append(filter, related, count, results, more);
-  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
+  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '에이전트·실행자·책임자', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
     const state = el('div', 'actions'); state.append(badge(item.state || 'open')); if (item.synthetic) state.append(el('span', 'badge', '합성'));
-    return [badge(item.severity), item.code, item.message, requirementList(item.code, links, { compact: true }), date(item.createdAt), state, actions];
+    return [badge(item.severity), item.code, item.message, accountabilityText(item.accountability), requirementList(item.code, links, { compact: true }), date(item.createdAt), state, actions];
   })) });
   filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
+}
+// Who the alert's agent record names (docs/agent-registry.md, "실행자와 책임자"): the registry entry or the actor, the executor the hook
+// reported, and the owner with its status. An inferred owner is labelled as such; only a reviewer confirms one.
+const OWNER_STATUS = { confirmed: '확정', inferred: '추정', conflict: '추정 충돌', unknown: '미확인' };
+function accountabilityText(a) {
+  if (!a) return '—';
+  const x = a.executor || {}, o = a.owner || {};
+  const who = [x.account && x.host ? `${x.account}@${x.host}` : x.account || x.host, x.repository, x.gitUser].filter(Boolean).join(' · ') || '실행자 미수집';
+  const owner = o.status === 'conflict' ? `추정 충돌(${(o.candidates || []).map((c) => c.owner).join(', ')})`
+    : o.owner ? `${o.owner}${o.team ? ` (${o.team})` : ''} · ${OWNER_STATUS[o.status] || '미확인'}` : '책임자 미확인';
+  return `${a.agent ? a.agent.id : a.actor || '행위자 미상'} | ${who} | ${owner}`;
 }
 function newCase(actionId = '', title = '') {
   const node = form([field('사건 제목', 'title', { required: true, value: title }), field('행동 ID', 'actionId', { required: true, value: actionId }), field('담당자', 'owner', { required: true })], '사건 생성', async (values) => {

@@ -2,7 +2,7 @@ import {canonical} from './crypto.mjs';
 
 const objectTypes=new Set(['catalog','system','assessment','governance_task','asset','case','case_decision','rule','exception','retention_policy','retention_hold','retention_plan','retention_rotation','supplier_bundle','supplier_provenance_review','finance_report','assistance_profile','assistance_package','assistance_run','assistance_review','identity_access',
  'governance_legal_review','agent_registry','agent_transition','agent_registry_policy','approval_request','agent_stop_order',
- 'governance_mapping_review','governance_model_factsheet']);
+ 'governance_mapping_review','governance_model_factsheet','agent_owner_map']);
 
 export const isSignedObjectType=type=>objectTypes.has(type);
 

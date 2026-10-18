@@ -10,6 +10,7 @@ import {sequenceFindings} from './sequence-rules.mjs';
 import {contentFindings} from './content-rules.mjs';
 import {parseWords,matchesWords} from './rule-words.mjs';
 import {HISTORY_IMPORT,HOOK_AGENTS} from './agent-hook-events.mjs';
+import {EXECUTOR_FIELDS} from './agent-ownership.mjs';
 // details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
 export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
@@ -25,7 +26,7 @@ const kindBySource={agent:['intent','self_report','delegation'],tool:['execution
 const ACTIVATION_FIELDS=['bundleName','bundleRevision'];
 // collection: how an agent record was collected when not by the live hook (HISTORY_IMPORT: read later from the agent's own transcript by
 // scripts/import-agent-history.mjs). Only that value, only from an agent source.
-const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs','collection',...DECISION_FIELDS,...ACTIVATION_FIELDS];
+const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs','collection','executor',...DECISION_FIELDS,...ACTIVATION_FIELDS];
 export function validateReference(ref){
  if(!ref||Array.isArray(ref)||typeof ref!=='object'||Object.keys(ref).some(k=>!['id','kind','version','hash','role','locator','description'].includes(k)))fail(400,'참고 데이터는 허용된 참조 메타데이터만 제출할 수 있습니다');
  if(!['document','dataset','record','retrieval','artifact'].includes(ref.kind)||!['input','retrieved','output'].includes(ref.role))fail(400,'참고 데이터 종류 또는 역할 오류');
@@ -43,7 +44,10 @@ export function validateEvent(raw,p) {
  if(raw.kind===ACTIVATION_KIND&&['decision','policyId','decisionId','latencyMs','recordedBeforeExecution','actor','tool','action','resource'].some(k=>Object.hasOwn(raw,k)))
   fail(400,'묶음 활성화 기록에는 결정·대상 필드를 쓸 수 없습니다');
  const e={};for(const [k,v] of Object.entries(raw)){
-  if(k==='collection'){if(v!==HISTORY_IMPORT||p.kind!=='agent')fail(400,'수집 경로 표시는 agent 출처의 history_import만 허용됩니다');e[k]=v;}
+  // executor: who ran the agent, as its hook reports it (src/agent-ownership.mjs): OS account, PC, repository, git user. Agent sources only.
+  if(k==='executor'){if(p.kind!=='agent'||!v||Array.isArray(v)||typeof v!=='object'||!Object.keys(v).length)fail(400,'실행자 정보(executor)는 agent 출처의 객체만 허용됩니다');
+   e[k]={};for(const [f,x] of Object.entries(v)){if(!EXECUTOR_FIELDS.includes(f))fail(400,`지원하지 않는 executor 필드: ${f}`);e[k][f]=cleanText(x,256);}}
+  else if(k==='collection'){if(v!==HISTORY_IMPORT||p.kind!=='agent')fail(400,'수집 경로 표시는 agent 출처의 history_import만 허용됩니다');e[k]=v;}
   else if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
   else if(k==='aiObservation')e[k]=validateAIObservation(v);
   else if(k==='decision'){if(!DECISIONS.includes(v))fail(400,'정책 결정은 allow, deny, require_approval, modify 중 하나입니다');e[k]=v;}

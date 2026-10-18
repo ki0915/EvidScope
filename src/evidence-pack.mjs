@@ -4,7 +4,9 @@
 // envelope whose in-toto Statement v1 names every file (predicate: in-toto Simple Verification Result v0.2). Pure functions
 // shared by scripts/evidence-pack.mjs and the offline verifier: the verifier recomputes the index and the summaries from the
 // verified evidence and accepts the package only when every byte matches. "Evidence present" never means that an item is met.
-// Index v1 packages (round 6) are verified exactly as before.
+// Index v1 packages (round 6) are verified exactly as before. A whole-ledger package with agent registry entries, an owner map or
+// agent records naming their executor also carries accountability.json (src/agent-ownership.mjs: agent, executor and owner, confirmed
+// or inferred), recomputed from the export by the verifier; packages built before it have none and verify as before.
 import {lstatSync, readdirSync, readFileSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
@@ -20,13 +22,16 @@ import {APPROVAL_TYPE, verifyApprovalHistory} from './approvals.mjs';
 import {ATTESTED_FILE_FORMAT, requirementResults, verifyAttestation} from './receipts.mjs';
 import {verifyCaseReport} from './report-verifier.mjs';
 import {transparencyOptions} from './verify-options.mjs';
+import {accountabilityReport, hasAccountability} from './agent-ownership.mjs';
 
 const DOC = 'https://github.com/ki0915/EvidScope/blob/main/docs/evidence-pack.md';
 export const SVR_PREDICATE = 'https://in-toto.io/attestation/svr/v0.2', BUILDER_ID = `${DOC}#builder-v1`;
 export const INDEX_FORMAT = 'evidscope-evidence-pack-index-v1', INDEX_FORMAT_V2 = 'evidscope-evidence-pack-index-v2', TAR_ROOT = 'evidence-pack';
 export const FILES = {envelope: 'pack.intoto.json', sums: 'SHA256SUMS', index: 'index.json', mapping: 'mapping.json', ko: 'summary.ko.md',
   en: 'summary.en.md', export: 'evidence/export.json', exportAttestation: 'evidence/export.json.intoto.json', cases: 'evidence/case-reports/',
-  period: 'evidence/period.json', receipts: 'evidence/receipts.json'};
+  period: 'evidence/period.json', receipts: 'evidence/receipts.json', accountability: 'accountability.json'};
+const accountabilityFile = bundle => (hasAccountability(bundle.records, bundle.disclosures || [])
+  ? jsonBytes(accountabilityReport(bundle.records, bundle.disclosures || [])) : null);
 export {checkPeriod};
 const MiB = 1024 * 1024, MAX_SEQS = 1000, MAX_FILES = 512;
 const SAFE_PATH = /^(?:[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/){0,3}[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, ISO_UTC = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{1,3})?Z$/;
@@ -350,6 +355,8 @@ export async function buildPack({evidence, framework, period = null, tenant, sig
     files.set(FILES.export, evidence.exportBytes);
     const receipts = ledgerReceiptFile(index, evidence);
     if (receipts) { files.set(FILES.receipts, receipts.bytes); evidence = {...evidence, receipts: receipts.verified}; }
+    const accountability = accountabilityFile(evidence.bundle);
+    if (accountability) files.set(FILES.accountability, accountability);
   }
   if (evidence.exportAttestation) files.set(FILES.exportAttestation, jsonBytes(evidence.exportAttestation));
   evidence.cases.forEach((c, i) => {
@@ -471,7 +478,8 @@ export function verifyPack(files, {publicKey, packKey, checkpoint, flags = {}, e
     throw Error('Index case reports differ from the package files');
   }
   const places = new Set([FILES.sums, FILES.index, FILES.mapping, FILES.ko, FILES.en, ...sources, ...(kind === 'ledger' ? [FILES.exportAttestation] : []),
-    ...(v2 ? [FILES.receipts] : []), ...caseFiles, ...caseFiles.map(f => f + '.intoto.json')]), stray = present.find(n => !places.has(n));
+    ...(v2 ? [FILES.receipts] : []), ...(kind === 'ledger' ? [FILES.accountability] : []), ...caseFiles, ...caseFiles.map(f => f + '.intoto.json')]);
+  const stray = present.find(n => !places.has(n));
   if (stray !== undefined) throw Error('Package file has no place in an evidence package: ' + stray);
   if (kind === 'period' && index.items?.some?.(i => i?.status === 'no_evidence_recorded')) {
     throw Error('Period package index claims that evidence is absent, which a period package cannot establish');
@@ -503,6 +511,13 @@ export function verifyPack(files, {publicKey, packKey, checkpoint, flags = {}, e
     assertSummaryTraced(files.get(FILES[lang]) ?? Buffer.alloc(0), index, lang);
     if (!renderSummary(recomputed, lang).equals(files.get(FILES[lang]))) throw Error(`Summary (${lang}) differs from the one generated from the index`);
   }
+  // The accountability report, when the package has one, is regenerated from the verified export byte for byte.
+  let accountability = 'absent';
+  if (files.has(FILES.accountability)) {
+    const expected = accountabilityFile(evidence.bundle);
+    if (!expected || !expected.equals(files.get(FILES.accountability))) throw Error(`${FILES.accountability} differs from the one generated from the export`);
+    accountability = parseJson(expected, FILES.accountability).counts;
+  }
   const established = establishedProperties(evidence), unbacked = p.properties.filter(x => !established.includes(x));
   if (unbacked.length) {
     throw Error(`Statement claims checks this verification did not establish: ${unbacked.join(', ')} (pass the same trust inputs as the builder)`);
@@ -512,7 +527,7 @@ export function verifyPack(files, {publicKey, packKey, checkpoint, flags = {}, e
     packageScope: kind, tenant: evidence.result.tenant, period: index.scope.period, counts: index.counts, builtAt: p.timeCreated,
     packSigner: {keyid: opened.keyids[0], key: packKey ? 'pack_key' : 'vault_key'}, properties: p.properties,
     [kind === 'period' ? 'periodRecords' : 'export']: evidence.result,
-    receipts: r ? {count: r.count, quorum: r.quorum, witnessed: r.witnessed} : null,
+    receipts: r ? {count: r.count, quorum: r.quorum, witnessed: r.witnessed} : null, accountability,
     caseReports: evidence.cases.map(c => ({caseId: c.result.caseId, reportHash: c.result.reportHash, reviewState: c.result.reviewState})),
     scope: (kind === 'period'
       ? 'Every file, the period records (each included in the signed tenant log, linked by hash), the case reports, the index and both summaries'

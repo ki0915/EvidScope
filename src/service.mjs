@@ -148,6 +148,14 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
  const governanceDocuments=createGovernanceDocuments({store,dataDir,keyring,getSystem:(p,id)=>policyObject(p,'system',id)});
  // Agent registry and lifecycle (src/registry-service.mjs, docs/agent-registry.md).
  const registry=createRegistry({store,principals,policyObjects:verifiedPolicyObjects,dirty,reviewer,admin});
+ // Auto-registration runs (docs/agent-registry.md, "자동 등록"): every REGISTRY_DISCOVERY_INTERVAL_MS (default 60 s) each tenant whose
+ // signed registry policy has autoRegister 'discovered' registers its new candidates. A failed run is logged and tried again next time.
+ const registryDiscovery={timer:null,run(){
+   const out=[];for(const tenant of tenants){try{const r=store.transaction(()=>registry.autoRegister(tenant));if(r?.registered.length)out.push({tenant,registered:r.registered.length});}
+    catch(error){process.stderr.write(JSON.stringify({component:'registry-discovery',tenant,error:error?.status?error.message:error?.code||error?.name})+'\n');}}
+   return out;},
+  start(){if(this.timer)return;const ms=Number(process.env.REGISTRY_DISCOVERY_INTERVAL_MS)||60000;this.timer=setInterval(()=>this.run(),Math.max(1000,ms));this.timer.unref?.();},
+  stop(){clearInterval(this.timer);this.timer=null;}};
  // Pull distribution and activation reports for enforcement points (src/enforcement-service.mjs, docs/kill-switch.md). The
  // optional OPA bundle signing key is RSA or P-256 (OPA verifies no Ed25519), never the vault key.
  let opaSigner;try{opaSigner=bundleSigning?bundleSigner(bundleSigning.key,bundleSigning.keyId):undefined;}catch(error){store.close();throw error;}
@@ -425,7 +433,10 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
     const items=actions.flatMap(a=>{const ev=evaluations.get(a.id);return (ev?.findings||[]).map((f,i)=>({...f,id:`${ev.id}:${i}`,actionId:a.id,createdAt:ev.createdAt,state:f.suppressedBy?'suppressed':'open',synthetic:synthetic.has(a.id)}));});
     // Windowed: newest first by evaluation time, then id (docs/feature-guide.md).
     const chosen=items.filter(a=>(!severity||a.severity===severity)&&(!state||a.state===state)&&(!data||a.synthetic===(data==='synthetic')));
-    return windowed?pageNewestFirst(chosen,windowed,a=>[String(a.createdAt||''),a.id]):{items:chosen};});
+    // Each alert names the agent, the executor and the owner of its first agent record (src/agent-ownership.mjs), confirmed or not.
+    const owner=registry.accountabilityFor(p),annotate=list=>list.map(a=>({...a,accountability:owner(a.evidence)}));
+    if(!windowed)return {items:annotate(chosen)};
+    const page=pageNewestFirst(chosen,windowed,a=>[String(a.createdAt||''),a.id]);return {...page,items:annotate(page.items)};});
   }
   if(path==='/api/assets'&&method==='GET')return store.transaction(()=>({items:[...verifiedPolicyObjects(p,'asset').values()]}));
   // ledgerRecords is the verified state's signed count (the checkpoint count), not a COUNT over the ledger.
@@ -533,5 +544,5 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
   }t.status=x.status==='closed'?'closed':'open';t.reason=cleanText(x.reason,1000);t.reviewedBy=p.id;t.reviewedAt=new Date().toISOString();return store.put(p,'governance_task',id,t);});}
   fail(404,'지원하지 않는 경로 또는 메서드');
  }
-  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch,retention};
+  return {store,handle,preauthorize,analysis,assistance,identity,governanceDocuments,transparency,accessLog,eventKeystore,ingestBatch,retention,registryDiscovery};
 }
