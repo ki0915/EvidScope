@@ -90,6 +90,7 @@ EvidScope를 만들며 업데이트마다 무엇이 바뀌었는지 남긴 기�
 | 10-17 | 모델 | 첫 세션 판정 "1.0"을 적대적 감사로 무효화, v2 실패, Foundation-Sec 퇴역 | [JM-11](03-judge-models.md#jm-11) ~ [JM-14](03-judge-models.md#jm-14) |
 | 10-17 | 탐지 | 엔진 v9 LLM 보안 신호, 규칙 67개, "확실한 것만" 실행 전 차단 | [AM-12](02-agent-monitoring.md#am-12), [AM-13](02-agent-monitoring.md#am-13) |
 | 10-18 | 탐지 | 에이전트 자동 등록, 실행자(계정·PC·저장소·git 사용자)와 책임자 추정, 확정은 검토자만 | [AM-14](02-agent-monitoring.md#am-14) |
+| 10-18 | 탐지 | 수집 연속성: hook 기록에 순번·앞 기록 해시, 빠짐·변경·중복을 수집 공백 경보로 | [AM-15](02-agent-monitoring.md#am-15) |
 | 10-17 | 모델 | GPU 임대(합성·공개 데이터만 외부로), Qwen3-4B·JEV-9B 판정 1~4회차 | [JM-15](03-judge-models.md#jm-15) ~ [JM-21](03-judge-models.md#jm-21) |
 | 10-17 | 모델 | 역할 분담: JEV가 모든 세션 1차 판정, Qwen은 걸린 세션의 증거, 조항은 서명된 표 | [JM-19](03-judge-models.md#jm-19) |
 | 10-17 이후 | 모델 | 5회차(LLM 보안·에이전트 간섭·기록 변조), PC 배포와 오케스트라 전체 실행 | [JM-22](03-judge-models.md#jm-22), [JM-23](03-judge-models.md#jm-23) |

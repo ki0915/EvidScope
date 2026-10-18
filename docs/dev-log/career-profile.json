@@ -103,7 +103,7 @@
     {
       "key": "agent-monitoring",
       "name": "AI 에이전트 모니터링·탐지",
-      "entries": 14,
+      "entries": 15,
       "from": "2026-10-15",
       "to": "2026-10-18",
       "record": "docs/dev-log/02-agent-monitoring.md"
@@ -126,7 +126,7 @@
     }
   ],
   "status_counts": {
-    "done": 63,
+    "done": 64,
     "in_progress": 2,
     "planned": 1,
     "invalidated": 1,
@@ -136,7 +136,7 @@
     {
       "key": "system_architecture",
       "name": "시스템 아키텍처",
-      "count": 26,
+      "count": 27,
       "entries": [
         "EL-01",
         "EL-03",
@@ -157,6 +157,7 @@
         "AM-09",
         "AM-11",
         "AM-14",
+        "AM-15",
         "JM-01",
         "JM-04",
         "JM-14",
@@ -169,7 +170,7 @@
     {
       "key": "security_architecture",
       "name": "보안 아키텍처",
-      "count": 23,
+      "count": 24,
       "entries": [
         "EL-01",
         "EL-02",
@@ -188,6 +189,7 @@
         "AM-04",
         "AM-11",
         "AM-13",
+        "AM-15",
         "JM-01",
         "JM-13",
         "JM-16",
@@ -199,7 +201,7 @@
     {
       "key": "qa_testing",
       "name": "테스트·QA",
-      "count": 22,
+      "count": 23,
       "entries": [
         "EL-04",
         "EL-05",
@@ -217,6 +219,7 @@
         "AM-08",
         "AM-13",
         "AM-14",
+        "AM-15",
         "JM-05",
         "JM-09",
         "JM-19",
@@ -359,7 +362,7 @@
     {
       "key": "cryptography_integrity",
       "name": "암호·무결성 설계",
-      "count": 16,
+      "count": 17,
       "entries": [
         "EL-01",
         "EL-02",
@@ -376,7 +379,31 @@
         "AM-06",
         "AM-07",
         "AM-08",
-        "AM-14"
+        "AM-14",
+        "AM-15"
+      ]
+    },
+    {
+      "key": "user_feedback",
+      "name": "사용자 피드백 반영",
+      "count": 16,
+      "entries": [
+        "EL-21",
+        "AM-01",
+        "AM-06",
+        "AM-08",
+        "AM-09",
+        "AM-14",
+        "AM-15",
+        "JM-03",
+        "JM-05",
+        "JM-08",
+        "JM-19",
+        "UX-06",
+        "UX-07",
+        "UX-08",
+        "UX-09",
+        "UX-12"
       ]
     },
     {
@@ -468,28 +495,6 @@
       ]
     },
     {
-      "key": "user_feedback",
-      "name": "사용자 피드백 반영",
-      "count": 15,
-      "entries": [
-        "EL-21",
-        "AM-01",
-        "AM-06",
-        "AM-08",
-        "AM-09",
-        "AM-14",
-        "JM-03",
-        "JM-05",
-        "JM-08",
-        "JM-19",
-        "UX-06",
-        "UX-07",
-        "UX-08",
-        "UX-09",
-        "UX-12"
-      ]
-    },
-    {
       "key": "ux_design",
       "name": "UX 설계",
       "count": 15,
@@ -533,6 +538,27 @@
       ]
     },
     {
+      "key": "detection_engineering",
+      "name": "탐지 엔지니어링",
+      "count": 14,
+      "entries": [
+        "EL-11",
+        "AM-02",
+        "AM-04",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-10",
+        "AM-12",
+        "AM-13",
+        "AM-15",
+        "JM-09",
+        "JM-10",
+        "JM-12",
+        "JM-13"
+      ]
+    },
+    {
       "key": "privacy",
       "name": "개인정보·데이터 최소화",
       "count": 14,
@@ -569,26 +595,6 @@
         "EL-19",
         "EL-20",
         "AM-11",
-        "JM-12",
-        "JM-13"
-      ]
-    },
-    {
-      "key": "detection_engineering",
-      "name": "탐지 엔지니어링",
-      "count": 13,
-      "entries": [
-        "EL-11",
-        "AM-02",
-        "AM-04",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-10",
-        "AM-12",
-        "AM-13",
-        "JM-09",
-        "JM-10",
         "JM-12",
         "JM-13"
       ]
@@ -789,7 +795,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 31,
+      "count": 32,
       "entries": [
         "EL-02",
         "EL-04",
@@ -810,6 +816,7 @@
         "AM-12",
         "AM-13",
         "AM-14",
+        "AM-15",
         "JM-01",
         "JM-09",
         "JM-10",
@@ -1095,6 +1102,15 @@
       ]
     },
     {
+      "name": "Claude Code hooks",
+      "count": 3,
+      "entries": [
+        "AM-01",
+        "AM-14",
+        "AM-15"
+      ]
+    },
+    {
       "name": "in-toto Statement v1",
       "count": 3,
       "entries": [
@@ -1167,14 +1183,6 @@
       "entries": [
         "EL-06",
         "EL-11"
-      ]
-    },
-    {
-      "name": "Claude Code hooks",
-      "count": 2,
-      "entries": [
-        "AM-01",
-        "AM-14"
       ]
     },
     {
@@ -1295,6 +1303,14 @@
       "entries": [
         "EL-06",
         "EL-13"
+      ]
+    },
+    {
+      "name": "SHA-256 hash chain",
+      "count": 2,
+      "entries": [
+        "EL-10",
+        "AM-15"
       ]
     },
     {
@@ -2500,13 +2516,6 @@
       ]
     },
     {
-      "name": "SHA-256 hash chain",
-      "count": 1,
-      "entries": [
-        "EL-10"
-      ]
-    },
-    {
       "name": "SHA-256 무결성 검증",
       "count": 1,
       "entries": [
@@ -3265,6 +3274,18 @@
       ],
       "en": [
         "Added executor identity (account, host, repository, git user) to AI agent hook records, auto-registration of newly seen agents and owner inference from a mapping table, with ownership confirmed only by a reviewer's signed record, surfaced on alerts and in offline-verified evidence packages"
+      ]
+    },
+    {
+      "id": "AM-15",
+      "date": "2026-10-18",
+      "title": "수집 연속성: hook 기록의 순번·연결과 빠짐 경보",
+      "title_en": "Collection continuity: numbered, linked hook records and gap alerts",
+      "ko": [
+        "AI 에이전트 hook 기록에 순번·앞 기록 해시 사슬을 붙이고 동시 프로세스에서도 순번이 겹치지 않게 잠금을 설계해, 수집 경로의 유실·변경·중복을 서명된 수집 공백 경보로 자동 기록(평가 엔진 무변경)"
+      ],
+      "en": [
+        "Added a per-host sequence-and-hash chain to AI agent hook records, with locking so concurrent hook processes never reuse a number, and turned loss, alteration or reuse in transit into signed collection-gap alerts without changing the evaluation engine"
       ]
     },
     {
@@ -5022,6 +5043,33 @@
       "unit": "테스트",
       "scope": "컨테이너 실행",
       "source": "test/agent-ownership.test.mjs"
+    },
+    {
+      "id": "AM-15",
+      "name": "전송 중 유실·변경 감지",
+      "before": "없음",
+      "after": "빠진 순번·연결 불일치·번호 중복을 높음 경보로",
+      "unit": null,
+      "scope": "Claude Code·Codex hook 기록",
+      "source": "234d1a3"
+    },
+    {
+      "id": "AM-15",
+      "name": "동시 hook 프로세스 순번",
+      "before": null,
+      "after": "6개 프로세스 150건, 1~150 중복·누락 없음",
+      "unit": "건",
+      "scope": "컨테이너 시험",
+      "source": "test/collection-chain.test.mjs"
+    },
+    {
+      "id": "AM-15",
+      "name": "새 기능 테스트",
+      "before": null,
+      "after": "5개",
+      "unit": "테스트",
+      "scope": "컨테이너 실행",
+      "source": "test/collection-chain.test.mjs"
     },
     {
       "id": "JM-01",
@@ -7126,6 +7174,12 @@
       "decided_by": "joint"
     },
     {
+      "id": "AM-15",
+      "what": "hook이 ~/.evidscope/<에이전트>-chain.json 상태와 잠금 파일로 기록마다 chain {stream, seq, prev}를 붙인다. 금고는 출처·스트림별로 순번을 모아 빠진 구간(뒤 순번 도착 1시간 뒤 확정), 연결 불일치, 번호 중복, 재시작을 보고하고, 5분마다 새 문제를 서명된 telemetry gap 기록으로 한 번씩 남겨 기존 COLLECTION_GAP 경보가 되게 한다.",
+      "why": "원장이 지키는 ‘도착 이후’에 더해 ‘도착 이전’ 구간의 유실·변경을 근거와 함께 보이기 위해서다.",
+      "decided_by": "joint"
+    },
+    {
       "id": "JM-01",
       "what": "모델의 성공을 증거 수집·규칙 평가·사람 판단의 필수 조건으로 두지 않고, 로컬 모델은 사람이 고른 최소화 스냅샷으로 제안(초안)만 쓰게 한다.",
       "why": "에이전트 기록의 민감성, 추가 비용 0원 원칙, 그리고 모델이 틀리거나 멈춰도 감사 기능은 계속 동작해야 한다는 요구 때문이다.",
@@ -7690,6 +7744,14 @@
     {
       "id": "AM-14",
       "text": "새 기능이 기존 평가·재생·증거 묶음을 바꾸지 않게 하는 가장 싼 방법은 새 입력이 기존 판단에 닿지 않게 설계하는 것이다."
+    },
+    {
+      "id": "AM-15",
+      "text": "무결성은 구간별로 나눠 말해야 정확하다. 원장은 도착 이후를, 순번 사슬은 도착 이전을 지키고, 둘 다 기록 내용이 참이라는 증명은 아니다."
+    },
+    {
+      "id": "AM-15",
+      "text": "새 경보를 만들 때 새 평가 규칙 대신 기존 증거 종류(gap)를 서명 기록으로 남기면 엔진·재생 호환을 지킬 수 있다."
     },
     {
       "id": "JM-01",
@@ -8476,6 +8538,14 @@
     {
       "id": "AM-14",
       "text": "책임자 확정에도 4-eyes를 요구해야 할 조직 규모는 어느 정도일까?"
+    },
+    {
+      "id": "AM-15",
+      "text": "끝부분 삭제를 막으려면 hook 밖의 상주 발신기(심장박동)를 어디에 둘까?"
+    },
+    {
+      "id": "AM-15",
+      "text": "사내망에서는 PC 관리자 권한을 가진 사용자를 막기 위해 프록시나 OS 감사 로그 같은 독립 관측과 대조해야 하지 않을까?"
     },
     {
       "id": "JM-01",
