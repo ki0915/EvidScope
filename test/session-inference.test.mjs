@@ -9,7 +9,7 @@ import {canonical} from '../src/crypto.mjs';
 import {sessionInput, sessionGold, baselinePredict, scoreSessions, assessSessionModel, SESSION_GATE, SESSION_OUTPUT_SCHEMA,
   catalogRequirementIds, splitByFamily, sessionRequestLines, sessionPrompt, interpretSessionOutput, predictFromOutputs,
   sessionTrainingSet, sessionTrainingRow, SESSION_TASK, SESSION_ROLE_ID, SESSION_TASK_VERSION, allowlistPredict, sessionCounts,
-  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold, sessionGateShortfall, repeatRows} from '../src/session-inference.mjs';
+  requirementIdsForEvidence, verdictScore, verdictProbability, calibrateSessionThreshold, sessionGateShortfall, repeatRows, thinRows} from '../src/session-inference.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -319,6 +319,22 @@ test('repeatRows copies only the picked rows, with unique ids, right after each 
     ['a', 'assebench:safety-1', 'assebench:safety-1~rep2', 'assebench:safety-1~rep3', 'assebench:safety-2']);
   assert.throws(() => repeatRows(rows, 0, pick), {message: 'session_repeat_invalid'});
   assert.throws(() => repeatRows(rows, 5, pick), {message: 'session_repeat_invalid'});
+});
+
+test('thinRows keeps about the given share of the picked rows, deterministically, with masked and stripped copies beside their original', () => {
+  const synth = Array.from({length: 400}, (_, i) => ['', '~masked', '~stripped']
+    .map(suffix => ({id: `s${i}${suffix}`, split: 'tune', labelSource: 'derived_mapping_table'}))).flat();
+  const rows = [...synth, {id: 'assebench:safety-1', split: 'tune', labelSource: 'public'}, {id: 'v1', split: 'validation', labelSource: 'derived_mapping_table'}];
+  const pick = r => r.split === 'tune' && r.labelSource === 'derived_mapping_table';
+  assert.equal(thinRows(rows, 1, pick), rows);
+  const half = thinRows(rows, 0.5, pick);
+  assert.deepEqual(half, thinRows(rows, 0.5, pick));
+  const kept = new Set(half.filter(pick).map(r => r.id.replace(/(~masked)?(~stripped)?$/, '')));
+  assert.ok(kept.size > 150 && kept.size < 250, `kept ${kept.size} of 400`);
+  assert.equal(half.filter(pick).length, kept.size * 3, 'copies stay or go with their original');
+  assert.ok(half.some(r => r.id === 'assebench:safety-1') && half.some(r => r.id === 'v1'));
+  assert.throws(() => thinRows(rows, 0, pick), {message: 'session_thin_invalid'});
+  assert.throws(() => thinRows(rows, 1.5, pick), {message: 'session_thin_invalid'});
 });
 
 test('mask-share adds masked copies in the same family, deterministically, and never to the unseen split', () => {

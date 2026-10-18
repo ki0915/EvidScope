@@ -533,3 +533,12 @@ export function repeatRows(rows, times, pick) {
   if (!Number.isInteger(times) || times < 1 || times > 4) throw Error('session_repeat_invalid');
   return rows.flatMap(r => (pick(r) ? [r, ...Array.from({length: times - 1}, (_, i) => ({...r, id: `${r.id}~rep${i + 2}`}))] : [r]));
 }
+
+// 학습 비중 조정(반대 방향): pick이 고른 행 중 keep 비율만 남긴다. 사본을 늘린 6회차는 외부 오경보를 줄이지 못했다(같은 691행을 두 번 본다고
+// 다양성이 늘지 않는다). 그래서 공개 세트는 그대로 두고 우리 합성 행을 줄여 비중을 4회차 수준으로 되돌린다. 세션 id의 sha256으로 정해(무작위
+// 없음) 가린·뺀 사본은 원본과 함께 남거나 빠지고, 계열마다 대략 같은 비율이 남는다.
+export function thinRows(rows, keep, pick) {
+  if (!(typeof keep === 'number' && keep > 0 && keep <= 1)) throw Error('session_thin_invalid');
+  if (keep === 1) return rows;
+  return rows.filter(r => !pick(r) || pickShare(r.id.replace(/(~masked)?(~stripped)?$/, ''), keep, 'thin:'));
+}

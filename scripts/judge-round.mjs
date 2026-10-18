@@ -3,7 +3,7 @@
 // 시나리오로 만든 학습 행·평가 요청과 공개 세트(ASSEBench·R-Judge) 요청뿐이고, PC가 모은 실제 기록은 들어가지 않는다.
 //   node scripts/judge-round.mjs prepare --out DIR --held a,b --val c,d --qwen-lock F [--contrast F] [--per-threat N] [--per-benign N]
 //     [--mask-share x] [--strip-share y] [--assebench F --assebench-test 'a|b' --assebench-val 'c|d'] [--assebench-safety F [--safety-repeat N]] [--rjudge F]
-//     [--allow-ungated]
+//     [--allow-ungated] [--tune-keep x]
 //     [--probes F] [--shakedown]
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
 //   node scripts/judge-round.mjs orchestra --dir DIR [--first jev-cand] [--second qwen-cand] [--raw]   두 판정자를 잇는 오케스트라
@@ -21,7 +21,7 @@ import {canonical} from '../src/crypto.mjs';
 import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mjs';
 import {buildVariantCatalog} from '../src/session-variants.mjs';
 import {allowlistPredict, assessSessionModel, baselinePredict, calibrateSessionThreshold, familyOf, predictFromOutputs, scoreSessions,
-  repeatRows, sessionCounts, sessionGateShortfall, sessionRequestLines, sessionTrainingSet} from '../src/session-inference.mjs';
+  repeatRows, sessionCounts, sessionGateShortfall, sessionRequestLines, sessionTrainingSet, thinRows} from '../src/session-inference.mjs';
 import {scoreOrchestra} from '../src/judge-orchestra.mjs';
 import {summarizeFolds} from '../src/judge-folds.mjs';
 import {externalOverlap, externalPrompt, externalRecords, externalRequest, externalTrainingRows, scoreExternal, splitExternal}
@@ -48,6 +48,8 @@ if (cmd === 'prepare') {
   const safetyRepeat = Number(opt('--safety-repeat', '1'));
   if (!Number.isInteger(safetyRepeat) || safetyRepeat < 1 || safetyRepeat > 4) fail('--safety-repeat must be 1..4');
   if (safetyRepeat > 1 && !opt('--assebench-safety')) fail('--safety-repeat needs --assebench-safety');
+  const tuneKeep = Number(opt('--tune-keep', '1'));
+  if (!(tuneKeep > 0 && tuneKeep <= 1)) fail('--tune-keep must be in (0, 1]');
   const base = loadCatalog(opt('--catalog', join(root, 'data/threat-scenarios/v1/catalog.json')));
   const catalog = opt('--contrast') ? composeCatalog(base, loadCatalog(opt('--contrast'))) : base;
   const variants = buildVariantCatalog(catalog, rules, {perThreat: Number(opt('--per-threat', '30')), perBenign: Number(opt('--per-benign', '30')),
@@ -119,10 +121,15 @@ if (cmd === 'prepare') {
     poolFamilies: variants.poolFamilies, maskShare: Number(opt('--mask-share', '0.3')), stripShare: Number(opt('--strip-share', '0.3')), extraRows});
   // --safety-repeat N: ASSEBench safety 학습 행을 N벌로 늘린다. 우리 합성 세션이 늘수록 다른 종류 에이전트 기록의 비중이 줄어 R-Judge의 안전
   // 세션을 위험으로 보는 일이 늘었기 때문(4회차 43 → 5회차 77/269). 중복 제거 뒤에 늘려야 사본이 남는다.
-  const rows = repeatRows(set.rows, safetyRepeat, r => r.split === 'tune' && r.id.startsWith('assebench:safety-'));
-  const repeated = rows.length - set.rows.length;
+  const repeatedRows = repeatRows(set.rows, safetyRepeat, r => r.split === 'tune' && r.id.startsWith('assebench:safety-'));
+  const repeated = repeatedRows.length - set.rows.length;
   if (external.assebenchSafety) external.assebenchSafety.repeat = {times: safetyRepeat, addedRows: repeated};
-  const counts = {...set.counts, tune: set.counts.tune + repeated, external: set.counts.external + repeated};
+  // --tune-keep x: 우리 합성 세션의 학습(tune) 행만 x 비율로 줄인다. 검증·평가 요청은 그대로라 같은 시험지로 비교된다.
+  const rows = thinRows(repeatedRows, tuneKeep, r => r.split === 'tune' && r.labelSource === 'derived_mapping_table');
+  const thinned = repeatedRows.length - rows.length;
+  const counts = {...set.counts, tune: set.counts.tune + repeated - thinned, external: set.counts.external + repeated,
+    ...(tuneKeep < 1 ? {masked: rows.filter(r => r.id.endsWith('~masked')).length, stripped: rows.filter(r => r.id.endsWith('~stripped')).length,
+      thin: {keep: tuneKeep, droppedRows: thinned}} : {})};
   writeFileSync(join(out, 'in', 'train.jsonl'), rows.map(r => JSON.stringify(r)).join('\n') + '\n', {flag: 'wx'});
   put('val', sessionRequestLines(valCatalog.scenarios, rules, {}), valCatalog.scenarios.length);
   put('unseen', sessionRequestLines(unseenCatalog.scenarios, rules, {}), unseenCatalog.scenarios.length);
