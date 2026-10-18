@@ -1,7 +1,8 @@
 // Agent registry API (docs/agent-registry.md). One signed registry object per agent with every version kept in the ledger,
 // a lifecycle whose transitions are separate signed records, gate conditions and risk-tier rules kept as data, and a list
 // of discovered candidates that a registry policy can register automatically as discovered entries without an owner, and an owner
-// map that infers who answers for an agent from who runs it; only a reviewer confirms an owner (src/agent-ownership.mjs). Reviewers and admins write; every human role reads;
+// map that infers who answers for an agent from who runs it; only a reviewer confirms an owner (src/agent-ownership.mjs).
+// Reviewers and admins write; every human role reads;
 // the registry policy (enforcement mode, gates, risk rules) is admin-only. EvidScope records and evaluates; it blocks nothing.
 import {randomUUID} from 'node:crypto';
 import {canonical,digest} from './crypto.mjs';
@@ -321,7 +322,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
     riskRules:riskRules??previous.riskRules,...(approvals??previous.approvals?{approvals:approvals??previous.approvals}:{}),
     ...(stopPropagation?{stopPropagation}:{}),
     // autoRegister is written only once set, like approvals and stopPropagation.
-    ...((x.autoRegister??previous.autoRegister)!==undefined?{autoRegister:x.autoRegister??previous.autoRegister}:{}),updatedBy:p.id,updatedAt:at,effectiveFrom:at};
+    ...((x.autoRegister??previous.autoRegister)!==undefined?{autoRegister:x.autoRegister??previous.autoRegister}:{}),
+    updatedBy:p.id,updatedAt:at,effectiveFrom:at};
    store.put(p,'agent_registry_policy','current',next);dirty(p.tenant);return next;
   });
  }
@@ -403,7 +405,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
     const at=now(),base={id,name:c.actor||c.source,owner:'',purpose:'',sources:[],actors:[],assetIds:[],systemId:null,models:[],tools:[],
      dataCategories:[],destinations:[],fingerprint:{},state:'discovered',registeredBy:system.id,registeredAt:at,editedBy:system.id,editedAt:at,version:1,
      effectiveFrom:at,change:'created',discoveredFrom:who,
-     discovery:{reasons:c.reasons,events:c.events,firstSeen:c.firstSeen,lastSeen:c.lastSeen,observedTools:c.tools.slice(0,20),observedModels:c.models.slice(0,20)}};
+     discovery:{reasons:c.reasons,events:c.events,firstSeen:c.firstSeen,lastSeen:c.lastSeen,observedTools:c.tools.slice(0,20),
+      observedModels:c.models.slice(0,20)}};
     const entry={...base,risk:riskRecord(system,base)};
     if(!dryRun)putVersion(system,entry);
     registered.push({id,...who,owner:ownershipOf(entry,inferOwner(map,c.executors))});
@@ -471,7 +474,8 @@ export function createRegistry({store,principals,policyObjects,dirty,reviewer,ad
    .map(to=>({to,approvalRequired:approvalRequired(entry.state,to),gate:gate(p,entry,to,[],current)}));
   const transitionRecords=records.map(r=>({seq:r.seq,recordedAt:r.recordedAt,principal:r.principal,...r.payload}));
   const seen=executorsByEntry(p,[...policyObjects(p,'agent_registry').values()]).get(entry.id)||[];
-  return {entry,risk:effectiveRisk(entry,current),ownership:ownership(entry,ownerMap(p),seen),executors:seen,versions,transitions,transitionRecords,next,lifecycle:verifyRegistryHistory(registryRows),
+  return {entry,risk:effectiveRisk(entry,current),ownership:ownership(entry,ownerMap(p),seen),executors:seen,
+   versions,transitions,transitionRecords,next,lifecycle:verifyRegistryHistory(registryRows),
    policy:{version:current.version,source:current.source,enforcement:current.enforcement},stopOrders:stops.forAgent(p,entry.id)};
  }
  // Stop orders and their propagation (src/stop-order-service.mjs, docs/kill-switch.md) share this storage and four-eyes path.

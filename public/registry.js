@@ -268,7 +268,8 @@
     const box = card('책임자·실행자', '실행자는 훅의 자기 보고(OS 계정·PC·저장소·git 사용자)입니다. 추정은 매핑 표의 결과일 뿐이며, 책임자는 검토자가 확정합니다.');
     const basis = o.basis ? basisLabels[o.basis] || o.basis : '—';
     box.append(core.factList([
-      ['상태', ownerLabels[o.status] || '미확인'], ['책임자(팀)', ownerText(o)], ['근거', o.rule ? `${basis} · 규칙 ${o.rule.id} (${fieldLabels[o.rule.field] || o.rule.field}=${o.rule.value})` : basis],
+      ['상태', ownerLabels[o.status] || '미확인'], ['책임자(팀)', ownerText(o)],
+      ['근거', o.rule ? `${basis} · 규칙 ${o.rule.id} (${fieldLabels[o.rule.field] || o.rule.field}=${o.rule.value})` : basis],
       ['확정한 사람·시각', o.status === 'confirmed' ? `${o.confirmedBy || '—'} · ${date(o.confirmedAt)}` : '—'],
       ...(entry.discoveredFrom ? [['발견 출처', `${entry.discoveredFrom.source || '출처 미상'} / ${entry.discoveredFrom.actor || '행위자 미상'}`]] : []),
     ]));
@@ -280,7 +281,8 @@
         field(accept ? `책임자 (비우면 추정값 ${o.owner} 확정)` : '책임자', 'owner', { maxLength: 200 }), field('팀 (선택)', 'team', { maxLength: 200 }),
         field('확정 사유', 'reason', { required: true, multiline: true, maxLength: 1000 }),
       ], accept ? '책임자 확정' : '책임자 지정', async (values, result) => {
-        const body = { reason: values.reason, ...(text(values.owner) ? { owner: text(values.owner) } : {}), ...(text(values.team) ? { team: text(values.team) } : {}) };
+        const body = { reason: values.reason, ...(text(values.owner) ? { owner: text(values.owner) } : {}),
+          ...(text(values.team) ? { team: text(values.team) } : {}) };
         const saved = await api(`/api/registry/${encodeURIComponent(entry.id)}/owner`, 'POST', body);
         result.append(el('div', 'message', `책임자 ${saved.owner}를 확정한 v${saved.version}을 서명했습니다.`)); await openEntry(entry.id); navigate('registry');
       }));
@@ -296,7 +298,8 @@
       r.op, r.value, r.team || '—', r.owner])));
     box.append(form([
       field('규칙 (한 줄에 하나: 규칙ID, 대상, 방식, 값, 팀, 책임자 / 대상은 account·host·repository·gitUser·actor·source, 방식은 eq·prefix·suffix)', 'rules',
-        { multiline: true, wide: true, maxLength: 60000, value: list(map.rules).map(r => [r.id, r.field, r.op, r.value, r.team || '', r.owner].join(', ')).join('\n') }),
+        { multiline: true, wide: true, maxLength: 60000,
+          value: list(map.rules).map(r => [r.id, r.field, r.op, r.value, r.team || '', r.owner].join(', ')).join('\n') }),
     ], '매핑 표 저장(관리자)', async (values, result) => {
       const rules = String(values.rules || '').split('\n').map(line => line.trim()).filter(Boolean).map(line => {
         const [id, field_, op, value, team, owner] = line.split(',').map(part => part.trim());

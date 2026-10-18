@@ -478,7 +478,8 @@ export function verifyPack(files, {publicKey, packKey, checkpoint, flags = {}, e
     throw Error('Index case reports differ from the package files');
   }
   const places = new Set([FILES.sums, FILES.index, FILES.mapping, FILES.ko, FILES.en, ...sources, ...(kind === 'ledger' ? [FILES.exportAttestation] : []),
-    ...(v2 ? [FILES.receipts] : []), ...(kind === 'ledger' ? [FILES.accountability] : []), ...caseFiles, ...caseFiles.map(f => f + '.intoto.json')]), stray = present.find(n => !places.has(n));
+    ...(v2 ? [FILES.receipts] : []), ...(kind === 'ledger' ? [FILES.accountability] : []), ...caseFiles, ...caseFiles.map(f => f + '.intoto.json')]);
+  const stray = present.find(n => !places.has(n));
   if (stray !== undefined) throw Error('Package file has no place in an evidence package: ' + stray);
   if (kind === 'period' && index.items?.some?.(i => i?.status === 'no_evidence_recorded')) {
     throw Error('Period package index claims that evidence is absent, which a period package cannot establish');

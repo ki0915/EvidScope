@@ -187,7 +187,8 @@ export function verifyRegistryHistory(rows){
     if(row.principal!==v.registeredBy||v.editedBy!==v.registeredBy)problem(row,'registry creation principal differs');
     // Auto-registration (src/agent-ownership.mjs) writes a discovered entry with no owner, no ownership and empty configuration.
     if(v.registeredBy===AUTO_DISCOVERY_PRINCIPAL&&(v.state!=='discovered'||v.owner||v.ownership||v.catalog
-     ||IMPORT_UNTOUCHED.some(k=>canonical(v[k]??null)!==canonical(k==='systemId'?null:[]))))problem(row,'auto-registered entry is not an empty discovered entry');
+     ||IMPORT_UNTOUCHED.some(k=>canonical(v[k]??null)!==canonical(k==='systemId'?null:[]))))
+     problem(row,'auto-registered entry is not an empty discovered entry');
    }else{
     if(v.version!==previous.version+1)problem(row,'registry version is not consecutive');
     if(previous.state==='retired')problem(row,'retired registry entry changed');

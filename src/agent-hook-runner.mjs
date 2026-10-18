@@ -8,7 +8,8 @@
 // exits 0; a guard that cannot read the rule pack lets every call run. Events wait in a local spool and go out with the next call that
 // can reach EvidScope.
 // Config (EVIDSCOPE_HOOK_CONFIG or ~/.evidscope/<agent>-hook.json): {"url":"http://127.0.0.1:8091","token":"…","hmacSecret":"…",
-// "actor":"<agent>@pc","policyVersion":"<agent>-monitoring-v1","screenContent":true,"guard":false,"executor":true}: the url is the ingest gateway (local launcher
+// "actor":"<agent>@pc","policyVersion":"<agent>-monitoring-v1","screenContent":true,"guard":false,"executor":true}: the url is the ingest
+// gateway (local launcher
 // port base + 1), the credentials an `agent` source's; screenContent (default on) sends the content record of prompts and tool answers
 // (labels, counts and a hash, never the text; src/agent-content-signals.mjs), false turns it off; guard (default off) reads the rule pack
 // at ../data/risk-rules/ai-agent-baseline.json beside this module; executor (default on) puts who runs the agent on every record
@@ -50,7 +51,9 @@ function gitConfigOf(dir) {
     const dotgit = join(d, '.git');
     if (existsSync(dotgit)) {
       let gitdir = dotgit;
-      try { if (statSync(dotgit).isFile()) { const m = /^gitdir:\s*(.+)$/m.exec(readText(dotgit) || ''); if (!m) return null; gitdir = resolve(d, m[1].trim()); } }
+      try {
+        if (statSync(dotgit).isFile()) { const m = /^gitdir:\s*(.+)$/m.exec(readText(dotgit) || ''); if (!m) return null; gitdir = resolve(d, m[1].trim()); }
+      }
       catch { return null; }
       const common = (readText(join(gitdir, 'commondir')) || '').trim();
       return readText(join(common ? resolve(gitdir, common) : gitdir, 'config'));

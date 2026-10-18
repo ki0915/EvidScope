@@ -81,8 +81,9 @@ async function analyzeAll() {for (let i = 0; i < 20; i++) {const r = (await h.an
 
 test('auto-registration, owner inference and confirmation end to end', async () => {
   const dev = {account: 'dev', host: 'pc-1', repository: 'git.example.com/payments/api', gitUser: 'dev@example.com'};
-  await send({id: 'w1', actionId: 'w1', traceId: 's1', actor: 'claude-code@pc-1', tool: 'claude-code', action: 'shell_exec', resource: 'npm test', executor: dev});
-  await send({id: 'w2', actionId: 'w2', traceId: 's1', actor: 'claude-code@pc-1', tool: 'claude-code', action: 'file_read', resource: '/etc/shadow', executor: dev});
+  const run1 = {traceId: 's1', actor: 'claude-code@pc-1', tool: 'claude-code', executor: dev};
+  await send({id: 'w1', actionId: 'w1', ...run1, action: 'shell_exec', resource: 'npm test'});
+  await send({id: 'w2', actionId: 'w2', ...run1, action: 'file_read', resource: '/etc/shadow'});
   await send({id: 'w3', actionId: 'w3', traceId: 's2', actor: 'codex@pc-2', tool: 'codex', action: 'file_read', resource: 'readme.md',
     executor: {account: 'guest', host: 'pc-2'}});
   let candidates = (await call('/api/registry/candidates', undefined, 'auditor')).body;
@@ -125,7 +126,8 @@ test('auto-registration, owner inference and confirmation end to end', async () 
   assert.equal((await call(`/api/registry/${id}/owner`, {})).status, 400, 'a reason is required');
   const confirmed = await call(`/api/registry/${id}/owner`, {reason: 'payments lead runs this agent'});
   assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
-  assert.deepEqual([confirmed.body.change, confirmed.body.owner, confirmed.body.ownership.team, confirmed.body.ownership.by, confirmed.body.ownership.basis.kind],
+  const o = confirmed.body.ownership;
+  assert.deepEqual([confirmed.body.change, confirmed.body.owner, o.team, o.by, o.basis.kind],
     ['owner_confirmed', 'pay-lead', 'payments', 'alpha-reviewer', 'owner_map']);
   const detail = (await call(`/api/registry/${id}`, undefined, 'auditor')).body;
   assert.deepEqual([detail.ownership.status, detail.lifecycle.valid, detail.executors[0].events], ['confirmed', true, 2]);

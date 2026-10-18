@@ -159,7 +159,9 @@ test('owners: candidates show executors and inferred owners; an entry confirms i
   const executor = {account: 'dev', host: 'pc-1', repository: 'git.example.com/payments/api', gitUser: hostile};
   const inferred = {status: 'inferred', owner: 'pay-lead', team: 'payments', basis: 'owner_map', rule: {id: 'payments-repo', field: 'repository', value: 'x'}};
   const f = fixture((path, method) => {
-    if (path === '/api/registry') return {items: [{...entry, owner: '', ownerStatus: inferred}], policy: {version: 1, source: 'signed', autoRegister: 'discovered'}};
+    if (path === '/api/registry') {
+      return {items: [{...entry, owner: '', ownerStatus: inferred}], policy: {version: 1, source: 'signed', autoRegister: 'discovered'}};
+    }
     if (path === '/api/registry/candidates') return {items: [{source: 'alpha-agent', actor: 'codex@pc-2', reasons: [], actions: 1, events: 1, tools: [],
       executors: [{executor, events: 1}], owner: {status: 'conflict', candidates: [{owner: 'a'}, {owner: 'b'}]}}], autoRegister: 'discovered'};
     if (path === '/api/registry/owners' && method === 'GET') return {map: {version: 1, rules: [{id: 'payments-repo', field: 'repository', op: 'prefix',

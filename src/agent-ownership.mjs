@@ -42,7 +42,8 @@ function ruleMatches(rule, values) {
 export function matchOwner(map, observation) {
   const values = {...(observation.executor || {}), actor: observation.actor || undefined, source: observation.source || undefined};
   const rule = (map?.rules || []).find(r => ruleMatches(r, values));
-  return rule ? {owner: rule.owner, team: rule.team || null, ruleId: rule.id, field: rule.field, value: values[rule.field], mapVersion: map.version ?? null} : null;
+  return rule ? {owner: rule.owner, team: rule.team || null, ruleId: rule.id, field: rule.field, value: values[rule.field],
+    mapVersion: map.version ?? null} : null;
 }
 
 // Executors seen for one agent, grouped: [{executor, actor, source, events, lastSeen}], most recent first, at most `limit`.
