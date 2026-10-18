@@ -8,7 +8,7 @@
 // v9 also reads the scope the hook records on each intent (src/agent-hook-events.mjs hookScope): a risky call made while the agent ran
 // with its approval prompts or sandbox off, and a file edit outside the working folder.
 import {recordContent} from './agent-content-signals.mjs';
-import {HOOK_AGENTS, SCOPE_OUTSIDE} from './agent-hook-events.mjs';
+import {CONTENT_TOOLS, HOOK_AGENTS, SCOPE_OUTSIDE} from './agent-hook-events.mjs';
 import {SEQUENCE, classOf, isStep, loopback, stepRules} from './sequence-rules.mjs';
 
 // Every code this module emits; evidence-pack mapping version 5 names each one.
@@ -19,10 +19,10 @@ export const SCOPE_CODES = Object.freeze(['AGENT_RISK_WITHOUT_OVERSIGHT', 'AGENT
 // The modes in which nobody approves a call: Claude Code's bypassPermissions, a Codex run without a sandbox.
 const OVERSIGHT_OFF = Object.freeze(['agent-mode:bypasspermissions', 'agent-sandbox:danger-full-access']);
 
-// A content record of an AI coding agent (agent source, a hook agent's tool, the hook's content_screen self_report), as
+// A content record of an AI coding agent or of the local model proxy (agent source, CONTENT_TOOLS, the content_screen self_report), as
 // {source, signals, hash}, or null.
 export function contentOf(e) {
-  if (e?.sourceKind !== 'agent' || !HOOK_AGENTS.includes(e.tool) || e.kind !== 'self_report' || e.action !== 'content_screen') return null;
+  if (e?.sourceKind !== 'agent' || !CONTENT_TOOLS.includes(e.tool) || e.kind !== 'self_report' || e.action !== 'content_screen') return null;
   return recordContent(e);
 }
 const signalled = e => { const c = contentOf(e); return c && Object.keys(c.signals).length ? c : null; };

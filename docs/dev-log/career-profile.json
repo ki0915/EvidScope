@@ -103,7 +103,7 @@
     {
       "key": "agent-monitoring",
       "name": "AI 에이전트 모니터링·탐지",
-      "entries": 15,
+      "entries": 16,
       "from": "2026-10-15",
       "to": "2026-10-18",
       "record": "docs/dev-log/02-agent-monitoring.md"
@@ -126,7 +126,7 @@
     }
   ],
   "status_counts": {
-    "done": 64,
+    "done": 65,
     "in_progress": 5,
     "planned": 1,
     "invalidated": 1,
@@ -136,7 +136,7 @@
     {
       "key": "system_architecture",
       "name": "시스템 아키텍처",
-      "count": 27,
+      "count": 28,
       "entries": [
         "EL-01",
         "EL-03",
@@ -158,6 +158,7 @@
         "AM-11",
         "AM-14",
         "AM-15",
+        "AM-16",
         "JM-01",
         "JM-04",
         "JM-14",
@@ -170,7 +171,7 @@
     {
       "key": "security_architecture",
       "name": "보안 아키텍처",
-      "count": 24,
+      "count": 25,
       "entries": [
         "EL-01",
         "EL-02",
@@ -190,11 +191,43 @@
         "AM-11",
         "AM-13",
         "AM-15",
+        "AM-16",
         "JM-01",
         "JM-13",
         "JM-16",
         "JM-19",
         "UX-05",
+        "UX-11"
+      ]
+    },
+    {
+      "key": "qa_testing",
+      "name": "테스트·QA",
+      "count": 24,
+      "entries": [
+        "EL-04",
+        "EL-05",
+        "EL-06",
+        "EL-07",
+        "EL-10",
+        "EL-11",
+        "EL-12",
+        "EL-13",
+        "EL-14",
+        "EL-17",
+        "EL-18",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-13",
+        "AM-14",
+        "AM-15",
+        "AM-16",
+        "JM-05",
+        "JM-09",
+        "JM-19",
+        "UX-01",
+        "UX-10",
         "UX-11"
       ]
     },
@@ -226,36 +259,6 @@
         "JM-25",
         "JM-26",
         "UX-07"
-      ]
-    },
-    {
-      "key": "qa_testing",
-      "name": "테스트·QA",
-      "count": 23,
-      "entries": [
-        "EL-04",
-        "EL-05",
-        "EL-06",
-        "EL-07",
-        "EL-10",
-        "EL-11",
-        "EL-12",
-        "EL-13",
-        "EL-14",
-        "EL-17",
-        "EL-18",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-13",
-        "AM-14",
-        "AM-15",
-        "JM-05",
-        "JM-09",
-        "JM-19",
-        "UX-01",
-        "UX-10",
-        "UX-11"
       ]
     },
     {
@@ -371,7 +374,7 @@
     {
       "key": "cryptography_integrity",
       "name": "암호·무결성 설계",
-      "count": 17,
+      "count": 18,
       "entries": [
         "EL-01",
         "EL-02",
@@ -389,7 +392,32 @@
         "AM-07",
         "AM-08",
         "AM-14",
-        "AM-15"
+        "AM-15",
+        "AM-16"
+      ]
+    },
+    {
+      "key": "user_feedback",
+      "name": "사용자 피드백 반영",
+      "count": 17,
+      "entries": [
+        "EL-21",
+        "AM-01",
+        "AM-06",
+        "AM-08",
+        "AM-09",
+        "AM-14",
+        "AM-15",
+        "AM-16",
+        "JM-03",
+        "JM-05",
+        "JM-08",
+        "JM-19",
+        "UX-06",
+        "UX-07",
+        "UX-08",
+        "UX-09",
+        "UX-12"
       ]
     },
     {
@@ -416,29 +444,6 @@
       ]
     },
     {
-      "key": "user_feedback",
-      "name": "사용자 피드백 반영",
-      "count": 16,
-      "entries": [
-        "EL-21",
-        "AM-01",
-        "AM-06",
-        "AM-08",
-        "AM-09",
-        "AM-14",
-        "AM-15",
-        "JM-03",
-        "JM-05",
-        "JM-08",
-        "JM-19",
-        "UX-06",
-        "UX-07",
-        "UX-08",
-        "UX-09",
-        "UX-12"
-      ]
-    },
-    {
       "key": "compliance",
       "name": "규제·컴플라이언스",
       "count": 15,
@@ -458,6 +463,28 @@
         "UX-06",
         "UX-08",
         "UX-09"
+      ]
+    },
+    {
+      "key": "detection_engineering",
+      "name": "탐지 엔지니어링",
+      "count": 15,
+      "entries": [
+        "EL-11",
+        "AM-02",
+        "AM-04",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-10",
+        "AM-12",
+        "AM-13",
+        "AM-15",
+        "AM-16",
+        "JM-09",
+        "JM-10",
+        "JM-12",
+        "JM-13"
       ]
     },
     {
@@ -545,27 +572,6 @@
         "UX-03",
         "UX-05",
         "UX-06"
-      ]
-    },
-    {
-      "key": "detection_engineering",
-      "name": "탐지 엔지니어링",
-      "count": 14,
-      "entries": [
-        "EL-11",
-        "AM-02",
-        "AM-04",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-10",
-        "AM-12",
-        "AM-13",
-        "AM-15",
-        "JM-09",
-        "JM-10",
-        "JM-12",
-        "JM-13"
       ]
     },
     {
@@ -813,7 +819,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 35,
+      "count": 36,
       "entries": [
         "EL-02",
         "EL-04",
@@ -835,6 +841,7 @@
         "AM-13",
         "AM-14",
         "AM-15",
+        "AM-16",
         "JM-01",
         "JM-09",
         "JM-10",
@@ -1171,6 +1178,15 @@
       ]
     },
     {
+      "name": "SHA-256 hash chain",
+      "count": 3,
+      "entries": [
+        "EL-10",
+        "AM-15",
+        "AM-16"
+      ]
+    },
+    {
       "name": "4-eyes",
       "count": 2,
       "entries": [
@@ -1344,14 +1360,6 @@
       "entries": [
         "EL-06",
         "EL-13"
-      ]
-    },
-    {
-      "name": "SHA-256 hash chain",
-      "count": 2,
-      "entries": [
-        "EL-10",
-        "AM-15"
       ]
     },
     {
@@ -1885,6 +1893,13 @@
       ]
     },
     {
+      "name": "HTTP reverse proxy",
+      "count": 1,
+      "entries": [
+        "AM-16"
+      ]
+    },
+    {
       "name": "Hugging Face Transformers 4.51.3",
       "count": 1,
       "entries": [
@@ -2277,6 +2292,13 @@
       ]
     },
     {
+      "name": "Ollama API",
+      "count": 1,
+      "entries": [
+        "AM-16"
+      ]
+    },
+    {
       "name": "OmniWitness",
       "count": 1,
       "entries": [
@@ -2302,6 +2324,13 @@
       "count": 1,
       "entries": [
         "EL-15"
+      ]
+    },
+    {
+      "name": "OpenAI-compatible API",
+      "count": 1,
+      "entries": [
+        "AM-16"
       ]
     },
     {
@@ -2547,6 +2576,13 @@
       "count": 1,
       "entries": [
         "JM-23"
+      ]
+    },
+    {
+      "name": "Server-Sent Events",
+      "count": 1,
+      "entries": [
+        "AM-16"
       ]
     },
     {
@@ -3341,6 +3377,18 @@
       ],
       "en": [
         "Added a per-host sequence-and-hash chain to AI agent hook records, with locking so concurrent hook processes never reuse a number, and turned loss, alteration or reuse in transit into signed collection-gap alerts without changing the evaluation engine"
+      ]
+    },
+    {
+      "id": "AM-16",
+      "date": "2026-10-18",
+      "title": "로컬 모델 기록 프록시: Ollama·vLLM 호출을 서명 사슬에 남기기",
+      "title_en": "Recording proxy for local model servers: Ollama and vLLM calls in the signed chain",
+      "ko": [
+        "Ollama·vLLM 등 OpenAI 호환 로컬 모델 서버 앞에 스트리밍을 유지하는 기록 프록시를 만들어, 어떤 도구의 모델 호출이든 본문 없이 해시·토큰·도구 호출 메타데이터를 서명·순번 사슬로 수집하고 심장박동으로 끝부분 삭제까지 감지"
+      ],
+      "en": [
+        "Built a streaming-preserving recording proxy for OpenAI-compatible local model servers (Ollama, vLLM) that records every model call from any client as signed, hash-chained metadata without prompt text, with heartbeats that expose records deleted before delivery"
       ]
     },
     {
@@ -5161,6 +5209,33 @@
       "unit": "테스트",
       "scope": "컨테이너 실행",
       "source": "test/collection-chain.test.mjs"
+    },
+    {
+      "id": "AM-16",
+      "name": "기록되는 로컬 모델 도구",
+      "before": "없음(Claude Code·Codex hook만)",
+      "after": "OpenAI 호환 API나 Ollama API로 부르는 모든 도구",
+      "unit": null,
+      "scope": "프록시를 거치는 호출",
+      "source": "docs/local-model-proxy.md"
+    },
+    {
+      "id": "AM-16",
+      "name": "끝부분 삭제 감지",
+      "before": "hook 기록은 감지 못 함",
+      "after": "다음 심장박동(기본 10분) 도착 시 빈 순번으로 드러남",
+      "unit": null,
+      "scope": "프록시 기록",
+      "source": "test/local-model-proxy.test.mjs"
+    },
+    {
+      "id": "AM-16",
+      "name": "새 기능 테스트",
+      "before": null,
+      "after": "8개",
+      "unit": "테스트",
+      "scope": "컨테이너 실행",
+      "source": "test/local-model-proxy.test.mjs"
     },
     {
       "id": "JM-01",
@@ -7406,6 +7481,12 @@
       "decided_by": "joint"
     },
     {
+      "id": "AM-16",
+      "what": "scripts/local-model-proxy.mjs init/run과 src/local-model-proxy.mjs. 모델 엔드포인트(/v1/chat/completions, /v1/responses, /api/chat 등)를 지나는 호출마다 intent(모델·메시지 수·건넨 도구 이름·요청 SHA-256), 새 메시지와 도구 결과의 내용 검사 기록, self_report(HTTP 상태·종료 이유·모델이 부르려 한 도구 이름·토큰 수·응답 SHA-256·aiObservation)를 순번 사슬로 보낸다. 본문 보관은 선택(기본 꺼짐)이며 보관 본문의 해시가 서명 기록의 해시와 같다.",
+      "why": "모든 LLM 활동을 무결하게 수집한다는 목표를 hook이 없는 로컬 모델 도구까지 넓히기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    {
       "id": "JM-01",
       "what": "모델의 성공을 증거 수집·규칙 평가·사람 판단의 필수 조건으로 두지 않고, 로컬 모델은 사람이 고른 최소화 스냅샷으로 제안(초안)만 쓰게 한다.",
       "why": "에이전트 기록의 민감성, 추가 비용 0원 원칙, 그리고 모델이 틀리거나 멈춰도 감사 기능은 계속 동작해야 한다는 요구 때문이다.",
@@ -7996,6 +8077,14 @@
     {
       "id": "AM-15",
       "text": "새 경보를 만들 때 새 평가 규칙 대신 기존 증거 종류(gap)를 서명 기록으로 남기면 엔진·재생 호환을 지킬 수 있다."
+    },
+    {
+      "id": "AM-16",
+      "text": "도구마다 연동하기보다 도구들이 공통으로 쓰는 경계(모델 HTTP API)에서 기록하면 적은 코드로 넓게 덮는다."
+    },
+    {
+      "id": "AM-16",
+      "text": "상주 프로세스가 생기면 심장박동 하나로 순번 사슬의 가장 큰 구멍(끝부분 삭제)이 메워진다."
     },
     {
       "id": "JM-01",
@@ -8830,6 +8919,14 @@
     {
       "id": "AM-15",
       "text": "사내망에서는 PC 관리자 권한을 가진 사용자를 막기 위해 프록시나 OS 감사 로그 같은 독립 관측과 대조해야 하지 않을까?"
+    },
+    {
+      "id": "AM-16",
+      "text": "사내망에서 모델 서버를 프록시만 부를 수 있게 강제하는 설정을 설치 도구가 함께 해 줘야 하지 않을까?"
+    },
+    {
+      "id": "AM-16",
+      "text": "모델이 요청한 도구 인자를 위험 규칙에 태우려면 어떤 형태로(정규화한 대상만) 남겨야 할까?"
     },
     {
       "id": "JM-01",
