@@ -40,7 +40,8 @@
 
 ## 원칙
 
-- **오염 방지**: R-Judge는 시험 전용입니다. 다른 공개 세트에서 R-Judge와 겹치는 기록(같은 요청, 같은 행동, 요청 단어 겹침 0.6 이상)은
+- **오염 방지**: R-Judge는 시험 전용입니다. `--test-sets`로 지정한 세트(예: ATBench)는 통째로 시험이 되고, 공개 시험 기록 중
+  공개 학습 기록과 겹치는 것도 빠집니다. 다른 공개 세트에서 R-Judge와 겹치는 기록(같은 요청, 같은 행동, 요청 단어 겹침 0.6 이상)은
   빌드 때 빠지고 개수가 남습니다. R-Judge의 원천인 InjecAgent, ToolEmu, AgentMonitor 계열 데이터는 학습에 넣지 않습니다.
 - **라벨 출처를 숨기지 않음**: 공개 세트의 라벨은 그 세트가 정한 것이고, 일부는 LLM이 만들었습니다. 설계 시나리오만큼 확실하다고
   말하지 않습니다.
@@ -75,7 +76,9 @@ node scripts/judge-round.mjs score --dir 새회차 [...] --public-test atbench=t
 
 ```
 node scripts/audit-dataset.mjs build --out DIR --fold r7 --per-threat 30 --per-benign 30 \
-  --public assebench=AgentJudge-security.json --public-test 'assebench:Legal, Compliance & Audit|…' --rjudge data.csv
+  --public assebench=AgentJudge-security.json --public-test 'assebench:Legal, Compliance & Audit|…' \
+  --public stepguard=sft.jsonl --public stepguard=rl.jsonl --public ipi-pairs=envs.jsonl \
+  --public atbench=test.json --public atbench-codex=codex.json --test-sets atbench --rjudge data.csv
 node scripts/audit-dataset.mjs export --in DIR --format chat --split train --out train.jsonl --mask-share 0.3 --strip-share 0.3
 node scripts/audit-dataset.mjs score --in DIR --answers answers.jsonl --split test
 ```

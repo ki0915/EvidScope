@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // The audit dataset builder (src/audit-dataset.mjs): one records file any model can be trained or tested from.
 //   node scripts/audit-dataset.mjs build --out DIR [--fold r7 | --held a,b --val c,d] [--per-threat 30] [--per-benign 30]
-//     [--public set=FILE ...] [--public-test 'set:family|...'] [--public-val 'set:family|...'] [--rjudge FILE]
+//     [--public set=FILE ...] [--public-test 'set:family|...'] [--public-val 'set:family|...'] [--test-sets a,b] [--rjudge FILE]
 //   node scripts/audit-dataset.mjs export --in DIR --format chat|classification|pairs --split train|validation|test --out FILE
 //     [--mask-share 0.3] [--strip-share 0.3]
 //   node scripts/audit-dataset.mjs score --in DIR --answers FILE [--split test]
 // build: designed scenarios (catalog + contrast, variants as the rounds make them) split by family for one fold, plus public sets read
-// with src/external-agent-sets.mjs. Public sets marked test-only stay test; the rest train except the families named in --public-test /
-// --public-val. With --rjudge, R-Judge is added as test records and every non-R-Judge public record that repeats an R-Judge session
-// (externalOverlap) is dropped and counted, so R-Judge stays a test nothing was shaped on. Writes DIR/records.jsonl (id order) and
+// with src/external-agent-sets.mjs. Public sets marked test-only, and whole sets named in --test-sets, stay test; the rest train except the
+// families named in --public-test / --public-val. A set given twice (two files of one set) is reported as set, set#2, ..., and a record
+// whose id an earlier file already gave is counted, not added again. With --rjudge, R-Judge is added as test records and every
+// non-R-Judge public record that repeats an R-Judge session (externalOverlap) is dropped and counted, so R-Judge stays a test nothing was
+// shaped on; a public test record that repeats a public training record is dropped the same way. Writes DIR/records.jsonl (id order) and
 // DIR/manifest.json; prints counts only (records hold test commands and dataset text).
 // export: model-specific rows from records. chat rows match the round builder's train.jsonl rows (src/audit-dataset.mjs tests).
 // score: answers as JSONL {id, verdict, type?, evidence?} graded per source with scoreRecords.
@@ -53,6 +55,7 @@ if (cmd === 'build') {
   const records = variants.scenarios.map(s => designedRecord(s, rules, {split: splitOf(familyOf(s)), fold: foldName}));
   const report = {designed: records.length, public: {}};
   const testFams = new Set(families(opt('--public-test'))), valFams = new Set(families(opt('--public-val')));
+  const testSets = new Set(list(opt('--test-sets'))), ids = new Set(records.map(r => r.id));
   const rjudge = opt('--rjudge') ? externalRecords('rjudge', readFileSync(opt('--rjudge'), 'utf8')).records : [];
   for (const spec of all('--public')) {
     const [set, file] = [spec.slice(0, spec.indexOf('=')), spec.slice(spec.indexOf('=') + 1)];
@@ -61,15 +64,25 @@ if (cmd === 'build') {
     const text = readFileSync(file, 'utf8');
     const {records: rs, skipped} = externalRecords(set, text);
     const overlap = rjudge.length ? externalOverlap(rs, rjudge) : new Set();
-    const testOnly = EXTERNAL_SETS[set].use === 'external test only';
-    let kept = 0;
+    const testOnly = EXTERNAL_SETS[set].use === 'external test only' || testSets.has(set);
+    let kept = 0, repeated = 0;
     for (const r of rs) {
       if (overlap.has(r.id)) continue;
+      if (ids.has(r.id)) { repeated++; continue; }
+      ids.add(r.id);
       const split = testOnly || testFams.has(r.family) ? 'test' : valFams.has(r.family) ? 'validation' : 'train';
       records.push(publicRecord(r, {split, fold: foldName})); kept++;
     }
-    report.public[set] = {fileSha256: sha(text), records: rs.length, skipped, rjudgeOverlapDropped: overlap.size, kept};
+    let key = set;
+    for (let n = 2; report.public[key]; n++) key = `${set}#${n}`;
+    report.public[key] = {fileSha256: sha(text), records: rs.length, skipped, rjudgeOverlapDropped: overlap.size, repeated, kept,
+      test: testOnly};
   }
+  // A public test record that repeats a public training record (same request, opening, actions or close wording) leaves the dataset.
+  const trainPublic = records.filter(r => r.source.kind !== 'designed' && r.split !== 'test');
+  const leaked = externalOverlap(records.filter(r => r.source.kind !== 'designed' && r.split === 'test'), trainPublic);
+  if (leaked.size) records.splice(0, records.length, ...records.filter(r => !leaked.has(r.id)));
+  report.testOverlapDropped = leaked.size;
   for (const r of rjudge) records.push(publicRecord(r, {split: 'test', fold: foldName}));
   if (rjudge.length) report.public.rjudge = {records: rjudge.length, kept: rjudge.length};
   records.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
