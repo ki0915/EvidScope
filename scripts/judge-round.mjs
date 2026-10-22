@@ -9,6 +9,7 @@
 //     준비된 회차를 복사하고 공개 세트 학습 행과 시험 요청(in/requests/public-<세트>.jsonl)을 더한다(src/round-extend.mjs). 결과는 비우고 시작한다.
 //   node scripts/judge-round.mjs score --dir DIR      results/<판정자>/<세트>.outputs.json 등을 채점해 DIR/summary.json에 숫자만 쓴다
 //     [--public-test set=F ...]                       extend로 더한 공개 시험도 채점한다
+//     [--judges a,b,...]                              기본 네 판정자 대신 채점할 판정자(예: 학습 안 한 다른 로컬 모델 minicpm5-zero)
 //   node scripts/judge-round.mjs orchestra --dir DIR [--first jev-cand] [--second qwen-cand] [--raw]   두 판정자를 잇는 오케스트라
 //     (src/judge-orchestra.mjs)를 기록된 출력으로 끝까지 돌려 DIR/orchestra.json에 쓴다. 기본은 각 판정자의 검증 세트 문턱, --raw는 문턱 없이.
 //   node scripts/judge-round.mjs folds --dirs A,B,C [--judges jev-cand,qwen-cand] [--out F]   빼는 유형을 바꿔 돌린 회차들의 summary.json·
@@ -223,7 +224,7 @@ if (cmd === 'prepare') {
     rules_sequence: scoreSessions(unseen.scenarios, rules, s => baselinePredict(s, rules, {withSequence: true})),
     allowlist: scoreSessions(unseen.scenarios, rules, allow)};
   const counts = sessionCounts(unseen.scenarios, rules);
-  for (const judge of JUDGES) {
+  for (const judge of list(opt('--judges', JUDGES.join(',')))) {
     const cal = result(judge, 'val');
     if (!cal) continue;
     const calibration = calibrateSessionThreshold(valCatalog.scenarios, rules, cal.outputs, cal.logprobs);
