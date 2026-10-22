@@ -57,7 +57,21 @@ def main(argv=None):
     parser.add_argument("--prefix", required=True, help="output path prefix: <prefix>.outputs.json, .logprobs.json, .receipt.json")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-new-tokens", type=int, default=256)
+    # Other local models (zero-shot comparison on a 12GB card): 7-9B bases only fit in 4-bit, and some chat templates need a switch, for
+    # example enable_thinking=false, so the short JSON verdict is not preceded by hidden reasoning that runs past --max-new-tokens.
+    parser.add_argument("--load-in-4bit", action="store_true", help="load the base in 4-bit nf4 (bf16 compute), as train_jev_decision.py does")
+    parser.add_argument("--template-kwarg", action="append", default=[], metavar="NAME=VALUE",
+                        help="extra chat-template variable; VALUE is read as JSON (true, false, numbers) or else kept as text")
     args = parser.parse_args(argv)
+    template_kwargs = {}
+    for item in args.template_kwarg:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise SystemExit("--template-kwarg needs NAME=VALUE: " + item)
+        try:
+            template_kwargs[name] = json.loads(value)
+        except ValueError:
+            template_kwargs[name] = value
     os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", TOKENIZERS_PARALLELISM="false")
     for suffix in (".outputs.json", ".logprobs.json", ".receipt.json"):
         if Path(args.prefix + suffix).exists():
@@ -70,18 +84,26 @@ def main(argv=None):
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    load = {}
+    if args.load_in_4bit:
+        from transformers import BitsAndBytesConfig
+        load["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
+                                                         bnb_4bit_compute_dtype=torch.bfloat16)
     model = AutoModelForCausalLM.from_pretrained(args.model_dir, local_files_only=True, dtype=torch.bfloat16, device_map={"": 0},
-                                                 attn_implementation="sdpa")
+                                                 attn_implementation="sdpa", **load)
     if args.adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, args.adapter)
     model.eval()
     stop_ids = {tokenizer.eos_token_id}
+    configured = getattr(model.generation_config, "eos_token_id", None)
+    stop_ids.update(configured if isinstance(configured, list) else [configured] if isinstance(configured, int) else [])
     for name in ("<|im_end|>", "<|endoftext|>"):
         token_id = tokenizer.convert_tokens_to_ids(name)
         if isinstance(token_id, int) and token_id >= 0:
             stop_ids.add(token_id)
-    prompts = {r["id"]: tokenizer.apply_chat_template(r["messages"], tokenize=False, add_generation_prompt=True) for r in requests}
+    prompts = {r["id"]: tokenizer.apply_chat_template(r["messages"], tokenize=False, add_generation_prompt=True, **template_kwargs)
+               for r in requests}
     order = sorted(prompts, key=lambda i: len(prompts[i]))
     outputs, logprobs, truncated, splits = {}, {}, 0, 0
 
@@ -91,8 +113,10 @@ def main(argv=None):
         try:
             encoded = tokenizer([prompts[i] for i in batch], return_tensors="pt", padding=True, add_special_tokens=False).to(0)
             with torch.no_grad():
-                generated = model.generate(**encoded, do_sample=False, max_new_tokens=args.max_new_tokens, output_scores=False, output_logits=True,
-                                           return_dict_in_generate=True, pad_token_id=tokenizer.pad_token_id, eos_token_id=sorted(stop_ids))
+                # use_cache: some bases ship use_cache=false in config.json (SmolLM3), which would recompute every step.
+                generated = model.generate(**encoded, do_sample=False, use_cache=True, max_new_tokens=args.max_new_tokens, output_scores=False,
+                                           output_logits=True, return_dict_in_generate=True, pad_token_id=tokenizer.pad_token_id,
+                                           eos_token_id=sorted(stop_ids))
                 sequences = generated.sequences[:, encoded["input_ids"].shape[1]:]
                 # The chosen token's log-probability at each step, one step at a time (a stacked batch x steps x vocab tensor would not fit).
                 chosen = torch.stack([torch.log_softmax(step.float(), dim=-1).gather(1, sequences[:, n:n + 1]).squeeze(1)
@@ -134,6 +158,7 @@ def main(argv=None):
                "adapterSha256": sha256_file(adapter_file) if adapter_file else None,
                "outputsSha256": hashlib.sha256(outputs_text.encode("utf-8")).hexdigest(),
                "logprobsSha256": hashlib.sha256(logprobs_text.encode("utf-8")).hexdigest(), "seconds": round(time.monotonic() - started, 1),
+               "quantization": "nf4" if args.load_in_4bit else None, "templateKwargs": template_kwargs,
                "image": os.environ.get("EVIDSCOPE_TRAINING_IMAGE", "")}
     Path(args.prefix + ".receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(receipt), flush=True)

@@ -21,7 +21,10 @@ import time
 import urllib.request
 
 HUB = "https://huggingface.co"
-ALLOWED = {"Qwen/Qwen3-4B-Instruct-2507", "autotrust/JEV-9B"}
+ALLOWED = {"Qwen/Qwen3-4B-Instruct-2507", "autotrust/JEV-9B",
+           # Popular local models for the zero-shot comparison on the PC (owner-approved 2026-10-18): ungated, Apache-2.0, native
+           # transformers architectures (no remote code), small enough for a 12GB card in bf16.
+           "openbmb/MiniCPM5-2B", "HuggingFaceTB/SmolLM3-3B", "ibm-granite/granite-4.1-3b"}
 KEEP = {"config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
         "vocab.json", "merges.txt", "chat_template.jinja", "model.safetensors.index.json", "LICENSE", "LICENSE.txt",
         # JEV-9B's System 1 block: the decision head, its slot layout and per-kind temperatures.
