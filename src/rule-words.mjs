@@ -45,6 +45,40 @@ function globMatch(word, parts) {
 
 export const textWords = text => String(text).replace(/\\/g, '/').split(SPLIT).filter(Boolean);
 
+// The words of a command as the shell reads them, for the hook's guard (src/agent-hook-guard.mjs; security review 2026-10-22: a
+// guard that read the text as it is let the same call through with an .exe suffix, a path before the program, a cd before a
+// relative path, a quote inside a word). Quotes are removed instead of splitting (~/.evid"scope"/x is ~/.evidscope/x); a program
+// named by path or with a Windows extension is also its bare name (C:/Windows/System32/schtasks.exe is also schtasks); after cd
+// (also chdir, pushd, Set-Location, cd /d) a relative word of a later command is also the path under that directory. Each added
+// word follows the word it comes from, so the order a pattern asks for still holds. The vault's engine v6 (matchesWords) keeps
+// reading the text as it is: changing it would change signed evaluations. A shell variable, glob or encoded command is not resolved.
+const COMMAND_SPLIT = /[\s()[\]{},<>]+/u, SEGMENTS = /\s*(?:\|\||&&|[;|&\n])\s*/u;
+const PROGRAM_EXT = /\.(?:exe|com|cmd|bat)$/i, OPTION_OR_ROOT = /^(?:[a-z]:|[/~$%-])/i, CD = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl']);
+// The bare name of a program given by path or with a Windows extension, else null (a lone /option is not a path, a dot name is a
+// directory or a dot file).
+export function programName(word) {
+  const base = word.slice(word.lastIndexOf('/') + 1).replace(PROGRAM_EXT, '');
+  return base && base !== word && !base.startsWith('.') && (PROGRAM_EXT.test(word) || !/^\/[^/]*$/.test(word)) ? base : null;
+}
+export function commandWords(text) {
+  // The hook's note starts with the tool in brackets ("[Bash] cd ..."): kept as a word, apart from the first command.
+  const tool = /^\s*\[([^\]]*)\]/.exec(String(text)), out = tool ? tool[1].split(COMMAND_SPLIT).filter(Boolean) : [];
+  let cwd = null;
+  for (const segment of String(text).slice(tool ? tool[0].length : 0).replace(/\\/g, '/').replace(/["'`]/g, '').split(SEGMENTS)) {
+    const words = segment.split(COMMAND_SPLIT).filter(Boolean);
+    if (!words.length) continue;
+    out.push(...words.flatMap((word, i) => {
+      const program = programName(word), under = cwd && i > 0 && !OPTION_OR_ROOT.test(word) ? cwd + '/' + word : null;
+      return [word, ...(program ? [program] : []), ...(under ? [under] : [])];
+    }));
+    if (CD.has(words[0].toLowerCase())) {
+      const target = words[1]?.toLowerCase() === '/d' ? words[2] : words[1];
+      cwd = !target ? null : !cwd || OPTION_OR_ROOT.test(target) ? target : cwd + '/' + target;
+    }
+  }
+  return out;
+}
+
 const termMatches = (term, word, lower) => term.alternatives.some(a => globMatch(a.exact ? word : lower, a.parts));
 
 // Parsed patterns by value: every snapshot evaluates the same tenant rules against each event.
@@ -54,10 +88,8 @@ const cachedWords = value => {
   return parsed.get(value);
 };
 
-export function matchesWords(pattern, text) {
-  const terms = typeof pattern === 'string' ? cachedWords(pattern) : pattern;
-  if (!terms) return false;
-  const words = textWords(text), lowered = words.map(w => w.toLowerCase());
+function matchList(terms, words) {
+  const lowered = words.map(w => w.toLowerCase());
   if (terms.some(t => t.negative && words.some((w, i) => termMatches(t, w, lowered[i])))) return false;
   let i = 0;
   for (const term of terms.filter(t => !t.negative)) {
@@ -66,4 +98,15 @@ export function matchesWords(pattern, text) {
     i++;
   }
   return true;
+}
+
+export function matchesWords(pattern, text) {
+  const terms = typeof pattern === 'string' ? cachedWords(pattern) : pattern;
+  return terms ? matchList(terms, textWords(text)) : false;
+}
+
+// The pattern against the command's words as the shell reads them (commandWords); the hook's guard uses it.
+export function matchesCommand(pattern, text) {
+  const terms = typeof pattern === 'string' ? cachedWords(pattern) : pattern;
+  return terms ? matchList(terms, commandWords(text)) : false;
 }
