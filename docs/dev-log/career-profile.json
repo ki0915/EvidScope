@@ -3196,13 +3196,15 @@
     {
       "id": "EL-22",
       "date": "2026-10-22",
-      "title": "보안 점검: 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 모델 프롬프트 주입을 고침",
-      "title_en": "Security review: undetected ledger rollback, silent hook restarts and judge prompt injection fixed",
+      "title": "보안 점검: 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 모델 프롬프트 주입, 가드 문자열 우회, 요청 경로 크래시를 고침",
+      "title_en": "Security review: undetected ledger rollback, silent hook restarts, judge prompt injection, guard string-matching bypasses, request-target crash",
       "ko": [
-        "보안 점검으로 기본 설치의 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 LLM 프롬프트 주입을 재현해 고치고 회귀 테스트 9건으로 고정(경로 탈출 0건, 설계 데이터 프롬프트 무변경)"
+        "보안 점검으로 기본 설치의 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 LLM 프롬프트 주입을 재현해 고치고 회귀 테스트 9건으로 고정(경로 탈출 0건, 설계 데이터 프롬프트 무변경)",
+        "정적 분석이 보고한 실행 전 가드 우회 8건(.exe·경로·cd·& 연결·sort -o)과 요청 경로 파싱 크래시를 재현해 명령 정규화 계층(가드 v2)·규칙 팩 v4·안전한 파싱으로 고치고 회귀 테스트로 고정"
       ],
       "en": [
-        "Reproduced and fixed three gaps found in a security review (undetected ledger rollback on default installs, silent hook restarts, prompt injection into the judge LLMs), each pinned by regression tests; no path traversal found and the designed dataset prompts unchanged"
+        "Reproduced and fixed three gaps found in a security review (undetected ledger rollback on default installs, silent hook restarts, prompt injection into the judge LLMs), each pinned by regression tests; no path traversal found and the designed dataset prompts unchanged",
+        "Reproduced eight guard bypasses reported by static analysis (.exe, path prefix, cd, & chains, sort -o) and a request-target crash, and fixed them with a command-normalisation layer (guard v2), rule pack v4 and single safe parsing, each pinned by regression tests"
       ]
     },
     {
@@ -4759,12 +4761,39 @@
     },
     {
       "id": "EL-22",
+      "name": "가드 우회(정적 분석 8건 + 자체 4건)",
+      "before": "12건 통과(대조군 3건만 차단)",
+      "after": "12건 차단, 정당한 조회·읽기·cd·임의 프로그램 실행 6건 통과",
+      "unit": "건",
+      "scope": "src/agent-hook-guard.mjs guardDecision, 규칙 팩 v4",
+      "source": "test/agent-hook-guard.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "금고 규칙 탐지(경로·.exe 형태)",
+      "before": "schtasks.exe·C:/.../schtasks.exe·/usr/sbin/iptables 0건",
+      "after": "11개 형태 탐지",
+      "unit": "형태",
+      "scope": "엔진 v6 그대로, 팩 v4",
+      "source": "test/rule-words.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "요청 100건 대기 중 파싱 불가 경로",
+      "before": "프로세스 종료(응답 없음)",
+      "after": "400 응답, /healthz 200 유지",
+      "unit": null,
+      "scope": "금고 단독",
+      "source": "test/server-request-target.test.mjs"
+    },
+    {
+      "id": "EL-22",
       "name": "자동 시험",
       "before": "1,685건 통과·실패 0(17건 건너뜀, 총 1,702건)",
-      "after": "1,694건 통과·실패 0(17건 건너뜀, 총 1,711건)",
+      "after": "1,698건 통과·실패 0(17건 건너뜀, 총 1,715건)",
       "unit": "테스트",
       "scope": "컨테이너 전체 실행",
-      "source": "83abe82"
+      "source": "5925308"
     },
     {
       "id": "AM-01",
@@ -8112,6 +8141,18 @@
     {
       "id": "EL-22",
       "text": "재현 → 테스트 → 수정 순서로 하면 취약점이 회귀 테스트로 남는다."
+    },
+    {
+      "id": "EL-22",
+      "text": "차단 규칙의 문자열 매칭은 공격자가 고르는 표기(확장자·경로·cd·따옴표·연결)를 셸이 읽는 형태로 정규화한 뒤에 맞춰야 한다. 그래도 변수·인코딩·스크립트 파일은 못 잡으니 ‘막는다’는 말의 범위를 문서에 적어야 한다."
+    },
+    {
+      "id": "EL-22",
+      "text": "같은 값을 두 번 파싱하면 한 번은 오류 처리 밖에 있기 쉽다. 요청 경로처럼 외부가 주는 값은 한 번만, 가장 바깥에서 파싱한다."
+    },
+    {
+      "id": "EL-22",
+      "text": "외부(정적 분석)가 준 재현 스크립트는 그대로 회귀 테스트가 된다. 대조군(막혀야 하는 것)과 함께 고정하면 과차단도 함께 잡힌다."
     },
     {
       "id": "AM-01",
