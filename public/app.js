@@ -1303,6 +1303,18 @@ function integritySummary(response, ms) {
   const ok = response?.valid === true;
   const checked = `서명 원장 ${count(response.count)}건, 보관 이벤트 ${count(response.projection?.retainedEvents ?? response.disclosedEvents)}건, 평가 ${count(response.evaluationProjection?.evaluations)}건`;
   node.append(el('div', ok ? 'message' : 'message error', ok ? `검증 통과: ${checked}을 대조했습니다 (${(ms / 1000).toFixed(1)}초).` : '검증에 실패했거나 결과를 확인할 수 없습니다. 아래 상세를 확인하세요.'));
+  // What this verification could not establish: a ledger replaced by an older copy is invisible without a pin or witness, and a
+  // monitor-mode vault keeps running after it detected one, so both are said here and not only inside the JSON.
+  const violations = Array.isArray(response?.transparency?.runtime?.violations) ? response.transparency.runtime.violations : [];
+  if (violations.length) {
+    node.append(el('div', 'message error', `투명성 위반 ${violations.length}건: ${violations.slice(0, 2).map(v => v.message).join(' · ')}. `
+      + '원장이 되돌려졌거나 갈라졌을 수 있습니다. 백업과 pin 파일을 대조하세요.'));
+  } else if (ok && response?.rollbackChecked === false) {
+    const why = response.transparency?.mode === 'off'
+      ? '투명성 설정이 꺼져 있어 원장을 과거 사본으로 바꿔도 여기서는 통과합니다. EvidScope를 멈추고 `node scripts/upgrade-local.mjs --transparency`를 실행하세요.'
+      : '위트니스·pin 대조가 아직 안 끝났거나 pin이 멈춰 있습니다.';
+    node.append(el('div', 'message warning', `검사하지 않은 항목: ${(response.verificationScope?.notChecked || ['rollback']).join(', ')}. ${why}`));
+  }
   node.append(jsonDetails('검증 상세', response)); return node;
 }
 async function accessSubjects() {

@@ -82,7 +82,7 @@ export function findingRequirements() {
 
 // factsheets(p): the signed governance-model factsheets ({status, items}); src/governance-model-service.mjs.
 export function createHome({store, policyObjects, verifiedEvents, approvals, registry, legalReviewState, runtimeStatus, now = () => Date.now(),
-  factsheets = () => ({status: 'unavailable', reason: 'not_configured', items: []})}) {
+  factsheets = () => ({status: 'unavailable', reason: 'not_configured', items: []}), transparencyStatus = () => null}) {
   const values = (p, type) => [...policyObjects(p, type).values()];
 
   // Events received in [since, now], newest first, as one indexed range; cut at WINDOW_LIMITS (then counts are lower bounds).
@@ -224,12 +224,16 @@ export function createHome({store, policyObjects, verifiedEvents, approvals, reg
     });
     return {findings, stopOrders};
   }
-  // Integrity alarms after the other sections read the verified state: faulted projections, quarantine, verification age.
+  // Integrity alarms after the other sections read the verified state: faulted projections, quarantine, verification age, and the
+  // transparency runtime (src/transparency.mjs status): its mode and the violations it holds (a rollback or fork of the ledger against
+  // the pin or a witness), so a monitor-mode vault shows a detected rollback here and not only inside /api/integrity.
   function integrity(p) {
     return section(() => {
-      const state = store.verifiedStateStatus(p.tenant);
+      const state = store.verifiedStateStatus(p.tenant), t = transparencyStatus();
+      const violations = Array.isArray(t?.violations) ? t.violations.map(v => ({kind: String(v.kind), message: String(v.message), at: v.at ?? null})) : [];
       return {quarantine: store.quarantine ? String(store.quarantine.reason || 'quarantined') : null, faults: state.faults || [], cached: state.cached,
-        verifiedAt: state.verifiedAt ?? null, count: state.count ?? null};
+        verifiedAt: state.verifiedAt ?? null, count: state.count ?? null,
+        transparency: {mode: t?.mode ?? 'off', rollbackChecked: !!t && t.mode !== 'off' && !violations.length, violations}};
     });
   }
 

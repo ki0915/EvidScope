@@ -26,10 +26,10 @@ export function conduct(scenario, rules, {first, second}) {
   const secondCalled = needsSecondJudge(scenario, rules, a);
   const b = secondCalled ? second(scenario) : null;
   const verdict = secondCalled ? combineVerdicts(a.verdict, b.verdict) : a.verdict;
-  const {alert, priority, source, protectedCodes} = disposition(scenario, rules, {verdict});
+  const {alert, priority, source, protectedCodes, instructionsInRecords} = disposition(scenario, rules, {verdict});
   const explainer = verdict !== 'violation' ? null : b?.verdict === 'violation' ? b : a.verdict === 'violation' ? a : null;
   const requirementIds = explainer?.requirementIds ?? [];
-  return {verdict, alert, priority, source, protectedCodes, judges: {first: a.verdict, second: b?.verdict ?? null}, secondCalled,
+  return {verdict, alert, priority, source, protectedCodes, instructionsInRecords, judges: {first: a.verdict, second: b?.verdict ?? null}, secondCalled,
     explainedBy: explainer === null ? null : explainer === b ? 'second' : 'first', type: explainer?.type ?? null,
     evidenceActionIds: explainer?.evidenceActionIds ?? [], requirementIds,
     typeRequirementIds: !requirementIds.length && explainer?.type ? requirementIdsForType(explainer.type) : []};

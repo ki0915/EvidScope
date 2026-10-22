@@ -6,16 +6,21 @@
 // comparison (store.compareEventFingerprint), and turns the problems into signed telemetry gap records (COLLECTION_GAP findings).
 //
 // What it cannot see, said in every report: records deleted from the end of a stream before they were sent (nothing later arrives
-// to show the hole), a hook whose state file was removed (a new stream starts, shown as a restart), and anyone holding the PC's hook
-// credentials, who can write a consistent chain of invented records.
+// to show the hole), how many records were lost when a hook's state file was removed (a new stream starts; the restart itself is
+// raised, security review 2026-10-22), and anyone holding the PC's hook credentials, who can write a consistent chain of invented records.
+// Raised as signed gap records (chainProblems): a confirmed hole, a broken link, a reused number, a restart of a source and actor that
+// already had a stream, and a record sent without a number after that source had numbered ones (a hook that could not take its
+// chain lock, or someone holding it: without a number a removed record leaves no hole).
+import {createHash} from 'node:crypto';
+
 export const CHAIN_FORMAT = 'evidscope-collection-chain-v1';
 // A hole is confirmed only this long after the first later record arrived: a spooled backlog is sent after the current record.
 export const CHAIN_GRACE_MS = 60 * 60 * 1000;
 export const CHAIN_CHECK_PRINCIPAL = 'collection-chain-check';
-const LIMITS = {holes: 50, broken: 50};
+const LIMITS = {holes: 50, broken: 50, unnumbered: 50};
 export const CHAIN_LIMITATIONS = Object.freeze([
   '스트림 끝부분이 보내지기 전에 지워지면 그 뒤 기록이 없어 빈 곳이 드러나지 않습니다',
-  '훅 상태 파일이 지워지면 새 스트림이 1부터 시작합니다. 이것은 재시작으로만 보입니다',
+  '훅 상태 파일이 지워지면 새 스트림이 1부터 시작합니다. 재시작은 gap 기록으로 남지만, 그 전에 지워진 기록이 몇 건인지는 알 수 없습니다',
   'PC의 훅 자격 증명을 가진 사람은 앞뒤가 맞는 가짜 기록 사슬을 만들 수 있습니다. 연결은 전송 중 유실·변경을 보여 줄 뿐, 내용이 참이라는 증명이 아닙니다',
   '보존 기간이 지나 지워진 앞부분 기록은 빠진 것으로 세지 않습니다(원장이 삭제를 기록합니다)']);
 
@@ -41,10 +46,15 @@ export function analyzeChains(events, {compare, now = Date.now(), graceMs = CHAI
     } else s.unchained++;
     bySource.set(e.source, s);
   }
+  const unnumbered = new Map();
   for (const e of events) {
     if (!agentRecord(e) || chained(e)) continue;
     const s = bySource.get(e.source);
-    if (s.firstChainedAt && e.receivedAt > s.firstChainedAt) s.unchainedAfterChain++;
+    if (s.firstChainedAt && e.receivedAt > s.firstChainedAt) {
+      s.unchainedAfterChain++;
+      if (!unnumbered.has(e.source)) unnumbered.set(e.source, []);
+      unnumbered.get(e.source).push({id: e.id, actor: e.actor || null, tool: e.tool || null, receivedAt: e.receivedAt});
+    }
   }
   const out = [];
   for (const {source, stream, records} of streams.values()) {
@@ -90,9 +100,13 @@ export function analyzeChains(events, {compare, now = Date.now(), graceMs = CHAI
   const restarts = [];
   for (const s of out) {
     const earlier = out.filter(o => o !== s && o.source === s.source && o.actor === s.actor && o.firstReceivedAt < s.firstReceivedAt);
-    if (earlier.length) restarts.push({source: s.source, actor: s.actor, stream: s.stream, previousStream: earlier.at(-1).stream, at: s.firstReceivedAt});
+    if (earlier.length) restarts.push({source: s.source, actor: s.actor, tool: s.tool, stream: s.stream, previousStream: earlier.at(-1).stream,
+      previousLastSeq: earlier.at(-1).lastSeq, at: s.firstReceivedAt});
   }
-  const sources = [...bySource.values()].sort((a, b) => a.source.localeCompare(b.source)).map(({firstChainedAt, ...s}) => s);
+  // Unnumbered records after the source began numbering, oldest first, bounded; the count stays in sources.
+  const byArrival = (a, b) => a.receivedAt.localeCompare(b.receivedAt) || a.id.localeCompare(b.id);
+  const sources = [...bySource.values()].sort((a, b) => a.source.localeCompare(b.source)).map(({firstChainedAt, ...s}) => ({...s,
+    unnumbered: (unnumbered.get(s.source) || []).sort(byArrival).slice(0, LIMITS.unnumbered)}));
   const sum = k => out.reduce((n, s) => n + s[k], 0);
   return {format: CHAIN_FORMAT, graceMs, generatedAt: new Date(now).toISOString(),
     counts: {agentRecords: sources.reduce((n, s) => n + s.records, 0), chained: sum('records'), unchained: sources.reduce((n, s) => n + s.unchained, 0),
@@ -120,9 +134,23 @@ export function chainProblems(report) {
     for (const seq of s.reused) out.push({...base, id: `chain.reuse.${s.stream}.${seq}`, problem: 'reused',
       note: `수집 연속성: ${s.source}의 기록 번호 ${seq}번이 서로 다른 두 기록에 쓰였습니다`});
   }
+  // A restart: the hook's state file was replaced or removed, so whatever the previous stream still held unsent is gone without a hole.
+  for (const r of report.restarts) out.push({actor: r.actor, tool: r.tool, stream: r.stream, source: r.source, id: `chain.restart.${r.stream}`,
+    problem: 'restart', note: `수집 연속성: ${r.source}의 훅이 새 스트림을 시작했습니다(앞 스트림 ${r.previousStream}은 ${r.previousLastSeq}번까지 받음). `
+      + '훅 상태 파일이 바뀌었거나 지워졌으며, 그 전에 보내지 않은 기록은 남지 않습니다'});
+  // A record without a number after the source began numbering: a removed record of that kind leaves no hole.
+  for (const s of report.sources) for (const u of s.unnumbered || []) out.push({actor: u.actor, tool: u.tool, stream: null, source: s.source,
+    id: `chain.unnumbered.${shortHash(`${s.source}\u0000${u.id}`)}`, problem: 'unnumbered', recordId: u.id,
+    note: `수집 연속성: ${s.source}의 기록 ${u.id}이(가) 순번 없이 왔습니다(그 출처는 이미 순번을 매기고 있었습니다). `
+      + '순번 없는 기록은 지워져도 빈 곳이 남지 않습니다'});
   return out;
 }
-// The telemetry gap record of one problem, as the vault's chain check submits it (src/model.mjs validateEvent, kind gap).
-export const chainGapEvent = (problem, at) => ({id: problem.id, kind: 'gap', occurredAt: at, traceId: `chain.${problem.stream}`,
-  actionId: `chain.${problem.stream}`, ...(problem.actor ? {actor: problem.actor} : {}), ...(problem.tool ? {tool: problem.tool} : {}),
-  action: `collection_chain_${problem.problem}`, resource: `chain:${problem.stream}`, note: problem.note});
+const shortHash = s => createHash('sha256').update(s).digest('hex').slice(0, 24);
+// The telemetry gap record of one problem, as the vault's chain check submits it (src/model.mjs validateEvent, kind gap). A problem
+// without a stream (an unnumbered record) is filed under its source.
+export const chainGapEvent = (problem, at) => {
+  const where = problem.stream ?? `unnumbered.${shortHash(problem.source)}`;
+  return {id: problem.id, kind: 'gap', occurredAt: at, traceId: `chain.${where}`, actionId: `chain.${where}`,
+    ...(problem.actor ? {actor: problem.actor} : {}), ...(problem.tool ? {tool: problem.tool} : {}),
+    action: `collection_chain_${problem.problem}`, resource: `chain:${where}`, note: problem.note};
+};

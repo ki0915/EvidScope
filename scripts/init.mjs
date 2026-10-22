@@ -18,6 +18,10 @@ export function initialize(dir=resolve('.local')){
  generateDataKeyFile(join(dir,'data-encryption.key'));
  // Event-key epoch secrets live beside the data key, outside data/ (docs/event-key-wrapping.md); scripts/local.mjs passes it on.
  createEventKeystore(join(dir,'event-keystore'));
+ // Transparency in monitor mode with a local pin only (the same file scripts/upgrade-local.mjs --transparency writes): the vault pins
+ // its heads checkpoint outside the database, so a ledger replaced by an older copy is reported as a rollback instead of passing
+ // /api/integrity unnoticed (security review 2026-10-22). Witnesses on another host are added to this file later (docs/evidence-layer.md).
+ writeFileSync(join(dir,'transparency.json'),JSON.stringify({origin:`evidscope.local/${randomBytes(8).toString('hex')}`,witnesses:[],quorum:0,mode:'monitor'},null,2)+'\n',{mode:0o600,flag:'wx'});
  writeFileSync(path,JSON.stringify(config,null,2),{mode:0o600,flag:'wx'});return config;
 }
 if(process.argv[1]&&resolve(process.argv[1])===resolve('scripts/init.mjs')){initialize();console.log('로컬 자격을 .local/config.json에 생성했습니다. 토큰은 출력하지 않습니다.');}

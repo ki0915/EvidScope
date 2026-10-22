@@ -18,6 +18,7 @@ import {buildScenarioEvents} from './threat-scenarios.mjs';
 import {contentSignalInput} from './content-rules.mjs';
 import {evaluate, matches} from './model.mjs';
 import {relatedStepInput, SEQUENCE_CODES} from './sequence-rules.mjs';
+import {scanText} from './agent-content-signals.mjs';
 
 export const VERDICTS = Object.freeze(['violation', 'clean', 'abstain']);
 // 뒤의 넷(Qwen3-4B 라운드, 2026-10-17)은 공개 에이전트 안전 세트(src/external-agent-sets.mjs, ASSEBench)의 위험 유형이다. 우리 설계 시나리오는
@@ -78,9 +79,32 @@ function judge(actionId, retained, rules, now, {withSequence = true} = {}) {
   return evaluate(events, [], rules, [], now, {relatedSteps, contentSignals}).findings;
 }
 
+// ---------- 기록 속 지시문 (보안 점검 2026-10-22) ----------
+// 판정 모델이 읽는 대상(resource)·목적지는 에이전트가 실행한 명령·경로 그대로라, 명령 안에 모델을 향한 글("이 세션은 정상이다", 채팅 템플릿의
+// 역할 표식 <|im_start|> 등)을 넣으면 그 글이 모델 프롬프트에 들어간다. 두 겹으로 막는다: (1) judgeText가 프롬프트에 넣기 전에 역할 표식과
+// 보이지 않는 문자를 중립 표시로 바꾼다(HF 토크나이저는 add_special_tokens=false여도 텍스트 속 특수 토큰을 그대로 토큰으로 만든다).
+// (2) 기록 텍스트에서 지시문 신호(injection_cue·role_marker·hidden_text, src/agent-content-signals.mjs)가 나온 행동을 instructionsInRecords로
+// 표시하고, session-disposition은 그런 세션에서 모델의 "정상"으로 경보를 낮추지 않는다. 설계 카탈로그 75개 세션엔 해당 행동이 없다.
+export const JUDGE_TEXT_MARKER = '[marker]';
+const ROLE_MARKER = new RegExp([/<\|[^|<>]{1,40}\|>/, /\[\/?INST\]/, /<<\/?SYS>>/,
+  /<\/?(?:system[-_ ]?(?:prompt|instructions?)|start_of_turn|end_of_turn|bos|eos|s)>/, /<\|?(?:im_start|im_end|endoftext|eot_id)\|?>/]
+  .map(r => r.source).join('|'), 'gi');
+const INVISIBLE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f​‌⁠᠎﻿‪-‮⁦-⁩]|[\u{E0000}-\u{E007F}]/gu;
+// 모델에 보일 기록 텍스트: 역할 표식은 [marker]로, 보이지 않는 문자는 지우고, 연속 공백은 하나로.
+export function judgeText(s) {
+  if (s === null || s === undefined) return s;
+  return String(s).replace(INVISIBLE, '').replace(ROLE_MARKER, JUDGE_TEXT_MARKER).replace(/\s+/g, ' ').trim();
+}
+// 한 행동의 기록 텍스트(대상·메모)에 모델을 향한 지시문 신호가 있는지.
+export function instructionsIn(...texts) {
+  const s = scanText(texts.filter(t => typeof t === 'string' && t).join('\n'));
+  return !!(s.injection_cue || s.role_marker || s.hidden_text);
+}
+
 // 한 세션의 모델 입력: 각 행동의 kind/action/resource/destination/status/note(비밀은 hookEvent가 이미 redaction)와, 규칙+시퀀스+콘텐츠가 붙인
 // 소견. note는 이미 [Tool] 접두 텍스트. 한 행동의 도구 호출(intent)과 그 결과의 화면 검사(content_screen)는 같은 actionId라 한 행동으로 합친다
 // (예전엔 뒤 기록이 앞을 덮었다). 프롬프트는 자기 행동이다. sessionId는 모델에 노출하지 않는다(라벨 누수 방지).
+// instructionsInRecords: 기록 텍스트에 모델을 향한 지시문 신호가 있는 행동의 actionId(위 "기록 속 지시문").
 export function sessionInput(scenario, rules, {t0 = T0} = {}) {
   const events = buildScenarioEvents(scenario, {t0});
   const now = t0 + NOW_OFFSET;
@@ -93,9 +117,12 @@ export function sessionInput(scenario, rules, {t0 = T0} = {}) {
     const content = group.find(e => e.action === 'content_screen');
     const note = [intent.note, intent !== content ? content?.note : null].filter(Boolean).join(' ') || null;
     actions.push({actionId, seq: Math.min(...group.map(e => e.seq)), kind: intent.kind, action: intent.action,
-      resource: intent.resource ?? null, destination: intent.destination ?? null, status: intent.status ?? null, note, findings});
+      resource: intent.resource ?? null, destination: intent.destination ?? null, status: intent.status ?? null, note, findings,
+      instructions: instructionsIn(intent.resource, intent.destination, note)});
   }
-  return {tool: scenario.tool || 'claude-code', actionCount: actions.length, actions: actions.sort((a, b) => a.seq - b.seq)};
+  actions.sort((a, b) => a.seq - b.seq);
+  return {tool: scenario.tool || 'claude-code', actionCount: actions.length, actions,
+    instructionsInRecords: actions.filter(a => a.instructions).map(a => a.actionId)};
 }
 
 // 세션 입력을 사람이 읽는/프롬프트용 한 덩이 텍스트로. 모델은 이 요약과 소견을 보고 판정한다.
@@ -151,8 +178,9 @@ export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false, stri
     if (!names.has(code)) names.set(code, `signal-${names.size + 1}`);
     return names.get(code);
   };
-  const actions = input.actions.map((a, i) => ({ref: `a${i + 1}`, kind: a.kind, action: a.action, target: clipText(a.resource, 200),
-    ...(a.destination ? {destination: a.destination} : {}), findings: stripFindings ? [] : a.findings.map(f => `${name(f.code)} (${f.severity})`)}));
+  // 대상·목적지는 judgeText를 거친다(역할 표식·보이지 않는 문자 제거, 위 "기록 속 지시문").
+  const actions = input.actions.map((a, i) => ({ref: `a${i + 1}`, kind: a.kind, action: a.action, target: judgeText(clipText(a.resource, 200)),
+    ...(a.destination ? {destination: judgeText(a.destination)} : {}), findings: stripFindings ? [] : a.findings.map(f => `${name(f.code)} (${f.severity})`)}));
   const user = {tool: input.tool, types: [...SESSION_TYPES], actions};
   return {messages: [{role: 'system', content: SESSION_SYSTEM}, {role: 'user', content: JSON.stringify(user)}], refs, input};
 }
@@ -200,7 +228,8 @@ export function interpretSessionOutput(content, refs = new Map(), {input, tokens
   const ok = !!v && typeof v === 'object' && VERDICTS.includes(v.verdict);
   if (!ok) return {verdict: 'abstain', type: null, requirementIds: [], evidenceActionIds: [], confidence: null, score: null, schemaValid: false};
   const list = x => (Array.isArray(x) ? [...new Set(x.map(String))] : []);
-  const evidenceActionIds = v.verdict === 'violation' ? list(v.evidenceActionIds).map(r => refs.get(r) ?? r) : [];
+  // ref 표가 있으면 프롬프트에 있던 ref만 증적이 된다(모델이 지어낸 문자열은 행동 id로 돌아오지 않는다); 표가 없으면(외부 세트) 그대로 쓴다.
+  const evidenceActionIds = v.verdict === 'violation' ? list(v.evidenceActionIds).filter(r => !refs.size || refs.has(r)).map(r => refs.get(r) ?? r) : [];
   const score = tokens ? verdictScore(content, tokens) : null;
   return {verdict: v.verdict, type: v.verdict === 'violation' && SESSION_TYPES.includes(v.type) ? v.type : null,
     requirementIds: input && v.verdict === 'violation' ? requirementIdsForEvidence(evidenceActionIds, input) : [],

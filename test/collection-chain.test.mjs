@@ -12,6 +12,7 @@ import {harness} from './harness.mjs';
 import {submit} from '../src/client.mjs';
 import {digest} from '../src/crypto.mjs';
 import {canonicalJson, hookChain, recordDigest, runHook} from '../src/agent-hook-runner.mjs';
+import {createHash} from 'node:crypto';
 import {analyzeChains, chainProblems, chainGapEvent, CHAIN_CHECK_PRINCIPAL} from '../src/collection-chain.mjs';
 import {validateEvent} from '../src/model.mjs';
 
@@ -87,15 +88,26 @@ test('the report finds holes (pending, then confirmed), broken links, reused num
   assert.deepEqual(s.broken.map(b => [b.seq, b.reason]), [[7, 'previous_record_differs']]);
   assert.deepEqual(s.reused, [2]);
   assert.deepEqual(soon.restarts.map(r => [r.stream, r.previousStream]), [[T, S]]);
-  assert.deepEqual(soon.sources.find(x => x.source === 'agent-1'), {source: 'agent-1', records: 10, chained: 8, unchained: 2, unchainedAfterChain: 1});
+  assert.deepEqual(soon.sources.find(x => x.source === 'agent-1'), {source: 'agent-1', records: 10, chained: 8, unchained: 2, unchainedAfterChain: 1,
+    unnumbered: [{id: 'late', actor: 'codex@pc', tool: null, receivedAt: '2026-10-18T00:25:00.000Z'}]});
   assert.equal(soon.counts.agentRecords, 10, 'tool records are not hook records');
-  assert.deepEqual(chainProblems(soon).map(p => p.id), [`chain.break.${S}.7`, `chain.reuse.${S}.2`], 'a pending hole is not raised yet');
+  // A restart and an unnumbered record after numbering began are raised too (security review 2026-10-22): both hide removed records.
+  const unnumberedId = 'chain.unnumbered.' + createHash('sha256').update('agent-1\u0000late').digest('hex').slice(0, 24);
+  assert.deepEqual(chainProblems(soon).map(p => p.id), [`chain.break.${S}.7`, `chain.reuse.${S}.2`, `chain.restart.${T}`, unnumberedId],
+    'a pending hole is not raised yet');
+  const restart = chainProblems(soon).find(p => p.problem === 'restart'), unnumbered = chainProblems(soon).find(p => p.problem === 'unnumbered');
+  assert.match(restart.note, /새 스트림을 시작했습니다\(앞 스트림 stream-aaaa-0001은 7번까지 받음\)/);
+  assert.deepEqual([restart.actor, restart.tool, restart.stream, restart.source], ['codex@pc', 'codex', T, 'agent-1']);
+  assert.deepEqual([unnumbered.recordId, unnumbered.stream, unnumbered.actor], ['late', null, 'codex@pc']);
+  const unnumberedGap = validateEvent(chainGapEvent(unnumbered, new Date(now).toISOString()), {id: CHAIN_CHECK_PRINCIPAL, tenant: 't', kind: 'telemetry'});
+  assert.deepEqual([unnumberedGap.kind, unnumberedGap.action, unnumberedGap.actionId.startsWith('chain.unnumbered.'), unnumberedGap.actionId.length <= 120],
+    ['gap', 'collection_chain_unnumbered', true, true]);
 
   const later = analyzeChains(events, {compare, now, graceMs: 0});
   assert.deepEqual(later.counts, {agentRecords: 9, chained: 7, unchained: 2, streams: 2, restarts: 1, missingRecords: 2, confirmedMissingRanges: 1,
     pendingMissingRanges: 0, brokenLinks: 1, unverifiableLinks: 0, reusedNumbers: 0});
   const problems = chainProblems(later);
-  assert.deepEqual(problems.map(p => p.id), [`chain.gap.${S}.4-5`, `chain.break.${S}.7`]);
+  assert.deepEqual(problems.map(p => p.id), [`chain.gap.${S}.4-5`, `chain.break.${S}.7`, `chain.restart.${T}`, unnumberedId]);
   const gap = validateEvent(chainGapEvent(problems[0], new Date(now).toISOString()), {id: CHAIN_CHECK_PRINCIPAL, tenant: 't', kind: 'telemetry'});
   assert.deepEqual([gap.kind, gap.actionId, gap.actor, gap.resource], ['gap', `chain.${S}`, 'codex@pc', `chain:${S}`]);
 
@@ -147,5 +159,20 @@ test('end to end: a record lost before the vault and a changed link become COLLE
       && a.actionId === `chain.${mine().stream}`);
     assert.equal(alerts.length, 2, JSON.stringify(alerts.map(a => [a.actionId, a.code])));
     assert.ok(alerts.every(a => a.severity === 'high'));
+
+    // The state file removed (with whatever the spool still held): the next call starts a new stream, which is an alert, not a note.
+    const firstStream = mine().stream;
+    rmSync(join(dir, 'codex-chain.json'));
+    await hook('c7');
+    report = (await call('/api/collection/chains', undefined, 'auditor')).body;
+    const restarted = report.streams.find(s => s.actor === 'codex@chain-pc' && s.stream !== firstStream);
+    assert.deepEqual([restarted.firstSeq, restarted.lastSeq, report.counts.restarts], [1, 1, 1]);
+    assert.deepEqual(report.restarts.map(r => [r.stream, r.previousStream, r.previousLastSeq]), [[restarted.stream, firstStream, 6]]);
+    assert.deepEqual((await call('/api/collection/chains/check', {})).body.recorded.map(r => [r.problem, r.stream]), [['restart', restarted.stream]]);
+    assert.deepEqual((await call('/api/collection/chains/check', {})).body.recorded, [], 'a restart is recorded once');
+    await analyzeAll();
+    const restartAlerts = (await call('/api/alerts', undefined, 'auditor')).body.items.filter(a => a.code === 'COLLECTION_GAP'
+      && a.actionId === `chain.${restarted.stream}`);
+    assert.equal(restartAlerts.length, 1, JSON.stringify(restartAlerts.map(a => [a.actionId, a.code])));
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
