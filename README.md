@@ -210,7 +210,7 @@ npm start
 
 별도 터미널에서 `npm run demo`를 실행하면 합성 사례가 추가됩니다. 데모는 OpenTelemetry GenAI span도 `/v1/traces`로 보내므로 AI 가시성 화면에 등록 자산·미등록 자산·허용 목적지 밖 호출이 나타납니다. Windows에서 IPv4 loopback 오류가 있다면 서버·데모 양쪽에 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정하고 **http://[::1]:8082**로 접속합니다. `Ctrl+C`로 실행기가 시작한 자식 프로세스를 종료합니다.
 
-2026-10-06 이전에 만든 `.local`이 있다면 `npm start`를 멈추고 `npm run upgrade:local -- --transparency`를 한 번 실행하세요. OTLP 출처 자격 추가, 데이터 키 분리와 문서 재암호화, 투명성 로그(monitor) 설정을 하며 바꾸는 파일은 먼저 `.local/upgrade-backup-<시각>/`에 복사합니다. `--dry-run`으로 미리 확인할 수 있습니다. [설치·백업·복구 상세](docs/first-release-20261006.md), [권한 패치](docs/first-release-security-patch-20261006.md).
+새로 만드는 `.local`에는 투명성 로그(monitor, 로컬 pin)가 기본으로 켜져 원장을 과거 사본으로 바꾸면 되돌리기 위반으로 보입니다(2026-10-22). 그 전에 만든 `.local`이 있다면 `npm start`를 멈추고 `npm run upgrade:local -- --transparency`를 한 번 실행하세요. OTLP 출처 자격 추가, 데이터 키 분리와 문서 재암호화, 투명성 로그(monitor) 설정을 하며 바꾸는 파일은 먼저 `.local/upgrade-backup-<시각>/`에 복사합니다. `--dry-run`으로 미리 확인할 수 있습니다. [설치·백업·복구 상세](docs/first-release-20261006.md), [권한 패치](docs/first-release-security-patch-20261006.md).
 
 ## 검증
 
