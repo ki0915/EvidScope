@@ -24,8 +24,8 @@ const hits = event => rules.filter(r => matches(r, event)).map(r => r.id);
 const added = ['risk.agent.global-instructions', 'risk.agent.mcp-config', 'risk.agent.kill-agent', 'risk.agent.kill-agent-pipe',
   'risk.audit.evidscope-task', 'risk.audit.evidscope-stop', 'risk.audit.hook-script'];
 
-test('pack v3 adds seven rules of the words DSL to the sixty of version 2', () => {
-  assert.equal(pack.version, 3);
+test('pack v3 adds seven rules of the words DSL to the sixty of version 2 (v4 keeps them, naming programs by path too)', () => {
+  assert.equal(pack.version, 4);
   assert.equal(pack.rules.length, 67);
   assert.deepEqual(pack.rules.slice(-7).map(r => r.id), added);
   for (const r of pack.rules.slice(-7)) assert.ok(r.field === 'note' && r.op === 'words' && parseWords(r.value) && r.value.length <= 200, r.id);

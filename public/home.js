@@ -88,11 +88,16 @@
     } else column.append(unavailable(stops));
     const integrity = threats?.integrity;
     if (integrity?.status === 'ok') {
-      const alarms = [...(integrity.quarantine ? [`투명성 격리: ${integrity.quarantine}`] : []), ...list(integrity.faults).map(x => `조회 사본 불일치: ${x}`)];
+      const t = integrity.transparency;
+      const alarms = [...(integrity.quarantine ? [`투명성 격리: ${integrity.quarantine}`] : []), ...list(integrity.faults).map(x => `조회 사본 불일치: ${x}`),
+        ...list(t?.violations).map(v => `원장 ${v.kind === 'rollback' ? '되돌리기' : v.kind}: ${v.message}`)];
       const row = el('div', 'home-count-row');
       row.append(countLink('무결성·변조 경보', alarms.length, alarms.length ? alarms.slice(0, 2).join(' · ') : '서명 원장과 조회 사본 일치',
         () => navigate('health'), alarms.length ? 'alert' : 'ok'));
       column.append(row);
+      // Without a transparency pin the vault cannot tell that its ledger was replaced by an older copy.
+      if (t && t.mode === 'off') column.append(el('p', 'message warning', '원장 되돌리기(과거 사본으로 교체)·잘라내기는 검사하지 않습니다: 투명성 설정이 꺼져 있습니다. '
+        + 'EvidScope를 멈추고 `node scripts/upgrade-local.mjs --transparency`를 한 번 실행하면 로컬 pin으로 검사합니다.'));
     } else column.append(unavailable(integrity));
     return column;
   }

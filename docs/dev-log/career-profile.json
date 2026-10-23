@@ -1,6 +1,6 @@
 {
   "schema": "evidscope-career-profile/1",
-  "as_of": "2026-10-18",
+  "as_of": "2026-10-22",
   "project": {
     "name": "EvidScope",
     "one_liner": {
@@ -95,9 +95,9 @@
     {
       "key": "evidence-layer",
       "name": "증거 계층·제품·보안",
-      "entries": 21,
+      "entries": 22,
       "from": "2026-09-09",
-      "to": "2026-10-08",
+      "to": "2026-10-22",
       "record": "docs/dev-log/01-evidence-layer.md"
     },
     {
@@ -126,7 +126,7 @@
     }
   ],
   "status_counts": {
-    "done": 67,
+    "done": 68,
     "in_progress": 3,
     "planned": 1,
     "invalidated": 1,
@@ -199,6 +199,37 @@
       ]
     },
     {
+      "key": "qa_testing",
+      "name": "테스트·QA",
+      "count": 24,
+      "entries": [
+        "EL-04",
+        "EL-05",
+        "EL-06",
+        "EL-07",
+        "EL-10",
+        "EL-11",
+        "EL-12",
+        "EL-13",
+        "EL-14",
+        "EL-17",
+        "EL-18",
+        "EL-22",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-13",
+        "AM-14",
+        "AM-15",
+        "JM-05",
+        "JM-09",
+        "JM-19",
+        "UX-01",
+        "UX-10",
+        "UX-11"
+      ]
+    },
+    {
       "key": "security_architecture",
       "name": "보안 아키텍처",
       "count": 24,
@@ -226,36 +257,6 @@
         "JM-16",
         "JM-19",
         "UX-05",
-        "UX-11"
-      ]
-    },
-    {
-      "key": "qa_testing",
-      "name": "테스트·QA",
-      "count": 23,
-      "entries": [
-        "EL-04",
-        "EL-05",
-        "EL-06",
-        "EL-07",
-        "EL-10",
-        "EL-11",
-        "EL-12",
-        "EL-13",
-        "EL-14",
-        "EL-17",
-        "EL-18",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-13",
-        "AM-14",
-        "AM-15",
-        "JM-05",
-        "JM-09",
-        "JM-19",
-        "UX-01",
-        "UX-10",
         "UX-11"
       ]
     },
@@ -318,6 +319,34 @@
       ]
     },
     {
+      "key": "documentation",
+      "name": "문서화·투명한 보고",
+      "count": 21,
+      "entries": [
+        "EL-01",
+        "EL-03",
+        "EL-04",
+        "EL-05",
+        "EL-12",
+        "EL-14",
+        "EL-18",
+        "EL-19",
+        "EL-20",
+        "EL-22",
+        "AM-03",
+        "AM-09",
+        "JM-01",
+        "JM-02",
+        "JM-03",
+        "JM-08",
+        "JM-12",
+        "JM-14",
+        "JM-17",
+        "UX-01",
+        "UX-02"
+      ]
+    },
+    {
       "key": "dataset_design",
       "name": "데이터셋·답안지 설계",
       "count": 20,
@@ -345,36 +374,9 @@
       ]
     },
     {
-      "key": "documentation",
-      "name": "문서화·투명한 보고",
-      "count": 20,
-      "entries": [
-        "EL-01",
-        "EL-03",
-        "EL-04",
-        "EL-05",
-        "EL-12",
-        "EL-14",
-        "EL-18",
-        "EL-19",
-        "EL-20",
-        "AM-03",
-        "AM-09",
-        "JM-01",
-        "JM-02",
-        "JM-03",
-        "JM-08",
-        "JM-12",
-        "JM-14",
-        "JM-17",
-        "UX-01",
-        "UX-02"
-      ]
-    },
-    {
       "key": "cryptography_integrity",
       "name": "암호·무결성 설계",
-      "count": 17,
+      "count": 18,
       "entries": [
         "EL-01",
         "EL-02",
@@ -386,6 +388,7 @@
         "EL-13",
         "EL-18",
         "EL-20",
+        "EL-22",
         "AM-03",
         "AM-05",
         "AM-06",
@@ -461,6 +464,28 @@
         "UX-06",
         "UX-08",
         "UX-09"
+      ]
+    },
+    {
+      "key": "detection_engineering",
+      "name": "탐지 엔지니어링",
+      "count": 15,
+      "entries": [
+        "EL-11",
+        "EL-22",
+        "AM-02",
+        "AM-04",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-10",
+        "AM-12",
+        "AM-13",
+        "AM-15",
+        "JM-09",
+        "JM-10",
+        "JM-12",
+        "JM-13"
       ]
     },
     {
@@ -551,22 +576,22 @@
       ]
     },
     {
-      "key": "detection_engineering",
-      "name": "탐지 엔지니어링",
+      "key": "adversarial_testing",
+      "name": "적대적 검증·레드팀",
       "count": 14,
       "entries": [
-        "EL-11",
-        "AM-02",
-        "AM-04",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-10",
-        "AM-12",
-        "AM-13",
-        "AM-15",
-        "JM-09",
-        "JM-10",
+        "EL-02",
+        "EL-06",
+        "EL-07",
+        "EL-08",
+        "EL-09",
+        "EL-12",
+        "EL-13",
+        "EL-17",
+        "EL-19",
+        "EL-20",
+        "EL-22",
+        "AM-11",
         "JM-12",
         "JM-13"
       ]
@@ -614,26 +639,6 @@
       ]
     },
     {
-      "key": "adversarial_testing",
-      "name": "적대적 검증·레드팀",
-      "count": 13,
-      "entries": [
-        "EL-02",
-        "EL-06",
-        "EL-07",
-        "EL-08",
-        "EL-09",
-        "EL-12",
-        "EL-13",
-        "EL-17",
-        "EL-19",
-        "EL-20",
-        "AM-11",
-        "JM-12",
-        "JM-13"
-      ]
-    },
-    {
       "key": "frontend",
       "name": "프런트엔드 구현",
       "count": 12,
@@ -653,6 +658,43 @@
       ]
     },
     {
+      "key": "threat_modeling",
+      "name": "위협 모델링",
+      "count": 12,
+      "entries": [
+        "EL-02",
+        "EL-07",
+        "EL-12",
+        "EL-13",
+        "EL-16",
+        "EL-17",
+        "EL-22",
+        "AM-05",
+        "AM-10",
+        "AM-12",
+        "JM-09",
+        "JM-22"
+      ]
+    },
+    {
+      "key": "llm_security",
+      "name": "LLM 보안",
+      "count": 11,
+      "entries": [
+        "EL-02",
+        "EL-22",
+        "AM-11",
+        "AM-12",
+        "JM-01",
+        "JM-12",
+        "JM-15",
+        "JM-22",
+        "JM-26",
+        "JM-27",
+        "UX-03"
+      ]
+    },
+    {
       "key": "requirements",
       "name": "요구사항·범위 설계",
       "count": 11,
@@ -668,41 +710,6 @@
         "JM-10",
         "JM-15",
         "UX-04"
-      ]
-    },
-    {
-      "key": "threat_modeling",
-      "name": "위협 모델링",
-      "count": 11,
-      "entries": [
-        "EL-02",
-        "EL-07",
-        "EL-12",
-        "EL-13",
-        "EL-16",
-        "EL-17",
-        "AM-05",
-        "AM-10",
-        "AM-12",
-        "JM-09",
-        "JM-22"
-      ]
-    },
-    {
-      "key": "llm_security",
-      "name": "LLM 보안",
-      "count": 10,
-      "entries": [
-        "EL-02",
-        "AM-11",
-        "AM-12",
-        "JM-01",
-        "JM-12",
-        "JM-15",
-        "JM-22",
-        "JM-26",
-        "JM-27",
-        "UX-03"
       ]
     },
     {
@@ -819,7 +826,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 36,
+      "count": 37,
       "entries": [
         "EL-02",
         "EL-04",
@@ -829,6 +836,7 @@
         "EL-16",
         "EL-19",
         "EL-21",
+        "EL-22",
         "AM-02",
         "AM-04",
         "AM-05",
@@ -999,6 +1007,18 @@
       ]
     },
     {
+      "name": "SQLite",
+      "count": 6,
+      "entries": [
+        "EL-02",
+        "EL-04",
+        "EL-07",
+        "EL-12",
+        "EL-15",
+        "EL-22"
+      ]
+    },
+    {
       "name": "DSSE",
       "count": 5,
       "entries": [
@@ -1051,17 +1071,6 @@
         "EL-20",
         "AM-12",
         "JM-01"
-      ]
-    },
-    {
-      "name": "SQLite",
-      "count": 5,
-      "entries": [
-        "EL-02",
-        "EL-04",
-        "EL-07",
-        "EL-12",
-        "EL-15"
       ]
     },
     {
@@ -1181,6 +1190,15 @@
       ]
     },
     {
+      "name": "SHA-256 hash chain",
+      "count": 3,
+      "entries": [
+        "EL-10",
+        "EL-22",
+        "AM-15"
+      ]
+    },
+    {
       "name": "4-eyes",
       "count": 2,
       "entries": [
@@ -1218,6 +1236,14 @@
       "entries": [
         "EL-07",
         "EL-13"
+      ]
+    },
+    {
+      "name": "C2SP tlog-checkpoint",
+      "count": 2,
+      "entries": [
+        "EL-07",
+        "EL-22"
       ]
     },
     {
@@ -1362,14 +1388,6 @@
       "entries": [
         "EL-06",
         "EL-13"
-      ]
-    },
-    {
-      "name": "SHA-256 hash chain",
-      "count": 2,
-      "entries": [
-        "EL-10",
-        "AM-15"
       ]
     },
     {
@@ -1614,13 +1632,6 @@
       "count": 1,
       "entries": [
         "JM-03"
-      ]
-    },
-    {
-      "name": "C2SP tlog-checkpoint",
-      "count": 1,
-      "entries": [
-        "EL-07"
       ]
     },
     {
@@ -2527,6 +2538,13 @@
       ]
     },
     {
+      "name": "Regular expressions",
+      "count": 1,
+      "entries": [
+        "EL-22"
+      ]
+    },
+    {
       "name": "REST 필터 파라미터",
       "count": 1,
       "entries": [
@@ -3173,6 +3191,20 @@
       ],
       "en": [
         "Turned hands-on user feedback into an operations home (recent agents and pending human actions; about 3-4 ms for a 15-minute window on a 100k-case tenant) and a scheduled log rotation that requires two-person pre-approval and is checked offline."
+      ]
+    },
+    {
+      "id": "EL-22",
+      "date": "2026-10-22",
+      "title": "보안 점검: 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 모델 프롬프트 주입, 가드 문자열 우회, 요청 경로 크래시를 고침",
+      "title_en": "Security review: undetected ledger rollback, silent hook restarts, judge prompt injection, guard string-matching bypasses, request-target crash",
+      "ko": [
+        "보안 점검으로 기본 설치의 원장 되돌리기 미탐지, 훅 재시작 무경보, 판정 LLM 프롬프트 주입을 재현해 고치고 회귀 테스트 9건으로 고정(경로 탈출 0건, 설계 데이터 프롬프트 무변경)",
+        "정적 분석이 보고한 실행 전 가드 우회 8건(.exe·경로·cd·& 연결·sort -o)과 요청 경로 파싱 크래시를 재현해 명령 정규화 계층(가드 v2)·규칙 팩 v4·안전한 파싱으로 고치고 회귀 테스트로 고정"
+      ],
+      "en": [
+        "Reproduced and fixed three gaps found in a security review (undetected ledger rollback on default installs, silent hook restarts, prompt injection into the judge LLMs), each pinned by regression tests; no path traversal found and the designed dataset prompts unchanged",
+        "Reproduced eight guard bypasses reported by static analysis (.exe, path prefix, cd, & chains, sort -o) and a request-target crash, and fixed them with a command-normalisation layer (guard v2), rule pack v4 and single safe parsing, each pinned by regression tests"
       ]
     },
     {
@@ -4672,6 +4704,96 @@
       "unit": null,
       "scope": "retention_rotation 정책",
       "source": "docs/retention-rotation.md"
+    },
+    {
+      "id": "EL-22",
+      "name": "원장 과거 사본 교체 탐지(새 설치 기본)",
+      "before": "valid:true, 어디에도 표시 없음",
+      "after": "rollback 위반 1건, 홈 무결성 경보, 무결성 화면 문장",
+      "unit": null,
+      "scope": "컨테이너 재현: 기록 8건 → 4건 시점 사본으로 교체",
+      "source": "test/ledger-rollback-pin.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "훅 상태 파일 삭제 후 경보",
+      "before": "0건(재시작 수만 증가)",
+      "after": "COLLECTION_GAP 1건(chain.restart)",
+      "unit": "경보",
+      "scope": "컨테이너 끝까지 시험(훅→금고→경보)",
+      "source": "test/collection-chain.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "명령 속 역할 표식이 판정 프롬프트에 도달",
+      "before": "그대로 도달",
+      "after": "0건([marker]로 교체)",
+      "unit": null,
+      "scope": "역할 표식 12종",
+      "source": "test/judge-input-hardening.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "지시문이 든 세션에서 두 판정자 ‘정상’ 시 경보",
+      "before": "low로 낮아짐",
+      "after": "high 유지",
+      "unit": null,
+      "scope": "재귀 삭제 + 주입 문구 세션",
+      "source": "test/judge-input-hardening.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "설계 카탈로그 프롬프트 변경",
+      "before": null,
+      "after": "0 / 75세션(지시문 신호 0건)",
+      "unit": "세션",
+      "scope": "catalog+contrast",
+      "source": "test/judge-input-hardening.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "경로 탈출",
+      "before": null,
+      "after": "0건 발견",
+      "unit": "건",
+      "scope": "src·scripts의 파일 경로 처리 전수",
+      "source": "83abe82"
+    },
+    {
+      "id": "EL-22",
+      "name": "가드 우회(정적 분석 8건 + 자체 4건)",
+      "before": "12건 통과(대조군 3건만 차단)",
+      "after": "12건 차단, 정당한 조회·읽기·cd·임의 프로그램 실행 6건 통과",
+      "unit": "건",
+      "scope": "src/agent-hook-guard.mjs guardDecision, 규칙 팩 v4",
+      "source": "test/agent-hook-guard.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "금고 규칙 탐지(경로·.exe 형태)",
+      "before": "schtasks.exe·C:/.../schtasks.exe·/usr/sbin/iptables 0건",
+      "after": "11개 형태 탐지",
+      "unit": "형태",
+      "scope": "엔진 v6 그대로, 팩 v4",
+      "source": "test/rule-words.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "요청 100건 대기 중 파싱 불가 경로",
+      "before": "프로세스 종료(응답 없음)",
+      "after": "400 응답, /healthz 200 유지",
+      "unit": null,
+      "scope": "금고 단독",
+      "source": "test/server-request-target.test.mjs"
+    },
+    {
+      "id": "EL-22",
+      "name": "자동 시험",
+      "before": "1,685건 통과·실패 0(17건 건너뜀, 총 1,702건)",
+      "after": "1,698건 통과·실패 0(17건 건너뜀, 총 1,715건)",
+      "unit": "테스트",
+      "scope": "컨테이너 전체 실행",
+      "source": "5925308"
     },
     {
       "id": "AM-01",
@@ -7439,6 +7561,12 @@
       "decided_by": "ai_agent"
     },
     {
+      "id": "EL-22",
+      "what": "scripts/init.mjs가 새 설치에 transparency.json(모니터, 위트니스 없음, 로컬 pin)을 쓴다. 콘솔 홈은 투명성 위반을 무결성 경보로 세고 모드가 꺼져 있으면 경고하며, 무결성 화면은 검사하지 않은 항목과 위반을 글로 보인다. 수집 연속성은 같은 출처·행위자의 새 스트림(chain.restart.<stream>)과 순번을 매기던 출처의 순번 없는 기록(chain.unnumbered.<해시>)을 서명된 gap 기록으로 남긴다. session-inference는 judgeText로 역할 표식·보이지 않는 문자를 [marker]로 바꾸고, 기록 텍스트에 주입 문구·역할 표식·숨은 문자가 있는 행동을 instructionsInRecords로 표시하며, disposition·오케스트라는 그 세션에서 모델의 정상으로 경보를 낮추지 않는다. 모델이 낸 증적 ref는 프롬프트에 있던 것만 받는다.",
+      "why": "‘조용히 통과’하는 길을 없애는 것이 이번 요청의 핵심이고, 세 수정 모두 기존 원칙(외부 anchoring, 수집 공백 경보, 모델은 경보를 지우지 못함)의 빈틈을 메우는 것이라 설계가 바뀌지 않는다.",
+      "decided_by": "ai_agent"
+    },
+    {
       "id": "AM-01",
       "what": "학습은 배경으로 돌리고 실제 기록 수집과 위험 탐지를 먼저 한다. 순서는 실제 기록을 법·인증 증거로 잇기, Codex 연결, 여러 행동 이상 탐지.",
       "why": "보여 줄 수 있는 실제 탐지가 먼저 있어야 제품이 의미가 있다고 판단했다.",
@@ -8001,6 +8129,30 @@
     {
       "id": "EL-21",
       "text": "실사용 피드백은 내부 감사가 놓친 운영자 관점의 공백을 가장 빨리 드러낸다."
+    },
+    {
+      "id": "EL-22",
+      "text": "‘검사하지 않았다’를 JSON 깊숙이 적는 것은 운영자에게 ‘통과’로 읽힌다. 미검사 항목은 첫 화면에 글로 보여야 한다."
+    },
+    {
+      "id": "EL-22",
+      "text": "모델이 읽는 모든 문자열은 입력이다. 명령·경로 같은 ‘데이터’ 필드도 토크나이저를 거치면 제어 토큰이 될 수 있다."
+    },
+    {
+      "id": "EL-22",
+      "text": "재현 → 테스트 → 수정 순서로 하면 취약점이 회귀 테스트로 남는다."
+    },
+    {
+      "id": "EL-22",
+      "text": "차단 규칙의 문자열 매칭은 공격자가 고르는 표기(확장자·경로·cd·따옴표·연결)를 셸이 읽는 형태로 정규화한 뒤에 맞춰야 한다. 그래도 변수·인코딩·스크립트 파일은 못 잡으니 ‘막는다’는 말의 범위를 문서에 적어야 한다."
+    },
+    {
+      "id": "EL-22",
+      "text": "같은 값을 두 번 파싱하면 한 번은 오류 처리 밖에 있기 쉽다. 요청 경로처럼 외부가 주는 값은 한 번만, 가장 바깥에서 파싱한다."
+    },
+    {
+      "id": "EL-22",
+      "text": "외부(정적 분석)가 준 재현 스크립트는 그대로 회귀 테스트가 된다. 대조군(막혀야 하는 것)과 함께 고정하면 과차단도 함께 잡힌다."
     },
     {
       "id": "AM-01",
@@ -8803,6 +8955,14 @@
     {
       "id": "EL-21",
       "text": "작은 조직에서 두 사람 사전 승인이 현실적인가, 아니면 승인 없이 쌓이는 로그가 결국 더 큰 문제가 될까?"
+    },
+    {
+      "id": "EL-22",
+      "text": "PC 설치에 pin을 켠 뒤 Docker 재시작·백업 복원 같은 정상 운영에서 위반이 얼마나 자주 나올까?"
+    },
+    {
+      "id": "EL-22",
+      "text": "지시문 신호가 있는 세션을 사람 검토(review)로 올려야 할까, 아니면 지금처럼 낮추기만 막아야 할까?"
     },
     {
       "id": "AM-01",

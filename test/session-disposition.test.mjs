@@ -31,7 +31,7 @@ test('reading the settings, a known rule gap, can be lowered but never removed',
 
 test('a model-only finding becomes a review item, and silence stays silent', () => {
   assert.deepEqual(disposition(byId('ctr-dev-session'), rules, said('violation')), {alert: true, priority: 'review', source: 'model',
-    modelOpinion: 'violation', protectedCodes: []});
+    modelOpinion: 'violation', protectedCodes: [], instructionsInRecords: []});
   assert.equal(disposition(byId('ctr-dev-session'), rules, said('clean')).alert, false);
   assert.equal(disposition(byId('ctr-dev-session'), rules, undefined).alert, false);
 });

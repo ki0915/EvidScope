@@ -38,6 +38,7 @@ async function legacyInstall(t) {
   config.principals = config.principals.filter(p => p.kind !== 'otlp');
   writeFileSync(join(dir, 'config.json'), JSON.stringify(config, null, 2), {mode: 0o600});
   unlinkSync(join(dir, 'data-encryption.key')); rmSync(join(dir, 'event-keystore'), {recursive: true, force: true});
+  unlinkSync(join(dir, 'transparency.json'));
   const key = readFileSync(join(dir, 'signing-private.pem'), 'utf8'), reviewer = config.principals.find(p => p.id === 'alpha-reviewer');
   const s = createService({dataDir: join(dir, 'data'), key, config, requirements});
   const call = (path, body) => s.handle('POST', new URL(path, 'http://local'), {authorization: 'Bearer ' + reviewer.token}, JSON.stringify(body));

@@ -113,10 +113,12 @@ async function preauthorizeUpstream(path,headers){
 async function route(req,res){
  for(const[k,v]of Object.entries(security))res.setHeader(k,v);res.setHeader('Content-Type','application/json; charset=utf-8');
  if(instance)res.setHeader('x-evidscope-instance',instance);
- if(stopping||active>=100){if(otlp&&new URL(req.url,'http://localhost').pathname===OTLP_TRACES_PATH)return otlp.unavailable(req,res);res.writeHead(503);res.end(JSON.stringify({error:'서비스가 혼잡하거나 종료 중입니다'}));return;}
+ // The request target is parsed once, before any branch reads it: a target the parser rejects ("//") is answered 400, never thrown
+ // (parsed again in the saturated branch below, outside the error handling, it ended the process; security review 2026-10-22).
+ let url;try{url=new URL(req.url,'http://localhost');}catch{res.writeHead(400);res.end(JSON.stringify({error:'요청 경로 형식 오류'}));return;}
+ if(stopping||active>=100){if(otlp&&url.pathname===OTLP_TRACES_PATH)return otlp.unavailable(req,res);res.writeHead(503);res.end(JSON.stringify({error:'서비스가 혼잡하거나 종료 중입니다'}));return;}
  active++;
  try{
-  const url=new URL(req.url,'http://localhost');
   if(mode==='vault'&&url.pathname===INGEST_FORWARD_PATH)res.setHeader(INGEST_FORWARD_HEADER,'1');
   if(otlp&&url.pathname===OTLP_TRACES_PATH){await otlp.handle(req,res,{originAllowed:origin=>origin===(mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host)});return;}
   if(req.headers.origin){const expected=mode==='vault'&&service.identity.enabled?service.identity.origin:(tls?'https':'http')+'://'+req.headers.host;if(req.headers.origin!==expected)throw new HttpError(403,'교차 출처 요청이 금지됩니다');}
@@ -174,7 +176,10 @@ async function route(req,res){
   res.statusCode=error.status||503;res.end(JSON.stringify({error:error.status?error.message:'저장소 또는 서비스 연결 실패; 접수 성공이 아닙니다',...(error.status&&error.details||{})}));if(!error.status)process.stderr.write(JSON.stringify({component:mode,error:error.code||error.name})+'\n');}
  finally{active--;}
 }
-const server=(tls?https:http).createServer(tls||{},route);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
+// A failure route() itself does not handle (before its try, or in sending the error answer) is logged and answered, never left as an
+// unhandled rejection that ends the process and with it the collection.
+const guarded=(req,res)=>route(req,res).catch(error=>{process.stderr.write(JSON.stringify({component:mode,error:error?.code||error?.name||'route',phase:'route'})+'\n');try{if(!res.headersSent)res.writeHead(500);res.end();}catch{}});
+const server=(tls?https:http).createServer(tls||{},guarded);server.requestTimeout=10000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=40;
 server.listen(port,host,()=>{service?.transparency.start();service?.accessLog.start();service?.retention.rotation.start();service?.registryDiscovery.start();service?.collectionChain.start();
  const address=server.address();process.stdout.write(JSON.stringify({component:mode,address:host,port:address.port,tls:!!tls})+'\n');if(process.send)process.send({ready:true,port:address.port});});
 const workerTimer=mode==='worker'?setInterval(async()=>{if(workerBusy||stopping)return;workerBusy=true;

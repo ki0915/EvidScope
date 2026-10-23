@@ -193,7 +193,7 @@ export function createService({dataDir,config:fullConfig,key,dataKey,traceLinks:
  // Console home: running agents, needs attention, model status (src/home-service.mjs); read-only.
  // Governance-mapping model console: review queue, experiment comparison, signed factsheets (src/governance-model-service.mjs).
  const governanceModelConsole=createGovernanceModelService({store,policyObjects:verifiedPolicyObjects,human,reviewer,...governanceModelOptions});
- const home=createHome({store,policyObjects:verifiedPolicyObjects,verifiedEvents,approvals,registry,legalReviewState,runtimeStatus,factsheets:governanceModelConsole.factsheets});
+ const home=createHome({store,policyObjects:verifiedPolicyObjects,verifiedEvents,approvals,registry,legalReviewState,runtimeStatus,factsheets:governanceModelConsole.factsheets,transparencyStatus:()=>transparency?.status?.()??null});
  function verifiedEvaluations(p,options){
   let result;try{result=store.cachedEvaluations(p.tenant,options);}catch(error){if(error?.status)throw error;fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');}
   if(result.oversized)fail(413,'분석 조회 객체 한도 초과: 부분 검증으로 조회할 수 없습니다');
