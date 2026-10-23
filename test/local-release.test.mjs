@@ -8,7 +8,7 @@ import {createServer} from 'node:net';
 import {randomInt} from 'node:crypto';
 import {createLocalRuntime} from '../scripts/local.mjs';
 
-const execute=promisify(execFile),host=process.env.EVIDSCOPE_TEST_HOST||'::1';
+const execute=promisify(execFile),host=process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1';
 const urlHost=host==='::1'?'[::1]':host;
 const directory=()=>{mkdirSync('.test-runs',{recursive:true});return mkdtempSync(resolve('.test-runs','release-local-'));};
 const alive=pid=>{try{process.kill(pid,0);return true;}catch(error){if(error.code==='ESRCH')return false;throw error;}};

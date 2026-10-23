@@ -31,6 +31,21 @@ SOURCE_PINS = {
     'sourceRuntimeConfigMapSha256': 'fd16f98282d570af43310e9920f017867509af910f14dc7dc8360878c283e934',
     'criInspectionSha256': '9751ae20dfea9f656d4643a70c1c2863acd4224913228a5d4117ff41e0e8b6b1',
 }
+BALANCED_RUN = 'public-qa-fresh-balanced-r2-20261006'
+BALANCED_SOURCE = 'public-qa-balanced-20261006-r2'
+BALANCED_STAGE = 'public_qa_grounding_balanced_blind_evaluation_v1'
+BALANCED_DATA_SHA = '8eb5a4ab3bca89eaa086635793bb352e65955bee079c1b6a4e1bf42005005062'
+BALANCED_MANIFEST_SHA = '7b681710da7cc0ca3544618858d9fde7dd597706617d858b2db1c791b205154d'
+
+
+def evaluation_contract(binding=None):
+    binding = binding or {}
+    if binding.get('runId') != BALANCED_RUN:
+        return {'stage':STAGE,'dataSha':DATA_SHA,'manifestSha':MANIFEST_SHA,'sourceRun':SOURCE_RUN,'history':80,'sourceHistory':60,'sourceStage':'public_qa_grounding_continuation_v1','sourceStatus':'trained_public_qa_grounding_continuation_v1','pins':SOURCE_PINS}
+    pins = {key:binding.get(key) for key in SOURCE_PINS}
+    require(all(value is None if key == 'criInspectionSha256' and binding.get('sourceCompletionKind') == 'controller_normal_exit' else isinstance(value,str) and re.fullmatch(r'[a-f0-9]{64}',value) for key,value in pins.items()),'fresh_balanced_source_pins_invalid')
+    require(binding.get('artifactLockSha256') == OLD.LOCK_SHA and binding.get('sourceCompletionKind') in ('controller_normal_exit','cri_exit_reconciled'),'fresh_balanced_completion_invalid')
+    return {'stage':BALANCED_STAGE,'dataSha':BALANCED_DATA_SHA,'manifestSha':BALANCED_MANIFEST_SHA,'sourceRun':BALANCED_SOURCE,'history':100,'sourceHistory':80,'sourceStage':'public_qa_grounding_balanced_v1','sourceStatus':'trained_public_qa_grounding_balanced_v1','pins':pins}
 PRIVACY = re.compile(r'[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b01[016789][- .]?\d{3,4}[- .]?\d{4}\b|\b\d{6}[- ]?[1-8]\d{6}\b', re.I)
 
 
@@ -51,14 +66,15 @@ def read_json(path):
     return json.loads(path.read_text(encoding='utf-8'))
 
 
-def validate_rows(rows, metadata):
+def validate_rows(rows, metadata, contract=None):
+    contract = contract or evaluation_contract()
     require(len(rows) == 128 and [r.get('id') for r in rows] == metadata.get('rowIds'), 'fresh_rows_invalid')
     require(metadata.get('counts') == {'total':128, 'answerable':64, 'impossible':64}, 'fresh_balance_invalid')
     for key in ('id', 'familyId', 'contextSha256'):
         require(len({r.get(key) for r in rows}) == 128, 'fresh_duplicate_'+key)
     require(sum(r.get('isImpossible') is True for r in rows) == 64 and sum(r.get('isImpossible') is False for r in rows) == 64, 'fresh_actual_balance_invalid')
     for row in rows:
-        require(isinstance(row.get('id'), str) and re.fullmatch(r'[A-Za-z0-9_-]+', row['id']) and row.get('stage') == STAGE and row.get('split') == 'heldout' and row.get('upstreamSplit') == 'dev' and row.get('upstreamRevision') == OLD.SOURCE_REVISION and row.get('language') == 'ko', 'fresh_row_provenance_invalid')
+        require(isinstance(row.get('id'), str) and re.fullmatch(r'[A-Za-z0-9_-]+', row['id']) and row.get('stage') == contract['stage'] and row.get('split') == 'heldout' and row.get('upstreamSplit') == 'dev' and row.get('upstreamRevision') == OLD.SOURCE_REVISION and row.get('language') == 'ko', 'fresh_row_provenance_invalid')
         require(row.get('sourceLicense') == 'CC-BY-SA-4.0' and row.get('upstreamAnnotation', {}).get('kind') == 'human_authored_question_answer_spans' and row.get('localHumanReviewPerformed') is False, 'fresh_annotation_invalid')
         require(isinstance(row.get('context'), str) and 0 < len(row['context']) <= 650 and isinstance(row.get('question'), str) and 0 < len(row['question']) <= 240 and hashlib.sha256(row['context'].encode()).hexdigest() == row.get('contextSha256'), 'fresh_context_changed')
         original = row.get('originalQa', {})
@@ -71,21 +87,25 @@ def validate_rows(rows, metadata):
         require(row.get('contextSelection') == 'full_original_context_no_answer_based_crop' and row.get('privacyScreen') == {'kind':'basic_email_mobile_resident_id_regex', 'passed':True, 'comprehensivePrivacyReview':False} and not PRIVACY.search(row['question']+'\n'+row['context']), 'fresh_privacy_or_selection_invalid')
 
 
-def verify_data(data, manifest):
-    require(not Path(data).is_symlink() and not Path(manifest).is_symlink() and sha256_file(data) == DATA_SHA and sha256_file(manifest) == MANIFEST_SHA, 'fresh_input_hash_mismatch')
+def verify_data(data, manifest, binding=None):
+    contract = evaluation_contract(binding)
+    require(not Path(data).is_symlink() and not Path(manifest).is_symlink() and sha256_file(data) == contract['dataSha'] and sha256_file(manifest) == contract['manifestSha'], 'fresh_input_hash_mismatch')
     metadata = read_json(manifest)
-    require(metadata.get('schemaVersion') == 1 and metadata.get('stage') == STAGE and metadata.get('datasetSha256') == DATA_SHA and metadata.get('sourceRevision') == OLD.SOURCE_REVISION and metadata.get('sourceHeldoutSha256') == OLD.SOURCE_PINS['heldout'], 'fresh_manifest_invalid')
-    require(all(metadata.get(key) is False for key in ('trainingUsed','heldoutUsedForTraining','automaticallyGeneratedLabels','localHumanReviewPerformed','qualityClaimAllowed','promotionAllowed')) and metadata.get('originalHumanLabelsPreserved') is True and metadata.get('frozenBeforeContinuationTraining') is True, 'fresh_claim_boundary_invalid')
+    require(metadata.get('schemaVersion') == 1 and metadata.get('stage') == contract['stage'] and metadata.get('datasetSha256') == contract['dataSha'] and metadata.get('sourceRevision') == OLD.SOURCE_REVISION and metadata.get('sourceHeldoutSha256') == OLD.SOURCE_PINS['heldout'], 'fresh_manifest_invalid')
+    frozen = metadata.get('frozenBeforeBalancedTraining') is True and metadata.get('plannedTrainingRunId') == BALANCED_SOURCE if contract['stage'] == BALANCED_STAGE else metadata.get('frozenBeforeContinuationTraining') is True
+    require(all(metadata.get(key) is False for key in ('trainingUsed','heldoutUsedForTraining','automaticallyGeneratedLabels','localHumanReviewPerformed','qualityClaimAllowed','promotionAllowed')) and metadata.get('originalHumanLabelsPreserved') is True and frozen, 'fresh_claim_boundary_invalid')
     selection = metadata.get('selection', {})
     require(selection.get('fullContextPreserved') is True and selection.get('answerBasedCropping') is False and selection.get('actualTokenizerPreadmissionRequired') is True and metadata.get('previousExposureOverlap') == {'id':0,'family':0,'context':0}, 'fresh_scope_invalid')
     rows = [json.loads(line) for line in Path(data).read_text(encoding='utf-8').splitlines() if line.strip()]
-    validate_rows(rows, metadata)
+    validate_rows(rows, metadata, contract)
     return rows, metadata
 
 
 def verify_binding(binding_path, verification_path, provenance_path, cri_path, adapter_path, expected_digest):
     require(not Path(binding_path).is_symlink() and sha256_file(binding_path) == expected_digest, 'fresh_binding_changed')
     binding = read_json(binding_path)
+    if binding.get('runId') == BALANCED_RUN:
+        return verify_balanced_binding(binding,verification_path,provenance_path,cri_path,adapter_path)
     require(binding.get('schemaVersion') == 1 and binding.get('mode') == MODE and binding.get('stage') == STAGE and re.fullmatch(r'public-qa-fresh-[a-z0-9-]{1,28}', binding.get('runId', '')), 'fresh_binding_scope_invalid')
     require(binding.get('sourceRunId') == SOURCE_RUN and binding.get('sourceGlobalStep') == 20 and binding.get('sourceOptimizerHistoryUpdates') == 80 and binding.get('sourceTrainingExecutionVerified') is True, 'fresh_source_scope_invalid')
     require(binding.get('diagnosticOnly') is True and binding.get('qualityClaimAllowed') is False and binding.get('promotionAllowed') is False and binding.get('localHumanReviewPerformed') is False and binding.get('evaluationScope') == SCOPE and binding.get('baselineExecutedThisRun') is True and binding.get('executionOrder') == ['baseline','candidate'] and binding.get('baselineKind') == 'fixed_reasoning_base_without_adapter', 'fresh_claim_invalid')
@@ -101,7 +121,28 @@ def verify_binding(binding_path, verification_path, provenance_path, cri_path, a
     return binding
 
 
+def verify_balanced_binding(binding,verification_path,provenance_path,cri_path,adapter_path):
+    contract = evaluation_contract(binding)
+    require(binding.get('schemaVersion') == 1 and binding.get('mode') == MODE and binding.get('stage') == BALANCED_STAGE and binding.get('sourceRunId') == BALANCED_SOURCE and binding.get('sourceGlobalStep') == 20 and binding.get('sourceOptimizerHistoryUpdates') == 100 and binding.get('sourceTrainingExecutionVerified') is True,'fresh_balanced_scope_invalid')
+    require(binding.get('diagnosticOnly') is True and all(binding.get(key) is False for key in ('qualityClaimAllowed','promotionAllowed','localHumanReviewPerformed')) and binding.get('evaluationScope') == SCOPE and binding.get('baselineExecutedThisRun') is True and binding.get('executionOrder') == ['baseline','candidate'] and binding.get('baselineKind') == 'fixed_reasoning_base_without_adapter' and binding.get('rows') == 128 and binding.get('datasetSha256') == BALANCED_DATA_SHA and binding.get('manifestSha256') == BALANCED_MANIFEST_SHA,'fresh_balanced_claim_invalid')
+    controller_path = Path(verification_path).with_name('controller.json')
+    for path,key in ((verification_path,'sourceVerificationSha256'),(provenance_path,'provenanceSha256'),(controller_path,'sourceControllerSha256')):
+        require(Path(path).is_file() and not Path(path).is_symlink() and sha256_file(path) == binding[key],'fresh_balanced_source_file_changed')
+    report,provenance,controller = read_json(verification_path),read_json(provenance_path),read_json(controller_path)
+    require(all(report.get(key) is True for key in ('verified','verificationPassed','actualTrainingExecutionVerified','sourceTrainingExecutionVerified','trainingRunCompleted','terminationConfirmed')) and report.get('syntheticFixture') is False and report.get('runId') == BALANCED_SOURCE and report.get('globalStep') == report.get('actualOptimizerUpdates') == report.get('optimizerUpdatesThisRun') == 20 and report.get('sourceOptimizerUpdates') == 80 and report.get('totalAdapterHistoryOptimizerUpdates') == 100 and report.get('optimizerStateRestored') is False and report.get('schedulerStateRestored') is False and report.get('qualityClaimAllowed') is False and report.get('promotionAllowed') is False,'fresh_balanced_execution_unverified')
+    require(report.get('controllerSha256') == binding['sourceControllerSha256'] and report.get('runtimeConfigMapSha256') == binding['sourceRuntimeConfigMapSha256'] and provenance.get('targetRunId') == BALANCED_SOURCE and provenance.get('targetIdentity') == binding.get('candidateIdentity') == report.get('identity') and provenance.get('targetOptimizerSteps') == 20 and provenance.get('sourceOptimizerHistoryUpdates') == 80 and provenance.get('qualityClaimAllowed') is False and provenance.get('promotionAllowed') is False and controller.get('runId') == BALANCED_SOURCE and controller.get('terminationConfirmed') is True and controller.get('jobUid') == report.get('jobUid') and controller.get('podUid') == report.get('podUid') and not controller.get('cleanupError'),'fresh_balanced_identity_changed')
+    if binding['sourceCompletionKind'] == 'controller_normal_exit':
+        require(controller.get('state') == 'process_completed' and controller.get('exit',{}).get('exitCode') == 0 and not controller.get('error') and not report.get('runtimeExitReconciliation') and binding.get('criInspectionSha256') is None,'fresh_balanced_normal_exit_invalid')
+    else:
+        require(Path(cri_path).is_file() and not Path(cri_path).is_symlink() and sha256_file(cri_path) == binding['criInspectionSha256'],'fresh_balanced_cri_changed')
+        cri = read_json(cri_path); reconciliation,status = report.get('runtimeExitReconciliation',{}),cri.get('status',{})
+        require(controller.get('state') == 'error' and reconciliation.get('reconciliationPassed') is True and reconciliation.get('criInspectionSha256') == binding['criInspectionSha256'] and reconciliation.get('originalControllerSha256') == binding['sourceControllerSha256'] and status.get('state') == 'CONTAINER_EXITED' and status.get('exitCode') == 0 and status.get('reason') == 'Completed' and status.get('id') == reconciliation.get('containerId') and status.get('labels',{}).get('io.kubernetes.pod.uid') == report.get('podUid') == reconciliation.get('podUid') and status.get('imageRef') == OLD.IMAGE,'fresh_balanced_cri_mismatch')
+    verify_candidate_directory(adapter_path,binding,report)
+    return binding
+
+
 def verify_candidate_directory(directory, binding, report):
+    contract = evaluation_contract(binding)
     directory = Path(directory)
     require(directory.is_dir() and not directory.is_symlink(), 'fresh_candidate_directory_invalid')
     marker_path = OLD.plain_file(directory, 'candidate-complete.json')
@@ -110,10 +151,10 @@ def verify_candidate_directory(directory, binding, report):
     require(marker.get('schemaVersion') == 1 and marker.get('globalStep') == 20 and marker.get('identity') == binding['candidateIdentity'] and marker.get('files') == inventory(directory, {'candidate-complete.json'}), 'fresh_candidate_inventory_changed')
     require(sha256_file(OLD.plain_file(directory, 'adapter_model.safetensors')) == binding['adapterSha256'] == report.get('adapterSha256'), 'fresh_candidate_adapter_changed')
     identity = marker['identity']
-    require(identity.get('stage') == 'public_qa_grounding_continuation_v1' and identity.get('baseRevision') == OLD.BASE_REVISION and identity.get('baseRepository') == 'fdtn-ai/Foundation-Sec-8B-Reasoning' and identity.get('baseArtifactLockSha256') == OLD.LOCK_SHA and identity.get('modelDtype') == identity.get('quantComputeDtype') == 'bfloat16' and identity.get('image') == OLD.IMAGE, 'fresh_candidate_base_changed')
+    require(identity.get('stage') == contract['sourceStage'] and identity.get('baseRevision') == OLD.BASE_REVISION and identity.get('baseRepository') == 'fdtn-ai/Foundation-Sec-8B-Reasoning' and identity.get('baseArtifactLockSha256') == OLD.LOCK_SHA and identity.get('modelDtype') == identity.get('quantComputeDtype') == 'bfloat16' and identity.get('image') == OLD.IMAGE, 'fresh_candidate_base_changed')
     receipt = read_json(OLD.plain_file(directory, 'training-receipt.json'))
     finite, verified_finite = receipt.get('adapterFiniteCheck', {}), report.get('adapterTensorVerification', {})
-    require(receipt.get('status') == 'trained_public_qa_grounding_continuation_v1' and receipt.get('identity') == identity and receipt.get('globalStep') == 20 and receipt.get('totalAdapterHistoryOptimizerUpdates') == 80 and receipt.get('trainingRunCompleted') is True and receipt.get('qualityClaimAllowed') is False and receipt.get('promotionAllowed') is False, 'fresh_candidate_receipt_invalid')
+    require(receipt.get('status') == contract['sourceStatus'] and receipt.get('identity') == identity and receipt.get('globalStep') == 20 and receipt.get('totalAdapterHistoryOptimizerUpdates') == contract['history'] and receipt.get('trainingRunCompleted') is True and receipt.get('qualityClaimAllowed') is False and receipt.get('promotionAllowed') is False, 'fresh_candidate_receipt_invalid')
     require(finite.get('passed') is True and finite.get('tensorCount') == 256 and finite.get('nonFiniteTensorCount') == 0 and finite.get('beforeCandidateSealing') is True and verified_finite.get('verified') is True and verified_finite.get('allFinite') is True and verified_finite.get('tensorCount') == 256 and verified_finite.get('dtype') == 'F32' and verified_finite.get('sha256') == binding['adapterSha256'], 'fresh_candidate_finite_unverified')
     require(sha256_file(OLD.plain_file(directory,'training-exposure.json')) == report.get('exposureReceiptSha256') == receipt.get('trainingExposure', {}).get('sha256'), 'fresh_candidate_exposure_changed')
     return marker
@@ -158,10 +199,11 @@ def cgroup_snapshot():
 def evaluate(args):
     require(os.name == 'posix' and os.environ.get('EVIDSCOPE_ISOLATED') == '1' and Path('/etc/podinfo/uid').is_file(), 'isolated_evaluation_required')
     binding = verify_binding(args.binding,args.verification,args.provenance,args.cri_inspection,args.adapter_dir,os.environ.get('EVIDSCOPE_FRESH_EVALUATION_BINDING_SHA256'))
+    contract = evaluation_contract(binding)
     require(os.environ.get('EVIDSCOPE_TRAINING_IMAGE') == OLD.IMAGE, 'fresh_image_changed')
     for name, key in (('DATA','datasetSha256'),('MANIFEST','manifestSha256'),('CONTROLLER','sourceControllerSha256'),('VERIFICATION','sourceVerificationSha256'),('CANDIDATE','candidateMarkerSha256'),('ADAPTER','adapterSha256')):
         require(os.environ.get('EVIDSCOPE_DIAGNOSTIC_'+name+'_SHA256') == binding[key], 'fresh_environment_binding_invalid')
-    rows, _ = verify_data(args.data,args.manifest)
+    rows, _ = verify_data(args.data,args.manifest,binding)
     OLD.verify_base(args.model_dir, full=not args.token_check)
     directory = OLD.output_path(args.output, root=Path('/checkpoints/fresh-evaluations'))
     require(directory.name == binding['runId'], 'fresh_output_run_mismatch')
@@ -171,7 +213,7 @@ def evaluate(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir,local_files_only=True,trust_remote_code=False)
     tokenizer.pad_token = tokenizer.eos_token
     inputs, admission = preadmit(rows,tokenizer)
-    atomic_json(directory/'preadmission.json',{'schemaVersion':1,'datasetSha256':DATA_SHA,'manifestSha256':MANIFEST_SHA,'beforeAnyModelCall':True,'modelCalls':0,'rows':admission,'admitted':len(inputs),'excluded':len(rows)-len(inputs),'answerBasedCropping':False})
+    atomic_json(directory/'preadmission.json',{'schemaVersion':1,'datasetSha256':contract['dataSha'],'manifestSha256':contract['manifestSha'],'beforeAnyModelCall':True,'modelCalls':0,'rows':admission,'admitted':len(inputs),'excluded':len(rows)-len(inputs),'answerBasedCropping':False})
     # Even token-check refuses a reduced set; no model can run before all 128 pass.
     require_all_admitted(rows,inputs,admission)
     if args.token_check:
@@ -198,8 +240,11 @@ def evaluate(args):
     class RequestedStop(StoppingCriteria):
         def __call__(self,input_ids,scores,**kwargs):
             return stopped['requested']
-    responses = {'schemaVersion':1,'mode':MODE,'datasetSha256':DATA_SHA,'maxOutputTokens':128,'requestTimeoutSeconds':120,'baseline':{},'candidate':{},'baselineExecutedThisRun':True,'evaluationScope':SCOPE}
+    responses = {'schemaVersion':1,'mode':MODE,'datasetSha256':contract['dataSha'],'maxOutputTokens':128,'requestTimeoutSeconds':120,'baseline':{},'candidate':{},'baselineExecutedThisRun':True,'evaluationScope':SCOPE}
     receipt = {'schemaVersion':1,'mode':MODE,'stage':STAGE,'runId':binding['runId'],'diagnosticOnly':True,'state':'initializing','bindingSha256':sha256_file(args.binding),'datasetSha256':DATA_SHA,'manifestSha256':MANIFEST_SHA,'baseArtifactLockSha256':OLD.LOCK_SHA,'candidateIdentity':binding['candidateIdentity'],**SOURCE_PINS,'sourceRunId':SOURCE_RUN,'sourceGlobalStep':20,'sourceOptimizerHistoryUpdates':80,'sourceTrainingExecutionVerified':True,'controllerExecutionVerified':False,'qualityClaimAllowed':False,'promotionAllowed':False,'localHumanReviewPerformed':False,'evaluationScope':SCOPE,'baselineKind':'fixed_reasoning_base_without_adapter','baselineExecutedThisRun':True,'executionOrder':['baseline','candidate'],'podUid':Path('/etc/podinfo/uid').read_text().strip(),'deviceId':device_id,'image':OLD.IMAGE,'modelCalls':0,'preparedRows':128,'admittedRows':128,'excludedRows':0,'sideMeasurements':{},'resources':{'cpuLimit':2,'memoryLimitGiB':12,'gpuAllocatorFraction':.65,'contextTokens':1024,'maxOutputTokens':128,'requestTimeoutSeconds':120,'seed':42,'doSample':False,'quantization':'NF4','precision':'bf16','modelDtype':'bfloat16','quantComputeDtype':'bfloat16','samePromptsAndResources':True},'cgroupBeforeLoad':cgroup_snapshot(),'limitations':['Sequential baseline-first evaluation; timing includes order and warm cache effects.','Pinned local source execution records are not independent hardware attestation.','No local human semantic review; public QA accuracy does not establish legal or financial quality.']}
+    receipt.update(stage=contract['stage'],datasetSha256=contract['dataSha'],manifestSha256=contract['manifestSha'],sourceRunId=contract['sourceRun'],sourceOptimizerHistoryUpdates=contract['history'],**contract['pins'])
+    if binding['runId'] == BALANCED_RUN:
+        receipt['sourceCompletionKind'] = binding['sourceCompletionKind']
     (directory/'rows').mkdir()
     def persist():
         atomic_json(directory/'responses.json',responses)

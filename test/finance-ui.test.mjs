@@ -17,7 +17,7 @@ const plain=value=>JSON.parse(JSON.stringify(value));
 function fixture(data={}){
  const calls=[],downloads=[],notices=[],forms=[],details=[];
  const el=(...args)=>new Element(...args);
- const sandbox={el,document:{createTextNode:text=>el('#text','',text)},date:v=>v||'미확인',localDate:v=>v||'',label:v=>v,
+ const sandbox={el,TextEncoder,document:{createTextNode:text=>el('#text','',text)},date:v=>v||'미확인',localDate:v=>v||'',label:v=>v,
   card:(title,description='')=>el('section','',title+' '+description),empty:(title,description)=>el('p','',title+' '+description),limits:items=>el('p','',(items||[]).join(' ')),
   table:(headers,rows)=>{const table=el('table');for(const row of [headers,...rows]){const tr=el('tr');tr.append(...row.map(value=>value instanceof Element?value:el('td','',value)));table.append(tr);}return table;},
   button:(text,handler)=>{const b=el('button','',text);b.addEventListener('click',handler);return b;},
@@ -33,6 +33,7 @@ function fixture(data={}){
 }
 const emptyData=()=>({system:{name:'대출 심사',modelId:'credit',modelVersion:'v1'},bundles:[],operations:[],operationalStatus:'execution_evidence_missing',limitations:['법적 적용·충분성 판단은 사람 검토']});
 const click=(f,title)=>{const b=walk(f.root()).find(n=>n.tagName==='button'&&n.textContent===title);assert.ok(b,`button ${title}`);return b.events.click();};
+const realBundle=(overrides={})=>({id:'real/bundle',synthetic:false,contentHash:'a'.repeat(64),revision:2,supplierId:'supplier',modelId:'credit',modelVersion:'v1',testScope:'대출 심사 보조',provenance:{channel:'supplier_portal',reference:'delivery-42',suppliedAt:'2026-10-06T00:00:00Z'},verification:{issues:['REAL_PROVENANCE_REVIEW_REQUIRED'],documents:[],provenance:{status:'unreviewed',sourceAuthentication:'not_independently_verified'}},...overrides});
 
 test('finance view keeps hostile names, findings and refs literal and labels model/document gaps',async()=>{
  const hostile='<img src=x onerror=alert(1)><script>hostile</script>',data=emptyData();
@@ -98,4 +99,43 @@ test('Korean fact payload preserves tri-state values and distinct legal roles th
  assert.deepEqual(payload.krRoles,['deployer']);assert.deepEqual(payload.euRoles,['provider']);assert.deepEqual(payload.markets,['KR','EU']);
  assert.equal(payload.generative,false);assert.equal(payload.substantialModification,false);assert.equal(payload.internalOnly,'unknown');assert.equal(payload.realisticSyntheticMedia,true);assert.equal(payload.trainingCompute,0);assert.equal(payload.policyVersion,'unknown');
  assert.equal(payload.krRole_deployer,undefined);assert.equal(payload.euRole_provider,undefined);
+});
+
+test('finance evidence distinguishes real declaration, explicit synthetic fixture and unknown kind',async()=>{
+ const data=emptyData();data.bundles=[realBundle(),realBundle({id:'synthetic',synthetic:true}),realBundle({id:'legacy',synthetic:undefined})];
+ const f=fixture(data);await f.sandbox.financeEvidenceView('credit',[]);const articles=walk(f.root()).filter(n=>n.tagName==='article');
+ assert.match(articles[0].textContent,/실제 공급사 자료로 신고됨/);assert.match(articles[0].textContent,/독립적인 출처 인증은 수행되지 않았습니다/);assert.match(articles[0].textContent,/공급사 포털.*delivery-42.*2026-10-06/);
+ assert.match(articles[1].textContent,/합성 시험 자료 · 실제 공급사 증빙 아님/);assert.match(articles[2].textContent,/자료 유형 미확인/);assert.doesNotMatch(articles[2].textContent,/합성 시험 자료/);
+ assert.equal(walk(f.root()).filter(n=>n.tagName==='button'&&n.textContent==='출처 검토 기록').length,1);
+});
+
+test('hostile provenance metadata and server review are rendered literally without links or HTML',async()=>{
+ const hostile='<img src=x onerror=alert(1)><script>hostile</script>',data=emptyData();data.bundles=[realBundle({provenance:{channel:hostile,reference:'https://evil.invalid/'+hostile,suppliedAt:hostile},verification:{issues:[],documents:[],provenance:{status:'reviewed',sourceAuthentication:'not_independently_verified',review:{decision:'verified',reviewer:hostile,reason:hostile,reviewedAt:hostile},reviewHash:'b'.repeat(64)}}})];
+ const f=fixture(data);await f.sandbox.financeEvidenceView('credit',[]);assert.ok(f.root().textContent.includes(hostile));assert.match(f.root().textContent,/출처 확인 검토 기록 있음/);assert.match(f.root().textContent,/검토자: <img/);assert.match(f.root().textContent,/검토 사유: <img/);assert.match(f.root().textContent,/수동 확인 진술/);assert.equal(walk(f.root()).filter(n=>['script','img','a'].includes(n.tagName)).length,0);assert.equal(f.calls.length,1);
+});
+
+test('real provenance missing, rejected and stale states remain visible with Korean issue labels',async()=>{
+ for(const [status,issue,text]of [['unreviewed','REAL_PROVENANCE_REVIEW_REQUIRED','실제 자료 출처 검토 필요'],['rejected','REAL_PROVENANCE_REJECTED','실제 자료 출처 검토 거부'],['stale','REAL_PROVENANCE_REVIEW_STALE','실제 자료 출처 재검토 필요'],['unreviewed','REAL_PROVENANCE_METADATA_MISSING','실제 자료 출처 정보 미확인']]){const data=emptyData();data.bundles=[realBundle({verification:{issues:[issue],documents:[],provenance:{status,sourceAuthentication:'not_independently_verified'}}})];const f=fixture(data);await f.sandbox.financeEvidenceView('credit',[]);assert.ok(f.root().textContent.includes(text));assert.match(f.root().textContent,/독립적인 출처 인증은 수행되지 않았습니다/);}
+});
+
+test('provenance form starts unchecked and posts only explicit checks and current bundle hash',async()=>{
+ const data=emptyData();data.bundles=[realBundle()];const f=fixture(data);await f.sandbox.financeEvidenceView('credit',[]);await click(f,'출처 검토 기록');const form=f.forms.at(-1),checks=walk(form).filter(n=>n.type==='checkbox');assert.equal(checks.length,3);assert.ok(checks.every(n=>n.checked===false));assert.equal(walk(form).find(n=>n.name==='decision').value,'unverified');
+ await form.submit({decision:'unverified',reason:'  전달 근거 미확인  ',supplierIdentityChecked:'on',deliveryReferenceChecked:'true',reviewer:'forged',reviewedAt:'forged'});
+ assert.deepEqual(f.calls.at(-2),{path:'/api/governance/bundles/real%2Fbundle/provenance-reviews',method:'POST',body:{bundleHash:'a'.repeat(64),decision:'unverified',reason:'전달 근거 미확인',checks:{supplierIdentityChecked:true,deliveryReferenceChecked:false,modelPurposeScopeChecked:false}}});assert.equal(f.calls.at(-1).method,'GET');assert.match(f.notices.at(-1).text,/수동 출처 검토.*독립적인 출처 인증은 아닙니다/);
+});
+
+test('verified provenance requires all three independently selected checks before any POST',async()=>{
+ const f=fixture(emptyData());f.sandbox.financeBundleProvenanceReview(realBundle(),'credit',[]);const form=f.forms.at(-1);
+ for(const values of [{},{supplierIdentityChecked:'on',deliveryReferenceChecked:'on'},{supplierIdentityChecked:'true',deliveryReferenceChecked:'true',modelPurposeScopeChecked:'true'}])await assert.rejects(form.submit({decision:'verified',reason:'확인',...values}),/모두 확인한 경우/);
+ assert.equal(f.calls.length,0);await form.submit({decision:'verified',reason:'세 범위 확인',supplierIdentityChecked:'on',deliveryReferenceChecked:'on',modelPurposeScopeChecked:'on'});assert.deepEqual(f.calls[0].body.checks,{supplierIdentityChecked:true,deliveryReferenceChecked:true,modelPurposeScopeChecked:true});assert.equal(f.calls[0].body.decision,'verified');
+});
+
+test('provenance review rejects synthetic scope, missing current hash, invalid decisions and empty reasons',async()=>{
+ const f=fixture(emptyData());assert.throws(()=>f.sandbox.financeBundleProvenanceReview(realBundle({synthetic:true}),'credit',[]),/합성 시험/);
+ f.sandbox.financeBundleProvenanceReview(realBundle(),'credit',[]);let form=f.forms.at(-1);for(const values of [{decision:'other',reason:'text'},{decision:'rejected',reason:'   '},{decision:'rejected',reason:'x'.repeat(1001)}])await assert.rejects(form.submit(values),/검토 결과|검토 사유/);
+ f.sandbox.financeBundleProvenanceReview(realBundle({contentHash:undefined}),'credit',[]);form=f.forms.at(-1);await assert.rejects(form.submit({decision:'rejected',reason:'근거 불일치'}),/증빙 해시/);assert.equal(f.calls.length,0);
+});
+
+test('real supplier import keeps explicit provenance metadata and never fetches its reference URL',async()=>{
+ const f=fixture(emptyData());f.sandbox.financeBundleImport('credit',[]);assert.match(f.root().textContent,/synthetic:true.*synthetic:false/);assert.match(f.root().textContent,/출처는 별도 수동 검토/);const value={id:'real',systemId:'credit',synthetic:false,provenance:{channel:'email',reference:'https://supplier.invalid/delivery/42'},documents:[]};await f.forms.at(-1).submit({bundle:JSON.stringify(value)});assert.deepEqual(f.calls[0],{path:'/api/governance/bundles',method:'POST',body:value});assert.equal(f.calls.length,2);assert.ok(f.calls.every(v=>v.path.startsWith('/api/')));
 });

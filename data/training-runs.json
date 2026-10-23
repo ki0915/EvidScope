@@ -1,0 +1,29 @@
+{
+ "format": "evidscope-training-runs-v1",
+ "notice": "저장소에 기록된 학습 실행 요약입니다. 이 볼트가 실행하거나 서명한 기록이 아니며, 원본 결과 파일은 실행한 PC에 있습니다. 승격은 자동으로 일어나지 않습니다.",
+ "runs": [
+  {
+   "id": "public-qa-balanced-20261006-r2",
+   "evaluationId": "public-qa-fresh-balanced-r2-20261006",
+   "finishedOn": "2026-10-06",
+   "baseModel": "fdtn-ai/Foundation-Sec-8B-Reasoning",
+   "baseRevision": "63c930c82d7646226d33502bec5870019738400e",
+   "method": "NF4 QLoRA rank 8 (adapter only)",
+   "dataset": "KLUE-MRC v1.1 공개 사람 작성 한국어 QA (CC BY-SA 4.0), 답변 가능·판단 보류 균형",
+   "adapterSha256": "dd74533db5232de4d0961139a4de3c68bfa632e494a9976d821358b5df4baba3",
+   "evaluation": {
+    "items": 128,
+    "answerable": 64,
+    "unanswerable": 64,
+    "passed": 60,
+    "baselineAdapterOff": 0,
+    "alwaysAbstainReference": 64,
+    "belowAlwaysAbstain": true
+   },
+   "promoted": false,
+   "attachedToRuntime": false,
+   "runtimeNote": "검토실 실행 모델(Foundation-Sec-1.1-8B-Instruct GGUF)과 다른 베이스 모델이며 런타임에 연결된 적이 없습니다.",
+   "sources": ["docs/local-training-memory-plan-20261006.md", "docs/public-qa-training-runbook.md"]
+  }
+ ]
+}

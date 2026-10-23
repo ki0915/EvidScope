@@ -14,7 +14,7 @@ test('coordinator enforces linked worktrees, fixed model, global slots, lease re
  writeFileSync(join(two,'allowed.txt'),'done\n');git(two,'add','allowed.txt');git(two,'commit','-m','allowed change');const changed=git(two,'rev-parse','HEAD');const handoff=coordinator.complete('two',{agentId:'b',reconciled:true,changedCommit:changed,testResults:[{command:'node --test targeted',status:'passed',exitCode:0}],unresolved:[],criteria:[{criterion:'implementation',status:'met'},{criterion:'tests',status:'met'}],artifacts:['allowed.txt']});assert.deepEqual(handoff.changedPaths,['allowed.txt']);assert.equal(coordinator.review('two',{reviewerAgentId:'reviewer-1',reviewerRole:'adversarial',outcome:'needs_changes',notes:['bounded issue']}).round,1);assert.equal(coordinator.review('two',{reviewerAgentId:'reviewer-2',reviewerRole:'design-review',outcome:'accepted',notes:[]}).round,2);assert.throws(()=>coordinator.review('two',{reviewerAgentId:'reviewer-3',reviewerRole:'adversarial',outcome:'accepted'}),e=>e.code==='COORDINATOR_REVIEW_LIMIT');
 });
 
-test('Windows coordinator completes a linked worktree under a long installation path without changing Git configuration',{skip:process.platform!=='win32'},()=>{
+test('Windows coordinator completes a linked worktree under a long installation path without changing Git configuration',{skip:process.platform!=='win32'&&'Windows-only: long installation path worktree check'},()=>{
  mkdirSync('.test-runs',{recursive:true});const fixtureRoot=mkdtempSync(resolve('.test-runs/cl-'));let root=fixtureRoot;
  while(join(root,'one').length<190)root=join(root,'path');
  mkdirSync(root,{recursive:true});const main=join(fixtureRoot,'main'),one=join(root,'one'),coord=join(fixtureRoot,'coord');mkdirSync(main);mkdirSync(coord);

@@ -13,7 +13,14 @@ const response=await fetch(new URL('/api/export',base),{headers:{authorization:`
 if(!response.ok)throw Error('Audit export returned '+response.status);
 const bundle=await response.json(),verification=verifyBundle(bundle,readFileSync(values.trust,'utf8'));
 let continuity=null;
-if(values.previous){const prior=parse(values.previous).checkpoint;verifyCheckpoint(prior,readFileSync(values.trust,'utf8'));const preserved=prior.tenant===bundle.checkpoint.tenant&&bundle.checkpoint.count>=prior.count&&(prior.count===0?prior.head==='0'.repeat(64):bundle.records[prior.count-1]?.hash===prior.head);continuity={priorFile:values.previous,priorCount:prior.count,priorHead:prior.head,preserved};if(!preserved)throw Error('Previously trusted checkpoint is not a prefix of the current signed ledger');}
+if(values.previous){
+ const prior=parse(values.previous).checkpoint,trust=readFileSync(values.trust,'utf8');verifyCheckpoint(prior,trust);
+ // Same minimum-checkpoint prefix semantics as scripts/verify.mjs (tenant, size, head; tlog epochs of a restored vault).
+ let minimum;
+ try{minimum=verifyBundle(bundle,trust,undefined,{chainOnly:true,transparency:{minimumCheckpoint:prior}}).transparency.minimumCheckpoint;}
+ catch(error){throw Error('Previously trusted checkpoint is not a prefix of the current signed ledger: '+error.message);}
+ continuity={priorFile:values.previous,priorCount:prior.count,priorHead:prior.head,preserved:minimum.satisfied};
+}
 const events=bundle.disclosures.map(d=>d.event),key=e=>JSON.stringify([e.tenant,e.source,e.id]);
 const counts=new Map();for(const event of events)counts.set(key(event),(counts.get(key(event))||0)+1);
 const receipts=positionals.map(file=>{const r=parse(file);const accepted=r.outcomes.filter(o=>o.accepted===true);const missing=accepted.filter(o=>!counts.has(key(o))).map(o=>({tenant:o.tenant,source:o.source,id:o.id}));const duplicates=accepted.filter(o=>counts.get(key(o))>1).map(o=>o.id);return {file,runId:r.runId,attempted:r.outcomes.length,accepted:accepted.length,unconfirmed:r.outcomes.length-accepted.length,missing,duplicates,pass:missing.length===0&&duplicates.length===0};});

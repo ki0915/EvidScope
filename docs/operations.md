@@ -18,6 +18,9 @@ Node.js 24의 SQLite를 사용한다. `vault` 1개만 원본 DB, 인증 설정, 
 | ingress | 2~6 HPA | 수집자 → ingress → vault, 자체 TLS 키·vault 신뢰 CA |
 | audit | 2~6 HPA | 감사자 → audit → vault, 자체 TLS 키·vault 신뢰 CA |
 | worker | 2~6 HPA | worker → vault, 작업자 토큰·자체 TLS 키·vault 신뢰 CA |
+| heads-signer(선택) | 1, Recreate | 투명성 heads 로그 키·자기 상태 PVC. vault 데이터 PVC·서명키·설정은 마운트하지 않음 |
+
+투명성 로그를 켜면 heads 체크포인트는 기본으로 vault 키가 서명한다. `signer` 설정을 넣으면 vault 밖의 [heads 서명기](signer.md)가 tenant 로그를 빼거나 줄이거나 가르는 잎을 거부하고 서명하며, 원장·tenant 로그 체크포인트는 계속 vault 키로 서명한다. Kubernetes 구성은 `node deploy/heads-signer-overlay.mjs --variant sidecar|deployment --output <새 파일>`로 렌더링한다(sidecar는 vault 컨테이너 장악만, 별도 Deployment는 vault 노드 장악까지 막는다).
 
 TLS는 애플리케이션에서 종료한다. Node의 CA/호스트명 검증을 유지하며 `NODE_TLS_REJECT_UNAUTHORIZED=0`을 사용하지 않는다. Kubernetes의 HTTPS health probe는 애플리케이션의 실제 클라이언트 인증서 검증 시험을 대신하지 않는다. 모든 컨테이너는 UID/GID 1000, 읽기 전용 root filesystem, 모든 capability 제거, privilege escalation 금지, RuntimeDefault seccomp로 실행하고 service account token을 자동 마운트하지 않는다.
 
@@ -42,6 +45,8 @@ npm run bench
 node scripts/k8s-static.mjs
 ```
 
+`npm run upgrade:local -- --heads-signer`로 만든 heads 서명기(`.local/signer/serve.json`)는 `npm start`가 vault보다 먼저 시작하고 함께 종료한다. Windows는 named pipe와 token, `--heads-signer-port`는 loopback TCP와 token을 쓴다. 같은 PC·계정에서 실행하므로 기능 확인용이다.
+
 이 PC에서 IPv4 loopback 오류가 발생하면 시작 전 `$env:EVIDSCOPE_LOCAL_HOST='::1'`을 설정한다. 감사 URL은 `http://[::1]:8082`다. `EVIDSCOPE_LOCAL_DIR`로 별도 파일럿의 자격·키·데이터 경로를, `EVIDSCOPE_LOCAL_PORT_BASE`로 기본 8080부터 시작하는 네 포트를 선택한다. 기본 데이터 경로는 `.local`이며 기존 경로의 데이터를 덮어쓰거나 초기화하지 않는다. 포트 기준 `0`은 시험용 자동 할당으로 일반 사용 안내에 고정 URL을 재사용하지 않는다. 종료는 실행 터미널의 `Ctrl+C`를 사용하고 네 자식 프로세스가 종료된 뒤 재시작한다.
 
 개발용 loopback HTTP와 합성 자격증명은 통제된 파일럿용이다. 외부 네트워크에 노출할 때는 검증된 TLS 인증서와 조직별 인증·접근 통제가 필요하다. Docker 빌드 컨텍스트는 명시한 소스·정적 화면·catalog·역할 자료·잠금 파일과 제한된 배포 보조 스크립트만 허용하며 로컬 DB·키를 제외한다. `.local` 데이터나 인증 정보를 이미지에 포함하지 않는다. Docker 이미지는 구성요소 서버 실행용이며 초기화·검증·백업 CLI는 함께 제공한 소스 배포본에서 실행한다. 이미지 하나로 네 구성요소와 자격 초기화가 자동으로 준비되었다고 간주하지 않는다.
@@ -65,6 +70,8 @@ kubectl --context $labContext create namespace evidscope
 다음 민감 파일을 보호된 로컬 디렉터리에 준비한다. 저장소에 커밋하지 않는다. 초기화 산출물을 사용할 경우 실험용 tenant/source/human/worker의 역할을 먼저 확인한다. 운영 키와 고객 데이터는 실험에 넣지 않는다.
 
 * `config.json`: vault가 읽는 검증된 principal 설정. source 제출 권한, tenant, source 유형, 인간 역할, worker identity를 구분한다.
+  모든 principal의 `id`와 토큰은 서로 달라야 한다. id가 겹치면 vault는 DB를 열기 전에 시작을 거부하고(2라운드 S6), 서명된 설정 재바인딩과 `scripts/upgrade-local.mjs`도 그 설정을 거부한다. tenant별로 worker를 나눠 배포할 때도 배포마다 다른 id와 토큰을 쓴다.
+  worker principal은 `"tenants": ["alpha","beta"]`처럼 분석할 tenant를 명시한다(감사 S6). 목록이 없으면 그 principal의 `tenant` 하나만 분석한다. `tenant`가 `internal`이고 목록이 없는 기존 worker는 기존 로컬 설정 호환을 위해 `synthetic-local` 프로필에서만 모든 tenant를 분석하며, `enterprise` 프로필은 이런 worker가 있으면 시작을 거부한다. `npm run init`(scripts/init.mjs)이 새로 만드는 `analysis-worker`는 `tenants: ["alpha","beta"]`를 가진다. tenant를 추가하면 그 tenant를 맡을 worker의 `tenants`에도 추가해야 분석 backlog가 줄어든다. vault는 worker 결과를 같은 snapshot·분석 시각으로 직접 재계산한 결과와 비교해 다르면 HTTP 422로 거부하고 lease를 `rejected`로 닫는다(서명 원장에는 기록하지 않음). 따라서 vault와 worker는 같은 릴리스(평가 엔진)를 실행해야 하며, worker 로그의 `rejectedResults`는 버전 불일치나 변조된 worker를 뜻한다.
 * `signing-private.pem`: vault의 Ed25519 개인키. 대응 공개키와 trusted checkpoint는 export와 독립된 감사자 저장소에 전달한다.
 * `worker-token.txt`: config에 등록된 worker의 원시 토큰만 담은 파일. 줄바꿈을 추가하지 않는다.
 * `ca.crt`: TLS 발급 CA 공개 인증서.
@@ -152,3 +159,5 @@ SQLite vault는 단일 쓰기·저장 병목이자 단일 장애 지점이다. R
 Secret은 Kubernetes API에 저장된다. etcd encryption at rest, Secret RBAC, node 접근 통제, 키 rotation, 원격 불변 archive는 운영자가 별도 구성·검증해야 한다. 제한된 securityContext의 근거는 [Kubernetes Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)이며, 2026-09-08 확인했다. namespace 분리나 해시 체인만으로 완전 격리·법적 증거능력·운영 인증을 주장하지 않는다.
 
 자동 삭제/보존기간 종료 작업은 배포 명령에 포함하지 않는다. PVC 삭제, 서명키 교체, 데이터 파기, 공유 클러스터 변경은 소유자·보존 정책·허가를 확인한 별도 작업이다.
+
+이벤트 내용의 정기 파기는 기본으로 꺼져 있다. `RETENTION_ROTATION_INTERVAL_MS`를 설정하고 tenant마다 두 사람이 활성화한 로테이션 정책이 있을 때만 일상 분류 이벤트의 키와 검색 사본, 1년 이상 지난 봉인 접근 기록을 정리하며 원장은 잘리지 않는다. 프로세스 로그(stdout·stderr)는 컨테이너 로그 드라이버·kubelet·journald·logrotate로 상한을 둔다. 자세한 내용은 [정기 로테이션](retention-rotation.md)을 따른다.

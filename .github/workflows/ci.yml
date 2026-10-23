@@ -1,0 +1,111 @@
+# Actions are pinned to full commit SHAs (resolved with `git ls-remote` against github.com on 2026-10-06);
+# the comment after each pin names the release tag it points to.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Superseded pull-request runs are cancelled; every push to master keeps its own complete result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  EVIDSCOPE_TEST_HOST: 127.0.0.1   # numeric IPv4 loopback; test/harness.mjs accepts only 127.0.0.1 or ::1
+  NODE_DISABLE_COLORS: '1'
+  FORCE_COLOR: '0'
+
+jobs:
+  source-checks:
+    name: source checks (syntax, byte hygiene, line-length baseline, k8s static)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: node --check, byte hygiene, no committed .only, line-length baseline
+        run: node scripts/check-source.mjs
+      - name: Kubernetes manifest static checks (read-only JSON)
+        run: node scripts/k8s-static.mjs
+
+  node-tests:
+    name: node:test serial suite (Node ${{ matrix.node }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['24.15.0', '24.x']   # package.json engines ">=24.15.0 <25"; the Dockerfile pins 24.15.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Install from the lockfile without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Toolchain used by tests
+        run: node --version && git --version && openssl version && python3 --version
+      - name: Full serial suite (npm test)
+        run: |
+          status=0
+          node scripts/test-serial.mjs > test.tap 2>&1 || status=$?
+          tail -n 12 test.tap
+          exit "$status"
+      - name: TAP gate (fail, cancelled, todo = 0; skips only with allowlisted reasons) and job summary
+        if: always()
+        run: node scripts/ci-tap-gate.mjs test.tap
+      - name: Upload TAP and redacted harness diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: node-tests-${{ matrix.node }}
+          retention-days: 7
+          if-no-files-found: ignore
+          # .test-runs is a hidden directory; only the allowlisted, token-redacted diagnostics are matched.
+          # Never upload .test-runs wholesale: fixtures contain config.json bearer tokens and signing-private.pem.
+          include-hidden-files: true
+          path: |
+            test.tap
+            .test-runs/**/harness-failure-*.json
+
+  python-tests:
+    name: Python stdlib-only tests (no torch, GPU, model or .local)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: unittest (portable subset)
+        working-directory: test
+        run: >-
+          python -B -m unittest -v
+          test_public_qa_diagnostic
+          test_public_qa_grounding_diagnostic
+          test_public_qa_resource_pilot
+          test_public_qa_resume
+          test_public_qa_thermal
+          test_public_qa_training
+          test_train_foundation_lora
+          test_training_artifacts
+          test_training_hash
+      # deploy/model-runtime/test_cipher_service.py already runs inside test/model-runtime.test.mjs.
+      # Excluded: collator_runtime, kbit, grounding_kbit (torch/transformers/peft/bitsandbytes);
+      # fresh, fresh_balanced, grounding (+1 case each in grounding_balanced/continuation) need .local artifacts.

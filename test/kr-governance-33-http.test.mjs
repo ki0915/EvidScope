@@ -30,7 +30,9 @@ test('KR-33 HTTP keeps mandatory review separate from optional request evidence 
  const complete=await assess([documentRef,pre]),pending=await report();
  assert.equal(pending.status,'human_evidence_assessed');assert.equal(pending.technicalEvidence.supportsHumanAssessment,true);assert.deepEqual(pending.technicalEvidence.missingChecks,[]);
  assert.equal(pending.technicalEvidence.optionalWorkflows[0].status,'request_receipt_missing');assert.equal(pending.technicalEvidence.optionalWorkflows[0].supportsRequestReceipt,false);
- assert.ok(!(await h.api('/api/governance')).body.tasks.some(task=>task.id===complete.id),'optional request alone does not create a mandatory-evidence task');
+ // Every assessment opens its legal-review task (round 2, S11); the optional request adds no mandatory-evidence work to it.
+ const completeTask=(await h.api('/api/governance')).body.tasks.find(task=>task.id===complete.id);
+ assert.equal(completeTask.title,'법률 적용성 검토','optional request alone does not create a mandatory-evidence task');assert.deepEqual(completeTask.missingChecks,[]);
  const pendingFrozen=await freeze();
  const metrics={authority:'MSIT',requestId:'synthetic-request',requestedAt:new Date(Date.now()-2000).toISOString(),attachments:['product_overview','training_data_overview','process_and_results','other_supporting_material'],requestAccepted:true};
  const unauthorised=await ingest('high_impact_confirmation',metrics,'telemetry');

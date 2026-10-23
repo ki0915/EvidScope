@@ -18,14 +18,16 @@ test('primary client fixes endpoint, generation limits and tokenizes the rendere
  assert.ok(calls.every(c=>c.model==='primary'&&c.options.signal instanceof AbortSignal));
  assert.match(calls[1].payload.content,/한국어/);assert.equal(calls[1].payload.parse_special,true);
  assert.equal(calls[2].payload.max_tokens,512);assert.equal(calls[2].payload.stream,false);assert.equal(calls[2].payload.cache_prompt,false);
- assert.deepEqual(calls[2].payload.response_format,{type:'json_schema',schema});
+ assert.deepEqual(calls[2].payload.response_format,{type:'json_schema',json_schema:{name:'evidscope_output',strict:true,schema}});
  assert.equal(r.providerReport.quantizationLevel,null,'configured Q4 is not a measured quantization report');
  assert.equal(r.providerReport.inputTokens,100);
 });
 
 test('context budget includes512 output tokens and refuses overflow before generation',async()=>{
- const boundary=fake({tokenCount:1536});await boundary.infer({messages,schema});assert.equal(boundary.calls.length,3);
- const overflow=fake({tokenCount:1537});await assert.rejects(overflow.infer({messages,schema}),/prompt_budget_exceeded/);assert.equal(overflow.calls.length,2);
+ // 3072-token context (governance-mapping prompts reach about 1,640 tokens, docs/governance-model.md) minus the 512-token reply.
+ const {numCtx,numPredict}=primaryModelPolicy().generation;assert.deepEqual([numCtx,numPredict],[3072,512]);
+ const boundary=fake({tokenCount:numCtx-numPredict});await boundary.infer({messages,schema});assert.equal(boundary.calls.length,3);
+ const overflow=fake({tokenCount:numCtx-numPredict+1});await assert.rejects(overflow.infer({messages,schema}),/prompt_budget_exceeded/);assert.equal(overflow.calls.length,2);
  const bytes=fake();await assert.rejects(bytes.infer({messages:[messages[0],{role:'user',content:'한'.repeat(9000)}],schema}),/prompt_budget_exceeded/);assert.equal(bytes.calls.length,0);
 });
 
@@ -38,7 +40,9 @@ test('only one system instruction followed by one user data message is accepted'
 test('wrong model, tools, truncated output and invalid accounting cannot be accepted as completed advice',async()=>{
  const wrong=response();wrong.model='other';const tools=response();tools.choices[0].message.tool_calls=[{name:'shell'}];
  const truncated=response();truncated.choices[0].finish_reason='length';const over=response();over.usage.completion_tokens=513;
- for(const [answer,code] of [[wrong,/provider_model_or_output_mismatch/],[tools,/provider_model_or_output_mismatch/],[truncated,/model_output_incomplete/],[over,/model_usage_invalid/]])await assert.rejects(fake({answer}).infer({messages,schema}),code);
+ const overContext=response();overContext.usage={prompt_tokens:2561,completion_tokens:512};
+ for(const [answer,code] of [[wrong,/provider_model_or_output_mismatch/],[tools,/provider_model_or_output_mismatch/],[truncated,/model_output_incomplete/],[over,/model_usage_invalid/],[overContext,/model_usage_invalid/]])await assert.rejects(fake({answer}).infer({messages,schema}),code);
+ const full=response();full.usage={prompt_tokens:2560,completion_tokens:512};assert.equal((await fake({answer:full}).infer({messages,schema})).providerReport.inputTokens,2560);
  await assert.rejects(fake({tokenReply:{tokens:[-1]}}).infer({messages,schema}),/model_tokenizer_invalid/);
 });
 

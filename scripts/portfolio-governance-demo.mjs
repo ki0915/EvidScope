@@ -124,7 +124,7 @@ async function runCase(spec, root) {
     const supplierOnly = await call('/api/governance/assessments', assessment('KR-34-RISK', [{type: 'document', ref: 'supplier-bundle:portfolio-supplier'}]));
     const documentOnly = await call('/api/governance/assessments', assessment('KR-34-DOCUMENT', [{type: 'document', ref: 'governance-document:portfolio-oversight-plan'}]));
     const unsupported = summary(await call(`/api/governance/report?systemId=${system.id}`));
-    check('supplier_only_risk_not_supported', {status: unsupported['KR-34-RISK'].status, missingChecks: unsupported['KR-34-RISK'].missingChecks}, {status: 'evidence_insufficient', missingChecks: ['high_impact_risk_management']});
+    check('supplier_only_risk_not_supported', {status: unsupported['KR-34-RISK'].status, missingChecks: unsupported['KR-34-RISK'].missingChecks}, {status: 'evidence_insufficient', missingChecks: ['high_impact_risk_management|supplier_risk_reliance']});
     check('document_only_publication_not_supported', {status: unsupported['KR-34-DOCUMENT'].status, missingChecks: unsupported['KR-34-DOCUMENT'].missingChecks}, {status: 'evidence_insufficient', missingChecks: ['document_publication_retention']});
     check('submitted_human_conclusions_preserved', [supplierOnly.assessment, documentOnly.assessment], ['sufficient', 'sufficient']);
     const risk = await call('/api/governance/assessments', assessment('KR-34-RISK', [

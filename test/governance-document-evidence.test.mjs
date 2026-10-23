@@ -12,10 +12,12 @@ const system={id:'credit',name:'Synthetic credit',owner:'reviewer',purpose:'Loan
 
 function fixture(t){
  const dir=mkdtempSync(join(tmpdir(),'evidscope-document-evidence-')),principal={id:'reviewer',role:'reviewer',tenant:'alpha',token:'x'.repeat(40)};
- const service=createService({dataDir:dir,key:generateKeyPairSync('ed25519').privateKey,config:{principals:[principal]},requirements});
+ // A second reviewer: legal review confirmation and task closure must not be done by the assessment author (S11).
+ const second={id:'legal-reviewer',role:'reviewer',tenant:'alpha',token:'y'.repeat(40)};
+ const service=createService({dataDir:dir,key:generateKeyPairSync('ed25519').privateKey,config:{principals:[principal,second]},requirements});
  t.after(()=>{service.store.close();assert.ok(resolve(dir).startsWith(resolve(tmpdir())+sep));rmSync(dir,{recursive:true,force:true});});
- const call=(path,body)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principal.token},body===undefined?'':JSON.stringify(body));
- return {service,principal,call};
+ const call=(path,body,who=principal)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+who.token},body===undefined?'':JSON.stringify(body));
+ return {service,principal,second,call};
 }
 
 function assessment(requirementId,evidence){
@@ -45,14 +47,18 @@ test('a verified tool execution alone leaves risk control insufficient until a s
  h.service.store.transaction(()=>{const record=h.service.store.append(h.principal.tenant,'event',event,h.principal.id);h.service.store.project({...event,seq:record.seq,hash:record.hash});});
  await h.call('/api/governance/assessments',assessment('KR-34-RISK',[{type:'event',ref:'credit-tool/execution'}]));
  let item=(await h.call('/api/governance/report?systemId=credit')).items.find(v=>v.requirement.id==='KR-34-RISK');
- assert.equal(item.status,'evidence_insufficient');assert.equal(item.technicalStatus,'typed_evidence_insufficient');assert.deepEqual(item.technicalEvidence.missingChecks,['high_impact_risk_management']);
+ assert.equal(item.status,'evidence_insufficient');assert.equal(item.technicalStatus,'typed_evidence_insufficient');assert.deepEqual(item.technicalEvidence.missingChecks,['high_impact_risk_management|supplier_risk_reliance']);
  const task=(await h.call('/api/governance')).tasks.find(v=>v.requirementId==='KR-34-RISK');assert.equal(task.status,'open');
  await assert.rejects(h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Execution happened'}),error=>error.status===409);
  const bytes=Buffer.from('Synthetic documented risk policy, organisation, mitigation test and residual risk review');
  const document=await h.call('/api/governance/documents',{id:'risk-policy',systemId:system.id,name:'risk-policy.txt',mediaType:'text/plain',sha256:createHash('sha256').update(bytes).digest('hex'),contentBase64:bytes.toString('base64')});
  const measured=appendKrCheck(h.service,savedSystem,requirements.find(r=>r.id==='KR-34-RISK'),document,'high_impact_risk_management',{riskPolicyRecorded:true,responsibleOrganisationRecorded:true,operatingReviewRecorded:true,mitigationTestPassed:true,residualRiskReviewed:true});
- await h.call('/api/governance/assessments',assessment('KR-34-RISK',[{type:'document',ref:'governance-document:risk-policy'},{type:'event',ref:'credit-tool/execution'},measured]));
+ const current=await h.call('/api/governance/assessments',assessment('KR-34-RISK',[{type:'document',ref:'governance-document:risk-policy'},{type:'event',ref:'credit-tool/execution'},measured]));
  item=(await h.call('/api/governance/report?systemId=credit')).items.find(v=>v.requirement.id==='KR-34-RISK');assert.equal(item.status,'human_evidence_assessed');assert.equal(item.technicalStatus,'authenticated_reported_measurement_supported');assert.equal(item.technicalEvidence.automaticLegalVerdict,false);
  assert.equal(item.assessment.evidence[2].eventSnapshot.governanceCheck.systemHash,item.assessment.systemHash);
- assert.equal((await h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Current document and reported risk measurements reviewed'})).status,'closed');
+ // S11: the author's legalReview claim needs a different reviewer's confirmation, and the author cannot close the task.
+ assert.equal(item.legalStatus,'pending');
+ await h.call(`/api/governance/assessments/${current.id}/legal-review`,{reason:'Independent legal review'},h.second);
+ await assert.rejects(h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Author closes'}),error=>error.status===403);
+ assert.equal((await h.call(`/api/governance/tasks/${task.id}`,{status:'closed',reason:'Current document and reported risk measurements reviewed'},h.second)).status,'closed');
 });

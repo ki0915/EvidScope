@@ -1,0 +1,1859 @@
+{
+ "ocsf_version": "1.9.0",
+ "source": "https://github.com/ocsf/ocsf-schema/tree/v1.9.0",
+ "license": "Apache-2.0 (OCSF schema); mechanical extract: requirement, enum keys, types, is_array, constraints",
+ "category": {
+  "name": "findings",
+  "uid": 2
+ },
+ "class": {
+  "name": "detection_finding",
+  "uid": 4,
+  "profiles": [
+   "cloud",
+   "datetime",
+   "host",
+   "osint",
+   "record_integrity",
+   "security_control",
+   "incident"
+  ],
+  "attributes": {
+   "action": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "action_id": {
+    "requirement": "recommended",
+    "enum": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "99"
+    ],
+    "profile": "security_control"
+   },
+   "activity_id": {
+    "requirement": "required",
+    "enum": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "99"
+    ]
+   },
+   "activity_name": {
+    "requirement": "optional"
+   },
+   "actor": {
+    "requirement": "optional",
+    "profile": "host"
+   },
+   "anomaly_analyses": {
+    "requirement": "optional"
+   },
+   "assignee": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "assignee_group": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "attacks": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "attestation_list": {
+    "requirement": "optional",
+    "profile": "record_integrity"
+   },
+   "authorizations": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "category_name": {
+    "requirement": "optional"
+   },
+   "category_uid": {
+    "requirement": "required",
+    "enum": [
+     "0"
+    ]
+   },
+   "class_name": {
+    "requirement": "optional"
+   },
+   "class_uid": {
+    "requirement": "required",
+    "enum": [
+     "0"
+    ]
+   },
+   "comment": {
+    "requirement": "optional"
+   },
+   "confidence": {
+    "requirement": "optional"
+   },
+   "confidence_id": {
+    "requirement": "recommended"
+   },
+   "confidence_score": {
+    "requirement": "optional"
+   },
+   "count": {
+    "requirement": "optional"
+   },
+   "device": {
+    "requirement": "optional"
+   },
+   "disposition": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "disposition_id": {
+    "requirement": "recommended",
+    "profile": "security_control"
+   },
+   "duration": {
+    "requirement": "optional"
+   },
+   "end_time": {
+    "requirement": "optional"
+   },
+   "enrichments": {
+    "requirement": "optional"
+   },
+   "evidences": {
+    "requirement": "recommended"
+   },
+   "finding_info": {
+    "requirement": "required"
+   },
+   "firewall_rule": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "impact": {
+    "requirement": "optional"
+   },
+   "impact_id": {
+    "requirement": "optional"
+   },
+   "impact_score": {
+    "requirement": "optional"
+   },
+   "is_alert": {
+    "requirement": "recommended"
+   },
+   "is_suspected_breach": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "malware": {
+    "requirement": "optional"
+   },
+   "malware_scan_info": {
+    "requirement": "optional"
+   },
+   "message": {
+    "requirement": "recommended"
+   },
+   "metadata": {
+    "requirement": "required"
+   },
+   "notes": {
+    "requirement": "optional"
+   },
+   "observables": {
+    "requirement": "recommended"
+   },
+   "policy": {
+    "requirement": "optional",
+    "profile": "security_control"
+   },
+   "priority": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "priority_id": {
+    "requirement": "recommended",
+    "profile": "incident"
+   },
+   "raw_data": {
+    "requirement": "optional"
+   },
+   "raw_data_hash": {
+    "requirement": "optional"
+   },
+   "raw_data_size": {
+    "requirement": "optional"
+   },
+   "remediation": {
+    "requirement": "optional"
+   },
+   "resources": {
+    "requirement": "recommended"
+   },
+   "risk_details": {
+    "requirement": "optional"
+   },
+   "risk_level": {
+    "requirement": "optional"
+   },
+   "risk_level_id": {
+    "requirement": "optional"
+   },
+   "risk_score": {
+    "requirement": "optional"
+   },
+   "severity": {
+    "requirement": "optional"
+   },
+   "severity_id": {
+    "requirement": "required"
+   },
+   "src_url": {
+    "requirement": "recommended",
+    "profile": "incident"
+   },
+   "start_time": {
+    "requirement": "optional"
+   },
+   "status": {
+    "requirement": "optional"
+   },
+   "status_code": {
+    "requirement": "recommended"
+   },
+   "status_detail": {
+    "requirement": "recommended"
+   },
+   "status_id": {
+    "requirement": "recommended",
+    "enum": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "ticket": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "tickets": {
+    "requirement": "optional",
+    "profile": "incident"
+   },
+   "time": {
+    "requirement": "required"
+   },
+   "timezone_offset": {
+    "requirement": "recommended"
+   },
+   "type_name": {
+    "requirement": "optional"
+   },
+   "type_uid": {
+    "requirement": "required"
+   },
+   "unmapped": {
+    "requirement": "optional"
+   },
+   "vendor_attributes": {
+    "requirement": "optional"
+   },
+   "verdict": {
+    "requirement": "recommended",
+    "profile": "incident"
+   },
+   "verdict_id": {
+    "requirement": "recommended",
+    "profile": "incident"
+   },
+   "vulnerabilities": {
+    "requirement": "optional"
+   }
+  }
+ },
+ "objects": {
+  "actor": {
+   "attributes": {
+    "app_name": {
+     "requirement": "optional"
+    },
+    "app_uid": {
+     "requirement": "optional"
+    },
+    "application": {
+     "requirement": "recommended"
+    },
+    "authorizations": {
+     "requirement": "optional"
+    },
+    "iam_role": {
+     "requirement": "optional"
+    },
+    "idp": {
+     "requirement": "optional"
+    },
+    "invoked_by": {
+     "requirement": "optional"
+    },
+    "process": {
+     "requirement": "recommended"
+    },
+    "session": {
+     "requirement": "optional"
+    },
+    "user": {
+     "requirement": "recommended"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "process",
+     "user",
+     "iam_role",
+     "invoked_by",
+     "session",
+     "application",
+     "app_name",
+     "app_uid"
+    ]
+   }
+  },
+  "ai_agent": {
+   "attributes": {
+    "name": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "recommended"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "ai_model": {
+     "requirement": "recommended"
+    },
+    "charter": {
+     "requirement": "optional"
+    },
+    "instance_uid": {
+     "requirement": "recommended"
+    },
+    "type": {
+     "requirement": "optional"
+    },
+    "type_id": {
+     "requirement": "recommended",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "99"
+     ]
+    },
+    "version": {
+     "requirement": "recommended"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  },
+  "ai_model": {
+   "attributes": {
+    "name": {
+     "requirement": "required"
+    },
+    "uid": {
+     "requirement": "recommended"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "ai_provider": {
+     "requirement": "required"
+    },
+    "version": {
+     "requirement": "recommended"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  },
+  "analytic": {
+   "attributes": {
+    "name": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "recommended"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "algorithm": {
+     "requirement": "optional"
+    },
+    "category": {
+     "requirement": "optional"
+    },
+    "desc": {
+     "requirement": "optional"
+    },
+    "related_analytics": {
+     "requirement": "optional"
+    },
+    "sensor_info_list": {
+     "requirement": "optional"
+    },
+    "state": {
+     "requirement": "optional"
+    },
+    "state_id": {
+     "requirement": "optional",
+     "enum": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "type": {
+     "requirement": "optional"
+    },
+    "type_id": {
+     "requirement": "required",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "99"
+     ]
+    },
+    "version": {
+     "requirement": "optional"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  },
+  "api": {
+   "attributes": {
+    "group": {
+     "requirement": "optional"
+    },
+    "operation": {
+     "requirement": "required"
+    },
+    "request": {
+     "requirement": "recommended"
+    },
+    "response": {
+     "requirement": "recommended"
+    },
+    "service": {
+     "requirement": "optional"
+    },
+    "token": {
+     "requirement": "optional"
+    },
+    "version": {
+     "requirement": "optional"
+    }
+   }
+  },
+  "attestation": {
+   "attributes": {
+    "authority_uid": {
+     "requirement": "recommended"
+    },
+    "chain_uid": {
+     "requirement": "recommended"
+    },
+    "fingerprint": {
+     "requirement": "recommended"
+    },
+    "prev_event": {
+     "requirement": "recommended"
+    },
+    "signatures": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "optional"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "fingerprint",
+     "signatures"
+    ]
+   }
+  },
+  "evidences": {
+   "attributes": {
+    "name": {
+     "requirement": "optional"
+    },
+    "uid": {
+     "requirement": "optional"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "actor": {
+     "requirement": "recommended"
+    },
+    "ai_agent": {
+     "requirement": "recommended"
+    },
+    "api": {
+     "requirement": "recommended"
+    },
+    "connection_info": {
+     "requirement": "recommended"
+    },
+    "container": {
+     "requirement": "recommended"
+    },
+    "data": {
+     "requirement": "optional"
+    },
+    "database": {
+     "requirement": "recommended"
+    },
+    "databucket": {
+     "requirement": "recommended"
+    },
+    "device": {
+     "requirement": "recommended"
+    },
+    "dst_endpoint": {
+     "requirement": "recommended"
+    },
+    "email": {
+     "requirement": "recommended"
+    },
+    "file": {
+     "requirement": "recommended"
+    },
+    "http_request": {
+     "requirement": "recommended"
+    },
+    "http_response": {
+     "requirement": "recommended"
+    },
+    "ja4_fingerprint_list": {
+     "requirement": "recommended"
+    },
+    "job": {
+     "requirement": "recommended"
+    },
+    "process": {
+     "requirement": "recommended"
+    },
+    "query": {
+     "requirement": "recommended"
+    },
+    "resources": {
+     "requirement": "recommended"
+    },
+    "script": {
+     "requirement": "recommended"
+    },
+    "src_endpoint": {
+     "requirement": "recommended"
+    },
+    "tls": {
+     "requirement": "recommended"
+    },
+    "url": {
+     "requirement": "recommended"
+    },
+    "user": {
+     "requirement": "recommended"
+    },
+    "verdict": {
+     "requirement": "optional"
+    },
+    "verdict_id": {
+     "requirement": "optional",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "99"
+     ]
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "actor",
+     "api",
+     "connection_info",
+     "data",
+     "database",
+     "databucket",
+     "device",
+     "dst_endpoint",
+     "email",
+     "file",
+     "process",
+     "query",
+     "resources",
+     "src_endpoint",
+     "url",
+     "user",
+     "job",
+     "script"
+    ]
+   }
+  },
+  "finding_info": {
+   "attributes": {
+    "analytic": {
+     "requirement": "recommended"
+    },
+    "attack_graph": {
+     "requirement": "optional"
+    },
+    "attacks": {
+     "requirement": "optional"
+    },
+    "created_time": {
+     "requirement": "optional"
+    },
+    "data_sources": {
+     "requirement": "optional"
+    },
+    "desc": {
+     "requirement": "optional"
+    },
+    "first_seen_time": {
+     "requirement": "optional"
+    },
+    "kill_chain": {
+     "requirement": "optional"
+    },
+    "last_seen_time": {
+     "requirement": "optional"
+    },
+    "modified_time": {
+     "requirement": "optional"
+    },
+    "product": {
+     "requirement": "optional"
+    },
+    "product_uid": {
+     "requirement": "optional"
+    },
+    "related_analytics": {
+     "requirement": "optional"
+    },
+    "related_events": {
+     "requirement": "optional"
+    },
+    "related_events_count": {
+     "requirement": "optional"
+    },
+    "src_url": {
+     "requirement": "optional"
+    },
+    "tags": {
+     "requirement": "optional"
+    },
+    "title": {
+     "requirement": "recommended"
+    },
+    "traits": {
+     "requirement": "optional"
+    },
+    "types": {
+     "requirement": "optional"
+    },
+    "uid": {
+     "requirement": "required"
+    },
+    "uid_alt": {
+     "requirement": "optional"
+    }
+   }
+  },
+  "fingerprint": {
+   "attributes": {
+    "algorithm": {
+     "requirement": "optional"
+    },
+    "algorithm_id": {
+     "requirement": "required",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18",
+      "19",
+      "20",
+      "99"
+     ]
+    },
+    "encoding": {
+     "requirement": "optional"
+    },
+    "encoding_id": {
+     "requirement": "recommended",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "99"
+     ]
+    },
+    "serialization": {
+     "requirement": "optional"
+    },
+    "serialization_id": {
+     "requirement": "optional",
+     "enum": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "99"
+     ]
+    },
+    "value": {
+     "requirement": "required",
+     "type": "file_hash_t"
+    }
+   }
+  },
+  "metadata": {
+   "attributes": {
+    "correlation_uid": {
+     "requirement": "optional"
+    },
+    "debug": {
+     "requirement": "optional"
+    },
+    "event_code": {
+     "requirement": "optional"
+    },
+    "extension": {
+     "requirement": "optional"
+    },
+    "extensions": {
+     "requirement": "optional"
+    },
+    "is_truncated": {
+     "requirement": "optional"
+    },
+    "labels": {
+     "requirement": "optional"
+    },
+    "log_format": {
+     "requirement": "optional"
+    },
+    "log_level": {
+     "requirement": "optional"
+    },
+    "log_name": {
+     "requirement": "recommended"
+    },
+    "log_provider": {
+     "requirement": "optional"
+    },
+    "log_source": {
+     "requirement": "optional"
+    },
+    "log_version": {
+     "requirement": "optional"
+    },
+    "logged_time": {
+     "requirement": "optional"
+    },
+    "loggers": {
+     "requirement": "optional"
+    },
+    "modified_time": {
+     "requirement": "optional"
+    },
+    "original_event_uid": {
+     "requirement": "optional"
+    },
+    "original_time": {
+     "requirement": "recommended"
+    },
+    "processed_time": {
+     "requirement": "optional"
+    },
+    "product": {
+     "requirement": "required"
+    },
+    "profiles": {
+     "requirement": "optional"
+    },
+    "reporter": {
+     "requirement": "recommended"
+    },
+    "sequence": {
+     "requirement": "optional"
+    },
+    "source": {
+     "requirement": "optional"
+    },
+    "tags": {
+     "requirement": "optional"
+    },
+    "tenant_uid": {
+     "requirement": "recommended"
+    },
+    "total_queued_duration": {
+     "requirement": "optional"
+    },
+    "transformation_info_list": {
+     "requirement": "optional"
+    },
+    "transmit_time": {
+     "requirement": "optional"
+    },
+    "type": {
+     "requirement": "optional"
+    },
+    "uid": {
+     "requirement": "optional"
+    },
+    "untruncated_size": {
+     "requirement": "optional"
+    },
+    "version": {
+     "requirement": "required"
+    }
+   }
+  },
+  "prev_event": {
+   "attributes": {
+    "fingerprint": {
+     "requirement": "optional"
+    },
+    "type_uid": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "required"
+    }
+   }
+  },
+  "product": {
+   "attributes": {
+    "name": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "recommended"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "cpe_name": {
+     "requirement": "optional"
+    },
+    "feature": {
+     "requirement": "optional"
+    },
+    "lang": {
+     "requirement": "optional"
+    },
+    "path": {
+     "requirement": "optional"
+    },
+    "url_string": {
+     "requirement": "optional"
+    },
+    "vendor_name": {
+     "requirement": "recommended"
+    },
+    "version": {
+     "requirement": "recommended"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  },
+  "resource_details": {
+   "attributes": {
+    "name": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "recommended",
+     "type": "resource_uid_t"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "created_time": {
+     "requirement": "optional"
+    },
+    "data": {
+     "requirement": "optional"
+    },
+    "labels": {
+     "requirement": "optional"
+    },
+    "modified_time": {
+     "requirement": "optional"
+    },
+    "tags": {
+     "requirement": "optional"
+    },
+    "type": {
+     "requirement": "optional"
+    },
+    "uid_alt": {
+     "requirement": "optional",
+     "type": "resource_uid_t"
+    },
+    "agent_list": {
+     "requirement": "optional"
+    },
+    "cloud_partition": {
+     "requirement": "optional"
+    },
+    "criticality": {
+     "requirement": "optional"
+    },
+    "criticality_id": {
+     "requirement": "optional"
+    },
+    "device": {
+     "requirement": "optional"
+    },
+    "group": {
+     "requirement": "optional"
+    },
+    "hostname": {
+     "requirement": "recommended"
+    },
+    "ip": {
+     "requirement": "recommended"
+    },
+    "is_backed_up": {
+     "requirement": "optional"
+    },
+    "namespace": {
+     "requirement": "optional"
+    },
+    "owner": {
+     "requirement": "recommended"
+    },
+    "provider": {
+     "requirement": "optional"
+    },
+    "region": {
+     "requirement": "optional"
+    },
+    "resource_relationship": {
+     "requirement": "optional"
+    },
+    "role": {
+     "requirement": "optional"
+    },
+    "role_id": {
+     "requirement": "recommended",
+     "enum": [
+      "1",
+      "2",
+      "3",
+      "4"
+     ]
+    },
+    "user": {
+     "requirement": "optional"
+    },
+    "version": {
+     "requirement": "optional"
+    },
+    "zone": {
+     "requirement": "optional"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  },
+  "service": {
+   "attributes": {
+    "name": {
+     "requirement": "recommended"
+    },
+    "uid": {
+     "requirement": "recommended"
+    },
+    "uid_numeric": {
+     "requirement": "optional"
+    },
+    "labels": {
+     "requirement": "optional"
+    },
+    "tags": {
+     "requirement": "optional"
+    },
+    "version": {
+     "requirement": "recommended"
+    }
+   },
+   "constraints": {
+    "at_least_one": [
+     "name",
+     "uid"
+    ]
+   }
+  }
+ },
+ "dictionary": {
+  "action": {
+   "type": "string_t"
+  },
+  "action_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "99"
+   ]
+  },
+  "activity_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "activity_name": {
+   "type": "string_t"
+  },
+  "actor": {
+   "type": "actor"
+  },
+  "agent_list": {
+   "type": "agent",
+   "is_array": true
+  },
+  "ai_agent": {
+   "type": "ai_agent"
+  },
+  "ai_model": {
+   "type": "ai_model"
+  },
+  "ai_provider": {
+   "type": "string_t"
+  },
+  "algorithm": {
+   "type": "string_t"
+  },
+  "algorithm_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "analytic": {
+   "type": "analytic"
+  },
+  "anomaly_analyses": {
+   "type": "anomaly_analysis",
+   "is_array": true
+  },
+  "api": {
+   "type": "api"
+  },
+  "app_name": {
+   "type": "string_t"
+  },
+  "app_uid": {
+   "type": "string_t"
+  },
+  "application": {
+   "type": "application"
+  },
+  "assignee": {
+   "type": "user"
+  },
+  "assignee_group": {
+   "type": "group"
+  },
+  "attack_graph": {
+   "type": "graph"
+  },
+  "attacks": {
+   "type": "attack",
+   "is_array": true
+  },
+  "attestation_list": {
+   "type": "attestation",
+   "is_array": true
+  },
+  "authority_uid": {
+   "type": "string_t"
+  },
+  "authorizations": {
+   "type": "authorization",
+   "is_array": true
+  },
+  "category": {
+   "type": "string_t"
+  },
+  "category_name": {
+   "type": "string_t"
+  },
+  "category_uid": {
+   "type": "integer_t"
+  },
+  "chain_uid": {
+   "type": "string_t"
+  },
+  "charter": {
+   "type": "file"
+  },
+  "class_name": {
+   "type": "string_t"
+  },
+  "class_uid": {
+   "type": "integer_t"
+  },
+  "cloud_partition": {
+   "type": "string_t"
+  },
+  "comment": {
+   "type": "string_t"
+  },
+  "confidence": {
+   "type": "string_t"
+  },
+  "confidence_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "99"
+   ]
+  },
+  "confidence_score": {
+   "type": "integer_t"
+  },
+  "connection_info": {
+   "type": "network_connection_info"
+  },
+  "container": {
+   "type": "container"
+  },
+  "correlation_uid": {
+   "type": "string_t"
+  },
+  "count": {
+   "type": "integer_t"
+  },
+  "cpe_name": {
+   "type": "string_t"
+  },
+  "created_time": {
+   "type": "timestamp_t"
+  },
+  "criticality": {
+   "type": "string_t"
+  },
+  "criticality_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ]
+  },
+  "data": {
+   "type": "json_t"
+  },
+  "data_sources": {
+   "type": "string_t",
+   "is_array": true
+  },
+  "database": {
+   "type": "database"
+  },
+  "databucket": {
+   "type": "databucket"
+  },
+  "debug": {
+   "type": "string_t",
+   "is_array": true
+  },
+  "desc": {
+   "type": "string_t"
+  },
+  "device": {
+   "type": "device"
+  },
+  "disposition": {
+   "type": "string_t"
+  },
+  "disposition_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "99"
+   ]
+  },
+  "dst_endpoint": {
+   "type": "network_endpoint"
+  },
+  "duration": {
+   "type": "long_t"
+  },
+  "email": {
+   "type": "email"
+  },
+  "encoding": {
+   "type": "string_t"
+  },
+  "encoding_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "end_time": {
+   "type": "timestamp_t"
+  },
+  "enrichments": {
+   "type": "enrichment",
+   "is_array": true
+  },
+  "event_code": {
+   "type": "string_t"
+  },
+  "evidences": {
+   "type": "evidences",
+   "is_array": true
+  },
+  "extension": {
+   "type": "extension"
+  },
+  "extensions": {
+   "type": "extension",
+   "is_array": true
+  },
+  "feature": {
+   "type": "feature"
+  },
+  "file": {
+   "type": "file"
+  },
+  "finding_info": {
+   "type": "finding_info"
+  },
+  "fingerprint": {
+   "type": "fingerprint"
+  },
+  "firewall_rule": {
+   "type": "firewall_rule"
+  },
+  "first_seen_time": {
+   "type": "timestamp_t"
+  },
+  "group": {
+   "type": "group"
+  },
+  "hostname": {
+   "type": "hostname_t"
+  },
+  "http_request": {
+   "type": "http_request"
+  },
+  "http_response": {
+   "type": "http_response"
+  },
+  "iam_role": {
+   "type": "iam_role"
+  },
+  "idp": {
+   "type": "idp"
+  },
+  "impact": {
+   "type": "string_t"
+  },
+  "impact_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ]
+  },
+  "impact_score": {
+   "type": "integer_t"
+  },
+  "instance_uid": {
+   "type": "string_t"
+  },
+  "invoked_by": {
+   "type": "string_t"
+  },
+  "ip": {
+   "type": "ip_t"
+  },
+  "is_alert": {
+   "type": "boolean_t"
+  },
+  "is_backed_up": {
+   "type": "boolean_t"
+  },
+  "is_suspected_breach": {
+   "type": "boolean_t"
+  },
+  "is_truncated": {
+   "type": "boolean_t"
+  },
+  "ja4_fingerprint_list": {
+   "type": "ja4_fingerprint",
+   "is_array": true
+  },
+  "job": {
+   "type": "job"
+  },
+  "kill_chain": {
+   "type": "kill_chain_phase",
+   "is_array": true
+  },
+  "labels": {
+   "type": "string_t",
+   "is_array": true
+  },
+  "lang": {
+   "type": "string_t"
+  },
+  "last_seen_time": {
+   "type": "timestamp_t"
+  },
+  "log_format": {
+   "type": "string_t"
+  },
+  "log_level": {
+   "type": "string_t"
+  },
+  "log_name": {
+   "type": "string_t"
+  },
+  "log_provider": {
+   "type": "string_t"
+  },
+  "log_source": {
+   "type": "string_t"
+  },
+  "log_version": {
+   "type": "string_t"
+  },
+  "logged_time": {
+   "type": "timestamp_t"
+  },
+  "loggers": {
+   "type": "logger",
+   "is_array": true
+  },
+  "malware": {
+   "type": "malware",
+   "is_array": true
+  },
+  "malware_scan_info": {
+   "type": "malware_scan_info"
+  },
+  "message": {
+   "type": "string_t"
+  },
+  "metadata": {
+   "type": "metadata"
+  },
+  "modified_time": {
+   "type": "timestamp_t"
+  },
+  "name": {
+   "type": "string_t"
+  },
+  "namespace": {
+   "type": "string_t"
+  },
+  "notes": {
+   "type": "note",
+   "is_array": true
+  },
+  "observables": {
+   "type": "observable",
+   "is_array": true
+  },
+  "operation": {
+   "type": "string_t"
+  },
+  "original_event_uid": {
+   "type": "string_t"
+  },
+  "original_time": {
+   "type": "string_t"
+  },
+  "owner": {
+   "type": "user"
+  },
+  "path": {
+   "type": "string_t"
+  },
+  "policy": {
+   "type": "policy"
+  },
+  "prev_event": {
+   "type": "prev_event"
+  },
+  "priority": {
+   "type": "string_t"
+  },
+  "priority_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ]
+  },
+  "process": {
+   "type": "process"
+  },
+  "processed_time": {
+   "type": "timestamp_t"
+  },
+  "product": {
+   "type": "product"
+  },
+  "product_uid": {
+   "type": "string_t"
+  },
+  "profiles": {
+   "type": "string_t",
+   "is_array": true
+  },
+  "provider": {
+   "type": "string_t"
+  },
+  "query": {
+   "type": "dns_query"
+  },
+  "raw_data": {
+   "type": "string_t"
+  },
+  "raw_data_hash": {
+   "type": "fingerprint"
+  },
+  "raw_data_size": {
+   "type": "long_t"
+  },
+  "region": {
+   "type": "string_t"
+  },
+  "related_analytics": {
+   "type": "analytic",
+   "is_array": true
+  },
+  "related_events": {
+   "type": "related_event",
+   "is_array": true
+  },
+  "related_events_count": {
+   "type": "integer_t"
+  },
+  "remediation": {
+   "type": "remediation"
+  },
+  "reporter": {
+   "type": "reporter"
+  },
+  "request": {
+   "type": "request"
+  },
+  "resource_relationship": {
+   "type": "graph"
+  },
+  "resources": {
+   "type": "resource_details",
+   "is_array": true
+  },
+  "response": {
+   "type": "response"
+  },
+  "risk_details": {
+   "type": "string_t"
+  },
+  "risk_level": {
+   "type": "string_t"
+  },
+  "risk_level_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ]
+  },
+  "risk_score": {
+   "type": "integer_t"
+  },
+  "role": {
+   "type": "string_t"
+  },
+  "role_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "script": {
+   "type": "script"
+  },
+  "sensor_info_list": {
+   "type": "sensor_info",
+   "is_array": true
+  },
+  "sequence": {
+   "type": "integer_t"
+  },
+  "serialization": {
+   "type": "string_t"
+  },
+  "serialization_id": {
+   "type": "integer_t"
+  },
+  "service": {
+   "type": "service"
+  },
+  "session": {
+   "type": "session"
+  },
+  "severity": {
+   "type": "string_t"
+  },
+  "severity_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "99"
+   ]
+  },
+  "signatures": {
+   "type": "digital_signature",
+   "is_array": true
+  },
+  "source": {
+   "type": "string_t"
+  },
+  "src_endpoint": {
+   "type": "network_endpoint"
+  },
+  "src_url": {
+   "type": "url_t"
+  },
+  "start_time": {
+   "type": "timestamp_t"
+  },
+  "state": {
+   "type": "string_t"
+  },
+  "state_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "status": {
+   "type": "string_t"
+  },
+  "status_code": {
+   "type": "string_t"
+  },
+  "status_detail": {
+   "type": "string_t"
+  },
+  "status_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "tags": {
+   "type": "key_value_object",
+   "is_array": true
+  },
+  "tenant_uid": {
+   "type": "string_t"
+  },
+  "ticket": {
+   "type": "ticket"
+  },
+  "tickets": {
+   "type": "ticket",
+   "is_array": true
+  },
+  "time": {
+   "type": "timestamp_t"
+  },
+  "timezone_offset": {
+   "type": "integer_t"
+  },
+  "title": {
+   "type": "string_t"
+  },
+  "tls": {
+   "type": "tls"
+  },
+  "token": {
+   "type": "token"
+  },
+  "total_queued_duration": {
+   "type": "timespan"
+  },
+  "traits": {
+   "type": "trait",
+   "is_array": true
+  },
+  "transformation_info_list": {
+   "type": "transformation_info",
+   "is_array": true
+  },
+  "transmit_time": {
+   "type": "timestamp_t"
+  },
+  "type": {
+   "type": "string_t"
+  },
+  "type_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "99"
+   ]
+  },
+  "type_name": {
+   "type": "string_t"
+  },
+  "type_uid": {
+   "type": "long_t"
+  },
+  "types": {
+   "type": "string_t",
+   "is_array": true
+  },
+  "uid": {
+   "type": "string_t"
+  },
+  "uid_alt": {
+   "type": "string_t"
+  },
+  "uid_numeric": {
+   "type": "long_t"
+  },
+  "unmapped": {
+   "type": "object"
+  },
+  "untruncated_size": {
+   "type": "integer_t"
+  },
+  "url": {
+   "type": "url"
+  },
+  "url_string": {
+   "type": "url_t"
+  },
+  "user": {
+   "type": "user"
+  },
+  "value": {
+   "type": "string_t"
+  },
+  "vendor_attributes": {
+   "type": "vendor_attributes"
+  },
+  "vendor_name": {
+   "type": "string_t"
+  },
+  "verdict": {
+   "type": "string_t"
+  },
+  "verdict_id": {
+   "type": "integer_t",
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "99"
+   ]
+  },
+  "version": {
+   "type": "string_t"
+  },
+  "vulnerabilities": {
+   "type": "vulnerability",
+   "is_array": true
+  },
+  "zone": {
+   "type": "string_t"
+  }
+ },
+ "types": {
+  "boolean_t": "boolean_t",
+  "bytestring_t": "string_t",
+  "datetime_t": "string_t",
+  "email_t": "string_t",
+  "file_hash_t": "string_t",
+  "file_name_t": "string_t",
+  "file_path_t": "string_t",
+  "float_t": "float_t",
+  "hostname_t": "string_t",
+  "integer_t": "integer_t",
+  "ip_t": "string_t",
+  "json_t": "json_t",
+  "long_t": "long_t",
+  "mac_t": "string_t",
+  "port_t": "integer_t",
+  "process_name_t": "string_t",
+  "resource_uid_t": "string_t",
+  "string_t": "string_t",
+  "subnet_t": "string_t",
+  "timestamp_t": "long_t",
+  "url_t": "string_t",
+  "username_t": "string_t",
+  "uuid_t": "string_t"
+ }
+}

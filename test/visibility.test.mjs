@@ -24,6 +24,13 @@ test('참고 데이터 자기보고·서비스 참조·누락·비밀 비수집�
  assert.equal((await h.api('/api/actions/ref-action',{role:'agent'})).status,403);
  const bundle=(await h.api('/api/export')).body;assert.equal(bundle.disclosures[0].event.dataRefs[0].locator,e.dataRefs[0].locator);assert.ok(!JSON.stringify(bundle).includes('raw secret content'));
  const result=await demo({config:h.config,ingress:h.ingress.url,audit:h.audit.url});await h.analyze();const seeded=(await h.api('/api/actions/'+result.actionId)).body;assert.equal(seeded.references.length,2);assert.notEqual(seeded.references[0].hash,seeded.references[1].hash);
+ // Audit 3.2: the demo must leave the AI visibility screen with OTLP observations, not an empty table.
+ assert.equal(result.otlp.spans,4);
+ const ai=(await h.api('/api/ai-visibility')).body,assets=new Map(ai.assets.map(a=>[a.id,a]));
+ const registered=assets.get('otel-service:support-agent'),shadow=assets.get('otel-service:shadow-notebook');
+ assert.equal(registered.registered,true);assert.equal(registered.observationCount,2);assert.equal(shadow.registered,false);
+ assert.ok(registered.attention.some(f=>f.code==='AI_DESTINATION_OUTSIDE_POLICY'));assert.ok(shadow.attention.some(f=>f.code==='AI_UNREGISTERED_ASSET'));
+ assert.ok(ai.summary.attentionCount>=2);
 });
 
 test('현재 목적지 정책을 과거 행동에 소급하지 않고 시점별 정책과 불확실성을 표시',()=>{

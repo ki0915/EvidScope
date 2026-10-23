@@ -1,9 +1,10 @@
-import {createCipheriv,createDecipheriv,createHash,createPrivateKey,randomBytes,randomUUID} from 'node:crypto';
-import {existsSync,mkdirSync,renameSync,writeFileSync} from 'node:fs';
+import {createHash,randomUUID} from 'node:crypto';
+import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {canonical,digest} from './crypto.mjs';
 import {cleanText,fail,identifier} from './model.mjs';
-import {readBoundedRegularFile} from './bounded-file.mjs';
+import {asKeyring} from './data-keys.mjs';
+import {createEncryptedDocumentStore} from './document-envelope.mjs';
 
 export const MAX_GOVERNANCE_DOCUMENT_BYTES=4*1024*1024;
 const MAX_DOCUMENT_BYTES=MAX_GOVERNANCE_DOCUMENT_BYTES;
@@ -26,32 +27,7 @@ function decodeBase64(value){
 }
 
 export function createGovernanceDocumentStorage(dataDir,key){
- const root=join(dataDir,'governance-documents');
- const privateKey=typeof key==='string'||Buffer.isBuffer(key)?createPrivateKey(key):key;
- const master=createHash('sha256').update('evidscope-governance-documents-v1').update(privateKey.export({type:'pkcs8',format:'der'})).digest();
- const location=(tenant,hash)=>{
-  if(!/^[a-f0-9]{64}$/.test(hash))throw Error('Invalid document digest');
-  return join(root,sha256(Buffer.from(tenant)),hash+'.json');
- };
- function read(tenant,hash){
-  const path=location(tenant,hash),saved=JSON.parse(readBoundedRegularFile(path,MAX_ENVELOPE_BYTES).toString('utf8'));
-  const fields=['iv','tag','data'];if(!saved||typeof saved!=='object'||Array.isArray(saved)||Object.keys(saved).length!==fields.length||fields.some(name=>typeof saved[name]!=='string'||Buffer.from(saved[name],'base64').toString('base64')!==saved[name]))throw Error('Invalid encrypted document envelope');
-  const iv=Buffer.from(saved.iv,'base64'),tag=Buffer.from(saved.tag,'base64'),data=Buffer.from(saved.data,'base64');if(iv.length!==12||tag.length!==16||!data.length)throw Error('Invalid encrypted document envelope');
-  const decipher=createDecipheriv('aes-256-gcm',master,iv);
-  decipher.setAAD(Buffer.from(`${tenant}:${hash}`));decipher.setAuthTag(tag);
-  const bytes=Buffer.concat([decipher.update(data),decipher.final()]);
-  if(bytes.length>MAX_DOCUMENT_BYTES||sha256(bytes)!==hash)throw Error('Document hash mismatch');return bytes;
- }
- function put(tenant,bytes){
-  const hash=sha256(bytes),path=location(tenant,hash);if(existsSync(path)){read(tenant,hash);return hash;}
-  mkdirSync(join(root,sha256(Buffer.from(tenant))),{recursive:true});
-  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',master,iv);cipher.setAAD(Buffer.from(`${tenant}:${hash}`));
-  const encrypted=Buffer.concat([cipher.update(bytes),cipher.final()]);
-  const temporary=path+'.'+randomUUID()+'.tmp';
-  writeFileSync(temporary,JSON.stringify({iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')}),{flag:'wx',mode:0o600});
-  renameSync(temporary,path);read(tenant,hash);return hash;
- }
- return {read,put};
+ return createEncryptedDocumentStore({root:join(dataDir,'governance-documents'),purpose:'governanceDocument',keyring:asKeyring(key),maxEnvelopeBytes:MAX_ENVELOPE_BYTES,maxPlaintextBytes:MAX_DOCUMENT_BYTES});
 }
 
 function validateSignedMetadata(value){
@@ -62,34 +38,40 @@ function validateSignedMetadata(value){
  const {snapshotHash,...snapshot}=value;if(digest(snapshot)!==snapshotHash)fail(409,'거버넌스 문서 스냅샷 해시가 일치하지 않습니다');return value;
 }
 
+// Replays one signed governance_document payload onto latest (id -> metadata); invalid or discontinuous history is 409.
+export function applyGovernanceDocumentRecord(latest,payload){
+ const value=validateSignedMetadata(payload),previous=latest.get(value.id);
+ if(value.version!==(previous?.version||0)+1||previous&&previous.systemId!==value.systemId)fail(409,'거버넌스 문서 버전 원장이 연속적이지 않습니다');
+ latest.set(value.id,value);return value;
+}
+// Compares the projection with latest: every row of the tenant, or only the rows of ids (after a verified suffix).
+export function checkGovernanceDocumentRows(db,tenant,latest,ids){
+ const differs=()=>fail(409,'거버넌스 문서 조회 사본이 서명 원장과 일치하지 않습니다');
+ const same=(body,expected)=>{let value;try{value=JSON.parse(body);}catch{differs();}return canonical(value)===canonical(expected);};
+ if(ids){for(const id of ids){const row=db.prepare('SELECT body FROM governance_documents WHERE tenant=? AND id=?').get(tenant,id);if(!row||!same(row.body,latest.get(id)))differs();}return;}
+ const rows=db.prepare('SELECT id,body FROM governance_documents WHERE tenant=?').all(tenant);
+ if(rows.length!==latest.size)differs();
+ for(const row of rows)if(!latest.has(row.id)||!same(row.body,latest.get(row.id)))differs();
+}
 export function checkGovernanceDocumentProjection(db,tenant,records){
- const latest=new Map(),versions=new Map(),history=[];
- for(const row of records){
-  if(row.type!=='governance_document')continue;
-  const value=validateSignedMetadata(row.payload),previous=latest.get(value.id);
-  if(value.version!==(versions.get(value.id)||0)+1||previous&&previous.systemId!==value.systemId)fail(409,'거버넌스 문서 버전 원장이 연속적이지 않습니다');
-  versions.set(value.id,value.version);latest.set(value.id,value);history.push(value);
- }
+ const latest=new Map(),history=[];
+ for(const row of records)if(row.type==='governance_document')history.push(applyGovernanceDocumentRecord(latest,row.payload));
  const exists=!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='governance_documents'").get();
  if(!exists){if(latest.size)fail(409,'거버넌스 문서 조회 사본이 없습니다');return {valid:true,documents:0,revisions:0,latest,history};}
- const rows=db.prepare('SELECT id,body FROM governance_documents WHERE tenant=?').all(tenant);
- if(rows.length!==latest.size)fail(409,'거버넌스 문서 조회 사본이 서명 원장과 일치하지 않습니다');
- for(const row of rows){let value;try{value=JSON.parse(row.body);}catch{fail(409,'거버넌스 문서 조회 사본이 서명 원장과 일치하지 않습니다');}if(!latest.has(row.id)||canonical(value)!==canonical(latest.get(row.id)))fail(409,'거버넌스 문서 조회 사본이 서명 원장과 일치하지 않습니다');}
+ checkGovernanceDocumentRows(db,tenant,latest);
  return {valid:true,documents:latest.size,revisions:history.length,latest,history};
 }
 
-export function createGovernanceDocuments({store,dataDir,key,getSystem}){
+export function createGovernanceDocuments({store,dataDir,key,keyring=asKeyring(key),getSystem}){
  if(typeof getSystem!=='function')throw Error('Governance document system resolver is required');
- const storage=createGovernanceDocumentStorage(dataDir,key);
+ const storage=createGovernanceDocumentStorage(dataDir,keyring);
  store.db.exec('CREATE TABLE IF NOT EXISTS governance_documents(tenant TEXT NOT NULL,id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(tenant,id))');
  const review=p=>{if(!['reviewer','admin'].includes(p.role))fail(403,'거버넌스 문서는 검토자 또는 관리자만 접근할 수 있습니다');};
+ // Latest signed metadata per document id (first-signed order), from the governance_documents facet of the verified state.
  function verifiedState(p){
-  const records=[];
-  for(const row of store.verifiedRows(p.tenant,2*1024*1024)){
-   if(row.oversized){const type=store.db.prepare("SELECT json_extract(body,'$.type') AS type FROM ledger WHERE tenant=? AND seq=?").get(p.tenant,row.seq)?.type;if(type==='governance_document')fail(413,'거버넌스 문서 메타데이터 한도 초과');continue;}
-   if(row.type==='governance_document')records.push(row);
-  }
-  return checkGovernanceDocumentProjection(store.db,p.tenant,records).latest;
+  let result;try{result=store.cachedGovernanceDocuments(p.tenant);}catch(error){if(error?.status)throw error;fail(409,'거버넌스 문서 조회 사본이 서명 원장과 일치하지 않습니다');}
+  if(result.oversized)fail(413,'거버넌스 문서 메타데이터 한도 초과');
+  return result.latest;
  }
  const current=(p,id)=>verifiedState(p).get(documentId(id))||fail(404,'동일 테넌트 거버넌스 문서를 찾을 수 없습니다');
  function retrieve(p,metadata){
@@ -103,11 +85,12 @@ export function createGovernanceDocuments({store,dataDir,key,getSystem}){
   const bytes=decodeBase64(x.contentBase64);if(sha256(bytes)!==x.sha256)fail(400,'수신 문서 해시 불일치');
   const previous=verifiedState(p).get(id);if(previous&&previous.systemId!==systemId)fail(409,'기존 문서 ID의 시스템을 변경할 수 없습니다');
   if(previous&&previous.sha256===x.sha256&&previous.displayName===displayName&&previous.mediaType===mediaType){retrieve(p,previous);return previous;}
-  storage.put(p.tenant,bytes);
+  // A file written here is removed again if the surrounding transaction rolls back (S12d).
+  storage.put(p.tenant,bytes,path=>store.onRollback(()=>rmSync(path,{force:true})));
   const receivedAt=new Date().toISOString(),snapshot={schemaVersion:1,id,systemId,version:(previous?.version||0)+1,sha256:x.sha256,bytes:bytes.length,displayName,mediaType,receivedAt,receivedBy:p.id,retentionUntil:fiveYearsAfter(receivedAt),retentionBasis:RETENTION_BASIS};
   const metadata={...snapshot,snapshotHash:digest(snapshot)};retrieve(p,metadata);
   store.append(p.tenant,'governance_document',metadata,p.id);
-  store.db.prepare('INSERT INTO governance_documents VALUES(?,?,?) ON CONFLICT(tenant,id) DO UPDATE SET body=excluded.body').run(p.tenant,id,JSON.stringify(metadata));
+  store.projectionMutation(()=>store.db.prepare('INSERT INTO governance_documents VALUES(?,?,?) ON CONFLICT(tenant,id) DO UPDATE SET body=excluded.body').run(p.tenant,id,JSON.stringify(metadata)));
   if(previous){const taskId=randomUUID();store.put(p,'governance_task',taskId,{id:taskId,systemId,requirementId:'KR-34-DOCUMENT',documentId:id,title:'조치 근거 문서 개정: 연결 평가 재검토',owner:system.owner,status:'open',previousHash:previous.snapshotHash,currentHash:metadata.snapshotHash});}
   return metadata;
  }

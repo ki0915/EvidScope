@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {createDocumentAdapter} from './finance-evidence.mjs';
-import {createGovernanceDocumentStorage,checkGovernanceDocumentProjection} from './governance-documents.mjs';
+import {createGovernanceDocumentStorage,checkGovernanceDocumentProjection,MAX_GOVERNANCE_DOCUMENT_BYTES} from './governance-documents.mjs';
+import {asKeyring} from './data-keys.mjs';
 
 const MAX_REFERENCED_FILES=4096;
 const MAX_REFERENCED_BYTES=256*1024*1024;
@@ -13,7 +14,8 @@ export function documentPath(kind,tenant,hash){
 }
 
 function addReference(files,{kind,tenant,sha256,bytes}){
- if(!validHash(sha256)||!Number.isSafeInteger(bytes)||bytes<1||bytes>64*1024)throw Error('Document file metadata is invalid');
+ const maximumBytes=kind==='governance'?MAX_GOVERNANCE_DOCUMENT_BYTES:64*1024;
+ if(!validHash(sha256)||!Number.isSafeInteger(bytes)||bytes<1||bytes>maximumBytes)throw Error('Document file metadata is invalid');
  const key=`${kind}:${sha256}`,existing=files.get(key);
  if(existing&&existing.bytes!==bytes)throw Error('Document file length metadata conflicts with signed history');
  if(!existing){
@@ -25,8 +27,9 @@ function addReference(files,{kind,tenant,sha256,bytes}){
 // Verify only files referenced by authenticated history. Orphan files are not evidence
 // and are deliberately excluded. Each file is authenticated at its individual read;
 // this does not claim a filesystem snapshot, remote immutability, or elapsed retention.
-export function checkDocumentFiles({db,tenant,records,dataDir,key}){
- if(!db||typeof tenant!=='string'||!Array.isArray(records)||!dataDir||!key)throw Error('Document integrity inputs are invalid');
+export function checkDocumentFiles({db,tenant,records,dataDir,key,keyring}){
+ if(!db||typeof tenant!=='string'||!Array.isArray(records)||!dataDir||!(key||keyring))throw Error('Document integrity inputs are invalid');
+ const ring=keyring||asKeyring(key);
  const governanceDocumentProjection=checkGovernanceDocumentProjection(db,tenant,records),files=new Map();
  for(const row of records){
   if(row.type!=='supplier_bundle')continue;
@@ -36,10 +39,10 @@ export function checkDocumentFiles({db,tenant,records,dataDir,key}){
   for(const document of documents||[])addReference(files,{kind:'finance',tenant,sha256:document?.sha256,bytes:document?.bytes});
  }
  for(const metadata of governanceDocumentProjection.history)addReference(files,{kind:'governance',tenant,sha256:metadata.sha256,bytes:metadata.bytes});
- let plaintextBytes=0,financeFiles=0,governanceFiles=0;
- const finance=createDocumentAdapter(dataDir,key),governance=createGovernanceDocumentStorage(dataDir,key);
+ let plaintextBytes=0,financeFiles=0,governanceFiles=0;const keyIds={};
+ const finance=createDocumentAdapter(dataDir,ring),governance=createGovernanceDocumentStorage(dataDir,ring);
  for(const file of files.values()){
-  const bytes=(file.kind==='finance'?finance:governance).read(file.tenant,file.sha256);
+  const {bytes,kid}=(file.kind==='finance'?finance:governance).open(file.tenant,file.sha256);keyIds[kid]=(keyIds[kid]||0)+1;
   if(bytes.length!==file.bytes)throw Error('Document file length differs from signed metadata');
   plaintextBytes+=bytes.length;
   if(plaintextBytes>MAX_REFERENCED_BYTES)throw Error('Document file integrity byte limit exceeded');
@@ -49,5 +52,6 @@ export function checkDocumentFiles({db,tenant,records,dataDir,key}){
   summary:{valid:true,financeFiles,governanceFiles,uniqueFiles:files.size,plaintextBytes,verification:'referenced_ciphertext_decrypted_authenticated_and_hashed_per_file',unreferencedFilesScanned:false,filesystemSnapshotProven:false},
   governanceDocumentProjection:{valid:true,documents:governanceDocumentProjection.documents,revisions:governanceDocumentProjection.revisions},
   files:[...files.values()].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0),
+  keyIds,
  };
 }

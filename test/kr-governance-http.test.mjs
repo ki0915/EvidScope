@@ -26,13 +26,18 @@ test('Korean governance across independent ingress, vault and audit processes pr
  assert.equal((await h.api('/api/governance/tasks/'+missing.body.id,{role:'reviewer',body:{status:'closed',reason:'근거 없음'}})).status,409);
  const eventRef={type:'event',ref:'alpha-telemetry/'+check.id};
  assessment.evidence=[{type:'document',ref:'governance-document:'+doc.id},eventRef];
- assert.equal((await h.api('/api/governance/assessments',{role:'reviewer',body:assessment})).status,200);
+ const current=await h.api('/api/governance/assessments',{role:'reviewer',body:assessment});assert.equal(current.status,200);
  const report=async()=>(await h.api('/api/governance/report?systemId='+saved.id)).body;
  const find=r=>r.items.find(i=>i.requirement.id===req.id);
  const first=find(await report()),second=find(await report());
  assert.equal(first.status,'human_evidence_assessed');assert.deepEqual(first.technicalEvidence,second.technicalEvidence);
  assert.equal(first.technicalEvidence.automaticLegalVerdict,false);
- assert.equal((await h.api('/api/governance/tasks/'+missing.body.id,{role:'reviewer',body:{status:'closed',reason:'현재 범위 측정과 사람 검토 확인'}})).status,200);
+ // S11: the author's legalReview claim needs a second principal's confirmation, and the author cannot close the task.
+ const legalReview=()=>`/api/governance/assessments/${current.body.id}/legal-review`;
+ assert.equal((await h.api(legalReview(),{role:'reviewer',body:{reason:'자기 평가 확인'}})).status,403);
+ assert.equal((await h.api(legalReview(),{role:'admin',body:{reason:'독립 법률 검토'}})).status,200);
+ assert.equal((await h.api('/api/governance/tasks/'+missing.body.id,{role:'reviewer',body:{status:'closed',reason:'작성자 종결'}})).status,403);
+ assert.equal((await h.api('/api/governance/tasks/'+missing.body.id,{role:'admin',body:{status:'closed',reason:'현재 범위 측정과 사람 검토 확인'}})).status,200);
  await h.analyze();
  const frozenResponse=await h.api('/api/governance/finance/report',{role:'reviewer',body:{systemId:saved.id}});assert.equal(frozenResponse.status,200);const frozen=frozenResponse.body;
  assert.equal(find(frozen.snapshot.governance).status,'human_evidence_assessed');

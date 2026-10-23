@@ -17,16 +17,30 @@ const testFiles = [
   'test/kr-governance-evidence.test.mjs', 'test/governance-ui.test.mjs',
   'test/kr-supplier-reliance.test.mjs',
   'test/execution-memory-boundary.test.mjs',
+  'test/kr-legal-source-coverage.test.mjs',
+  'test/kr-legal-source-coverage-integration.test.mjs',
+  'test/document-integrity.test.mjs',
+  'test/kr-other-law-recognition.test.mjs',
+  'test/load-balancing.test.mjs',
+  'test/workbench.test.mjs',
+  'test/test-runtime.test.mjs',
+  'test/finance-ui.test.mjs',
+  'test/ui-language-state.test.mjs',
+  'test/harness-diagnostics.test.mjs',
 ];
 const watchedDirectories = ['src', 'public', 'data', 'roles'];
 const watchedFiles = [
   'scripts/local.mjs', 'scripts/demo.mjs', 'scripts/verify-finance-report.mjs',
   'scripts/release-verify.mjs',
   'scripts/execution-memory-boundary.mjs',
+  'scripts/test-runtime-lib.mjs',
+  'test/harness.mjs',
   'scripts/test-serial.mjs',
   'scripts/package-release.mjs', 'package.json', 'package-lock.json', 'Dockerfile', '.dockerignore',
   ...testFiles,
 ];
+// The author's release host verifies over IPv6 loopback; callers (CI, IPv6-less hosts) may choose 127.0.0.1.
+const testHost = process.env.EVIDSCOPE_TEST_HOST || '::1';
 const roundTimeoutMs = 180_000;
 const terminationConfirmationAllowanceMs = 10_000;
 const executionTimeoutMs = roundTimeoutMs - terminationConfirmationAllowanceMs;
@@ -78,7 +92,7 @@ async function runRound(index, directory, initialSnapshot) {
     '--test', '--test-reporter=tap', '--test-concurrency=1', '--test-timeout=90000', ...testFiles,
   ], {
     cwd: repository,
-    env: { ...process.env, EVIDSCOPE_TEST_HOST: '::1', NODE_DISABLE_COLORS: '1', FORCE_COLOR: '0' },
+    env: { ...process.env, EVIDSCOPE_TEST_HOST: testHost, NODE_DISABLE_COLORS: '1', FORCE_COLOR: '0' },
     stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   child.stdout.pipe(log, { end: false });
@@ -173,7 +187,7 @@ export async function verifyRelease(outputDirectory) {
     requestedRounds: 10, completedRounds: 0, passedRounds: 0, passed: false,
     syntheticInputs: true, realHttpAndProcessExecution: true,
     legalComplianceCertified: false, productionFinancialIntegrationVerified: false,
-    runtime: { node: process.version, platform: process.platform, arch: process.arch },
+    runtime: { node: process.version, platform: process.platform, arch: process.arch }, testHost,
     roundTimeoutMs, executionTimeoutMs, terminationConfirmationAllowanceMs,
     sourceMonitoring: 'full SHA-256 before/after each round and every 500ms during execution',
     testFiles, sourceSnapshot: null, rounds: [], error: null,

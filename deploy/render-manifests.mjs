@@ -14,9 +14,10 @@ for (const component of ['vault', 'ingress', 'audit', 'worker']) {
   const volumes = [{ name: 'tls', secret: { secretName: `${component}-tls`, defaultMode: 288 } }];
   const mounts = [{ name: 'tls', mountPath: '/tls', readOnly: true }];
   if (vault) {
-    env.push({ name: 'DATA_DIR', value: '/data' }, { name: 'CONFIG_FILE', value: '/secrets/config.json' }, { name: 'SIGNING_KEY_FILE', value: '/keys/signing-private.pem' });
-    volumes.push({ name: 'data', persistentVolumeClaim: { claimName: 'vault-data' } }, { name: 'config', secret: { secretName: 'vault-config', defaultMode: 288 } }, { name: 'signing', secret: { secretName: 'vault-signing', defaultMode: 288 } });
-    mounts.push({ name: 'data', mountPath: '/data' }, { name: 'config', mountPath: '/secrets', readOnly: true }, { name: 'signing', mountPath: '/keys', readOnly: true });
+    env.push({ name: 'DATA_DIR', value: '/data' }, { name: 'CONFIG_FILE', value: '/secrets/config.json' }, { name: 'SIGNING_KEY_FILE', value: '/keys/signing-private.pem' }, { name: 'DATA_KEY_FILE', value: '/data-key/data-encryption.key' });
+    volumes.push({ name: 'data', persistentVolumeClaim: { claimName: 'vault-data' } }, { name: 'config', secret: { secretName: 'vault-config', defaultMode: 288 } });
+    volumes.push({ name: 'signing', secret: { secretName: 'vault-signing', defaultMode: 288 } }, { name: 'data-key', secret: { secretName: 'vault-data-key', defaultMode: 288 } });
+    mounts.push({ name: 'data', mountPath: '/data' }, { name: 'config', mountPath: '/secrets', readOnly: true }, { name: 'signing', mountPath: '/keys', readOnly: true }, { name: 'data-key', mountPath: '/data-key', readOnly: true });
   } else {
     env.push({ name: 'VAULT_URL', value: 'https://vault.evidscope.svc:8080' }, { name: 'NODE_EXTRA_CA_CERTS', value: '/ca/ca.crt' });
     volumes.push({ name: 'ca', secret: { secretName: 'vault-ca', defaultMode: 288 } });

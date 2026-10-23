@@ -2,13 +2,31 @@ import {digest} from './crypto.mjs';
 import {validateAIObservation} from './ai-observations.mjs';
 import {aiScenarioFindings} from './ai-visibility.mjs';
 import {normalizeGovernanceCheck,knownGovernanceReference} from './kr-governance-evidence.mjs';
-export class HttpError extends Error {constructor(status,message){super(message);this.status=status;}}
+import {registryFindings,enforcedToolsAt} from './agent-registry.mjs';
+import {DECISION_FIELDS,DECISION_KINDS,DECISIONS,decisionFindings} from './decision-rules.mjs';
+import {ACTIVATION_KIND,parseRevision,stopOrderFindings} from './stop-orders.mjs';
+import {approvalFindings,approvalRequested,approvalSatisfied} from './approvals.mjs';
+import {sequenceFindings} from './sequence-rules.mjs';
+import {contentFindings} from './content-rules.mjs';
+import {parseWords,matchesWords} from './rule-words.mjs';
+import {HISTORY_IMPORT,HOOK_AGENTS} from './agent-hook-events.mjs';
+import {EXECUTOR_FIELDS} from './agent-ownership.mjs';
+// details: extra JSON fields of the error response (the approval poll's OAuth-style error_description and signed refusal).
+export class HttpError extends Error {constructor(status,message,details){super(message);this.status=status;if(details)this.details=details;}}
 export const fail=(status,message)=>{throw new HttpError(status,message);};
+// A response the HTTP layer writes as given (status, headers, bytes) instead of JSON, e.g. an OPA bundle or a 304.
+const RAW_RESPONSE=Symbol.for('evidscope.rawResponse');
+export const rawResponse=(status,headers,body)=>({[RAW_RESPONSE]:true,status,headers,body});
+export const isRawResponse=value=>!!value&&value[RAW_RESPONSE]===true;
 export const cleanText=(s,max=1000)=>{if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(s)) fail(400,'문자열 형식 또는 길이가 유효하지 않습니다');return s;};
 export const identifier=s=>{if(typeof s!=='string'||!/^[a-zA-Z0-9._:@/-]{1,120}$/.test(s))fail(400,'잘못된 식별자');return s;};
 export const date=s=>{if(typeof s!=='string'||!/^\d{4}-\d\d-\d\dT/.test(s)||!Number.isFinite(Date.parse(s)))fail(400,'ISO 시각이 필요합니다');return new Date(s).toISOString();};
-const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check']};
-const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs'];
+const kindBySource={agent:['intent','self_report','delegation'],tool:['execution','result'],authority:['grant','revoke','human_approval','automated_review','human_oversight_review','governance_check'],safety:['stop_requested','block_registered','stop_confirmed','safety_alert'],telemetry:['heartbeat','gap','notice','governance_check'],otlp:['notice','self_report'],enforcement:['policy_decision','guardrail_decision','bundle_activation']};
+// Bundle activations (docs/kill-switch.md): an enforcement point reports which bundle revision it activated and when.
+const ACTIVATION_FIELDS=['bundleName','bundleRevision'];
+// collection: how an agent record was collected when not by the live hook (HISTORY_IMPORT: read later from the agent's own transcript by
+// scripts/import-agent-history.mjs). Only that value, only from an agent source.
+const fields=['id','kind','occurredAt','traceId','actionId','parentActionId','actor','model','tool','action','resource','destination','status','dataCategories','dataRefs','policyVersion','validFrom','validUntil','scope','authorityId','reviewer','targetVersion','note','purpose','aiObservation','governanceCheck','systemId','requestId','attemptId','modelId','modelVersion','clockUncertaintyMs','collection','executor','chain',...DECISION_FIELDS,...ACTIVATION_FIELDS];
 export function validateReference(ref){
  if(!ref||Array.isArray(ref)||typeof ref!=='object'||Object.keys(ref).some(k=>!['id','kind','version','hash','role','locator','description'].includes(k)))fail(400,'참고 데이터는 허용된 참조 메타데이터만 제출할 수 있습니다');
  if(!['document','dataset','record','retrieval','artifact'].includes(ref.kind)||!['input','retrieved','output'].includes(ref.role))fail(400,'참고 데이터 종류 또는 역할 오류');
@@ -20,9 +38,27 @@ export function validateEvent(raw,p) {
  if(!raw||Array.isArray(raw)||typeof raw!=='object')fail(400,'이벤트 객체가 필요합니다');
  for(const k of Object.keys(raw))if(!fields.includes(k))fail(400,`미수집 또는 예약 필드: ${k}`);
  if(!kindBySource[p.kind]?.includes(raw.kind))fail(403,'출처 자격에 허용되지 않은 이벤트 유형');
+ // Decision fields belong to enforcement-point records only; every other source keeps its v1 field set.
+ if(p.kind!=='enforcement'&&DECISION_FIELDS.some(k=>Object.hasOwn(raw,k)))fail(400,'정책 결정 필드는 enforcement 출처의 결정 기록에만 허용됩니다');
+ if(raw.kind!==ACTIVATION_KIND&&ACTIVATION_FIELDS.some(k=>Object.hasOwn(raw,k)))fail(400,'묶음 활성화 필드는 bundle_activation 기록에만 허용됩니다');
+ if(raw.kind===ACTIVATION_KIND&&['decision','policyId','decisionId','latencyMs','recordedBeforeExecution','actor','tool','action','resource'].some(k=>Object.hasOwn(raw,k)))
+  fail(400,'묶음 활성화 기록에는 결정·대상 필드를 쓸 수 없습니다');
  const e={};for(const [k,v] of Object.entries(raw)){
-  if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
+  // executor: who ran the agent, as its hook reports it (src/agent-ownership.mjs): OS account, PC, repository, git user. Agent sources only.
+  if(k==='executor'){if(p.kind!=='agent'||!v||Array.isArray(v)||typeof v!=='object'||!Object.keys(v).length)fail(400,'실행자 정보(executor)는 agent 출처의 객체만 허용됩니다');
+   e[k]={};for(const [f,x] of Object.entries(v)){if(!EXECUTOR_FIELDS.includes(f))fail(400,`지원하지 않는 executor 필드: ${f}`);e[k][f]=cleanText(x,256);}}
+  // chain: the record's place in its hook's numbered chain (src/collection-chain.mjs): stream, seq from 1, digest of the record before.
+  else if(k==='chain'){if(p.kind!=='agent'||!v||Array.isArray(v)||typeof v!=='object'||Object.keys(v).some(f=>!['stream','seq','prev'].includes(f))
+   ||typeof v.stream!=='string'||!/^[a-zA-Z0-9-]{8,64}$/.test(v.stream)||!Number.isSafeInteger(v.seq)||v.seq<1
+   ||!(v.prev==='genesis'||typeof v.prev==='string'&&/^[a-f0-9]{64}$/.test(v.prev)))
+   fail(400,'기록 연결 정보(chain)는 agent 출처의 {stream, seq(1 이상), prev(genesis 또는 SHA-256)}만 허용됩니다');
+   e[k]={stream:v.stream,seq:v.seq,prev:v.prev};}
+  else if(k==='collection'){if(v!==HISTORY_IMPORT||p.kind!=='agent')fail(400,'수집 경로 표시는 agent 출처의 history_import만 허용됩니다');e[k]=v;}
+  else if(k==='clockUncertaintyMs'){if(v!=='unknown'&&(!Number.isSafeInteger(v)||v<0||v>300000))fail(400,'시계 오차는 unknown 또는 0~300000ms 정수');e[k]=v;}
   else if(k==='aiObservation')e[k]=validateAIObservation(v);
+  else if(k==='decision'){if(!DECISIONS.includes(v))fail(400,'정책 결정은 allow, deny, require_approval, modify 중 하나입니다');e[k]=v;}
+  else if(k==='latencyMs'){if(!Number.isSafeInteger(v)||v<0||v>3600000)fail(400,'결정 지연은 0~3600000ms 정수');e[k]=v;}
+  else if(k==='recordedBeforeExecution'){if(typeof v!=='boolean')fail(400,'recordedBeforeExecution은 true 또는 false');e[k]=v;}
   else if(k==='governanceCheck')e[k]=normalizeGovernanceCheck(v);
   else if(k==='dataCategories'){if(!Array.isArray(v)||v.length>16)fail(400,'데이터 범주 최대 16개');e[k]=v.map(s=>cleanText(s,64));}
   else if(k==='dataRefs'){if(!Array.isArray(v)||v.length>16)fail(400,'참고 데이터 참조는 최대 16개');e[k]=v.map(validateReference);}
@@ -31,6 +67,15 @@ export function validateEvent(raw,p) {
  }
  ['id','actionId','traceId'].forEach(k=>identifier(e[k]));date(e.occurredAt);
  for(const k of ['systemId','requestId','attemptId','modelId'])if(e[k]!==undefined)identifier(e[k]);
+ if(DECISION_KINDS.includes(e.kind)){
+  if(!e.decision||!e.engine||!e.actor||!e.tool&&!e.action)fail(400,'정책 결정 기록에는 결정·엔진·행위자와 도구 또는 행동이 필요합니다');
+  for(const k of ['decisionId','enforcementPointId'])identifier(e[k]);if(e.policyId!==undefined)identifier(e.policyId);
+  if(e.bundleDigest!==undefined&&!/^[A-Za-z0-9._:+/=-]{8,200}$/.test(e.bundleDigest))fail(400,'정책 번들 digest 형식 오류');
+ }
+ if(e.kind===ACTIVATION_KIND){
+  if(!e.engine||!parseRevision(e.bundleRevision)||!/^[A-Za-z0-9._/:-]{1,128}$/.test(e.bundleName||''))fail(400,'묶음 활성화 기록에는 엔진·묶음 이름·EvidScope 리비전이 필요합니다');
+  identifier(e.enforcementPointId);
+ }
  if(Date.parse(e.occurredAt)>Date.now()+300000)fail(400,'미래 시각 오차가 5분을 초과했습니다');
  if(e.validFrom)date(e.validFrom);if(e.validUntil)date(e.validUntil);
  if(e.validFrom&&e.validUntil&&Date.parse(e.validFrom)>=Date.parse(e.validUntil))fail(400,'유효기간 역전');
@@ -39,14 +84,17 @@ export function validateEvent(raw,p) {
  if(e.kind==='human_oversight_review'&&(!knownGovernanceReference(e.reviewer)||!knownGovernanceReference(e.systemId)||!knownGovernanceReference(e.modelId)||!knownGovernanceReference(e.modelVersion)||!knownGovernanceReference(e.policyVersion)))fail(400,'사람 감독 수행 기록에는 확인 가능한 검토자·시스템·모델·정책 버전이 필요합니다');
  if(e.kind==='governance_check'&&(!e.governanceCheck||!['systemId','modelId','modelVersion','policyVersion'].every(k=>knownGovernanceReference(e[k]))))fail(400,'조항별 검증 기록에는 검증 내용·시스템·모델·정책 버전이 필요합니다');
  if(e.kind!=='governance_check'&&e.governanceCheck)fail(400,'조항별 검증 내용은 governance_check 기록에만 연결할 수 있습니다');
- return {...e,tenant:p.tenant,source:p.id,sourceKind:p.kind,receivedAt:new Date().toISOString(),fingerprint:digest(raw),assurance:p.kind==='agent'?'authenticated_self_report':'authenticated_service_record',late:Date.now()-Date.parse(e.occurredAt)>300000,payload:{minimization:'allowlist_metadata_only',originalContentStored:false}};
+ return {...e,tenant:p.tenant,source:p.id,sourceKind:p.kind,receivedAt:new Date().toISOString(),fingerprint:digest(raw),assurance:p.kind==='agent'?'authenticated_self_report':p.kind==='otlp'?'authenticated_telemetry_report':'authenticated_service_record',late:Date.now()-Date.parse(e.occurredAt)>300000,payload:{minimization:'allowlist_metadata_only',originalContentStored:false}};
 }
 export const ruleFields=['kind','tool','action','resource','destination','status','actor','note'];
+// words (src/rule-words.mjs) is evaluation engine v6: words in order, for commands an AI agent runs.
+export const RULE_OPS=Object.freeze(['eq','contains','neq','words']);
 export function validateRule(x,p,version) {
- identifier(x.id);cleanText(x.title,200);if(!ruleFields.includes(x.field)||!['eq','contains','neq'].includes(x.op)||!['low','medium','high'].includes(x.severity))fail(400,'제한된 룰 DSL만 허용됩니다');cleanText(x.value,200);
+ identifier(x.id);cleanText(x.title,200);if(!ruleFields.includes(x.field)||!RULE_OPS.includes(x.op)||!['low','medium','high'].includes(x.severity))fail(400,'제한된 룰 DSL만 허용됩니다');cleanText(x.value,200);
+ if(x.op==='words'&&!parseWords(x.value))fail(400,'words 룰은 공백 하나로 나눈 최대 12개 항목(대안은 |, 임의 문자는 *, 없어야 할 항목은 !)만 허용됩니다');
  return {id:x.id,title:x.title,field:x.field,op:x.op,value:x.value,severity:x.severity,version,status:'draft',author:p.id,createdAt:new Date().toISOString()};
 }
-export function matches(rule,event){const v=String(event[rule.field]??'');return rule.op==='eq'?v===rule.value:rule.op==='neq'?v!==rule.value:v.includes(rule.value);}
+export function matches(rule,event){const v=String(event[rule.field]??'');return rule.op==='eq'?v===rule.value:rule.op==='neq'?v!==rule.value:rule.op==='words'?matchesWords(rule.value,v):v.includes(rule.value);}
 
 // Missing legacy clock bounds retain source-claimed ordering, never trusted time.
 const clockBound=e=>e.clockUncertaintyMs==='unknown'?Infinity:(e.clockUncertaintyMs??0);
@@ -55,7 +103,80 @@ const contextFields=['tenant','actionId','traceId','systemId','requestId','attem
 const sameContext=(a,b)=>contextFields.every(k=>(a[k]!==undefined||b[k]!==undefined)?a[k]===b[k]:true);
 const sameTarget=(a,b)=>sameContext(a,b)&&['actor','tool','action','resource'].every(k=>a[k]&&a[k]===b[k])&&(!a.destination||a.destination===b.destination);
 
-export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
+// Bump when evaluate()/boundedEvaluation() can return different output for the same inputs: signed evaluations record
+// this identifier and src/policy-replay.mjs never compares results produced by a different engine.
+export const EVALUATION_ENGINE='evidscope-evaluate-v1';
+// v2 adds the agent registry and policy-decision rules. Their inputs (registry rows, enforcement records, related denies) never
+// occur in a v1 snapshot, and for any v1 snapshot v2 returns exactly the v1 output. An evaluation therefore names v2 only
+// when its snapshot holds a v2 input, so verifiers that know only v1 keep replaying every tenant without a registry.
+export const EVALUATION_ENGINE_V2='evidscope-evaluate-v2';
+// v3 adds the EvidScope approval queue (src/approvals.mjs). Its input (the action's approval requests) occurs only in snapshots of
+// actions with a request, and an evaluation names v3 only then: a verifier that knows v1/v2 reports it as engine_unavailable
+// instead of replaying a snapshot it cannot rebuild.
+export const EVALUATION_ENGINE_V3='evidscope-evaluate-v3';
+// v4 adds the stop-order rules (src/stop-orders.mjs). Their input occurs only in a snapshot of a tenant with a stop order, and for
+// any snapshot without one v4 returns the v1/v2/v3 output; a verifier without v4 reports v4 evaluations as engine_unavailable.
+// A snapshot with both inputs names the highest engine.
+export const EVALUATION_ENGINE_V4='evidscope-evaluate-v4';
+// v5 adds the multi-action rules of AI agents (src/sequence-rules.mjs). Their input (risky steps of the same actor in other actions)
+// occurs only in the snapshot of an action with a risky step, and for any snapshot without it v5 returns the v1-v4 output. Unlike
+// the earlier inputs it comes from records older engines also read (intents and tenant rules), so src/policy-replay.mjs rebuilds it
+// only for evaluations that name v5.
+export const EVALUATION_ENGINE_V5='evidscope-evaluate-v5';
+// v6 adds the words rule operator (src/rule-words.mjs). Only a snapshot whose tenant rules include a words rule can differ, and an
+// evaluation names v6 only then, so a verifier without v6 reports it as engine_unavailable instead of reading the rule as contains.
+// v6 includes v5: src/policy-replay.mjs rebuilds the related steps for it too.
+export const EVALUATION_ENGINE_V6='evidscope-evaluate-v6';
+// v7 reads the command of an AI coding agent (agentCommandInput) without its code markup when it looks for injection-shaped notes.
+// Its input occurs only in the snapshot of an action with such a command, and for any other snapshot v7 returns the v1-v6 output; like
+// v5 the input comes from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v7.
+// v7 includes v5 and v6.
+export const EVALUATION_ENGINE_V7='evidscope-evaluate-v7';
+// v8 reads the AI agent records imported later from the agent's own transcript (collection 'history_import', historyImportInput):
+// they are late by nature, so each adds no LATE_EVIDENCE finding of its own (its `late` stays on the event). Its input occurs only in
+// the snapshot of an action with such a record, and for any other snapshot v8 returns the v1-v7 output; like v5 and v7 the input comes
+// from records older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v8. v8 includes v5-v7.
+export const EVALUATION_ENGINE_V8='evidscope-evaluate-v8';
+// v9 adds the LLM security findings of AI coding agents (src/content-rules.mjs): the content records the hook sends for a prompt or a
+// tool's answer (signals only, src/agent-content-signals.mjs) become findings, and an injection signal followed by a risky call of the
+// same session is a chain. Its input (contentSignals) occurs only in the snapshot of an action with a signalled content record or with
+// a risky step after such a record, and for any other snapshot v9 returns the v1-v8 output; like v5 the input comes from records
+// older engines also read, so src/policy-replay.mjs rebuilds it only for evaluations that name v9. v9 includes v5-v8.
+export const EVALUATION_ENGINE_V9='evidscope-evaluate-v9';
+export const EVALUATION_ENGINES=Object.freeze([EVALUATION_ENGINE,EVALUATION_ENGINE_V2,EVALUATION_ENGINE_V3,EVALUATION_ENGINE_V4,EVALUATION_ENGINE_V5,
+ EVALUATION_ENGINE_V6,EVALUATION_ENGINE_V7,EVALUATION_ENGINE_V8,EVALUATION_ENGINE_V9]);
+export const evaluationEngine=data=>data.contentSignals!==undefined?EVALUATION_ENGINE_V9
+ :data.historyImports!==undefined?EVALUATION_ENGINE_V8:data.agentCommands!==undefined?EVALUATION_ENGINE_V7
+ :(data.rules||[]).some(r=>r.op==='words')?EVALUATION_ENGINE_V6
+ :data.relatedSteps!==undefined?EVALUATION_ENGINE_V5:data.stopOrders!==undefined?EVALUATION_ENGINE_V4
+ :data.approvals!==undefined?EVALUATION_ENGINE_V3
+ :data.registry!==undefined||data.relatedDecisions!==undefined||(data.events||[]).some(e=>e.sourceKind==='enforcement')?EVALUATION_ENGINE_V2:EVALUATION_ENGINE;
+// Injection-shaped text in a note (LOG_INJECTION_SIGNAL): script markup or an instruction aimed at the reviewer. In the command of an
+// AI coding agent, markup is the code it writes (grep "<script" app.html), so engine v7 reads only the instruction part there.
+const INJECTION_TEXT=/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i;
+const INSTRUCTION_TEXT=/ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경/i;
+// Engine v7 input: the ledger sequences of the action's AI coding agent records (an agent source naming a coding agent tool,
+// src/agent-hook-events.mjs) whose note is injection-shaped only through markup. Undefined when there is none, so every other
+// snapshot stays as it was. The tool is the source's claim: an agent source can only quiet the markup check of its own notes.
+const agentCommand=e=>e.sourceKind==='agent'&&HOOK_AGENTS.includes(e.tool)&&['intent','self_report'].includes(e.kind);
+export function agentCommandInput(events){
+ const seqs=events.filter(e=>agentCommand(e)&&Number.isSafeInteger(e.seq)&&INJECTION_TEXT.test(e.note||'')&&!INSTRUCTION_TEXT.test(e.note||'')).map(e=>e.seq);
+ return seqs.length?seqs.sort((a,b)=>a-b):undefined;
+}
+// Engine v8 input: the ledger sequences of the action's agent records marked as imported from the agent's transcript. Undefined when
+// there is none, so every other snapshot stays as it was. The mark is the source's claim (validateEvent allows it on agent records
+// only): an agent source can only quiet the lateness finding of its own records, and the record still reads as late.
+const historyImport=e=>e.sourceKind==='agent'&&e.collection===HISTORY_IMPORT;
+export function historyImportInput(events){
+ const seqs=events.filter(e=>historyImport(e)&&Number.isSafeInteger(e.seq)).map(e=>e.seq);
+ return seqs.length?seqs.sort((a,b)=>a-b):undefined;
+}
+// The only exception that can suppress a finding: approved (never a pending request), unexpired at analysis time, and
+// recorded for the same action and rule. The vault applies the same predicate to worker results.
+export function suppressingException(exceptions,finding,actionId,now){
+ return exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===actionId&&(x.ruleId===finding.code||finding.code.startsWith(`CUSTOM:${x.ruleId}:`)));
+}
+export function evaluate(events,assets,rules,exceptions,now=Date.now(),{registry,relatedDecisions,approvals:queue,stopOrders,relatedSteps,agentCommands,historyImports,contentSignals}={}) {
  const findings=aiScenarioFindings(events,assets);const add=(code,severity,message,refs)=>findings.push({code,severity,message,evidence:refs.map(e=>`${e.source}/${e.id}`)});
  const actions=events.filter(e=>['intent','execution','self_report','result'].includes(e.kind));
  const executions=events.filter(e=>e.sourceKind==='tool'&&['execution','result'].includes(e.kind));
@@ -88,7 +209,7 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
   if(!grants.some(g=>validAt(g,e))){add(grantUnknown.length?'AUTHORITY_TIME_UNCERTAIN':grants.length?'AUTHORITY_MISMATCH':'AUTHORITY_MISSING',grantUnknown.length?'medium':'high',grantUnknown.length?'시계 오차 때문에 권한과 실행의 순서·유효기간을 확정할 수 없습니다':'실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다',[e,...grants]);}
   const policies=historicalPolicies(e),requirements=[...new Set(policies.map(a=>a.approvalRequired===true||a.approvalRequired===false?a.approvalRequired:'unknown'))];
   if(requirements.length!==1||requirements[0]==='unknown')add('APPROVAL_REQUIREMENT_UNKNOWN','medium','행동 당시 정책에서 건별 사람 승인 필요 여부를 확인할 수 없습니다',[e]);
-  else if(requirements[0]&&!approvals.some(g=>validAt(g,e))){const uncertain=approvals.filter(g=>validity(g,e)==='unknown');add(uncertain.length?'APPROVAL_TIME_UNCERTAIN':approvals.length?'APPROVAL_MISMATCH':'HUMAN_APPROVAL_MISSING','medium',uncertain.length?'시계 오차 때문에 사람 승인이 실행보다 앞섰는지 확정할 수 없습니다':'당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다',[e,...approvals]);}
+  else if(requirements[0]&&!approvals.some(g=>validAt(g,e))&&!(queue&&approvalSatisfied(queue,e,clockBound,{policyVersion:true}))){const uncertain=approvals.filter(g=>validity(g,e)==='unknown');add(uncertain.length?'APPROVAL_TIME_UNCERTAIN':approvals.length?'APPROVAL_MISMATCH':'HUMAN_APPROVAL_MISSING','medium',uncertain.length?'시계 오차 때문에 사람 승인이 실행보다 앞섰는지 확정할 수 없습니다':'당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다',[e,...approvals]);}
  }
  for(const report of events.filter(e=>e.kind==='self_report'&&e.status==='success')){
   const comparable=executions.filter(e=>sameTarget(report,e)&&e.kind==='result');
@@ -108,14 +229,39 @@ export function evaluate(events,assets,rules,exceptions,now=Date.now()) {
   if(request.kind==='block_registered'&&successes.length)add('BLOCK_SUCCESS_CONFLICT','high','같은 시도·모델·대상에 차단 등록과 이후 성공 결과가 함께 있습니다. 실제 차단 효력과 진행 중 작업 여부를 검토하세요',[request,...successes]);
   if(continued.length)add('EXECUTION_AFTER_STOP_REQUEST','high','중단 요청 이후 동일 대상의 실행 기록이 관측되었습니다. 중단 전 시작된 작업의 결과인지 확인하세요',[request,...continued]);
  }
+ // An agent's after-record repeats its intent's note (src/agent-hook-events.mjs): a words rule (engine v6) flags the call once, on the
+ // intent, and reads an after-record only when no intent of the action carries the same note.
+ const repeatsIntent=e=>e.kind==='self_report'&&events.some(x=>x.kind==='intent'&&x.actionId===e.actionId&&x.note===e.note);
+ const commands=new Set(agentCommands||[]),imported=new Set(historyImports||[]);
  for(const e of events){
   if(e.kind==='gap')add('COLLECTION_GAP','high','수집 출처가 관측 공백을 보고했습니다',[e]);
-  if(e.late)add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
-  if(/<script|javascript:|ignore.{0,30}instructions|감사.{0,20}룰.{0,20}변경|\bonerror\s*=/i.test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
-  for(const r of rules)if(matches(r,e))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
+  if(e.late&&!(imported.has(e.seq)&&historyImport(e)))add('LATE_EVIDENCE','low','행동 시각보다 5분 이상 늦게 접수된 증거입니다',[e]);
+  if((commands.has(e.seq)&&agentCommand(e)?INSTRUCTION_TEXT:INJECTION_TEXT).test(e.note||''))add('LOG_INJECTION_SIGNAL','medium','지시 또는 실행 payload 형태의 비신뢰 로그입니다. 의미적 공격 확정은 아닙니다',[e]);
+  for(const r of rules)if(matches(r,e)&&!(r.op==='words'&&repeatsIntent(e)))add(`CUSTOM:${r.id}:v${r.version}`,r.severity,r.title,[e]);
  }
+ registryFindings(events,registry,{add,clockBound});
+ decisionFindings(events,{add,order,validity,approvals,related:relatedDecisions,enforcedTools:e=>enforcedToolsAt(registry,e),
+  ...(queue?{vaultApproved:e=>approvalSatisfied(queue,e,clockBound),requested:(d,e)=>approvalRequested(queue,d,e)}:{})});
+ approvalFindings(events,queue,{add,clockBound});
+ stopOrderFindings(events,stopOrders,{add,clockBound});
+ sequenceFindings(events,relatedSteps,{add,rules,matches});
+ contentFindings(events,contentSignals,{add,rules,matches});
  const unique=[...new Map(findings.map(f=>[f.code+'|'+f.evidence.join(','),f])).values()];
- for(const f of unique){const exception=exceptions.find(x=>x.status==='approved'&&Date.parse(x.expiresAt)>now&&x.actionId===events[0]?.actionId&&(x.ruleId===f.code||f.code.startsWith(`CUSTOM:${x.ruleId}:`)));if(exception){f.suppressedBy=exception.id;f.message+=' (승인된 한시 예외; 원본·법적 판단은 유지)';}}
+ for(const f of unique){
+  const exception=suppressingException(exceptions,f,events[0]?.actionId,now);
+  if(exception){f.suppressedBy=exception.id;f.message+=' (승인된 한시 예외; 원본·법적 판단은 유지)';}
+ }
  const reportedSuccess=executions.some(e=>e.kind==='result'&&e.status==='success'),reportedFailure=executions.some(e=>e.kind==='result'&&e.status==='failure');
  return {findings:unique,authority:executions.length?(unique.some(f=>f.code.startsWith('AUTHORITY'))?'unverified_or_mismatch':'matched_at_event_time'):'not_observed',effect:reportedSuccess&&reportedFailure?'mixed_results':reportedSuccess?'independently_reported_success':reportedFailure?'independently_reported_failure':'unconfirmed',limitations:['출처 인증은 내용의 진실성을 보증하지 않습니다','출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다','시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다','승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다']};
+}
+// The analysis worker and the offline replay bound results identically, so a replayed result is byte-identical.
+export function boundedEvaluation(input,limits){
+ const result=evaluate(input.events,input.assets,input.rules,input.exceptions,input.analysisTime,{registry:input.registry,relatedDecisions:input.relatedDecisions,
+  approvals:input.approvals,stopOrders:input.stopOrders,relatedSteps:input.relatedSteps,agentCommands:input.agentCommands,
+  historyImports:input.historyImports,contentSignals:input.contentSignals});
+ const totalFindings=result.findings.length;result.findings=result.findings.slice(0,limits.findings);
+ const coverage=()=>({totalFindings,returnedFindings:result.findings.length,truncated:totalFindings>result.findings.length});
+ result.coverage=coverage();
+ while(Buffer.byteLength(JSON.stringify(result))>limits.resultBytes-1024&&result.findings.length){result.findings.pop();result.coverage=coverage();}
+ return result;
 }

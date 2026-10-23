@@ -13,6 +13,7 @@
 !scripts/
 !scripts/k8s-load.mjs
 !scripts/k8s-distribution.mjs
+!scripts/signer.mjs
 **/*.pem
 **/*.key
 **/*.sqlite*

@@ -5,20 +5,66 @@ import {join,resolve} from 'node:path';
 import {generateKeyPairSync} from 'node:crypto';
 import {writeFileSync,mkdtempSync,readFileSync,mkdirSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {inspect} from 'node:util';
 import {harness} from './harness.mjs';
 import {submit} from '../src/client.mjs';
 import {verifyCaseReport} from '../src/report-verifier.mjs';
 import {initialize} from '../scripts/init.mjs';
 import {createService} from '../src/service.mjs';
 
-async function fixture(h,actionId='review-action') {
+async function fixture(h,actionId='review-action',step=(_stage,_path,run)=>run()) {
  const base={actionId,traceId:'review-trace',occurredAt:new Date().toISOString(),actor:'assistant',tool:'crm',action:'update',resource:'case-42'};
- for(const [source,event] of [['agent',{id:'claim',kind:'self_report',status:'success'}],['tool',{id:'result',kind:'result',status:'failure'}]])assert.equal((await submit(h.ingress.url,h.principal(source),{...base,...event})).status,202);
+ for(const [source,event] of [['agent',{id:'claim',kind:'self_report',status:'success'}],['tool',{id:'result',kind:'result',status:'failure'}]])assert.equal((await step(`fixture ingest ${source}/${event.id}`,h.ingress.url+'/api/ingest',()=>submit(h.ingress.url,h.principal(source),{...base,...event}))).status,202);
  await h.analyze();
  const response=await h.api('/api/cases',{body:{title:'합성 실무 조사',owner:'audit-team',actionId}});assert.equal(response.status,200);
  return {base,case:response.body,path:`/api/cases/${response.body.id}`,ref:`${h.principal('tool').id}/result`};
 }
 function decision(contextHash,ref,extra={}) {return {contextHash,conclusion:'confirmed_issue',scope:'이 행동의 요청과 서비스 결과 대조',reason:'서비스 실패가 자기보고 성공과 상충함',limitations:'외부 원본과 최종 업무 상태는 별도 확인 필요',nextReviewAt:new Date(Date.now()+86400000).toISOString(),evidence:[{ref,supports:'supports',note:'인증된 서비스 결과'}],...extra};}
+
+// Observe this test's existing operations without retrying or changing HTTP behavior.
+function workbenchDiagnostics(t) {
+ const steps=[],servers=[];let failed=false;
+ const track=(name,server)=>{
+  if(!server||servers.some(entry=>entry.server.child===server.child))return;
+  const entry={name,server,stderrSinceTracking:''};
+  entry.onStderr=chunk=>{entry.stderrSinceTracking+=chunk.toString();};
+  server.child.stderr.on('data',entry.onStderr);servers.push(entry);
+ };
+ const snapshot=()=>servers.map(({name,server,stderrSinceTracking})=>({
+  name,url:server.url,pid:server.child.pid,exitCode:server.child.exitCode,
+  signalCode:server.child.signalCode,killed:server.child.killed,connected:server.child.connected,
+  // The harness combines startup stdout/stderr; do not label it as stderr alone.
+  combinedHarnessLog:server.logs(),stderrSinceTracking
+ }));
+ const step=async(stage,path,run)=>{
+  const entry={sequence:steps.length+1,stage,path,startedAt:new Date().toISOString()};steps.push(entry);
+  try{const result=await run();entry.completedAt=new Date().toISOString();if(result?.status!==undefined)entry.status=result.status;return result;}
+  catch(error){entry.failedAt=new Date().toISOString();throw error;}
+ };
+ const wrap=h=>{
+  track('vault.initial',h.vault);track('ingress',h.ingress);track('audit',h.audit);
+  const api=h.api,analyze=h.analyze,restart=h.restart;
+  h.api=(path,options={})=>step(`${options.body===undefined?'GET':'POST'} ${path}`,(options.base||h.audit.url)+path,()=>api(path,options));
+  h.analyze=()=>step('worker analysis',{
+   endpointCandidates:[h.vault.url+'/internal/claim',h.vault.url+'/internal/complete'],
+   note:'The worker may make multiple requests; this outer stage does not identify an individual failing endpoint.'
+  },()=>analyze());
+  h.restart=()=>step('vault restart',h.vault.url,async()=>{const server=await restart();track('vault.restarted',server);return server;});
+  t.after(async()=>{
+   try{await h.close();}
+   finally{
+    t.diagnostic(JSON.stringify({workbenchDiagnostics:failed?'servers after failure cleanup':'completed',steps:steps.length,servers:snapshot()}));
+    for(const entry of servers)entry.server.child.stderr.removeListener('data',entry.onStderr);
+   }
+  });
+  return h;
+ };
+ return {step,wrap,fail(error){
+  failed=true;
+  // inspect includes the original stack, recursive cause and AggregateError entries.
+  t.diagnostic(JSON.stringify({workbenchDiagnostics:'failure',originalError:inspect(error,{depth:8,breakLength:Infinity}),currentStep:steps.at(-1),steps,servers:snapshot()}));
+ }};
+}
 
 test('행동 조사함: 이벤트를 행동으로 묶고 미확인·혼합 결과·권한 경계를 유지',async t=>{
  const h=await harness();t.after(()=>h.close());const f=await fixture(h);
@@ -50,7 +96,9 @@ test('사람 판단: 필수 사유·범위·반증과 같은 행동 근거만 �
 });
 
 test('새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409, 사건 보고서는 독립 검증',async t=>{
- const h=await harness();t.after(()=>h.close());const f=await fixture(h);
+ const diagnostics=workbenchDiagnostics(t);
+ try{
+ const h=diagnostics.wrap(await diagnostics.step('harness startup',null,()=>harness()));const f=await fixture(h,'review-action',diagnostics.step);
  let context=(await h.api(f.path+'/review-context')).body;
  assert.equal((await h.api(f.path+'/decisions',{body:decision(context.contextHash,f.ref)})).status,200);
  const exported=await h.api(f.path+'/report');assert.equal(exported.status,200);
@@ -64,7 +112,7 @@ test('새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409,
  assert.throws(()=>verifyCaseReport(exported.body,h.publicKey,{expectedTenant:'beta'}),/tenant/);
  assert.throws(()=>verifyCaseReport(exported.body,h.publicKey,{expectedReportHash:'0'.repeat(64)}),/digest/);
  assert.equal(verifyCaseReport(exported.body,h.publicKey,{expectedReportHash:checked.reportHash}).rollbackChecked,true);
- await submit(h.ingress.url,h.principal('tool'),{...f.base,id:'late-new-result',kind:'result',status:'success'});
+ await diagnostics.step('late evidence ingest tool/late-new-result',h.ingress.url+'/api/ingest',()=>submit(h.ingress.url,h.principal('tool'),{...f.base,id:'late-new-result',kind:'result',status:'success'}));
  assert.equal((await h.api(f.path+'/review-context')).body.reviewState,'stale');
  assert.equal((await h.api(f.path+'/decisions',{body:decision(context.contextHash,f.ref)})).status,409);
  await h.analyze();context=(await h.api(f.path+'/review-context')).body;assert.equal(context.decisions.length,1);assert.equal(context.reviewState,'stale');
@@ -74,6 +122,7 @@ test('새 증거·분석 변경은 재검토, 오래된 화면의 판단은 409,
  const newer=(await h.api(f.path+'/report')).body;assert.equal(verifyCaseReport(newer,h.publicKey).reviewState,'inconclusive');
  assert.throws(()=>verifyCaseReport(exported.body,h.publicKey,{expectedCheckpoint:newer.snapshot.checkpoint}),/rollback/);
  await h.restart();assert.equal((await h.api(f.path+'/review-context')).body.decisions.length,2);
+ }catch(error){diagnostics.fail(error);throw error;}
 });
 
 test('보고서는 이벤트·사건·판단·평가의 변조된 조회 복사본을 서명하지 않는다',async t=>{
@@ -100,7 +149,8 @@ test('검토 기한 만료와 정당한 원문 파기는 과거 판단을 보존
  assert.equal((await h.api(f.path+'/review-context')).body.reviewState,'reviewed');
  await new Promise(resolve=>setTimeout(resolve,600));context=(await h.api(f.path+'/review-context')).body;assert.equal(context.reviewState,'stale');
  assert.equal((await h.api(f.path+'/decisions',{body:decision(context.contextHash,f.ref)})).status,200);
- await h.api(f.path,{body:{status:'closed',reason:'합성 보존 연계 시험을 위한 사건 종결'}});
+ // Four-eyes (S10): the auditor opened the case, so a reviewer closes it.
+ assert.equal((await h.api(f.path,{role:'reviewer',body:{status:'closed',reason:'합성 보존 연계 시험을 위한 사건 종결'}})).status,200);
  await new Promise(resolve=>setTimeout(resolve,600));
  const plan=(await h.api('/api/retention/plans',{role:'reviewer',body:{reason:'합성 원문 만료'}})).body;assert.ok(plan.id);
  assert.equal((await h.api(`/api/retention/plans/${plan.id}/approve`,{role:'admin',body:{reason:'다른 검토자가 범위 확인'}})).status,200);

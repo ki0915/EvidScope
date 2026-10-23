@@ -10,7 +10,10 @@ for(let index=0;index<args.length;index++){
  else if(!args[index].startsWith('--')&&!assetSeen){assetRef=args[index];assetSeen=true;}
  else badArguments=true;
 }
-if(badArguments){process.stderr.write('usage: node scripts/collect-ai-observations.mjs <sdk|http|otlp|zeek|local> [asset-ref] [--screen --tls-config <path>]\n');process.exit(2);}
+// One bare span per line used to be accepted here; a full ExportTraceServiceRequest silently became an
+// 'unknown' notice. OTLP now goes to POST /v1/traces (src/otlp-http.mjs) through one mapping implementation.
+if(kind==='otlp'){process.stderr.write('otlp mode is retired: send OTLP to the ingress POST /v1/traces (deploy/otel-collector/README.ko.md) or replay saved exports with scripts/replay-otlp.mjs\n');process.exit(2);}
+if(badArguments){process.stderr.write('usage: node scripts/collect-ai-observations.mjs <sdk|http|zeek|local> [asset-ref] [--screen --tls-config <path>]\n');process.exit(2);}
 const enabled=screenRequested&&kind!=='zeek';let client;
 // Configuration is trusted local mTLS material only. No host model or URL fallback exists.
 if(enabled&&tlsConfigPath)try{client=createScreeningClient(loadModelTlsConfig(tlsConfigPath));}catch{/* Preserve a minimized classifier_error record for each input. */}

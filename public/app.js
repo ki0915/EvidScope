@@ -8,13 +8,14 @@ let csrfToken = '';
 let sessionPrincipal = null;
 let sessionExpiresAt = null;
 let authBusy = false;
-let activeView = 'investigations';
+let activeView = 'home';
 let renderEpoch = 0;
 let authEpoch = 0;
 let detailEpoch = 0;
 let disposeView = () => {};
 let workspaceFilters = { q: '', range: '24h' };
 const views = {
+  home: ['지금 확인할 일', '지금 활동 중인 에이전트, 위협, 사람의 검토가 필요한 항목과 거버넌스 증거 현황을 한 화면에서 확인합니다.'],
   agents: ['에이전트 목록', '에이전트별 정책 점검 결과와 평가 범위, 참고자료 및 사람의 검토 현황을 확인합니다.'],
   graphs: ['가시성 그래프', 'AI 행동의 관측 범위를 비교하고, 그래프에서 근거와 실제 검증 결과로 이어갑니다.'],
   investigations: ['행동 조사함', '검토할 행동을 고르고, 실제 근거를 대조한 뒤 사람의 판단과 후속 조치를 남깁니다.'],
@@ -29,6 +30,8 @@ const views = {
 };
 const labels = {
   high: '높음', critical: '심각', medium: '중간', low: '낮음', info: '정보',
+  proposed: '제안됨', superseded: '대체됨', suspended: '중지됨', erased: '파기함', nothing_due: '기한 도래 없음', no_active_policy: '활성 정책 없음',
+  access_log_pruned: '접근 기록 정리', policy_expired: '정책 기한 만료',
   unknown: '미확인', pending: '검토 대기', reviewed: '인간 검토됨', sufficient: '충분', insufficient: '부족',
   context_only: '참고 맥락', partial: '일부 관측', contentObserved: '내용 관측', not_run: '미실행', unverified: '검증 전',
   open: '진행 전', in_review: '검토 중', investigating: '조사 중', closed: '종결', resolved: '해결됨',
@@ -41,17 +44,19 @@ const labels = {
   suppressed: '예외 적용', retired: '이전 버전', voluntary: '자율 적용',
   unverified_or_mismatch: '권한 미확인 또는 불일치', matched_at_event_time: '행동 시점 범위 일치', not_observed: '실행 미관측',
   independently_reported_success: '독립 서비스 성공 기록', independently_reported_failure: '독립 서비스 실패 기록', unconfirmed: '외부 결과 미확인',
-  authenticated_self_report: '인증된 AI 자기보고', authenticated_service_record: '인증된 서비스 기록',
+  authenticated_self_report: '인증된 AI 자기보고', authenticated_service_record: '인증된 서비스 기록', authenticated_telemetry_report: '인증된 텔레메트리 보고(OTLP)',
   receiving: '최근 수신됨', not_connected: '미연결', no_observation: '수신 이력 없음', started: '시작 기록', success: '성공 기록', failure: '실패 기록', registered: '등록됨',
   released: '보류 해제됨', executed: '파기 실행됨', quarantined_resource_limit: '분석 미완료 · 자원 한도',
   intent: '행동 요청', execution: '도구 실행 기록', result: '도구 결과 기록',
   grant: '권한 부여', revoke: '권한 철회', human_approval: '외부 사람 승인', automated_review: '자동 검토', delegation: '위임 자기보고',
+  block_registered: '차단 등록',
   governance_check: '보고된 조치 시험', human_oversight_review: '사람 감독 수행 기록',
   document: '문서', dataset: '데이터셋', record: '레코드', retrieval: '검색 참조', artifact: '산출물',
   input: '입력', retrieved: '검색된 자료', output: '출력', self_reported_reference: 'AI가 보고한 참조', service_reported_reference: '서비스가 보고한 참조',
   confirmed_issue: '문제 확인', no_issue_found: '검토 범위에서 문제 미발견', inconclusive: '판단 유보',
   supports: '판단을 뒷받침', contradicts: '판단과 상충', context: '배경 근거', evaluated: '평가 완료',
   mixed_results: '독립 서비스 성공·실패 혼재',
+  self_asserted: '자기 주장 증거',
 };
 const label = (value) => labels[value] || String(value ?? '미확인');
 const stringify = (value) => typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value ?? '미확인');
@@ -167,7 +172,7 @@ async function api(path, method = 'GET', body) {
     const data = await response.json().catch(() => ({}));
     if (requestToken !== token || requestAuthEpoch !== authEpoch) throw new Error('접속 상태가 변경되어 이전 응답을 표시하지 않습니다.');
     if (!response.ok) {
-      if (response.status === 401) { clearAuth(); throw Object.assign(new Error('인증이 만료되었거나 접근 자격이 회수되었습니다. 다시 접속하세요.'), {status:401}); }
+      if (response.status === 401) { const signedIn = authMode === 'oidc' || Boolean(token) && $('#auth-toggle').textContent !== '접속'; clearAuth(); throw Object.assign(new Error(signedIn ? '인증이 만료되었거나 접근 자격이 회수되었습니다. 다시 접속하세요.' : '토큰이 맞지 않습니다. 로컬 설정의 감사자 또는 검토자 토큰을 확인하세요.'), {status:401}); }
       if (response.status === 403) throw Object.assign(new Error(`접근 거부: ${stringify(data.error || data.message || '현재 계정에 이 작업의 권한이 없습니다.')}`), {status:403});
       if (response.status === 409) { const error = new Error(`현재 기록과 충돌했습니다: ${stringify(data.error || data.message || '최신 근거를 다시 조회하세요.')}`); error.status = 409; throw error; }
       throw new Error(`요청 실패 (${response.status}): ${stringify(data.error || data.message || '서버 응답을 확인하세요.')}`);
@@ -203,7 +208,9 @@ function sourceTable(sources) {
 async function overview() {
   const data = await api('/api/overview'); const node = el('div'); const stats = el('div', 'grid stats');
   if (window.EvidScopeConsole) node.append(await window.EvidScopeConsole.overviewPulse());
-  [['수집 이벤트', 'events', '지속성 접수된 관측 기록'], ['탐지 경보', 'alerts', '행동 대조와 룰의 위험 신호'], ['감사 사건', 'cases', '담당자가 검토하는 조사 기록'], ['분석 대기', 'backlog', '아직 평가가 완료되지 않은 기록']].forEach(([title, key, note]) => {
+  const syntheticAlerts = data.counts?.syntheticAlerts || 0;
+  if (data.counts && Number.isFinite(data.counts.alerts)) data.counts = { ...data.counts, alerts: data.counts.alerts - syntheticAlerts };
+  [['수집 이벤트', 'events', '지속성 접수된 관측 기록'], ['탐지 경보', 'alerts', syntheticAlerts ? `실제 기록의 위험 신호 · 합성(데모) ${syntheticAlerts.toLocaleString('ko-KR')}건 제외` : '행동 대조와 룰의 위험 신호'], ['감사 사건', 'cases', '담당자가 검토하는 조사 기록'], ['분석 대기', 'backlog', '아직 평가가 완료되지 않은 기록']].forEach(([title, key, note]) => {
     const stat = el('section', 'stat'); stat.append(el('div', 'stat-label', title), el('div', 'stat-value', data.counts?.[key] == null ? '—' : data.counts[key].toLocaleString('ko-KR')), el('div', 'stat-note', note)); stats.append(stat);
   }); node.append(stats);
   const columns = el('div', 'grid two');
@@ -236,10 +243,34 @@ async function graphsView() {
       if (current !== epoch || access !== authEpoch || viewEpoch !== renderEpoch || !token) return;
       monitor = window.EvidScopeMonitor.mount({dataNotice:overviewData.limitations?.find(text=>text.includes('합성')),fetchData:(range, source)=>api(`/api/monitoring?${new URLSearchParams({range,source})}`),isCurrent:()=>viewEpoch===renderEpoch&&current===epoch&&access===authEpoch&&Boolean(token)});
       disposeView = () => { epoch++; monitor?.dispose(); };
-      content.replaceChildren(monitor.root, window.EvidScopeLiveGraphs.render({ overview: overviewData, investigations, onOpenAction: actionDetail }));
+      content.replaceChildren(monitor.root, chainCard(), window.EvidScopeLiveGraphs.render({ overview: overviewData, investigations, onOpenAction: actionDetail }));
     } catch (error) { if (current === epoch && access === authEpoch) content.replaceChildren(empty('그래프를 표시하지 못했습니다', error.message)); }
   }
   await choose(token ? 'live' : 'cluster'); return root;
+}
+// Collection continuity of agent hooks (GET /api/collection/chains): numbered records, holes, broken links and restarts per stream.
+const holeLabels = { pending: '도착 대기', confirmed: '빠짐 확정' };
+function chainCard() {
+  const node = card('수집 연속성', '에이전트 훅은 기록마다 순번과 앞 기록의 지문을 붙입니다. 순번이 비거나 앞 기록과 맞지 않으면 PC와 EvidScope 사이에서 기록이 빠졌거나 바뀐 것입니다.');
+  const body = el('div'); node.append(body);
+  async function load() {
+    body.replaceChildren(el('p', 'muted', '불러오는 중…'));
+    try {
+      const r = await api('/api/collection/chains'), c = r.counts;
+      const stats = el('p', '', `훅 기록 ${c.agentRecords}건 중 번호 붙은 기록 ${c.chained}건 · 스트림 ${c.streams}개 · 빠짐 확정 ${c.confirmedMissingRanges}구간(${c.missingRecords}건 중) · `
+        + `도착 대기 ${c.pendingMissingRanges}구간 · 연결 불일치 ${c.brokenLinks}건 · 번호 중복 ${c.reusedNumbers}건 · 재시작 ${c.restarts}회`);
+      const rows = r.streams.map(s => [s.source, s.actor || '—', `${s.firstSeq}~${s.lastSeq}`, s.records,
+        s.missing.length ? s.missing.map(h => `${h.from}~${h.to} ${holeLabels[h.status] || h.status}`).join(', ') : '없음',
+        s.broken.length ? s.broken.map(b => `${b.seq}번${b.result === 'unverifiable' ? '(키 파기로 확인 불가)' : ''}`).join(', ') : '없음', s.lastReceivedAt]);
+      const check = button('지금 점검해 경보로 기록', async () => {
+        try { const out = await api('/api/collection/chains/check', 'POST', {}); check.textContent = `새로 기록한 문제 ${out.recorded.length}건`; }
+        catch (error) { check.textContent = error.message; }
+      });
+      const notes = el('ul', 'muted'); (r.limitations || []).forEach(text => notes.append(el('li', '', text)));
+      body.replaceChildren(stats, table(['출처', '행위자', '순번', '기록', '빠진 구간', '연결 불일치', '마지막 수신'], rows), check, notes);
+    } catch (error) { body.replaceChildren(empty('수집 연속성을 불러오지 못했습니다', error.message)); }
+  }
+  load(); return node;
 }
 const reviewLabels = { unreviewed: '미검토', reviewed: '현재 근거 검토됨', stale: '새 근거·기한에 따른 재검토', inconclusive: '판단 유보 · 검토 필요' };
 function reviewBadge(state) { return el('span', `badge review-${Object.hasOwn(reviewLabels, state) ? state : 'unreviewed'}`, reviewLabels[state] || '검토 상태 미확인'); }
@@ -291,23 +322,49 @@ async function investigationsView() {
   panel.append(filters, scope, results, pages); node.append(stats, panel); await search(); return node;
 }
 async function eventsView() {
-  const node = card('이벤트 검색', '수신 시각과 발생 시각은 다를 수 있습니다. 상세에서 원본 참조와 해시를 확인하세요.');
+  const preset = takeListPreset('events');
+  const node = card('이벤트 검색', '최근 수신 기록부터 보여 줍니다. 수신 시각과 발생 시각은 다를 수 있습니다. 상세에서 원본 참조와 해시를 확인하세요.');
   const filter = el('form', 'toolbar');
-  filter.append(field('통합 검색', 'q', { value: workspaceFilters.q, placeholder: '행위자, 도구, 리소스, 목적지…' }), field('Trace ID', 'traceId', { placeholder: '연결된 작업 추적' }), field('이벤트 종류', 'kind', { choices: [{ value: '', label: '모든 종류' }, { value: 'intent', label: '행동 의도' }, { value: 'self_report', label: 'AI 자기보고' }, { value: 'execution', label: '독립 실행 기록' }, { value: 'result', label: '독립 결과 기록' }, { value: 'grant', label: '권한 부여' }, { value: 'revoke', label: '권한 철회' }, { value: 'human_approval', label: '사람 승인' }, { value: 'automated_review', label: '자동 검토' }, { value: 'delegation', label: '위임' }, { value: 'stop_requested', label: '중단 요청' }, { value: 'block_registered', label: '차단 등록' }, { value: 'stop_confirmed', label: '중단 확인' }, { value: 'safety_alert', label: '안전 경보' }, { value: 'heartbeat', label: '수집 하트비트' }, { value: 'gap', label: '수집 공백' }, { value: 'notice', label: '고지 기록' }] }));
+  filter.append(field('통합 검색', 'q', { value: preset.q ?? workspaceFilters.q, placeholder: '행위자, 도구, 리소스, 목적지…' }), field('Trace ID', 'traceId', { placeholder: '연결된 작업 추적' }), field('이벤트 종류', 'kind', { choices: [{ value: '', label: '모든 종류' }, { value: 'intent', label: '행동 의도' }, { value: 'self_report', label: 'AI 자기보고' }, { value: 'execution', label: '독립 실행 기록' }, { value: 'result', label: '독립 결과 기록' }, { value: 'grant', label: '권한 부여' }, { value: 'revoke', label: '권한 철회' }, { value: 'human_approval', label: '사람 승인' }, { value: 'automated_review', label: '자동 검토' }, { value: 'delegation', label: '위임' }, { value: 'stop_requested', label: '중단 요청' }, { value: 'block_registered', label: '차단 등록' }, { value: 'stop_confirmed', label: '중단 확인' }, { value: 'safety_alert', label: '안전 경보' }, { value: 'heartbeat', label: '수집 하트비트' }, { value: 'gap', label: '수집 공백' }, { value: 'notice', label: '고지 기록' }] }), rangeField(preset.range));
   const submit = el('button', 'primary', '검색'); submit.type = 'submit'; filter.append(submit);
-  const count = el('p', 'muted'); const results = el('div'); node.append(filter, count, results);
-  async function search() {
-    submit.disabled = true; results.replaceChildren(el('div', 'loading', '증거 조회 중'));
+  const count = el('p', 'muted'), traceSlot = el('div'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, traceSlot, results, more);
+  const list = windowedList({ path: '/api/events', form: filter, count, results, more, unit: '건', submit, onData: (data) => {
+    const traceRow = traceLinkRow(data.traceLinks); traceSlot.replaceChildren(...(traceRow ? [traceRow] : []));
+  }, render: (items) => table(['수신 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], items.map((event) => [
+    date(event.receivedAt), `${event.kind} / ${event.source}`, event.actor, `${event.tool || '—'} · ${event.action || '—'}`,
+    event.actionId ? button(event.actionId, () => actionDetail(event.actionId), 'small') : '연결 없음', button('상세', () => inspect('수집 증거 · 원본 참조', event), 'small'),
+  ])) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); await list.reload(); return node;
+}
+// Lists open on a recent window, newest first; "load older" follows the server cursor (docs/feature-guide.md). Nothing is deleted.
+const listRanges = { '1h': ['최근 1시간', 3600000], '24h': ['최근 24시간', 86400000], '7d': ['최근 7일', 604800000], '30d': ['최근 30일', 2592000000], all: ['전체 기간', null] };
+const listPresets = {};
+function takeListPreset(view) { const value = listPresets[view] || {}; delete listPresets[view]; return value; }
+function rangeField(value) {
+  return field('기간 (최신순)', 'range', { value: Object.hasOwn(listRanges, value || '') ? value : '24h', choices: Object.entries(listRanges).map(([v, [l]]) => ({ value: v, label: l })) });
+}
+function windowedList({ path, form, count, results, more, unit, submit, render, onData = () => {} }) {
+  let items = [], cursor = null, epoch = 0, query = null;
+  async function page(reset) {
+    const current = reset ? ++epoch : epoch;
+    if (reset) {
+      const values = Object.fromEntries([...new FormData(form).entries()].filter(([, v]) => v !== '')), range = values.range || '24h'; delete values.range;
+      const ms = listRanges[range]?.[1]; query = { ...values, ...(ms ? { since: new Date(Date.now() - ms).toISOString() } : { order: 'desc' }), limit: '100' };
+      items = []; cursor = null; results.replaceChildren(el('div', 'loading', '최근 기록부터 조회하고 있습니다…')); count.dataset.range = range;
+    }
+    if (submit) submit.disabled = true;
     try {
-      const query = new URLSearchParams(new FormData(filter)); query.set('limit', '100');
-      const data = await api(`/api/events?${query}`); count.textContent = `전체 ${data.total ?? data.items.length}건 · 최대 100건 표시`;
-      results.replaceChildren(table(['발생 시각', '종류 / 출처', '행위자', '도구 · 행동', 'Action ID', '근거'], data.items.map((event) => [
-        date(event.occurredAt), `${event.kind} / ${event.source}`, event.actor, `${event.tool || '—'} · ${event.action || '—'}`,
-        event.actionId ? button(event.actionId, () => actionDetail(event.actionId), 'small') : '연결 없음', button('상세', () => inspect('수집 증거 · 원본 참조', event), 'small'),
-      ])));
-    } catch (error) { results.replaceChildren(el('div', 'message error', error.message)); } finally { submit.disabled = false; }
+      const data = await api(`${path}?${new URLSearchParams({ ...query, ...(cursor ? { cursor } : {}) })}`); if (current !== epoch) return;
+      items = [...items, ...data.items]; cursor = data.nextCursor; onData(data);
+      const label = listRanges[count.dataset.range]?.[0] || '선택 기간';
+      count.textContent = `${label} · ${data.windowTotal == null ? '검색어 일치' : `${data.windowTotal.toLocaleString('ko-KR')}${unit} 중`} ${items.length.toLocaleString('ko-KR')}${unit} 표시 · 최신순`;
+      results.replaceChildren(items.length ? render(items) : empty(`${label}에 해당 기록이 없습니다`, '기간을 넓히면 이전 기록을 볼 수 있습니다. 기록은 삭제되지 않습니다.'));
+      const older = button('이전 기록 더 보기', () => page(false), 'small'); older.disabled = !data.hasMore;
+      more.replaceChildren(older, el('span', 'muted', data.hasMore ? '더 오래된 기록이 있습니다' : '이 기간의 마지막 기록입니다'));
+    } catch (error) { if (current === epoch) results.replaceChildren(el('div', 'message error', error.message)); }
+    finally { if (submit) submit.disabled = false; }
   }
-  filter.addEventListener('submit', (event) => { event.preventDefault(); search(); }); await search(); return node;
+  return { reload: () => page(true) };
 }
 function evidenceFacts(entries) {
   const node = el('dl', 'evidence-facts');
@@ -348,7 +405,14 @@ function actionEvidenceSummary(data) {
   ); node.append(comparison);
   const references = Array.isArray(data.references) ? data.references : events.flatMap((event) => (event.dataRefs || []).map((ref) => ({ ...ref, source: event.source, eventId: event.id, assurance: event.assurance, observedAt: event.occurredAt, verification: event.sourceKind === 'agent' ? 'self_reported_reference' : 'service_reported_reference' })));
   const referenceCard = card('참고 데이터 · 출처와 버전', '자료 원문을 저장하지 않고 식별자·버전·해시 메타데이터를 연결합니다. 담당자는 접근 권한이 있는 외부 실물과 직접 대조하세요.');
-  if (!references.length) referenceCard.append(el('div', 'message warning', '참고 데이터 출처 미수집 / 모델이 무엇을 참고했는지 확인할 수 없음'));
+  const session = data.sessionReferences;
+  if (!references.length && session?.items?.length) {
+    // No submitted reference: what the agent itself reported reading or searching earlier in the same session.
+    referenceCard.append(el('p', 'muted', `제출된 참조는 없습니다. ${session.scope}`));
+    referenceCard.append(table(['시각', '도구', '읽거나 검색한 대상'], session.items.map((item) => [date(item.occurredAt), item.toolName || label(item.action),
+      el('span', 'mono wrap', item.target || '—')])));
+    if (session.total > session.items.length) referenceCard.append(el('p', 'muted', `최근 ${session.items.length}건만 표시 · 전체 ${session.total}건`));
+  } else if (!references.length) referenceCard.append(el('div', 'message warning', '참고 데이터 출처 미수집 / 모델이 무엇을 참고했는지 확인할 수 없음'));
   else {
     referenceCard.append(el('p', 'muted', '참조 기록은 실제 열람·사용이나 원문 일치를 자동 증명하지 않습니다. 위치는 텍스트로만 표시하며 자동 접속하거나 자료를 가져오지 않습니다.'));
     const refs = el('div', 'evidence-comparison');
@@ -363,14 +427,36 @@ function actionEvidenceSummary(data) {
   }
   node.append(referenceCard); return node;
 }
+// Operator-configured links to the same OTel trace in Langfuse or Phoenix (TRACE_LINKS_FILE); https only, new tab, no referrer.
+function traceLinkRow(links) {
+  const safe = (Array.isArray(links) ? links : []).filter((link) => { try { return new URL(link.url).protocol === 'https:'; } catch { return false; } });
+  if (!safe.length) return null;
+  const row = el('div', 'case-links trace-links'); row.append(el('strong', '', '같은 trace를 관측 도구에서 열기'));
+  for (const link of safe) {
+    const anchor = el('a', 'source-link', `${link.name} · ${String(link.traceId).slice(0, 12)}… ↗`);
+    anchor.href = link.url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; row.append(anchor);
+  }
+  row.append(el('span', 'muted', '외부 도구의 화면은 EvidScope 검증 결과가 아닙니다. 판정은 이 화면과 서명된 내보내기로 확인하세요.'));
+  return row;
+}
+// Deep links back from Langfuse or Phoenix (docs/observability-integration.md): #action=<id> opens that action once signed in.
+function openLinkedAction() {
+  const match = /^#action=([^&#]{1,400})$/.exec(window.location.hash);
+  if (!match || !token) return;
+  let actionId; try { actionId = decodeURIComponent(match[1]); } catch { return; }
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  if (/^[a-zA-Z0-9._:@/-]{1,120}$/.test(actionId)) actionDetail(actionId);
+}
+window.addEventListener('hashchange', openLinkedAction);
 async function actionDetail(actionId) {
   showDetail('행동 조사', el('div', 'loading', '행동의 원본 근거와 연결 사건을 조회합니다…')); const epoch = detailEpoch;
-  let data; let caseData;
-  try { [data, caseData] = await Promise.all([api(`/api/actions/${encodeURIComponent(actionId)}`), api('/api/cases')]); }
+  let data; let caseData; let links;
+  try { [data, caseData, links] = await Promise.all([api(`/api/actions/${encodeURIComponent(actionId)}`), api('/api/cases'), findingLinks()]); }
   catch (error) { if (epoch === detailEpoch) showDetail('행동 조회 실패', el('div', 'message error', error.message)); return; }
   if (epoch !== detailEpoch) return;
   const node = el('div');
   node.append(el('p', 'selection-note', `행동 ID · ${actionId}`));
+  const traceRow = traceLinkRow(data.traceLinks); if (traceRow) node.append(traceRow);
   const linkedCases = (caseData.items || []).filter((item) => item.actionId === actionId); const caseLinks = el('div', 'case-links');
   caseLinks.append(el('strong', '', '사람의 판단으로 연결'));
   if (linkedCases.length) linkedCases.forEach((item) => caseLinks.append(button(`${item.title} · 사건 검토`, () => caseDetail(item), 'primary small')));
@@ -388,10 +474,10 @@ async function actionDetail(actionId) {
   node.append(window.EvidScopeLiveGraphs.action(data, inspect), actionEvidenceSummary(data));
   if (latest?.findings?.length) {
     const findings = card('최신 평가의 발견 사항', '권한 범위 일치와 사람 승인 일치는 별개입니다. 해당 원본 근거를 확인하세요.');
-    findings.append(table(['중요도', '발견 사항', '원본 근거'], latest.findings.map((finding) => {
+    findings.append(table(['중요도', '발견 사항', '관련 기준', '원본 근거'], latest.findings.map((finding) => {
       const refs = el('div', 'actions');
       for (const ref of finding.evidence || []) refs.append(button(ref, () => inspect('발견 사항의 원본 증거', (data.events || []).find((event) => `${event.source}/${event.id}` === ref) || { reference: ref, status: '이 행동에서 참조 이벤트를 찾을 수 없습니다.' }), 'small'));
-      const message = el('div', 'wrap', finding.message); return [badge(finding.severity), message, refs];
+      const message = el('div', 'wrap', finding.message); return [badge(finding.severity), message, requirementList(finding.code, links), refs];
     }))); node.append(findings);
   }
   const timeline = el('div', 'timeline');
@@ -405,14 +491,79 @@ async function actionDetail(actionId) {
   if (linkedCases.length) node.append(button('추가 사건 만들기', () => newCase(actionId), 'small'));
   showDetail('행동 · 권한 · 결과 대조', node);
 }
+// Requirement items that name a finding (GET /api/home/finding-requirements: built-in codes, and since mapping version 3 the code
+// prefixes of the AI agent risk rules): where the finding counts as evidence, not a verdict. Loaded once; empty when unavailable.
+let findingLinksLoad = null;
+function findingLinks() {
+  findingLinksLoad ??= api('/api/home/finding-requirements').catch(() => { findingLinksLoad = null; return { links: [] }; });
+  return findingLinksLoad;
+}
+const FRAMEWORK_NAMES = { 'kr-ai-basic-act': 'AI 기본법', 'isms-p': 'ISMS-P', 'eu-ai-act-logging': 'EU AI Act' };
+// The item's number within its framework: 제32조제1항제2호, 2.11.3, Article 12(2)(a) -> 12(2)(a).
+function requirementNumber(item) {
+  if (item.framework === 'isms-p') return String(item.id).replace(/^ISMS-P-/, '');
+  if (item.framework === 'eu-ai-act-logging') return String(item.citation).split(', ').pop().replace(/^Article /, '');
+  return String(item.citation).replace(/^인공지능기본법 /, '').split(' / ')[0];
+}
+const requirementLabel = (item) => `${FRAMEWORK_NAMES[item.framework] || item.framework} ${requirementNumber(item)} ${item.title}`;
+function relatedRequirements(code, links) {
+  const order = ['kr-ai-basic-act', 'isms-p', 'eu-ai-act-logging'], seen = new Set(), items = [];
+  for (const link of links?.links || []) {
+    const match = link.match || {};
+    if (typeof code !== 'string' || !(match.code !== undefined ? match.code === code : typeof match.codePrefix === 'string' && code.startsWith(match.codePrefix))) continue;
+    for (const item of link.items || []) if (!seen.has(`${item.framework}/${item.id}`)) { seen.add(`${item.framework}/${item.id}`); items.push(item); }
+  }
+  return items.sort((a, b) => order.indexOf(a.framework) - order.indexOf(b.framework));
+}
+// compact (the alerts list): one line per framework with the item numbers, the title on hover; otherwise one item per line.
+function requirementList(code, links, { compact = false } = {}) {
+  const items = relatedRequirements(code, links), node = el('div', 'wrap');
+  if (!items.length) { node.append(el('span', 'muted', '대응 항목 없음')); return node; }
+  if (!compact) {
+    for (const item of items) { const line = el('div', '', requirementLabel(item)); line.title = item.citation; node.append(line); }
+    return node;
+  }
+  for (const framework of [...new Set(items.map((item) => item.framework))]) {
+    const line = el('div', '', `${FRAMEWORK_NAMES[framework] || framework} `);
+    items.filter((item) => item.framework === framework).forEach((item, i) => {
+      const number = el('span', '', `${i ? ', ' : ''}${requirementNumber(item)}`); number.title = `${item.title} (${item.citation})`; line.append(number);
+    });
+    node.append(line);
+  }
+  return node;
+}
 async function alertsView() {
-  const data = await api('/api/alerts'); const node = card('탐지된 위험 신호', '늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
-  node.append(table(['중요도', '탐지', '내용', '생성 시각', '상태', '조사'], data.items.map((item) => {
+  const preset = takeListPreset('alerts'), links = await findingLinks();
+  const node = card('탐지된 위험 신호', '최근 평가부터 보여 줍니다. 늦게 도착한 증거로 평가가 바뀔 수 있습니다. 행동 상세에서 평가 이력을 확인하세요.');
+  const filter = el('form', 'toolbar');
+  filter.append(field('중요도', 'severity', { value: preset.severity || '', choices: [{ value: '', label: '모든 중요도' }, ...['critical', 'high', 'medium', 'low', 'info'].map((v) => ({ value: v, label: label(v) }))] }),
+    field('상태', 'state', { value: preset.state || 'open', choices: [{ value: 'open', label: '열린 신호' }, { value: 'suppressed', label: '예외 적용' }, { value: '', label: '전체' }] }),
+    field('기록', 'data', { value: preset.data ?? 'real', choices: [{ value: 'real', label: '실제 기록' }, { value: 'synthetic', label: '합성(데모·시험) 기록' }, { value: '', label: '전체' }] }), rangeField(preset.range));
+  const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
+  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination');
+  const synthetic = el('p', 'muted', '합성 기록은 자산 등록에서 합성(데모·시험)으로 표시한 행위자만 있는 행동입니다. 기본으로 실제 기록만 보여 주며, 경보와 원장은 그대로 남습니다.');
+  node.append(synthetic);
+  const related = el('p', 'muted', '관련 기준은 그 경보를 증거로 볼 수 있는 AI 기본법·ISMS-P·EU AI Act 항목입니다(번호에 마우스를 올리면 항목 이름). 준수·위반 판정이 아니며 대응표는 사람 검토 전 초안입니다.');
+  node.append(filter, related, count, results, more);
+  const list = windowedList({ path: '/api/alerts', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['중요도', '탐지', '내용', '에이전트·실행자·책임자', '관련 기준', '평가 시각', '상태', '조사'], items.map((item) => {
     const actions = el('div', 'actions');
     if (item.actionId) actions.append(button('행동 대조', () => actionDetail(item.actionId), 'small'), button('사건 생성', () => newCase(item.actionId, item.message), 'small'));
     actions.append(button('근거', () => inspect('경보 · 원본 증거 참조', item), 'small'));
-    return [badge(item.severity), item.code, item.message, date(item.createdAt), badge(item.state || 'open'), actions];
-  }))); return node;
+    const state = el('div', 'actions'); state.append(badge(item.state || 'open')); if (item.synthetic) state.append(el('span', 'badge', '합성'));
+    return [badge(item.severity), item.code, item.message, accountabilityText(item.accountability), requirementList(item.code, links, { compact: true }), date(item.createdAt), state, actions];
+  })) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
+}
+// Who the alert's agent record names (docs/agent-registry.md, "실행자와 책임자"): the registry entry or the actor, the executor the hook
+// reported, and the owner with its status. An inferred owner is labelled as such; only a reviewer confirms one.
+const OWNER_STATUS = { confirmed: '확정', inferred: '추정', conflict: '추정 충돌', unknown: '미확인' };
+function accountabilityText(a) {
+  if (!a) return '—';
+  const x = a.executor || {}, o = a.owner || {};
+  const who = [x.account && x.host ? `${x.account}@${x.host}` : x.account || x.host, x.repository, x.gitUser].filter(Boolean).join(' · ') || '실행자 미수집';
+  const owner = o.status === 'conflict' ? `추정 충돌(${(o.candidates || []).map((c) => c.owner).join(', ')})`
+    : o.owner ? `${o.owner}${o.team ? ` (${o.team})` : ''} · ${OWNER_STATUS[o.status] || '미확인'}` : '책임자 미확인';
+  return `${a.agent ? a.agent.id : a.actor || '행위자 미상'} | ${who} | ${owner}`;
 }
 function newCase(actionId = '', title = '') {
   const node = form([field('사건 제목', 'title', { required: true, value: title }), field('행동 ID', 'actionId', { required: true, value: actionId }), field('담당자', 'owner', { required: true })], '사건 생성', async (values) => {
@@ -422,9 +573,17 @@ function newCase(actionId = '', title = '') {
   }); showDetail('새 감사 사건', node);
 }
 async function casesView() {
-  const data = await api('/api/cases'); const node = card('사건 목록', '사건의 종결은 원본 삭제나 법적 면제를 의미하지 않습니다.');
+  const preset = takeListPreset('cases');
+  const node = card('사건 목록', '최근 변경된 사건부터 보여 줍니다. 사건의 종결은 원본 삭제나 법적 면제를 의미하지 않습니다.');
   node.querySelector('.card-header').append(button('+ 사건 생성', () => newCase(), 'primary small'));
-  node.append(table(['사건', '행동 ID', '담당자', '상태', '검토'], data.items.map((item) => [item.title, item.actionId, item.owner, badge(item.status), button('검토 열기', () => caseDetail(item), 'small')]))); return node;
+  const filter = el('form', 'toolbar');
+  const statuses = [{ value: 'active', label: '진행 중(종결 제외)' }, ...['open', 'in_review', 'closed'].map((v) => ({ value: v, label: label(v) })), { value: '', label: '전체' }];
+  filter.append(field('상태', 'status', { value: preset.status || 'active', choices: statuses }), rangeField(preset.range || '30d'));
+  const submit = el('button', 'primary', '조회'); submit.type = 'submit'; filter.append(submit);
+  const count = el('p', 'muted'), results = el('div'), more = el('div', 'pagination'); node.append(filter, count, results, more);
+  const list = windowedList({ path: '/api/cases', form: filter, count, results, more, unit: '건', submit, render: (items) => table(['사건', '행동 ID', '담당자', '상태', '마지막 변경', '검토'],
+    items.map((item) => [item.title, item.actionId, item.owner, badge(item.status), date(item.history?.at(-1)?.at), button('검토 열기', () => caseDetail(item), 'small')])) });
+  filter.addEventListener('submit', (event) => { event.preventDefault(); list.reload(); }); filter.addEventListener('change', () => list.reload()); await list.reload(); return node;
 }
 function decisionHistory(context) {
   const section = card('인간 판단 이력', '이전 판단은 보존됩니다. 새 근거·재검토 기한과 현재 판단 상태를 함께 확인하세요.');
@@ -499,7 +658,11 @@ function reportMarkdown(report) {
   lines.push('## 행동과 관측 근거', '');
   for (const event of action.events || []) lines.push(`### ${md(event.source)}/${md(event.id)}`, '', `- 종류 / 출처 보장: ${md(label(event.kind))} / ${md(label(event.assurance))}`, `- 발생 / 접수: ${md(event.occurredAt)} / ${md(event.receivedAt)}`, `- 보고된 행위자 / 모델: ${md(event.actor)} / ${md(event.model)}`, `- 도구 / 행동 / 결과: ${md(event.tool)} / ${md(event.action)} / ${md(label(event.status))}`, `- 대상 / 목적지: ${md(event.resource)} / ${md(event.destination)}`, `- 사용 목적 / 데이터 범주: ${md(event.purpose)} / ${md(event.dataCategories)}`, `- 당시 정책 버전: ${md(event.policyVersion)}`, '');
   lines.push('## 참고 자료', '', '자료 원문과 실제 사용 여부는 이 참조 기록만으로 검증되지 않습니다. 자료 위치를 자동으로 조회하지 않습니다.', '');
-  if (!(action.references || []).length) lines.push('참고 데이터 출처 미수집: 모델이 무엇을 참고했는지 확인할 수 없음.', '');
+  if (!(action.references || []).length && action.sessionReferences?.items?.length) {
+    lines.push(`제출된 참조 없음. ${md(action.sessionReferences.scope)}`, '');
+    for (const item of action.sessionReferences.items) lines.push(`- ${md(item.occurredAt)} · ${md(item.toolName || item.action)} · ${md(item.target)}`);
+    lines.push('');
+  } else if (!(action.references || []).length) lines.push('참고 데이터 출처 미수집: 모델이 무엇을 참고했는지 확인할 수 없음.', '');
   for (const reference of action.references || []) lines.push(`- ${md(reference.id)} · ${md(label(reference.kind))} · ${md(label(reference.role))}`, `  - 버전 / 해시: ${md(reference.version)} / ${md(reference.hash)}`, `  - 제출 출처 / 이벤트: ${md(reference.source)} / ${md(reference.eventId)}`, `  - 참조 보장: ${md(label(reference.verification))} · ${md(label(reference.assurance))}`, `  - 관측 시각: ${md(reference.observedAt)}`, `  - 자료 위치: ${md(reference.locator)}`, '');
   lines.push('## 기술 평가', '');
   lines.push(`- 현재 관측 결과: ${md(label(observedOutcome(action.events)))}`, `- 현재 분석 대기: ${action.analysis?.pending === true ? '있음 · 아래 기존 평가는 새 증거를 반영하지 않았을 수 있습니다.' : action.analysis?.pending === false ? '없음' : '미확인'}`, '');
@@ -567,6 +730,7 @@ async function rulesView() {
   const [data, exceptions] = await Promise.all([api('/api/rules'), api('/api/exceptions')]); const node = el('div');
   const list = card('탐지 룰 버전', '시험 결과를 확인한 뒤 다른 검토자가 승인합니다. 자유 코드나 외부 조회를 실행하지 않습니다.');
   list.querySelector('.card-header').append(button('+ 룰 작성', () => ruleEditor(), 'primary small'));
+  list.classList.add('rules-card');
   list.append(table(['룰 / 버전', '제목', '조건', '중요도', '상태', '검토'], data.items.map((rule) => {
     const actions = el('div', 'actions'); actions.append(button('새 버전', () => ruleEditor(rule), 'small'), button('시험', async () => inspect('룰 시험 · 기존 증거의 일치 결과', await api(`/api/rules/${encodeURIComponent(rule.id)}/test`, 'POST', { version: rule.version })), 'small'), button('승인', async () => { await api(`/api/rules/${encodeURIComponent(rule.id)}/approve`, 'POST', { version: rule.version }); await navigate('rules'); notice('룰 버전을 승인했습니다. 과거 평가 이력은 보존됩니다.'); }, 'small'));
     return [`${rule.id} / v${rule.version}`, rule.title, `${rule.field} ${rule.op} ${stringify(rule.value)}`, badge(rule.severity), badge(rule.status), actions];
@@ -580,7 +744,7 @@ function ruleEditor(rule = {}) {
   node.append(form([
     field('룰 ID', 'id', { required: true, value: rule.id || '' }), field('제목', 'title', { required: true, value: rule.title || '' }),
     field('대상 필드', 'field', { choices: ['actor', 'tool', 'action', 'resource', 'destination', 'kind', 'status', 'note'], value: rule.field || 'destination' }),
-    field('연산자', 'op', { choices: [{ value: 'eq', label: '같음 (eq)' }, { value: 'neq', label: '다름 (neq)' }, { value: 'contains', label: '포함 (contains)' }], value: rule.op || 'eq' }),
+    field('연산자', 'op', { choices: [{ value: 'eq', label: '같음 (eq)' }, { value: 'neq', label: '다름 (neq)' }, { value: 'contains', label: '포함 (contains)' }, { value: 'words', label: '단어 순서 (words)' }], value: rule.op || 'eq' }),
     field('비교 값', 'value', { required: true, value: rule.value || '' }), field('중요도', 'severity', { choices: ['low', 'medium', 'high'], value: rule.severity || 'medium' }),
   ], '초안 저장', async (values) => {
     await api('/api/rules', 'POST', values); $('#detail-dialog').close(); await navigate('rules'); notice('룰 초안을 저장했습니다. 시험 결과와 근거를 확인한 뒤 검토자가 승인하세요.');
@@ -595,6 +759,7 @@ function exceptionEditor() {
 
 async function governanceView() {
   const data = await api('/api/governance'); const node = el('div');
+  node.append(governanceLegalSourceCoverage(data.legalSourceCoverage));
   const systems = card('한국 AI 기본법 · 금융 AI 증거 검토', '외부 대출·신용평가 AI의 공급사 근거와 실제 운영을 대조합니다. 금융 분야만으로 고영향 여부를 확정하지 않습니다.');
   systems.querySelector('.card-header').append(button('+ 시스템 등록', () => systemEditor(), 'primary small'));
   systems.append(table(['시스템', '담당자', '목적', '역할 / 시장', '한국 고영향 상태', '검토'], data.systems.map((system) => {
@@ -619,6 +784,24 @@ async function governanceView() {
     return [task.title || task.reason, task.systemId, task.owner, badge(task.status || 'open'), actions];
   }))); node.append(tasks); }
   node.append(limits(['기술 관측, 증거 충분성, 법적 적용성과 인간 법률 검토는 별개입니다.', '한국 고영향 분류와 EU 고위험 분류를 같은 것으로 취급하지 않습니다.'])); return node;
+}
+function governanceLegalSourceCoverage(coverage) {
+  const node = card('한국법 지원 범위와 미확인 출처', '등록된 조치의 기술 근거와 법률 전체의 지원 범위는 별도로 확인합니다.');
+  if (!coverage || coverage.schemaVersion !== 1 || !Number.isSafeInteger(coverage.registeredRequirements)) {
+    node.append(el('p', 'message warning', '지원 범위 정보 미수신 · 한국법 전체 지원 여부 판단 보류. 현재 등록된 요구사항과 별도의 미확인 법률 출처를 확인해야 합니다.'));
+    return node;
+  }
+  node.append(el('p', 'message warning', `현재 등록된 한국 요구사항 ${coverage.registeredRequirements}개를 검토합니다. 한국법 전체 지원 완료나 법률 준수 인증을 의미하지 않습니다.`));
+  if (coverage.checkedAt) node.append(el('p', 'muted', `출처 검토 기준일 ${date(coverage.checkedAt)}`));
+  for (const source of (Array.isArray(coverage.unresolvedSources) ? coverage.unresolvedSources : []).slice(0, 20)) {
+    node.append(el('p', 'wrap', `${source.article || '관련 조항 미확인'} · ${source.title || '하위 출처'}: 원문·현재 적용 범위 미확인`));
+    if (Array.isArray(source.affectedRequirementIds) && source.affectedRequirementIds.length) {
+      node.append(el('p', 'muted wrap', `관련 등록 조치: ${source.affectedRequirementIds.join(', ')}`));
+    }
+  }
+  if (coverage.unverifiedDetailNoticeRequirementIds?.length) node.append(el('p', 'muted wrap', `세부 고시 확인이 남은 등록 조치: ${coverage.unverifiedDetailNoticeRequirementIds.join(', ')}`));
+  node.append(el('p', 'muted', '미확인 출처를 법 위반이나 의무 부존재로 판단하지 않습니다. 담당자가 공식 원문과 적용 범위를 확인해야 합니다.'));
+  return node;
 }
 function governanceDocumentMaximum(data) {
   const maximum = data.documentLimits?.maximumBytes;
@@ -739,6 +922,13 @@ const systemTriFacts = [['substantialModification', '공급받은 AI의 목적·
 const systemNumberFacts = [['trainingCompute', '학습 연산량 (FLOP)'], ['previousYearTotalRevenueKrw', '직전 연도 전체 매출액 (원)'], ['previousYearAiRevenueKrw', '직전 연도 AI 관련 매출액 (원)'], ['domesticDailyAverageUsersLast3Months', '최근 3개월 국내 일평균 이용자 수']];
 function systemFactsPayload(input) {
   const values = { ...input }, split = value => String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+  if (Object.hasOwn(values, 'otherLawRecognitionJson')) {
+    const raw = String(values.otherLawRecognitionJson || '').trim(); delete values.otherLawRecognitionJson;
+    if (raw.length > 65536) throw Error('다른 법령 인정 검토 JSON 입력은 공백 포함 65,536자 이내로 작성하세요.');
+    let claims; try { claims = raw ? JSON.parse(raw) : []; } catch { throw Error('다른 법령 인정 검토 JSON 형식을 확인하세요. 목록은 [ ]로 감싸세요.'); }
+    if (!Array.isArray(claims) || claims.length > 10 || claims.some(claim => !claim || typeof claim !== 'object' || Array.isArray(claim))) throw Error('다른 법령 인정 검토는 객체 목록으로 최대 10개 입력하세요.');
+    values.otherLawRecognitionClaims = claims;
+  }
   values.markets = split(values.markets); values.dataCategories = split(values.dataCategories);
   values.highImpactDomains = split(values.highImpactDomains);
   for (const key of ['generative', ...systemTriFacts.map(([key]) => key)]) values[key] = values[key] === 'true' ? true : values[key] === 'false' ? false : 'unknown';
@@ -749,6 +939,8 @@ function systemFactsPayload(input) {
   for (const key of ['modelVersion', 'policyVersion']) values[key] = String(values[key] || '').trim() || 'unknown';
   for (const [key, title] of systemNumberFacts) { const value = String(values[key] ?? '').trim(); if (value && value !== 'unknown' && (!Number.isFinite(Number(value)) || Number(value) < 0)) throw Error(`${title}은 0 이상의 숫자로 입력하세요. 알 수 없으면 비워 두세요.`); values[key] = value && value !== 'unknown' ? Number(value) : 'unknown'; }
   for (const key of ['marketEntryAt', 'providedAt']) { if (values[key]) values[key] = new Date(values[key]).toISOString(); else delete values[key]; }
+  // Match the /api/governance/systems requestBody contract after formatting is removed.
+  if (new TextEncoder().encode(JSON.stringify(values)).byteLength > 16384) throw Error('시스템 저장 JSON 요청은 들여쓰기를 정리한 전체 전송 내용이 UTF-8 16 KiB 이내여야 합니다. 다른 법령 선언이나 시스템 설명을 줄이세요.');
   return values;
 }
 async function financeEvidenceView(systemId, requirements) {
@@ -756,11 +948,23 @@ async function financeEvidenceView(systemId, requirements) {
   node.append(el('p', 'selection-note', `${data.system.name} · ${data.system.modelId || '모델 미확인'} / ${data.system.modelVersion || '버전 미확인'}`));
   const controls = card('1. 관련 조치와 사실관계', '제34조 위험관리·설명·이용자보호의 공급사 근거를 검토합니다. 인간 감독·문서 보관은 별도로 판단합니다.');
   controls.append(button('조문별 적용성·사람 평가', () => governanceReport(systemId, requirements), 'small'), button('시스템 정보 수정', () => systemEditor(data.system), 'small'), button('당시 승인 정책 등록', () => financeApprovalPolicyEditor(systemId), 'small')); node.append(controls);
-  const bundles = card('2. 공급사 근거', '합성 문서 바이트를 해시 검증하고 보관합니다. 변경·복구 실패는 재검토 대상입니다.');
+  const bundles = card('2. 공급사 근거', '문서 바이트의 복구·해시와 신고된 출처를 구분해 검토합니다. 해시 일치나 수동 출처 검토만으로 공급사 진위를 보증하지 않습니다.');
   bundles.append(button('증빙 JSON 가져오기', () => financeBundleImport(systemId, requirements), 'primary small'));
   if (!data.bundles.length) bundles.append(empty('공급사 증빙 없음', '모델·목적·시험 범위와 연결된 근거를 등록하세요.'));
   for (const bundle of data.bundles) {
     const item = el('article', 'list-item'); item.append(el('h3', '', `${bundle.id} · 개정 ${bundle.revision}`), el('p', '', `${bundle.supplierId} / ${bundle.modelId} / ${bundle.modelVersion}`), el('p', '', bundle.testScope));
+    const real = bundle.synthetic === false, provenance = bundle.verification.provenance;
+    item.append(el('p', 'selection-note', real ? '실제 공급사 자료로 신고됨 · 출처 진위 자동 인증 없음' : bundle.synthetic === true ? '합성 시험 자료 · 실제 공급사 증빙 아님' : '자료 유형 미확인 · 실제·합성 여부 확인 필요'));
+    if (real) {
+      const channels = {supplier_portal:'공급사 포털',email:'이메일',contract_attachment:'계약 첨부',manual_upload:'수동 업로드'}, status = {unreviewed:'출처 검토 미완료',reviewed:'출처 확인 검토 기록 있음',rejected:'출처 검토 거부',stale:'현재 증빙과 출처 검토 불일치 · 재검토 필요'};
+      item.append(el('p', '', `신고 수신 경로: ${channels[bundle.provenance?.channel] || bundle.provenance?.channel || '미확인'} · 전달 참조: ${bundle.provenance?.reference || '미확인'} · 공급 일시: ${date(bundle.provenance?.suppliedAt)}`), el('p', '', status[provenance?.status] || '출처 검토 상태 미확인'), el('p', 'muted', '독립적인 출처 인증은 수행되지 않았습니다. 아래 기록은 담당자의 수동 확인 진술입니다.'));
+      if (provenance?.review) {
+        const record = provenance.review, decision = {verified:'출처 확인 검토',unverified:'출처 미확인',rejected:'출처 거부'};
+        item.append(el('p', '', `최근 검토: ${decision[record.decision] || '미확인'} · 검토자: ${record.reviewer || '미확인'} · 일시: ${date(record.reviewedAt)}`), el('p', '', `검토 사유: ${record.reason || '미확인'}`));
+        if (provenance.reviewHash) item.append(el('p', 'muted', `출처 검토 기록 해시: ${provenance.reviewHash}`));
+      }
+      item.append(button('출처 검토 기록', () => financeBundleProvenanceReview(bundle, systemId, requirements), 'small'));
+    }
     item.append(el('p', 'muted', bundle.verification.issues.length ? `재검토 사유: ${bundle.verification.issues.map(financeIssueLabel).join(', ')}` : '문서 복구·해시·대상 정보 일치. 법적 활용 인정은 사람 검토 필요.'));
     item.append(table(['문서', '현재 복구·해시', '보관 정책 기한'], bundle.verification.documents.map(d => [d.name, d.status === 'hash_verified_and_retrievable' ? '복구·해시 확인' : '복구 불가 또는 변조', date(bundle.retentionUntil)])));
     item.append(button('증빙 JSON 내보내기', async () => { const value = await api(`/api/governance/bundles/${encodeURIComponent(bundle.id)}/export`); downloadArtifact('supplier-evidence.json', 'application/json', JSON.stringify(value, null, 2)); }, 'small'), el('p', 'muted', `평가 연결 참조: supplier-bundle:${bundle.id}`)); bundles.append(item);
@@ -781,20 +985,34 @@ async function financeEvidenceView(systemId, requirements) {
   node.append(review, limits(data.limitations)); showDetail('금융 AI · 한국법 이행 증거 대조', node);
 }
 function financeIssueLabel(code) {
-  const supplied = {SUPPLIED_MODEL_VERSION_UNKNOWN:'공급 당시 모델 버전 미확인',SUPPLIED_MODEL_VERSION_MISMATCH:'공급 당시 모델 버전과 현재 사용·증빙 불일치',SUPPLIED_PURPOSE_UNKNOWN:'공급 당시 사용 목적 미확인',SUPPLIED_PURPOSE_MISMATCH:'공급 당시 목적과 현재 사용·증빙 불일치'};
+  const supplied = {SUPPLIED_MODEL_VERSION_UNKNOWN:'공급 당시 모델 버전 미확인',SUPPLIED_MODEL_VERSION_MISMATCH:'공급 당시 모델 버전과 현재 사용·증빙 불일치',SUPPLIED_PURPOSE_UNKNOWN:'공급 당시 사용 목적 미확인',SUPPLIED_PURPOSE_MISMATCH:'공급 당시 목적과 현재 사용·증빙 불일치',REAL_PROVENANCE_REVIEW_REQUIRED:'실제 자료 출처 검토 필요',REAL_PROVENANCE_REJECTED:'실제 자료 출처 검토 거부',REAL_PROVENANCE_REVIEW_STALE:'실제 자료 출처 재검토 필요',REAL_PROVENANCE_METADATA_MISSING:'실제 자료 출처 정보 미확인'};
   if (Object.hasOwn(supplied, code)) return supplied[code];
   return ({MODEL_VERSION_MISMATCH:'모델 버전 불일치',MODEL_ID_MISMATCH:'모델 불일치',PURPOSE_MISMATCH:'사용 목적 불일치',SUPPLIER_MISMATCH:'공급사 불일치',DOCUMENT_EVIDENCE_MISSING:'문서 복구 불가·변조·부족',DEPLOYER_ROLE_UNCONFIRMED:'이용사업자 역할 미확인',SUBSTANTIAL_CHANGE_REVIEW:'중대한 변경 검토 필요',SUBSTANTIAL_CHANGE_UNKNOWN:'중대한 변경 여부 미확인',MODEL_ID_UNKNOWN:'모델 식별자 미확인',MODEL_VERSION_UNKNOWN:'모델 버전 미확인',PURPOSE_UNKNOWN:'목적 미확인',SUPPLIER_UNKNOWN:'공급사 미확인'})[code] || '추가 사실 확인 필요';
 }
 function financeBundleImport(systemId, requirements) {
-  const node = el('div'); node.append(el('p', 'muted', '합성 공급사 증빙 JSON을 선택하거나 붙여넣으세요. 문서 해시·모델·목적·시험 범위를 함께 제출합니다. 실제 고객 자료는 받지 않습니다.'));
+  const node = el('div'); node.append(el('p', 'muted', '공급사 증빙 JSON을 선택하거나 붙여넣으세요. 문서 바이트·해시·모델·목적·시험 범위를 함께 제출합니다. 합성 시험 자료는 synthetic:true, 실제 공급사 자료로 신고할 때는 synthetic:false를 명시하세요. 실제 자료에는 provenance.channel(supplier_portal, email, contract_attachment, manual_upload), reference와 선택 공급 일시 suppliedAt을 기록합니다. 출처는 별도 수동 검토가 필요하며 입력만으로 진위를 인증하지 않습니다. 전달 참조 URL을 자동으로 가져오지 않습니다.'));
   const editor = form([field('증빙 JSON', 'bundle', { required: true, multiline: true, wide: true, maxLength: 131072 })], '검증하여 가져오기', async values => { let value; try { value = JSON.parse(values.bundle); } catch { throw Error('올바른 JSON이 아닙니다.'); } if (value.systemId !== systemId) throw Error('선택한 시스템과 증빙의 systemId가 다릅니다.'); await api('/api/governance/bundles', 'POST', value); await financeEvidenceView(systemId, requirements); });
   const file = field('JSON 파일 선택', 'bundleFile', {type:'file'}), input = file.querySelector('input'); input.accept = '.json,application/json'; input.addEventListener('change', async () => { try { const selected=input.files?.[0]; if (!selected) return; if(selected.size>131072) throw Error('JSON 파일 한도는 128KiB입니다.'); editor.querySelector('textarea').value=await selected.text(); } catch(error) { notice(error.message,true); } });
-  node.append(file, editor); showDetail('공급사 합성 증빙 가져오기', node);
+  node.append(file, editor); showDetail('공급사 증빙 가져오기', node);
+}
+function financeBundleProvenanceReview(bundle, systemId, requirements) {
+  if (bundle.synthetic !== false) throw Error('합성 시험 자료는 실제 자료의 출처 검토 대상이 아닙니다.');
+  const node = el('div'); node.append(el('p', 'muted', '현재 증빙의 출처를 담당자가 확인한 범위대로 기록하세요. 확인하지 않은 항목은 선택하지 마세요. 이 기록은 수동 확인 진술이며 독립적인 공급사 인증이나 법적 충분성 판정이 아닙니다.'));
+  const definitions = [['supplierIdentityChecked','공급사 신원 확인'],['deliveryReferenceChecked','전달 참조 확인'],['modelPurposeScopeChecked','모델·목적·시험 범위 확인']], checks = definitions.map(([name,title]) => { const control = field(title,name,{type:'checkbox',value:'on'}); control.querySelector('input').checked = false; return control; });
+  node.append(form([field('검토 결과','decision',{choices:[{value:'unverified',label:'출처 미확인'},{value:'verified',label:'출처 확인 검토'},{value:'rejected',label:'출처 거부'}]}), ...checks, field('검토 사유','reason',{required:true,multiline:true,wide:true,maxLength:1000})], '출처 검토 저장', async values => {
+    const decision = values.decision, reason = String(values.reason || '').trim(), checked = Object.fromEntries(definitions.map(([name]) => [name,values[name] === 'on']));
+    if (!['verified','unverified','rejected'].includes(decision)) throw Error('검토 결과를 선택하세요.');
+    if (!reason || reason.length > 1000) throw Error('검토 사유를 1~1000자로 입력하세요.');
+    if (decision === 'verified' && !Object.values(checked).every(value => value === true)) throw Error('출처 확인 검토는 공급사 신원·전달 참조·모델 목적 범위를 모두 확인한 경우에만 저장할 수 있습니다.');
+    if (!/^[a-f0-9]{64}$/.test(bundle.contentHash || '')) throw Error('현재 증빙 해시가 없습니다. 증빙을 다시 조회하세요.');
+    await api(`/api/governance/bundles/${encodeURIComponent(bundle.id)}/provenance-reviews`, 'POST', {bundleHash:bundle.contentHash,decision,reason,checks:checked});
+    await financeEvidenceView(systemId, requirements); notice('담당자의 수동 출처 검토를 기록했습니다. 독립적인 출처 인증은 아닙니다.');
+  })); showDetail('공급사 출처 검토 기록', node);
 }
 function financeApprovalPolicyEditor() {
   showDetail('행동 시점 승인 정책 등록', form([
-    field('정책 등록 ID · 버전별 다른 ID', 'id', {required:true}), field('보고된 실행 주체', 'actor', {required:true}), field('도구', 'tool', {required:true}), field('책임자', 'owner', {required:true}), field('정책 버전', 'policyVersion', {required:true}), field('유효 시작', 'validFrom', {required:true,type:'datetime-local'}), field('유효 종료 · 선택', 'validUntil', {type:'datetime-local'}), field('사전 사람 승인 필요', 'approvalRequired', {choices:[{value:'unknown',label:'미확인'},{value:'true',label:'필요'},{value:'false',label:'불필요'}]}), field('허용 목적지 · 쉼표 구분', 'destinations', {}),
-  ], '정책 근거 등록', async values => { const payload={...values,approvalRequired:values.approvalRequired==='true'?true:values.approvalRequired==='false'?false:'unknown',destinations:values.destinations.split(',').map(x=>x.trim()).filter(Boolean),validFrom:new Date(values.validFrom).toISOString()}; if(values.validUntil)payload.validUntil=new Date(values.validUntil).toISOString();else delete payload.validUntil; await api('/api/assets','POST',payload); $('#detail-dialog').close(); notice('정책 근거를 등록했습니다. 관련 행동의 재분석 결과를 확인하세요.'); }));
+    field('정책 등록 ID · 버전별 다른 ID', 'id', {required:true}), field('보고된 실행 주체', 'actor', {required:true}), field('도구', 'tool', {required:true}), field('책임자', 'owner', {required:true}), field('정책 버전', 'policyVersion', {required:true}), field('유효 시작', 'validFrom', {required:true,type:'datetime-local'}), field('유효 종료 · 선택', 'validUntil', {type:'datetime-local'}), field('사전 사람 승인 필요', 'approvalRequired', {choices:[{value:'unknown',label:'미확인'},{value:'true',label:'필요'},{value:'false',label:'불필요'}]}), field('허용 목적지 · 쉼표 구분', 'destinations', {}), field('기록 종류', 'synthetic', {choices:[{value:'false',label:'실제 업무'},{value:'true',label:'합성(데모·시험) · 경보를 실제 기록과 따로 표시'}]}),
+  ], '정책 근거 등록', async values => { const payload={...values,synthetic:values.synthetic==='true',approvalRequired:values.approvalRequired==='true'?true:values.approvalRequired==='false'?false:'unknown',destinations:values.destinations.split(',').map(x=>x.trim()).filter(Boolean),validFrom:new Date(values.validFrom).toISOString()}; if(values.validUntil)payload.validUntil=new Date(values.validUntil).toISOString();else delete payload.validUntil; await api('/api/assets','POST',payload); $('#detail-dialog').close(); notice('정책 근거를 등록했습니다. 관련 행동의 재분석 결과를 확인하세요.'); }));
 }
 function systemEditor(old = {}) {
   const triChoices = [{ value: 'unknown', label: '미확인 · 추가 근거 필요' }, { value: 'true', label: '예 · 사실 확인됨' }, { value: 'false', label: '아니요 · 사실 확인됨' }];
@@ -813,6 +1031,15 @@ function systemEditor(old = {}) {
   const roleGuide = el('a', 'source-link', 'NIA 역할 판단 안내 ↗'); roleGuide.href = 'https://www.nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=28987&cbIdx=99835&parentSeq=28987'; roleGuide.target = '_blank'; roleGuide.rel = 'noopener noreferrer'; krRoles.append(roleGuide);
   for (const [code, title] of [['developer', '인공지능개발사업자'], ['deployer', '인공지능이용사업자']]) { const option = el('label'), input = el('input'); input.type = 'checkbox'; input.name = `krRole_${code}`; input.checked = (old.krRoles || []).includes(code); option.append(input, document.createTextNode(title)); krRoles.append(option); }
   extraFields.append(krRoles, roles); additional.append(extraFields);
+  const otherLaw = el('details', 'wide');
+  otherLaw.append(el('summary', '', '다른 법령에 따른 조치 인정 검토 · 선택 입력'), el('p', 'muted', '법 제34조제3항·시행령 제27조제5항의 검토이며 공급사 조치 활용과 별개입니다. 문서 참조·검토자는 선언 정보로 저장되며 진위·실제 이행은 아직 검증하지 않습니다. 입력만으로 의무 충족이나 법적 인정을 확정하지 않습니다.'));
+  otherLaw.append(field('검토 JSON 목록 · 전체 저장 요청 16 KiB · 빈칸 또는 []로 저장하면 현재 등록 검토를 비웁니다', 'otherLawRecognitionJson', {multiline:true,wide:true,maxLength:65536,value:JSON.stringify(old.otherLawRecognitionClaims || [], null, 2)}));
+  const examples = el('details'); examples.append(el('summary', '', '대출 설명·이용자 보호 입력 형식 보기'));
+  const sample = (basisCode, requirementId, recognitionLaw, measureCodes) => ({id:basisCode,basisCode,requirementId,recognitionLaw,systemId:old.id || 'system-id',modelId:old.modelId || 'unknown',modelVersion:old.modelVersion || 'unknown',purpose:old.purpose || 'unknown',loanReview:'unknown',performedMeasures:measureCodes.map(code=>({code,description:'해당 조치의 실제 이행 내용과 범위를 기록',performed:'unknown',evidenceRef:'governance-document:document-id',contentHash:'not_provided'})),reviewer:'unknown',reviewedAt:'unknown'});
+  examples.append(el('p', 'muted', '예시의 미확인은 그대로 검토 보류됩니다. 실제 대출 심사 여부, 이행 범위, 접수 문서의 참조·SHA-256, 검토자·ISO 일시를 확인해 입력하세요. 금융기관이나 신용평가라는 이름만으로 대출 심사로 확정하지 않습니다.'), el('pre', 'wrap', JSON.stringify([
+    sample('loan_credit_explanation','KR-34-EXPLAIN','CREDIT_INFORMATION_ACT',['article_35_2_explanation','article_36_2_1_procedure']),
+    sample('loan_consumer_protection','KR-34-PROTECT','FINANCIAL_CONSUMER_PROTECTION_ACT',['article_10_all_obligations']),
+  ], null, 2))); otherLaw.append(examples);
   showDetail(old.id ? 'AI 시스템 사실관계 수정' : 'AI 시스템 등록', form([
     field('시스템 ID', 'id', { required: true, value: old.id || '' }), field('시스템 이름', 'name', { required: true, value: old.name || '' }), field('책임자', 'owner', { required: true, value: old.owner || '' }), field('사업자 역할', 'role', { required: true, value: old.role || '', placeholder: '예: provider, deployer' }),
     field('제공 국가·시장', 'markets', { required: true, value: (old.markets || []).join(', '), placeholder: '예: KR, EU' }), field('사용 분야', 'domain', { required: true, value: old.domain || '', placeholder: '예: customer_support, hiring' }),
@@ -820,7 +1047,7 @@ function systemEditor(old = {}) {
     field('한국 고영향 검토 상태', 'highImpact', { choices: ['unknown', 'candidate', 'confirmed', 'no'], value: old.highImpact || 'unknown' }),
     field('EU 고위험 검토 상태 (별도 분류)', 'euHighRisk', { value: old.euHighRisk || 'unknown' }), field('데이터 범주', 'dataCategories', { value: (old.dataCategories || []).join(', '), placeholder: '쉼표로 구분' }), field('이용자·영향받는 사람', 'affectedPeople', { wide: true, value: old.affectedPeople || '' }),
     field('공급사 식별자', 'supplierId', {value: old.supplierId || '', placeholder: '미확인이면 비우기'}), field('모델 식별자', 'modelId', {value: old.modelId || ''}), field('심사에 미치는 영향', 'decisionInfluence', {choices: [{value:'unknown',label:'미확인'},{value:'advisory',label:'참고·보조'},{value:'material',label:'심사에 중대한 영향'},{value:'automated',label:'자동 결정'}],value:old.decisionInfluence||'unknown'}), field('공급받은 모델 버전', 'suppliedModelVersion', {value:old.suppliedModelVersion||''}), field('공급받은 사용 목적', 'suppliedPurpose', {value:old.suppliedPurpose||'',wide:true}),
-    field('모델 버전', 'modelVersion', { value: old.modelVersion === 'unknown' ? '' : old.modelVersion || '', placeholder: '미확인이면 비우기' }), field('정책 버전', 'policyVersion', { value: old.policyVersion === 'unknown' ? '' : old.policyVersion || '', placeholder: '미확인이면 비우기' }), additional,
+    field('모델 버전', 'modelVersion', { value: old.modelVersion === 'unknown' ? '' : old.modelVersion || '', placeholder: '미확인이면 비우기' }), field('정책 버전', 'policyVersion', { value: old.policyVersion === 'unknown' ? '' : old.policyVersion || '', placeholder: '미확인이면 비우기' }), additional, otherLaw,
   ], '인벤토리 저장', async (input) => {
     const values = systemFactsPayload(input);
     await api('/api/governance/systems', 'POST', values); $('#detail-dialog').close(); await navigate('governance'); notice('시스템을 등록했습니다. 요구사항별 적용성과 증거를 검토하세요.');
@@ -836,9 +1063,37 @@ function localDate(value) {
   const d = new Date(value); if (Number.isNaN(d.getTime())) return '';
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
+function governanceOtherLawReview(item, title = '다른 법령에 따른 조치 인정 검토') {
+  const review = item.applicability?.otherLawRecognitionReview, id = typeof item.requirement === 'object' ? item.requirement.id : item.requirement;
+  const entries = Array.isArray(review?.items) ? review.items : [];
+  if (!['KR-34-EXPLAIN','KR-34-PROTECT'].includes(id) && !entries.length) return null;
+  const node = card(title, '법률 검토 필요 · 공급사 조치 활용과 별개 · 입력만으로 자동 충족하지 않습니다.');
+  node.append(el('p', 'muted', '문서 참조·해시와 검토자는 선언 정보입니다. 원본 문서 복구·해시·실제 이행 및 검토자 신원은 이 입력 경로에서 아직 검증하지 않습니다.'));
+  if (review?.schemaVersion !== 1 || !entries.length) { node.append(el('p', 'muted', '다른 법령 인정 검토가 미등록이거나 현재 검토 정보가 없습니다. 법적 인정 여부는 보류합니다.')); return node; }
+  const measureLabels = {article_35_2_explanation:'신용정보법 제35조의2 설명 의무',article_36_2_1_procedure:'신용정보법 제36조의2제1항 설명 절차',article_10_all_obligations:'금융소비자보호법 제10조 책무 전체'};
+  const reasonLabels = {recognition_requirement_not_linked:'대응 조문을 연결하지 못해 시스템 수준에서 검토 보류',recognition_basis_not_mapped:'인정 근거의 법적 범위 미확인',recognition_requirement_mismatch:'인정 대상 조치 불일치',recognition_law_mismatch:'인정 법령 불일치',measure_missing:'필수 이행 조치 누락',measure_performance_unconfirmed:'실제 이행 여부 미확인',measure_document_binding_incomplete:'조치 근거 문서의 참조·해시 부족',measure_scope_not_mapped:'이행 조치의 대응 범위 미확인',loan_review_scope_unconfirmed:'대출 심사 해당 범위 미확인',ai_business_operator_unconfirmed:'AI 사업자 해당성 미확인',target_system_mismatch:'대상 시스템 불일치',target_modelId_mismatch_or_unconfirmed:'대상 모델 불일치·미확인',target_modelVersion_mismatch_or_unconfirmed:'대상 모델 버전 불일치·미확인',target_purpose_mismatch_or_unconfirmed:'사용 목적 불일치·미확인',reviewer_or_review_time_missing:'검토자·검토 일시 미확인'};
+  for (const entry of entries.slice(0,10)) {
+    const claim = entry.claim || {}, section = el('article', 'list-item'), basisLabels = {loan_credit_explanation:'대출 설명',loan_consumer_protection:'대출 이용자 보호'};
+    const reviewedAt = typeof claim.reviewedAt === 'string' && Number.isFinite(Date.parse(claim.reviewedAt)) ? date(claim.reviewedAt) : '미확인';
+    section.append(el('h4', '', `${claim.id || '검토 ID 미확인'} · ${(Object.hasOwn(basisLabels, claim.basisCode) ? basisLabels[claim.basisCode] : claim.basisCode) || '근거 미확인'}`), el('p', 'muted', `법률 검토 필요 · ${entry.declaredScopeComplete === true ? '입력 항목의 범위 연결은 갖춰짐 · 진위 미검증' : '입력 범위·근거 보완 필요'}`));
+    section.append(el('p', 'wrap', `선언 대상: ${claim.systemId || '미확인'} · 모델 ${claim.modelId || '미확인'} / ${claim.modelVersion || '미확인'} · 목적 ${claim.purpose || '미확인'}`), el('p', 'muted', `선언 법령: ${claim.recognitionLaw || '미확인'} · 대상 조치 ${claim.requirementId || '미확인'} · 별표 항목 ${entry.annexItem || '미확인'} · 검토자 ${claim.reviewer || '미확인'} / ${reviewedAt}`));
+    for (const reason of Array.isArray(entry.reasons) ? entry.reasons : []) { const [code,measure] = String(reason).split(':'); section.append(el('p', 'muted', `보완·보류: ${Object.hasOwn(reasonLabels, code) ? reasonLabels[code] : String(reason)}${measure ? ' · '+(Object.hasOwn(measureLabels, measure) ? measureLabels[measure] : measure) : ''}`)); }
+    const measures = Array.isArray(claim.performedMeasures) ? claim.performedMeasures : [];
+    section.append(table(['특정 이행 조치 / 내용','선언 이행 여부','선언 문서 참조 / SHA-256'],measures.slice(0,10).map(measure=>[`${(Object.hasOwn(measureLabels, measure.code) ? measureLabels[measure.code] : measure.code) || '미확인'} · ${measure.description || '내용 미확인'}`,measure.performed===true?'이행했다고 입력 · 미검증':measure.performed===false?'미이행으로 입력':'미확인',`${measure.evidenceRef || '미확인'} / ${measure.contentHash || '미확인'}`]))); node.append(section);
+  }
+  node.append(limits(review.limitations)); return node;
+}
+function governanceUnlinkedOtherLawReview(system, items = []) {
+  const linked = new Set(items.flatMap(item => (item.applicability?.otherLawRecognitionReview?.items || []).map(entry => entry.claim?.id)));
+  const claims = (system.otherLawRecognitionClaims || []).filter(claim => !linked.has(claim.id));
+  if (!claims.length) return null;
+  return governanceOtherLawReview({requirement:{id:'unlinked'},applicability:{otherLawRecognitionReview:{schemaVersion:1,status:'human_review_required',automaticLegalVerdict:false,supportsHumanAssessment:false,items:claims.map(claim=>({claim,declaredScopeComplete:false,reasons:['recognition_requirement_not_linked']}))}}}, '조문 미연결 · 다른 법령 인정 검토 보류');
+}
 async function governanceReport(systemId, requirements) {
   const data = await api(`/api/governance/report?systemId=${encodeURIComponent(systemId)}`); const node = el('div');
   node.append(el('p', 'selection-note', `${data.system.name} · 책임자 ${data.system.owner} · 목적 ${data.system.purpose}`), limits(data.limitations));
+  node.append(governanceLegalSourceCoverage(data.legalSourceCoverage));
+  const unlinked = governanceUnlinkedOtherLawReview(data.system, data.items || []); if (unlinked) node.append(unlinked);
   const list = el('div', 'list');
   for (const item of data.items || []) {
     const req = typeof item.requirement === 'object' ? item.requirement : requirements.find((r) => r.id === item.requirement) || { id: item.requirement, title: item.requirement };
@@ -848,11 +1103,28 @@ async function governanceReport(systemId, requirements) {
       section.append(el('p', 'muted', `사실관계 기반 분류: ${candidateLabels[item.applicability.status] || '미확인'} · ${item.applicability.reason || '인간 적용성 검토 필요'}`));
       if (item.applicability.missingFacts?.length) section.append(el('p', 'muted wrap', `추가 확인할 사실: ${item.applicability.missingFacts.join(', ')}`));
     }
+    const otherLawReview = governanceOtherLawReview(item); if (otherLawReview) section.append(otherLawReview);
     section.append(governanceTechnicalEvidence(item));
     if (item.assessment) section.append(el('p', 'muted', `사람 평가: 적용성 ${label(item.assessment.applicability)} · 증거 충분성 ${label(item.assessment.assessment)} · 법률 검토 ${label(item.assessment.legalReview)} · 담당자 ${item.assessment.owner || '미지정'}`));
     else section.append(el('p', 'muted', '아직 인간 평가가 없습니다. 적용 대상과 필요한 근거를 확인하세요.'));
+    const assurance = item.evidenceAssurance;
+    if (assurance && ['self_asserted', 'mixed'].includes(assurance.level)) section.append(el('p', 'message warning', `${label('self_asserted')}: 증거 ${Number(assurance.selfAssertedItems) || 0}/${(assurance.items || []).length}건은 작성자의 주장이며 vault가 내용을 확인하지 않았습니다.`));
+    if (item.assessment && item.legalReview) {
+      const legal = item.legalReview;
+      section.append(el('p', 'muted', `법률 검토 상태: ${label(item.legalStatus)} · 작성자 기록 ${label(legal.authorClaim)} · ${legal.reviewedBy ? `확인 ${legal.reviewedBy}` : '작성자 외 검토자 확인 없음'}`));
+      if (item.legalStatus === 'pending') section.append(button('법률 검토 확인 (작성자 외 검토자)', () => legalReviewEditor(systemId, item, requirements), 'small'));
+    }
     section.append(jsonDetails('요구사항·현재 평가 근거', item), button('평가·통제·증거 기록', () => assessmentEditor(systemId, req, item.assessment, requirements), 'small')); list.append(section);
   } node.append(list, jsonDetails('시스템 사실관계', data.system)); showDetail('시스템별 거버넌스 검토 보고서', node);
+}
+// The legal review of an assessment is recorded by a reviewer other than its author (maker-checker).
+function legalReviewEditor(systemId, item, requirements) {
+  const node = el('div');
+  node.append(el('p', 'selection-note', `${item.requirement?.title || item.requirement?.id || ''} · 평가 작성자 ${item.legalReview?.author || '미확인'}`), el('p', 'muted', '평가 작성자는 자기 평가의 법률 검토를 확인할 수 없습니다. 확인은 현재 평가 내용(해시)에만 연결되며 평가가 바뀌면 다시 필요합니다.'));
+  node.append(form([field('법률 검토 근거', 'reason', { required: true, multiline: true, wide: true })], '법률 검토 확인 기록', async (values) => {
+    await api(`/api/governance/assessments/${encodeURIComponent(item.assessment.id)}/legal-review`, 'POST', { reason: values.reason });
+    await governanceReport(systemId, requirements); notice('법률 검토 확인을 기록했습니다.');
+  })); showDetail('법률 검토 확인', node);
 }
 function assessmentEditor(systemId, requirement, previous, requirements) {
   const old = previous || {}; const node = el('div');
@@ -905,7 +1177,7 @@ async function retentionView() {
       if (!Number.isSafeInteger(retentionSeconds) || retentionSeconds < 1 || retentionSeconds > 10 * 365 * 86400) throw new Error('보존기간은 1초부터 10년까지의 정수로 입력하세요.');
       await api('/api/retention/policy', 'POST', { ...values, retentionSeconds }); await retentionSaved('새 보존 정책을 저장했습니다. 이후 접수하는 이벤트부터 적용됩니다.');
     })); showDetail('보존 정책 버전 작성', content);
-  }, 'small')); node.append(policyCard);
+  }, 'small')); node.append(policyCard, await rotationCard());
   const holds = card('보존 보류', '테넌트 전체 또는 특정 행동의 파기를 보류합니다. 등록자와 다른 검토자가 근거를 남겨 해제해야 합니다.');
   holds.querySelector('.card-header').append(button('+ 보존 보류', () => {
     const holdForm = form([field('보류 범위', 'scopeType', { choices: [{ value: 'action', label: '특정 행동' }, { value: 'tenant', label: '현재 테넌트 전체' }] }), field('행동 ID', 'actionId', { required: true, maxLength: 200 }), field('보류 사유·관련 절차', 'reason', { required: true, multiline: true, wide: true, maxLength: 1000 })], '보존 보류 등록', async (values) => {
@@ -933,9 +1205,58 @@ async function retentionView() {
     })); showDetail('파기 계획 작성', content);
   }, 'small'));
   plans.append(table(['계획 ID', '대상 수', '작성자 / 승인자', '계획 유효기한', '상태', '검토'], (data.plans || []).map((plan) => [plan.id, plan.items?.length ?? 0, `${plan.author} / ${plan.approvedBy || '미승인'}`, date(plan.expiresAt), badge(plan.status), button('대상·승인 검토', () => retentionPlanDetail(plan.id), 'small')]))); node.append(plans);
-  const inventory = card('이벤트별 보존 상태', `${data.items?.length ?? 0}건 · 계획 포함 가능 ${(data.items || []).filter((item) => item.eligible).length}건. 현재 조회 결과이며 승인·실행 시 서버가 유효성을 다시 검증합니다.`);
+  const counts = data.counts || { items: data.items?.length ?? 0, eligible: (data.items || []).filter((item) => item.eligible).length, returned: data.items?.length ?? 0 };
+  const shown = data.itemsTruncated ? ` · 계획에 포함할 수 있는 것과 보존이 먼저 끝나는 것부터 ${counts.returned.toLocaleString('ko-KR')}건 표시` : '';
+  const inventory = card('이벤트별 보존 상태',
+    `${counts.items.toLocaleString('ko-KR')}건 · 계획 포함 가능 ${counts.eligible.toLocaleString('ko-KR')}건${shown}. 현재 조회 결과이며 승인·실행 시 서버가 유효성을 다시 검증합니다.`);
   inventory.append(retentionItems(data.items, true)); node.append(inventory);
   if (data.legacyPlaintextEvents) node.append(el('div', 'message warning', `기존 평문 원장 이벤트 ${data.legacyPlaintextEvents}건은 이 암호키 파기 절차의 대상이 아닙니다. 별도 승인된 이전·보존 절차가 필요합니다.`));
+  node.append(limits(data.limitations)); return node;
+}
+// Scheduled rotation (docs/retention-rotation.md): every role sees the active policy, runs and erased classes; the server decides
+// who may propose (reviewer), activate (another administrator), reject or suspend.
+async function rotationCard() {
+  const data = await api('/api/retention/rotation'); const active = data.active; const scheduler = data.scheduler || {};
+  const node = card('정기 로테이션', '두 사람이 사전 승인한 정책의 일상 이벤트 분류만 기간이 지나면 일정에 따라 내용 키를 파기합니다. 원장 기록·해시는 남습니다.');
+  const days = (seconds) => seconds === null || seconds === undefined ? '사용 안 함' : `${Math.round(seconds / 86400 * 100) / 100}일`;
+  if (data.historyValid === false) node.append(el('p', 'message error', `로테이션 정책·정기 파기 이력이 검증되지 않아 실행을 거부합니다: ${data.historyError}`));
+  if (active) {
+    node.append(el('p', '', `활성 정책 v${active.version} · 제안 ${active.proposedBy} · 승인 ${active.approvedBy} · 유효기한 ${date(active.validUntil)}`),
+      el('p', 'muted', `접근 기록 보관 ${days(active.terms.accessLogRetentionSeconds)} · 1회 최대 ${active.terms.maxPerRun}건 · 목적: ${active.terms.purpose}`),
+      table(['출처 종류', '이벤트 종류', '민감도', '보관 기간'], active.terms.classes.map((c) => [c.sourceKind, c.kind === '*' ? '일상 종류 전체' : c.kind,
+        c.sensitivity === 'any' ? '전체' : c.sensitivity, days(c.retentionSeconds)])));
+  } else node.append(el('p', 'message warning', '활성 로테이션 정책이 없습니다. 정기 파기는 일어나지 않습니다.'));
+  const last = scheduler.lastRun;
+  node.append(el('p', 'muted', `스케줄러 ${scheduler.enabled ? `사용 · 주기 ${Math.round(scheduler.intervalMs / 1000)}초 · 다음 실행 ${date(scheduler.nextRunAt)}` : '꺼짐(RETENTION_ROTATION_INTERVAL_MS 미설정)'}`
+    + ` · 마지막 실행 ${last ? `${date(last.at)} ${label(last.status)} (파기 ${last.erased}건)` : '이 프로세스 기동 후 없음'}`));
+  const erased = Object.entries(data.erasedByClass || {});
+  node.append(el('p', '', `서명된 정기 파기 ${data.scheduledDispositions ?? 0}회 · 이벤트 ${data.rotatedEvents ?? 0}건`
+    + (data.lastDisposition ? ` · 최근 ${date(data.lastDisposition.executedAt)} ${data.lastDisposition.erased}건(정책 v${data.lastDisposition.policyVersion})` : '')));
+  if (erased.length) node.append(table(['분류(출처/종류/민감도)', '파기 건수'], erased.map(([name, count]) => [name, count])));
+  if (data.accessLog) node.append(el('p', 'muted', `접근 기록 보관 ${data.accessLog.entries}건 · 서명된 정리 경계 ${data.accessLog.prunedThrough} · 가장 오래된 기록 ${date(data.accessLog.oldestEntryAt)}`));
+  node.querySelector('.card-header').append(button('+ 로테이션 정책 제안', () => {
+    const content = el('div');
+    content.append(el('p', 'message warning', '결정·승인·중지·안전·수집 공백·조항 검증 기록은 지정할 수 없습니다. 제안자와 다른 관리자가 승인해야 효력이 생깁니다.'));
+    content.append(form([field('대상 분류 JSON', 'classes', { required: true, multiline: true, wide: true,
+      value: '[{"sourceKind":"telemetry","kind":"heartbeat","sensitivity":"any","retentionSeconds":2592000}]' }),
+    field('접근 기록 보관 일수(비우면 정리 안 함, 365일 이상)', 'accessLogDays', { type: 'number' }), field('정책 유효 일수', 'validDays', { type: 'number', value: '365' }),
+    field('목적', 'purpose', { required: true, wide: true, maxLength: 500 }), field('근거', 'reason', { required: true, multiline: true, wide: true, maxLength: 1000 })],
+    '정책 제안 저장', async (values) => {
+      let classes; try { classes = JSON.parse(values.classes); } catch { throw new Error('대상 분류는 JSON 배열로 입력하세요.'); }
+      await api('/api/retention/rotation', 'POST', { classes, purpose: values.purpose, reason: values.reason, validDays: Number(values.validDays),
+        accessLogRetentionSeconds: values.accessLogDays ? Number(values.accessLogDays) * 86400 : null });
+      await retentionSaved('로테이션 정책을 제안했습니다. 다른 관리자의 승인 전에는 아무것도 파기되지 않습니다.');
+    })); showDetail('정기 로테이션 정책 제안', content);
+  }, 'small'));
+  const step = (policy, path, text, message, className = 'small') => button(text, async () => {
+    await api(`/api/retention/rotation/${encodeURIComponent(policy.id)}/${path}`, 'POST', { reason: `${text} (화면)` }); await retentionSaved(message);
+  }, className);
+  node.append(table(['버전', '상태', '제안 / 승인', '검토'], (data.policies || []).map((policy) => {
+    const actions = el('div', 'actions'); actions.append(button('이력', () => inspect('로테이션 정책 기록', policy), 'small'));
+    if (policy.status === 'proposed') actions.append(step(policy, 'approve', '관리자 승인', '정책을 활성화했습니다. 다음 실행부터 적용됩니다.'), step(policy, 'reject', '반려', '정책 제안을 반려했습니다.'));
+    if (policy.status === 'active') actions.append(step(policy, 'suspend', '즉시 중지', '정기 로테이션을 중지했습니다. 다시 켜려면 새 제안과 승인이 필요합니다.', 'small danger'));
+    return [`v${policy.version}`, badge(policy.status), `${policy.proposedBy} / ${policy.approvedBy || '미승인'}`, actions];
+  })));
   node.append(limits(data.limitations)); return node;
 }
 async function retentionPlanDetail(id, execution = false) {
@@ -973,8 +1294,28 @@ async function healthView() {
   }
   const sources = card('출처별 수집 상태', '알려진 출처 범위의 상태입니다. 모든 AI 사용을 관측했다는 의미가 아닙니다.'); sources.append(sourceTable(data.sources)); node.append(sources);
   const integrity = card('증적 무결성 검증', '서명 원장, 보존된 이벤트 본문·색인, 개발 실행, 등록 객체·평가·행동 상태, 거버넌스 문서 사본과 참조된 로컬 암호화 문서를 대조합니다. 문서 검증은 파일별 읽기 시점이며 미참조 파일이나 파일시스템 전체 스냅샷을 뜻하지 않습니다. 독립 내보내기 검증에는 별도로 확보한 신뢰 앵커가 필요합니다.');
-  const result = el('div'); integrity.append(el('p', 'muted', `분석 대기: ${data.counts?.backlog ?? '미확인'}건. 접수·분석·외부 봉인은 구분해서 판단하세요.`), button('보관 증적 검증 실행', async () => { result.replaceChildren(el('div', 'loading', '체인 무결성 검사 중')); try { const response = await api('/api/integrity'); result.replaceChildren(el('pre', 'json', stringify(response))); } catch (error) { result.replaceChildren(el('div', 'message error', error.message)); } }, 'primary'), result);
+  const result = el('div'); integrity.append(el('p', 'muted', `분석 대기: ${data.counts?.backlog ?? '미확인'}건. 접수·분석·외부 봉인은 구분해서 판단하세요.`), button('보관 증적 검증 실행', async () => { result.replaceChildren(el('div', 'loading', '서명 원장 전체와 보관 사본을 처음부터 다시 대조하고 있습니다. 기록이 많으면 몇 초 걸립니다…')); const started = Date.now(); try { const response = await api('/api/integrity'); result.replaceChildren(integritySummary(response, Date.now() - started)); } catch (error) { result.replaceChildren(el('div', 'message error', error.message)); } }, 'primary'), result);
   node.append(integrity, limits(data.limitations), limits(['수집되지 않은 출처의 행동과 원문 미보관으로 인한 사후 검증 범위는 확인할 수 없습니다.', '체인 검증 성공은 기록 내용의 진실성이나 법적 증거능력에 대한 판정이 아닙니다.'])); return node;
+}
+// The integrity answer in words first (records, events and evaluations checked, time taken), the full answer below it.
+function integritySummary(response, ms) {
+  const node = el('div'), count = (value) => (Number.isFinite(value) ? value.toLocaleString('ko-KR') : '미확인');
+  const ok = response?.valid === true;
+  const checked = `서명 원장 ${count(response.count)}건, 보관 이벤트 ${count(response.projection?.retainedEvents ?? response.disclosedEvents)}건, 평가 ${count(response.evaluationProjection?.evaluations)}건`;
+  node.append(el('div', ok ? 'message' : 'message error', ok ? `검증 통과: ${checked}을 대조했습니다 (${(ms / 1000).toFixed(1)}초).` : '검증에 실패했거나 결과를 확인할 수 없습니다. 아래 상세를 확인하세요.'));
+  // What this verification could not establish: a ledger replaced by an older copy is invisible without a pin or witness, and a
+  // monitor-mode vault keeps running after it detected one, so both are said here and not only inside the JSON.
+  const violations = Array.isArray(response?.transparency?.runtime?.violations) ? response.transparency.runtime.violations : [];
+  if (violations.length) {
+    node.append(el('div', 'message error', `투명성 위반 ${violations.length}건: ${violations.slice(0, 2).map(v => v.message).join(' · ')}. `
+      + '원장이 되돌려졌거나 갈라졌을 수 있습니다. 백업과 pin 파일을 대조하세요.'));
+  } else if (ok && response?.rollbackChecked === false) {
+    const why = response.transparency?.mode === 'off'
+      ? '투명성 설정이 꺼져 있어 원장을 과거 사본으로 바꿔도 여기서는 통과합니다. EvidScope를 멈추고 `node scripts/upgrade-local.mjs --transparency`를 실행하세요.'
+      : '위트니스·pin 대조가 아직 안 끝났거나 pin이 멈춰 있습니다.';
+    node.append(el('div', 'message warning', `검사하지 않은 항목: ${(response.verificationScope?.notChecked || ['rollback']).join(', ')}. ${why}`));
+  }
+  node.append(jsonDetails('검증 상세', response)); return node;
 }
 async function accessSubjects() {
   if (authMode !== 'oidc' || sessionPrincipal?.role !== 'admin') throw new Error('조직 계정 관리 권한이 필요합니다.');
@@ -1047,10 +1388,13 @@ async function agentsView(){
  }catch(error){if(current===epoch&&viewEpoch===renderEpoch){stats.replaceChildren();scope.textContent='조회 실패 · 선택 조건의 집계를 확인할 수 없습니다.';pages.replaceChildren();rows.replaceChildren(empty('집계를 불러오지 못했습니다',error.message));}}finally{if(current===epoch)submit.disabled=false;}}
  filters.addEventListener('submit',event=>{event.preventDefault();offset=0;search();});filters.addEventListener('change',event=>{if(event.target.tagName==='SELECT'){offset=0;search();}});await search();return node;
 }
-const renderers = { agents: agentsView, graphs: graphsView, investigations: investigationsView, overview, events: eventsView, alerts: alertsView, cases: casesView, rules: rulesView, governance: governanceView, retention: retentionView, health: healthView };
+// The home lives in public/home.js; without it (or before it loads) the landing view is the investigation list.
+const renderers = {
+  home: () => window.EvidScopeHome ? window.EvidScopeHome.render() : renderers.investigations(),
+  agents: agentsView, graphs: graphsView, investigations: investigationsView, overview, events: eventsView, alerts: alertsView, cases: casesView, rules: rulesView, governance: governanceView, retention: retentionView, health: healthView };
 async function navigate(view) {
   disposeView(); disposeView = () => {};
-  if (!views[view]) view = 'investigations'; activeView = view; const epoch = ++renderEpoch;
+  if (!views[view]) view = 'home'; activeView = view; const epoch = ++renderEpoch;
   document.querySelectorAll('[data-view]').forEach((node) => { node.classList.toggle('active', node.dataset.view === view); if (node.dataset.view === view) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
   window.EvidScopeConsole?.updateNavigation(view);
   $('#page-title').textContent = views[view][0]; $('#page-description').textContent = views[view][1];
@@ -1070,7 +1414,7 @@ async function navigate(view) {
   finally { if (epoch === renderEpoch) $('#content').removeAttribute('aria-busy'); }
 }
 document.querySelectorAll('[data-view]').forEach((node) => node.addEventListener('click', () => navigate(node.dataset.view)));
-$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('investigations'); });
+$('.brand').addEventListener('click', (event) => { event.preventDefault(); navigate('dashboard'); });
 $('#refresh').addEventListener('click', () => navigate(activeView));
 $('#auth-close').addEventListener('click', () => $('#auth-dialog').close());
 $('#detail-close').addEventListener('click', () => { detailEpoch++; $('#detail-dialog').close(); });
@@ -1116,7 +1460,7 @@ async function initializeAuth() {
       } else if (sessionResponse.status === 401) clearAuth(false);
       else throw new Error('조직 접속 상태를 조회하지 못했습니다. 다시 접속하세요.');
     } else if (!token) $('#connection').textContent = '인증 필요';
-    await navigate(activeView);
+    await navigate(activeView); openLinkedAction();
     const query = new URLSearchParams(window.location.search);
     if (query.get('auth') === 'failed') { window.history.replaceState(null, '', '/'); notice('조직 계정 접속을 완료하지 못했습니다. 등록된 계정인지 확인하고 다시 시도하세요.', true); }
   } catch (error) {
@@ -1152,7 +1496,7 @@ $('#auth-form').addEventListener('submit', async (event) => {
   authEpoch++; token = $('#auth-token').value.trim(); $('#auth-token').value = '';
   const attemptEpoch = authEpoch;
   try {
-    await api('/api/overview'); $('#auth-dialog').close(); $('#auth-toggle').textContent = '접속 종료'; $('#connection').textContent = '감사 API 연결됨'; $('#connection-dot').classList.add('connected'); await navigate(activeView);
+    await api('/api/overview'); $('#auth-dialog').close(); $('#auth-toggle').textContent = '접속 종료'; $('#connection').textContent = '감사 API 연결됨'; $('#connection-dot').classList.add('connected'); await navigate(activeView); openLinkedAction();
   } catch (error) {
     if (authEpoch === attemptEpoch || error.status === 401 && authEpoch === attemptEpoch + 1 && !token) {
       if (token) clearAuth();
@@ -1176,6 +1520,8 @@ window.EvidScopeCore = {
   api, el, button, badge, card, notice, empty, limits, jsonDetails, table, field, form,
   label, date, stringify, showDetail, inspect, captureDetailContext, isCurrentDetail, savedNotice,
   downloadArtifact, localDate, navigate, $,
+  // Opens a list view with its filters set (the home's counts link to their filtered lists).
+  openList(view, preset = {}) { listPresets[view] = { ...preset }; return navigate(view); },
   factList: evidenceFacts,
   openAction: actionDetail,
   openCase: caseDetail,
@@ -1188,5 +1534,5 @@ window.EvidScopeCore = {
   registerView(key, title, description, render) { views[key] = [title, description]; renderers[key] = render; },
 };
 
-navigate('investigations');
+navigate(activeView);
 initializeAuth();

@@ -20,7 +20,7 @@ test('successful telemetry does not query another Pod or change the sample',asyn
 });
 
 test('a telemetry failure while the same container remains live is not suppressed',async()=>{
- const pod=running(),error=missingContainer();await assert.rejects(observePublicQaPod({pod,jobUid,measure:async()=>{throw error;},readPod:async()=>structuredClone(pod)}),e=>e===error);
+ const pod=running(),error=missingContainer();await assert.rejects(observePublicQaPod({pod,jobUid,measure:async()=>{throw error;},pause:async()=>{},readPod:async()=>structuredClone(pod)}),e=>e===error);
 });
 
 test('Pod status lookup failure preserves the telemetry error rather than declaring completion',async()=>{
@@ -53,5 +53,23 @@ test('a missing runtime task never substitutes a replacement Pod during delayed 
 test('bounded late status polling does not infer an exit from a missing task alone',async()=>{
  const pod=running(),error=missingTask(),pauses=[];let reads=0;
  await assert.rejects(observePublicQaPod({pod,jobUid,measure:async()=>{throw error;},pause:async ms=>pauses.push(ms),readPod:async()=>{reads++;return structuredClone(pod);}}),e=>e===error);
+ assert.equal(reads,4);assert.deepEqual(pauses,[250,500,1000]);
+});
+
+test('the observed container-not-found upgrade error waits for the exact container actual termination',async()=>{
+ const pod=running(),pauses=[];let reads=0;
+ const result=await observePublicQaPod({pod,jobUid,measure:async()=>{throw missingContainer();},pause:async ms=>pauses.push(ms),readPod:async()=>++reads<3?structuredClone(pod):completed(pod)});
+ assert.equal(result.terminated.exitCode,0);assert.equal(result.terminalRecheck.statusReads,3);assert.deepEqual(pauses,[250,500]);
+});
+
+test('a different named container cannot trigger delayed exit polling for the owned workload',async()=>{
+ const pod=running(),error=Error('unable to upgrade connection: container not found ("unrelated")');let reads=0;
+ await assert.rejects(observePublicQaPod({pod,jobUid,measure:async()=>{throw error;},pause:async()=>assert.fail('wrong container must not be polled'),readPod:async()=>{reads++;return structuredClone(pod);}}),value=>value===error);
+ assert.equal(reads,1);
+});
+
+test('a missing named container without published termination stays failed after the bounded reads',async()=>{
+ const pod=running(),error=missingContainer(),pauses=[];let reads=0;
+ await assert.rejects(observePublicQaPod({pod,jobUid,measure:async()=>{throw error;},pause:async ms=>pauses.push(ms),readPod:async()=>{reads++;return structuredClone(pod);}}),value=>value===error);
  assert.equal(reads,4);assert.deepEqual(pauses,[250,500,1000]);
 });

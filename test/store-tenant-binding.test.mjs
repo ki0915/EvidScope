@@ -1,12 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {mkdtempSync} from 'node:fs';
-import {join} from 'node:path';
-import {tmpdir} from 'node:os';
 import {Store} from '../src/store.mjs';
+import {tempDir} from './temp-dir.mjs';
 
-function fixture(t){const store=new Store(mkdtempSync(join(tmpdir(),'evidscope-sql-binding-')),generateKeyPairSync('ed25519').privateKey);t.after(()=>store.close());for(const tenant of ['alpha','beta'])store.transaction(()=>store.append(tenant,'audit_access',{operation:'synthetic'},tenant+'-user'));return store;}
+function fixture(t){const store=new Store(tempDir('evidscope-sql-binding-'),generateKeyPairSync('ed25519').privateKey);t.after(()=>store.close());for(const tenant of ['alpha','beta'])store.transaction(()=>store.append(tenant,'audit_access',{operation:'synthetic'},tenant+'-user'));return store;}
 
 test('moving signed rows to another SQL tenant cannot turn valid signatures into tenant authority',t=>{
  const store=fixture(t),before=store.bundle('alpha');store.db.exec('DROP TRIGGER immutable_update');
