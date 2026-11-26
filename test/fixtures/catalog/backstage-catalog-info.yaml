@@ -1,0 +1,51 @@
+# Backstage descriptor format example (docs/features/software-catalog/descriptor-format.md, Kind: Component),
+# followed by an AI agent described the way teams mark agents today: a Component whose spec.type names the agent.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: artist-web
+  description: The place to be, for great artists
+spec:
+  type: website
+  lifecycle: production
+  owner: artist-relations-team
+  system: artist-engagement-portal
+  dependsOn:
+    - resource:default/artists-db
+  dependencyOf:
+    - component:default/artist-web-lookup
+  providesApis:
+    - artist-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: support-triage-agent
+  namespace: support
+  title: Support triage agent
+  description: |
+    Classifies incoming tickets and drafts replies.
+    A person sends every reply.
+  tags: [ai, agent]
+  annotations:
+    backstage.io/source-location: url:https://git.example.com/support/triage-agent
+spec:
+  type: ai-agent
+  lifecycle: experimental
+  owner: group:support/triage-team
+  system: support-desk
+  consumesApis:
+    - api:default/ticket-mcp
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ticket-mcp
+  tags: [mcp, ai]
+spec:
+  type: mcp-server
+  lifecycle: experimental
+  owner: team-a
+  remotes:
+    - type: streamable-http
+      url: https://tickets.example.com/mcp

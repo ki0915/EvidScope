@@ -31,6 +31,16 @@
       "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-DECREE-23-4-3-EXCEPTION",
+        "article": "시행령 제23조제4항제3호",
+        "title": "투명성 의무의 장관 고시 추가 예외 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
@@ -70,6 +80,16 @@
       "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-DECREE-23-4-3-EXCEPTION",
+        "article": "시행령 제23조제4항제3호",
+        "title": "투명성 의무의 장관 고시 추가 예외 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
@@ -109,6 +129,16 @@
       "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-DECREE-23-4-3-EXCEPTION",
+        "article": "시행령 제23조제4항제3호",
+        "title": "투명성 의무의 장관 고시 추가 예외 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
@@ -247,6 +277,16 @@
       "제5항 재확인 요청일로부터 30일 이내 회신"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-DECREE-25-2-5-CRITERIA",
+        "article": "시행령 제25조제2항제5호",
+        "title": "고영향 확인의 장관 고시 추가 판단 사항 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=282791&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR"
@@ -280,6 +320,24 @@
       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-34-1-6-COMMITTEE",
+        "article": "법 제34조제1항제6호",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      },
+      {
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "article": "법 제34조제2항",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
     ],
@@ -320,6 +378,24 @@
       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-34-1-6-COMMITTEE",
+        "article": "법 제34조제1항제6호",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      },
+      {
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "article": "법 제34조제2항",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201"
@@ -366,6 +442,24 @@
       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-34-1-6-COMMITTEE",
+        "article": "법 제34조제1항제6호",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      },
+      {
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "article": "법 제34조제2항",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
       "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201"
@@ -411,6 +505,24 @@
       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-34-1-6-COMMITTEE",
+        "article": "법 제34조제1항제6호",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      },
+      {
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "article": "법 제34조제2항",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
     ],
@@ -451,6 +563,24 @@
       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
     ],
     "detailNoticeStatus": "not_verified",
+    "legalSourceGaps": [
+      {
+        "id": "KR-34-1-6-COMMITTEE",
+        "article": "법 제34조제1항제6호",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      },
+      {
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "article": "법 제34조제2항",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인",
+        "status": "not_verified",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "checkedAt": "2026-10-06"
+      }
+    ],
     "additionalSourceUrls": [
       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
     ],

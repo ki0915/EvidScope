@@ -6,11 +6,18 @@
 
 | 처음 알고 싶은 내용 | 읽을 문서 |
 |---|---|
+| 어떤 문제를 어떻게 고민해 풀어 왔는가 (업데이트별) | [개발 기록](dev-log/README.md), [회고 노트](dev-log/reflection.md), [포트폴리오 컨텍스트(이력서·면접용 요약)](portfolio-context.ko.md), 기계 판독용 [career-profile.json](dev-log/career-profile.json)·[entries.jsonl](dev-log/entries.jsonl) |
+| AI 에이전트 행동을 어떻게 감시·탐지하는가 | [에이전트 모니터링](agent-monitoring.md), [모니터링·탐지 기록](dev-log/02-agent-monitoring.md) |
 | 어떤 포트폴리오이며 무엇을 해결하는가 | [제품 소개·스택·기능·구현 사례·발전 방향](product-overview.md) |
 | 어떻게 구현했고 어디를 신뢰하는가 | [현재 아키텍처](architecture.md), [전체 흐름 SVG](assets/evidence-flow.svg) |
 | 실제 성과와 남은 한계는 무엇인가 | [검증 현황과 원본 근거](verification-status.md) |
 | 실행·검토·복구 방법은 무엇인가 | [설치·첫 사용](first-release-20261006.md), [v0.1.1 권한 패치](first-release-security-patch-20261006.md) |
-| 한국 거버넌스에서 무엇을 지원하는가 | [증거 계약](kr-governance-evidence.md), [공급사 조치 활용](kr-supplier-reliance.md) |
+| 증거를 밖에서 어떻게 검증하는가 | [투명성 로그](transparency-log.md), [heads 서명기](signer.md), [표준 영수증과 검증기](receipts.md), [감사인용 증거 묶음](evidence-pack.md), [이벤트 키 감싸기](event-key-wrapping.md), [개선 라운드 기록](improvement-rounds.md) |
+| 기록을 얼마나 보관하고 언제 파기하는가 | [정기 로테이션·접근 기록 정리·프로세스 로그](retention-rotation.md) |
+| 에이전트를 어떻게 등록·정지·승인하는가 | [에이전트 레지스트리·정책 결정 수집](agent-registry.md), [킬 스위치](kill-switch.md), [사람 승인 대기열](approval-queue.md) |
+| 판정 모델이 무엇으로 배우고 어떻게 채점되는가 (모델과 상관없는 데이터셋) | [감사 세션 데이터셋](audit-dataset.md) |
+| 얼마나 빠르고 기존 관측 도구와 어떻게 붙는가 | [수집 처리량](performance.md), [관측 도구 연동(Langfuse·Phoenix)](observability-integration.md) |
+| 한국 거버넌스에서 무엇을 지원하는가 | [증거 계약](kr-governance-evidence.md), [공급사 조치 활용](kr-supplier-reliance.md), [ISMS-P 참고 정렬](isms-p-alignment.md) |
 
 아래 자료와 PDF는 각 작성 시점의 기록입니다. 기존 HTML 뷰어는 2026-09-09 설계를 설명하며 최신 상태는 위 제품·검증 문서를 따릅니다. 과거 문서의 `.local/`, `.test-runs/`, `releases/` 경로는 공개 저장소에 포함하지 않은 로컬 자료입니다.
 

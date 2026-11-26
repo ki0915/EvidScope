@@ -5,3 +5,5 @@
 *.jpeg binary
 # Keep byte-level evidence hashes stable across Windows and Linux checkouts.
 reports/** -text
+# Captured OTLP request bodies are byte-exact protocol fixtures.
+test/fixtures/otlp/** -text

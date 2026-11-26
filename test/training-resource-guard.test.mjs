@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createIdleTrainingGuard,trainingStartDecision,trainingContinueDecision,TRAINING_RESOURCE_POLICY} from '../src/training-resource-guard.mjs';
+import {createIdleTrainingGuard,trainingStartDecision,trainingContinueDecision,TRAINING_RESOURCE_POLICY,TRAINING_ACTIVE_USE_POLICY} from '../src/training-resource-guard.mjs';
 import {trainingManifest} from '../deploy/training/render.mjs';
 import {probeWindowsHostResources} from '../scripts/training-host-check.mjs';
 
@@ -54,4 +54,18 @@ test('training template is background-only, bounded and initially suspended',()=
 test('Windows probe wrapper accepts only the bounded receipt schema',()=>{
  const execute=(program,args,options)=>{assert.equal(program,'powershell.exe');assert.ok(args.some(v=>v.endsWith('training-host-probe.ps1')));assert.equal(options.windowsHide,true);return JSON.stringify(receipt());};
  assert.equal(probeWindowsHostResources({execute,now}).idleSeconds,1200);
+});
+
+test('active-use policy ignores interactive use and other GPU work but keeps VRAM, temperature and memory limits',async()=>{
+ const policy=TRAINING_ACTIVE_USE_POLICY,busy=receipt({idleSeconds:0,cpuPercent:90,freeMemoryGiB:8,gpu:{...receipt().gpu,memoryUsedMiB:1400,utilizationPercent:30,computeProcessCount:31}});
+ assert.equal(trainingStartDecision(busy,{now}).allowed,false);
+ assert.deepEqual(trainingStartDecision(busy,{now,policy}),{allowed:true,reasons:[],policy:'active_use'});
+ assert.deepEqual(trainingStartDecision(receipt({gpu:{...receipt().gpu,memoryUsedMiB:4500}}),{now,policy}).reasons,['gpu_memory_insufficient']);
+ assert.deepEqual(trainingStartDecision(receipt({gpu:{...receipt().gpu,temperatureC:85}}),{now,policy}).reasons,['gpu_temperature_high']);
+ assert.equal(trainingStartDecision(receipt({observedAt:'2026-09-12T07:00:00Z'}),{now,policy}).allowed,false);
+ assert.equal(trainingContinueDecision(busy,{now,policy}).allowed,true);
+ assert.deepEqual(trainingContinueDecision(receipt({freeMemoryGiB:1}),{now,policy}).reasons,['host_memory_pressure']);
+ let probes=0,stopped=false;const launcher={start:async()=>({name:'training-1',uid:'uid-1'}),observe:async()=>stopped?{state:'absent',terminationConfirmed:true}:++probes<3?{state:'running'}:{state:'succeeded'},stop:async()=>{stopped=true;}};
+ const result=await createIdleTrainingGuard({probe:async()=>busy,launcher,clock:()=>now,wait:async()=>{},policy}).run();
+ assert.equal(result.state,'stopped');assert.equal(result.reason,'completed');
 });

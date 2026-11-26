@@ -1,6 +1,5 @@
-import {canonical} from './crypto.mjs';
+import {canonical,isEncryptedEvent} from './crypto.mjs';
 
-const encryptedFormat='evidscope-encrypted-event-v1';
 const mismatch=detail=>{throw Error(`Action projection differs from signed evidence${detail?`: ${detail}`:''}`);};
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const actionId=value=>typeof value==='string'&&value.length>0?value:mismatch('event actionId is not replayable');
@@ -47,14 +46,18 @@ function reducer(tenant,seed){
     id=id??disclosedId;
    }
    id=actionId(id);
-   if(payload.format===encryptedFormat){
+   if(isEncryptedEvent(payload)){
     if(payload.tenant!==tenant||payload.seq!==row.seq)mismatch('encrypted event binding mismatch');
     if(typeof payload.keyId!=='string'||!payload.keyId||eventKeys.has(payload.keyId))mismatch('invalid encrypted event key');
     eventKeys.set(payload.keyId,row.seq);
    }else if(payload.tenant!==undefined&&payload.tenant!==tenant)mismatch('event tenant mismatch');
    eventSequences.add(row.seq);eventActions.set(row.seq,id);increment(id);return;
   }
-  if(row.type==='asset'){incrementAll();return;}
+  // Registry, registry-policy and stop-order versions are evaluation input like asset versions (src/agent-registry.mjs,
+  // src/stop-orders.mjs).
+  if(row.type==='asset'||row.type==='agent_registry'||row.type==='agent_registry_policy'||row.type==='agent_stop_order'){incrementAll();return;}
+  // An approval request version is evaluation input of its one action (src/approvals.mjs); it never creates an action.
+  if(row.type==='approval_request'){const value=typeof row.payload.actionId==='string'?actions.get(row.payload.actionId):undefined;if(value)value.version++;return;}
   if(row.type==='rule'){
    const next=ruleStatuses(row.payload),prior=rules.get(row.payload.id)||new Map();
    if([...next].some(([version,status])=>status==='active'&&prior.get(version)!=='active'))incrementAll();

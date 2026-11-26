@@ -1,0 +1,207 @@
+# 증거 계층 아키텍처와 차별점
+
+> 2026-10-06 적대적 감사 이후 개선 1라운드의 방향과 결과입니다. 감사 원문은 프로젝트 보고서
+> `EvidScope-적대적감사-보고서-2026-10-06.md`이며, 라운드별 진행과 다음 후보는 [개선 라운드 기록](improvement-rounds.md)에 둡니다.
+
+## 1. 한 줄 정의
+
+**EvidScope는 SIEM이 아니라 "AI 에이전트 행동 증거 계층"입니다.** 이미 쓰는 OpenTelemetry로 AI 행동을 받아 최소화된 증거로 바꾸고,
+행동을 권한·정책 버전·사람의 판단과 묶은 뒤, **운영자를 믿지 않아도 외부 위트니스와 오프라인 검증기로 확인할 수 있는 로그**로
+남깁니다. 경보는 기존 SIEM이 읽는 OCSF로 내보냅니다.
+
+감사에서 확인한 사실이 이 방향을 정했습니다.
+
+- 실제 수집 연동이 없었고 자체 수집기·SDK를 만들고 있었습니다. 수집은 이미 표준(OpenTelemetry)과 성숙한 오픈소스가 있습니다.
+- 원장 서명은 있었지만 DB를 예전 사본으로 되돌리거나 tenant를 지우는 공격을 탐지하지 못했습니다(S1·S2).
+- 처리량 한계(약 160~240 EPS 버스트)와 조회마다 원장 전체를 다시 검증하는 구조가 병목이었습니다.
+- "SIEM"이라는 이름은 상관분석·UEBA·대량 검색을 약속하지만 이 제품의 강점은 거기에 있지 않습니다.
+
+## 2. 구조
+
+```mermaid
+flowchart LR
+  A[AI 앱·에이전트<br/>OTel SDK·OpenLLMetry·OpenInference] -->|OTLP| C[OTel Collector<br/>본문 속성 삭제]
+  C -->|OTLP/HTTP + Bearer| I[ingress /v1/traces<br/>허용목록 최소화]
+  P[권한 출처<br/>AGT 승인·OPA 결정·사람 검토] -->|HMAC| I
+  I --> V[vault<br/>서명 원장 + tenant별 RFC 6962 트리<br/>커밋 시 C2SP 체크포인트]
+  V -->|heads 체크포인트<br/>선택: tenant 체크포인트| W[독립 위트니스<br/>litewitness·OmniWitness]
+  W -->|공동서명| V
+  V --> E[내보내기·사례 보고서<br/>포함·일관성 증명]
+  E --> X[오프라인 검증기<br/>위트니스 정족수·정책 재생]
+  V --> O[OCSF Detection Finding] --> S[기존 SIEM<br/>Splunk·Sentinel·Security Lake]
+```
+
+## 3. 만들지 않고 연결한 것
+
+입력 쪽(계측·전송·버퍼링·본문 제거·저장·검색 UI)은 만들지 않고 표준에 붙입니다. 직접 만드는 것은 OTLP 수신기와 증거 매퍼,
+증거 원장과 투명성 로그, 검증기, 사람 검토 흐름, 한국 규제 증거 묶음, OCSF 출력뿐입니다.
+
+| 구성요소 | 결정 | 사용하는 표준·프로젝트 | EvidScope가 만드는 최소 범위 |
+|---|---|---|---|
+| 수집 | 연결 | OpenTelemetry SDK, [OpenLLMetry](https://github.com/traceloop/openllmetry), [OpenInference](https://github.com/Arize-ai/openinference), [OTel Collector](https://github.com/open-telemetry/opentelemetry-collector) core | `/v1/traces` 수신기(JSON·protobuf·gzip/deflate/zstd), GenAI span → 증거 이벤트 매퍼 |
+| 스키마 | 채택 | [OTel GenAI semconv](https://github.com/open-telemetry/semantic-conventions-genai) 입력, [OCSF](https://github.com/ocsf/ocsf-schema) 출력 | 매핑표와 권한·승인 참조용 `evidscope.*` 이름공간만 |
+| 텔레메트리 저장·검색 | 연결 | [Langfuse](https://github.com/langfuse/langfuse), [Phoenix](https://github.com/Arize-ai/phoenix), SIEM | 증거 원장과 projection, trace ID 연결, 검증된 판정을 Langfuse 점수·Phoenix 주석으로 보냄([관측 도구 연동](observability-integration.md)) |
+| 변조 증거 | 표준대로 작게 구현 | RFC 6962 Merkle, [C2SP](https://github.com/C2SP/C2SP) signed-note·tlog-checkpoint | 의존성 없는 `src/tlog.mjs`(C2SP 시험 벡터로 검증) |
+| 위트니스 | 연결 | C2SP tlog-witness·cosignature, [litewitness](https://github.com/FiloSottile/torchwood), [OmniWitness](https://github.com/transparency-dev/witness) | 제출 클라이언트(pump)와 정책. 위트니스 서버는 만들지 않음(시험용 제외) |
+| 정책 | 연결 | [OPA](https://github.com/open-policy-agent/opa)·[Cedar](https://github.com/cedar-policy/cedar)·[MS AGT](https://github.com/microsoft/agent-governance-toolkit) 결정을 증거로 수집 | 기존 결정적 `evaluate()` 유지, 새 정책 언어는 만들지 않음 |
+| 차단·정지 배포 | 연결 | OPA Bundle Service API·Status API, AI·MCP 게이트웨이 | 레지스트리 상태와 정지 명령을 묶음·DSSE 거부 목록으로 내주고 활성화 보고를 기록. 차단은 집행 지점이 함([킬 스위치](kill-switch.md)) |
+| 에이전트 목록 | 연결 | [A2A Agent Card](https://github.com/a2aproject/A2A), [Backstage 카탈로그](https://backstage.io/docs/features/software-catalog/descriptor-format) | 신뢰 필드를 옮기지 않는 가져오기와 서명된 출처 기록([에이전트 레지스트리](agent-registry.md)) |
+| 사람 승인 | 형식 차용 | OpenID CIBA Core 1.0 poll 모드 | 승인 대기열과 DSSE 서명 답([사람 승인 대기열](approval-queue.md)). OAuth 토큰은 발급하지 않음 |
+| 감사인 제출 | 형식 차용 | DSSE, in-toto Statement v1, in-toto Simple Verification Result v0.2 | 항목별 증거 색인과 요약을 검증기가 다시 만들어 대조하는 묶음([감사인용 증거 묶음](evidence-pack.md)) |
+| SIEM 전달 | 직렬화만 구현 | OCSF Detection Finding(2004) | OCSF 변환기. 상관분석·UEBA·SOAR는 만들지 않음 |
+| 규제 매핑 | **직접 구현(차별점)** | 인공지능기본법·시행령, ISMS-P 인증기준(참고 정렬) | 조문 단위 요구사항·기술검사·적용 판단 |
+
+이번 라운드에서 자체 수집기 위주의 설계를 OTLP 표준 수신으로 바꾸고, 머클 트리·체크포인트·위트니스 형식을 모두 C2SP 표준으로 맞췄습니다.
+실제 OTel Collector(0.140)·OTel JS SDK·litewitness와 상호운용 시험을 통과했습니다.
+
+## 4. 우리만의 차별점
+
+GitHub와 IETF 문서를 조사한 결과, 해시 체인 서명 원장·오프라인 검증기·OTLP 수집·일반 규제 매핑은 이미 흔합니다
+([auditant](https://pypi.org/project/auditant/), [MS AGT](https://github.com/microsoft/agent-governance-toolkit), IETF 에이전트 영수증 초안들,
+Langfuse·Phoenix). 그래서 차별점을 아래 다섯 가지로 좁혔습니다.
+
+2026-10-07 2라운드 재조사에서 차별점을 한 번 더 좁혔습니다. 위트니스가 공동서명하는 C2SP 로그로 AI·MCP 트래픽을 남기는 제품이
+이미 나왔고(Traefik Hub 투명성 로그, 오픈소스 remit·agent-custody), MS AGT에 한국 AI 기본법 구현 안내 문서가 생겼으며, DeepInspect가
+한국 AI 기본법 감사 기록을 상용으로 팝니다. 그래서 "위트니스 공동서명 로그" 자체나 "한국 규제 매핑" 자체는 더 이상 차별점으로 내세우지 않고,
+아래 각 항목의 "경쟁 제품과의 차이"에 적은 범위만 주장합니다. 에이전트가 자기 흔적을 지울 수 있다는 연구
+([arXiv 2609.30266](https://arxiv.org/abs/2609.30266): 조사한 코딩 에이전트 대부분이 요청받으면 흔적을 지웠고, 기록은 에이전트 밖의
+독립 경로로 남기라고 권고)는 증거를 에이전트 밖에서 남긴다는 이 제품의 전제를 뒷받침합니다.
+
+### D1. tenant 단위로 되돌리기·삭제를 거부하는 증거 로그 (1라운드 구현)
+
+- **무엇:** tenant별 RFC 6962 트리와 C2SP 체크포인트, 모든 tenant 머리를 묶은 heads 로그를 독립 위트니스가 일관성 확인 후 공동서명합니다.
+  enforce 모드에서 rollback·fork·tenant 삭제가 보이면 시작을 거부하거나 격리합니다. 내보낸 묶음과 사례 보고서는 포함 증명을 담아
+  오프라인에서 위트니스 정족수까지 검증합니다.
+- **경쟁 제품과의 차이:** MS AGT는 명세에서 "현재 구현은 외부 앵커링을 하지 않는다"고 밝히고 Merkle에 도메인 분리·서명된 머리가 없습니다.
+  auditant는 RFC 3161 타임스탬프와 S3 Object Lock을 쓰는데, 타임스탬프 기관은 받은 해시에 서명할 뿐 두 갈래 이력(equivocation)을 막지 못합니다.
+  IETF noa 초안은 equivocation 탐지를 범위 밖으로 둡니다.
+  [Traefik Hub 투명성 로그](https://doc.traefik.io/traefik-hub/api-gateway/observability/transparency-logs)는 Tessera·C2SP 체크포인트·2-of-3 위트니스로
+  게이트웨이·AI·MCP 접근 로그(ID와 해시)를 남기고, [remit](https://github.com/abacross/remit)·[agent-custody](https://github.com/svayatta/agent-custody)도
+  위트니스나 별도 로그 키로 서명된 Merkle 로그를 씁니다. 이들은 로그 하나의 append-only를 보장합니다. EvidScope가 더하는 것은 셋입니다.
+  tenant마다 크기 감소·fork·삭제를 확인해 시작을 거부하거나 격리하는 것(heads 로그와 `witnessTenantLogs`), 접근 로그 해시가 아니라
+  승인·권한·정책 버전·사람 검토를 담은 내용 증거(D2), 그리고 로그 키를 데이터와 떨어진 서명 프로세스·HSM·KMS에 두는 것입니다
+  (Traefik 문서는 키 파일만 다룹니다. 2라운드에 [heads 서명기](signer.md)로 구현).
+- **확인 방법:** `test/transparency-server.test.mjs`(예전 DB 사본으로 enforce 시작 거부), `test/litewitness-interop.test.mjs`(실제 litewitness에서 rollback
+  거부, fork 422 → 격리, tenant origin 두 개 공동서명과 tenant rollback 거부), `test/transparency-tenant-witness.test.mjs`(재검토 F1 PoC).
+  운영은 [투명성 로그 가이드](transparency-log.md).
+- **서명 키 보유자(S2) 범위:** heads 잎은 vault 키로만 서명되므로, heads 로그만 위트니스에 맡기는 기본 구성에서는 키를 가진 공격자가 heads 로그를
+  정상적으로 늘리면서 tenant 하나만 예전 상태로 되돌릴 수 있습니다(재검토 F1). 검증 결과는 이 경우를 `rollbackCheckedAgainst:"database_tamper"`
+  (DB만 조작하는 공격자 S1 기준)로 표시합니다. 선택 기능 `witnessTenantLogs`를 켜면 tenant 로그마다 위트니스가 되돌리기를 거부하고, 고정한 origin
+  base에서 신선한 tenant 공동서명이 있는 증거만 `signing_key_holder`로 표시합니다(`--require-tenant-witness`로 요구).
+- **vault 호스트 범위(2라운드):** heads 잎을 vault 밖의 [heads 서명기](signer.md)가 서명하게 하면, 서명기가 루트를 스스로 계산하고 tenant 로그가
+  빠지거나 줄거나 같은 크기에서 바뀌거나 일관성 증명 없이 자라는 잎에는 서명하지 않습니다. 서명기 키를 `--heads-key`로, origin base를 `--origin-base`로 고정한 검증자는
+  `rollbackCheckedAgainst:"vault_host"`를 받으며, 이는 vault 호스트 전체를 장악한 공격자도 위트니스가 본 heads 항목보다 tenant를 되돌린 내보내기를
+  보일 수 없다는 뜻입니다. 실제 litewitness 시험에서 시작 커밋은 vault 키로 만든 되돌리기 잎에 공동서명을 받았고(200), 서명기를 쓰면 위트니스가 403,
+  서명기가 422 rollback으로 거부합니다. 서명기는 설정에 `signer`를 넣을 때만 켜집니다.
+- **아직 막지 못한 것:** 마지막 tenant 공동서명 이후 `maxStalenessSeconds` 안의 되돌리기, vault 키만으로 서명되는 복구 epoch(검증자가 새 origin base를
+  다시 고정해야 함), 아직 등록되지 않은 새 tenant, 서명기 없이 운영할 때 서명 키 보유자의 tenant 삭제(heads 잎으로만 묶이며
+  `scripts/transparency.mjs monitor`로 DB의 heads 이력을 다시 읽어야 드러남, 정기 실행은 아직 운영 경로에 없음), 서명기를 써도 장악된 vault가 앵커를
+  멈추는 것(`vault_host`는 앵커된 이력만 보장).
+- **모방 위험:** 중상. 암호 기법 자체가 아니라 fail-closed 운영 의미(tenant 삭제 탐지, 복구 epoch)와 고객 자체 위트니스 운영 패키지가 해자입니다.
+
+### D2. 권한에 묶인 증거 사슬과 결정적 오프라인 정책 재생
+
+- **무엇:** 에이전트의 자기보고 ↔ 권한 출처의 부여·위임·사람 승인 ↔ 당시 정책 버전 ↔ 도구 결과 ↔ 사람 검토를 한 tenant 로그에 둡니다.
+  승인이 실행보다 먼저였다는 사실을 서명자가 고른 시각이 아니라 위트니스가 서명한 로그 위치로 증명합니다. 에이전트 출처는 `human_approval`을
+  주장할 수 없습니다(출처별 허용 종류). 분석 `evaluate()`는 LLM 없이 결정적이므로 검증기가 내보낸 기록과 정책 버전으로 발견사항을 다시 계산해
+  서명된 결과와 대조할 수 있습니다.
+- **경쟁 제품과의 차이:** IETF noa 초안은 "검증자는 이 필드로 순서를 추론하면 안 된다", 오프라인 정책 재생은 범위 밖이라고 적습니다.
+  AGT는 시도를 기록할 뿐 결과를 기록하지 않는다고 스스로 밝힙니다. OTel GenAI semconv에는 승인·권한·정책 속성이 없습니다.
+- **이번 라운드 구현:** 분석 기록이 입력 이벤트 순번·규칙 버전·예외 수·엔진 ID(`evidscope-evaluate-v1`)를 함께 서명하도록 했고,
+  검증기가 각 분석 기록보다 앞선 원장 레코드만으로 결과를 다시 계산해 서명된 결과와 정확히 비교합니다.
+  운영자가 발견사항을 숨기거나 지어낸 뒤 사슬 전체를 다시 서명해도 서명 검증은 통과하지만 재생에서 `mismatch`로 잡힙니다.
+  분석 뒤에 승인된 규칙을 소급 적용하는 것도 잡힙니다. 도구 실행보다 뒤에 기록된 승인은 출처가 시각을 앞당겨 적어도
+  `approvalRecordedAfterExecution`으로 드러납니다. 입력 이벤트가 정당하게 파기된 기록은 `not_replayable`로 이유와 함께 보고합니다.
+  재생 정보(엔진 ID)를 싣기 전의 옛 코드가 쓴 분석 기록은 원장에서 재생 정보가 있는 첫 분석 기록보다 앞설 때만 옛 기록으로 보고,
+  결과가 달라도 차이를 붙여 `not_replayable`(사유 `legacy_engine_unrecorded`)로 보고합니다. 그 뒤에 재생 정보 없이 나타난 기록은 `mismatch`입니다.
+- **3라운드:** 에이전트를 서명된 [레지스트리](agent-registry.md)에 올리고 상태 전이를 4-eyes로 남기며, 집행 지점의 정책 결정·정지 명령의 전파·사람 승인의
+  답을 같은 원장에 둡니다. 재생은 행동 시점의 등록 상태, 정지 명령과 활성화, 승인 요청과 답까지 다시 계산합니다(평가 엔진 v2~v4).
+- **6라운드:** 감사인용 [증거 묶음](evidence-pack.md)의 검증기는 재생에 더해 요구사항별 색인과 요약까지 다시 만들어 바이트 단위로 대조하므로,
+  운영자가 묶음을 다시 서명해도 증거보다 많은 주장은 통과하지 못합니다.
+- **확인 방법:** `node scripts/verify.mjs export.json trust-anchor.pem --replay` 또는 `node scripts/replay-findings.mjs export.json trust-anchor.pem`
+  (위트니스 옵션을 함께 주면 순서를 공동서명된 체크포인트에 고정). 시험은 `test/policy-replay.test.mjs`.
+
+### D3. 조문 단위 한국 규제 증거 묶음
+
+- 인공지능기본법(법률 제21311호) 제30~36조·제40조와 시행령(대통령령 제36580호)을 조문 단위로 매핑하고 NIST AI RMF·EU AI Act·ISO/IEC 42001을
+  함께 둡니다. 요구사항 31개(한국 18개, NIST 6개, EU 6개, ISO 1개), 기술검사 23종, 적용 판단은 "후보"와 사람의 최종 판단을 분리합니다.
+  이전 문서는 금융위원회 금융분야 AI 가이드라인과 금융감독원 AI RMF도 매핑했다고 적었지만 데이터에 해당 항목이 없어 2라운드에서 바로잡았습니다. 각 통제가 문서 업로드가 아니라
+  D1·D2의 검증 가능한 증거를 가리키도록 묶는 것이 다른 GRC 제품과의 차이입니다.
+- **경쟁 제품과의 차이(2026-10-07 재조사):** 한국 매핑 자체는 이제 흔해지고 있습니다. MS AGT의
+  [한국 AI 기본법 문서](https://github.com/microsoft/agent-governance-toolkit/blob/main/agent-governance-python/agent-compliance/docs/compliance/south-korea-ai-framework-act.md)는
+  "법률 의견이 아닌 구현 안내"이며 조문·시행령·고시를 인용하지 않습니다.
+  [DeepInspect](https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence)는 응답 전에 서명된 기록을 남기지만 공개 검증 방법을 밝히지 않습니다.
+  EvidScope가 주장하는 범위는 법률 조문과 현행 시행령(대통령령 제36580호) 조문·별표1, NIA 공식 가이드의 쪽 번호까지 고정한 요구사항이
+  외부에서 독립 검증할 수 있는 사람 참여 증거(D1·D2)를 가리킨다는 점입니다([법령 출처](legal-sources.md)). 2026-10-07 국내 접속으로
+  국가법령정보센터 행정규칙을 다시 조회한 결과, 과학기술정보통신부 소관 2026년 발령분에서 이 법의 하위 고시는 제2026-50호(인공지능제품ㆍ서비스
+  확인 절차 운영) 하나였고 매핑이 기다리는 여섯 고시의 최종본은 없었습니다. 관보 대조와 법률 검토는 남아 있습니다.
+- **ISMS-P(2라운드):** 고시 [별표 7]의 인증기준 101개 항목 단위로 참고 정렬했습니다(27개 정렬, 74개는 제외 사유). 검증된 내보내기에서 항목별 증거
+  건수를 뽑는 `scripts/isms-p-report.mjs`를 더했습니다. 증거가 있다는 것이 기준 충족 판정은 아니며 사람 검토는 남아 있습니다
+  ([ISMS-P 참고 정렬](isms-p-alignment.md)).
+- **모방 위험:** 중상. 매핑표 자체는 복제되므로 법률 검토를 거친 매핑과 국내 확인제 대응이 필요합니다(3라운드 후보).
+
+### D4. 검증 가능한 최소화와 파기
+
+- 본문은 고객망의 Collector와 ingress에서 지워지고 vault에는 지문과 허용 메타데이터만 들어갑니다. 보관 이벤트는 키 파기로 지워도 사슬 검증이
+  유지되며, 검증기는 파기가 이벤트 뒤에 일어났는지와 파기된 본문이 공개되지 않았는지를 확인합니다.
+- 이번 라운드에서 감사 S4(삭제 후 SQLite 잔여 페이지)를 `secure_delete`와 WAL truncate로 고치고 회귀 시험을 추가했습니다.
+  데이터 키도 서명 키와 분리했습니다([데이터 키 분리 가이드](data-key-separation.md)).
+
+### D5. 위트니스 체크포인트에 연결된 OCSF 발견사항 (가장 약함)
+
+- 발견사항을 OCSF Detection Finding(2004)으로 내보내 기존 SIEM에서 받고, 각 발견사항이 증거 로그의 체크포인트를 가리키게 합니다.
+  `GET /api/export/ocsf?version=1.3.0|1.9.0`, `scripts/export-ocsf.mjs`(검증 후 NDJSON, 선택적으로 Splunk HEC 전송).
+  1.9.0의 `attestation_list`는 원장 레코드 해시를 fingerprint로, 투명성 로그를 켠 경우 tenant의 C2SP origin을 `chain_uid`로 담아
+  SIEM 분석가가 발견사항 하나를 위트니스가 서명한 로그까지 거슬러 검증할 수 있습니다.
+  OTLP로 받은 AI 모델 호출에는 별도 대상 자원이 없으므로 목적지 호스트(없으면 모델 이름)를 `resources`에 유형과 함께 담아
+  프록시·방화벽 로그와 이어 볼 수 있게 했습니다(2라운드).
+  스키마 기능이라 누구나 따라 할 수 있으므로 단독 차별점이 아니라 D1·D2의 연동 증명으로 봅니다. Amazon Security Lake 사용자 정의 소스는
+  OCSF 1.3까지만 받으므로 1.3 하위 호환 출력을 기본으로 둡니다.
+
+### 차별점이 아닌 것
+
+해시 체인 Ed25519 원장과 오프라인 검증기, OTLP 수집과 GenAI 대시보드, 일반 규제 매핑(EU·NIST·ISO), 정책 집행(OPA·Cedar·AGT),
+런타임 가드레일(NeMo Guardrails·Guardrails AI)은 이미 흔하므로 차별점으로 내세우지 않습니다.
+
+## 5. 겹치는 제품 비교
+
+| 기능 | EvidScope | auditant | MS AGT | Langfuse·Phoenix | IETF 초안 |
+|---|---|---|---|---|---|
+| OTel로 에이전트 행동 수집 | 예(이번 라운드) | 예 | 예 | 예 | 해당 없음 |
+| 해시 체인 서명 기록 | 예 | 예 | 체인 예, 머리 서명 없음 | 아니오 | 예 |
+| RFC 6962 + 서명 체크포인트 | 예(이번 라운드) | 아니오 | 비표준 트리 | 아니오 | 아니오 |
+| 외부 위트니스·fork 탐지 | 예(이번 라운드) | 타임스탬프만 | 외부 앵커 없음 | 아니오 | 범위 밖 |
+| rollback·tenant 삭제 fail-closed | 예(enforce) | 부분 | 아니오 | 아니오 | 아니오 |
+| 에이전트가 승인을 주장할 수 없음 | 예 | 서버 대조 | 승인자 ID가 해시 밖 | 아니오 | 아니오 |
+| 오프라인 정책 재생 | 예(이번 라운드) | 아니오 | 온라인 Decision BOM | 아니오 | 범위 밖 |
+| 검증 가능한 파기 순서 | 예 | 불명 | 아니오 | 삭제만 | 아니오 |
+| 한국 인공지능기본법·시행령 | 예(조문 단위) | 아니오 | 구현 안내(조문 인용 없음) | 아니오 | 아니오 |
+
+2026-10-07 재조사에서 새로 확인한 겹치는 제품입니다. 각 제품의 공개 문서에서 확인한 범위만 적었습니다.
+
+| 제품 | 하는 것 | 겹치는 차별점 | EvidScope와 다른 점 |
+|---|---|---|---|
+| Traefik Hub 투명성 로그(상용, 2026-10-01 문서) | 게이트웨이·AI·MCP 접근 로그와 인가 결정을 ID·해시로 Tessera 로그에 기록, C2SP 체크포인트, 호스팅 위트니스 2-of-3 | D1 | 로그 단위 append-only. tenant별 되돌리기·삭제 확인, 승인·정책 내용 증거, 오프라인 정책 재생 없음. 로그 키는 파일 |
+| remit(오픈소스, Rust) | 권한 위임서·AWS 자격 중개, CloudTrail 대조, RFC 9162 로그와 C2SP 위트니스 | D1·D2 | AWS 자격 중개 중심. 한국 규제·사람 검토 흐름 없음 |
+| agent-custody(오픈소스) | Cedar 정책 MCP 게이트웨이, 도구 호출별 서명 영수증, 별도 로그 키의 Merkle 로그, 브라우저 검증기 | D1·D5 | tenant별 되돌리기 확인과 외부 위트니스 정족수 미확인 |
+| DeepInspect(상용) | 인라인 LLM 게이트웨이가 응답 전에 서명 기록, 한국 AI 기본법 감사 증거 | D3 | 투명성 로그·공개 검증 방법을 밝히지 않음 |
+| MS AGT 한국 문서 | 한국 AI 기본법 구현 안내 | D3 | 법률 의견이 아님, 조문·시행령·고시 인용 없음, 외부 앵커 없음 |
+
+## 6. 정직한 한계
+
+- 실제 고객 환경 연동, 운영 부하 측정, 법률 검토를 거친 매핑은 아직 없습니다.
+- 위트니스 보증은 위트니스가 운영자와 독립적일 때만 의미가 있습니다. 같은 사람이 운영하는 위트니스는 기능 확인용입니다.
+- 서명 키와 데이터 키는 같은 vault 프로세스가 읽습니다. HSM·KMS 연동은 다음 단계입니다.
+- 모델 연구(KLUE 미세조정)는 감사에서 상수 기준선보다 낮은 점수가 확인되어 제품 차별점에서 제외했습니다.
+
+## 참고 자료
+
+- C2SP 명세: https://github.com/C2SP/C2SP · torchwood/litewitness: https://github.com/FiloSottile/torchwood · OmniWitness: https://github.com/transparency-dev/witness
+- Tessera: https://github.com/transparency-dev/tessera · Sigsum: https://www.sigsum.org · 위트니스 네트워크: https://witness-network.org
+- OTel GenAI semconv: https://github.com/open-telemetry/semantic-conventions-genai · OTel Collector: https://github.com/open-telemetry/opentelemetry-collector
+- OCSF: https://github.com/ocsf/ocsf-schema · Security Lake 사용자 정의 소스: https://docs.aws.amazon.com/security-lake/latest/userguide/custom-sources.html
+- MS Agent Governance Toolkit: https://github.com/microsoft/agent-governance-toolkit · auditant: https://pypi.org/project/auditant/
+- IETF: draft-noa-scitt-ai-agent-receipt, draft-sahu-agent-action-receipts, draft-kuehlewind-audit-architecture, RFC 9943(SCITT), RFC 9942(COSE Receipts)
+- 2026-10-07 재조사: Traefik Hub 투명성 로그 https://doc.traefik.io/traefik-hub/api-gateway/observability/transparency-logs · remit: https://github.com/abacross/remit
+  · agent-custody: https://github.com/svayatta/agent-custody · DeepInspect: https://www.deepinspect.ai/blog/korea-ai-basic-ai-audit-evidence
+  · 에이전트 흔적 변조 연구: https://arxiv.org/abs/2609.30266

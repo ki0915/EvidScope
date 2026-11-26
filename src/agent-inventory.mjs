@@ -29,18 +29,27 @@ export function agentInventory(store,principals,tenant,params,now=Date.now(),ver
  let used=0,count=0;
  function read(sql,args){const rows=[];for(const row of store.db.prepare(sql).iterate(...args)){if(row.bytes>1024*1024||(used+=row.bytes)>32*1024*1024||++count>50000)fail(413,'에이전트 집계 한도 초과: 부분 준수율을 발급하지 않습니다');rows.push(JSON.parse(row.body));}return rows;}
  const events=read('SELECT CASE WHEN length(CAST(body AS BLOB))<=1048576 THEN body ELSE NULL END body,length(CAST(body AS BLOB)) bytes FROM events WHERE tenant=? ORDER BY received,source,id',[tenant]);
- const groups=new Map(),actions=new Map(),owners=new Map();
+ const groups=new Map(),actions=new Map(),owners=new Map(),otlpTraces=new Map(),folded=new Set();
  const identity=(source,actor)=>digest({source,actor});
- for(const e of events){if(!actions.has(e.actionId))actions.set(e.actionId,[]);actions.get(e.actionId).push(e);if(e.sourceKind!=='agent')continue;
-  const actor=e.actor||'',id=identity(e.source,actor);if(!groups.has(id))groups.set(id,{id,source:e.source,actor:actor||'행위자 미수집',identityComplete:!!actor,models:new Set(),actionIds:new Set(),lastSeen:e.receivedAt});const g=groups.get(id);g.actionIds.add(e.actionId);if(e.model)g.models.add(e.model);g.lastSeen=e.receivedAt;
-  if(!owners.has(e.actionId))owners.set(e.actionId,new Set());owners.get(e.actionId).add(id);
+ // OTLP self-reports are agent actions. OTLP model-call notices are grouped per trace: they only add models
+ // to the agents that reported actions in the same trace, and become the reporting service's own action otherwise.
+ const agentReport=e=>e.sourceKind==='agent'||e.sourceKind==='otlp'&&e.kind==='self_report';
+ const own=e=>{
+  const actor=e.sourceKind==='otlp'&&e.actor==='unknown'?'':e.actor||'',id=identity(e.source,actor);if(!groups.has(id))groups.set(id,{id,source:e.source,actor:actor||'행위자 미수집',identityComplete:!!actor,models:new Set(),actionIds:new Set(),lastSeen:e.receivedAt});const g=groups.get(id);g.actionIds.add(e.actionId);if(e.model)g.models.add(e.model);if(!(g.lastSeen>e.receivedAt))g.lastSeen=e.receivedAt;
+  if(!owners.has(e.actionId))owners.set(e.actionId,new Set());owners.get(e.actionId).add(id);return id;
+ };
+ for(const e of events){if(!actions.has(e.actionId))actions.set(e.actionId,[]);actions.get(e.actionId).push(e);if(!agentReport(e))continue;const id=own(e);
+  if(e.sourceKind==='otlp'){const key=`${e.source}|${e.traceId}`;if(!otlpTraces.has(key))otlpTraces.set(key,new Set());otlpTraces.get(key).add(id);}
+ }
+ for(const e of events){if(e.sourceKind!=='otlp'||e.kind!=='notice')continue;const reporters=otlpTraces.get(`${e.source}|${e.traceId}`);
+  if(!reporters){own(e);continue;}folded.add(e.actionId);for(const id of reporters){const g=groups.get(id);if(e.model)g.models.add(e.model);if(!(g.lastSeen>e.receivedAt))g.lastSeen=e.receivedAt;}
  }
  for(const p of principals.filter(p=>p.tenant===tenant&&p.role==='source'&&p.kind==='agent'))if(![...groups.values()].some(g=>g.source===p.id)){const id=identity(p.id,'');groups.set(id,{id,source:p.id,actor:'수신 대기',identityComplete:false,models:new Set(),actionIds:new Set(),lastSeen:null});}
  const versions=new Map(store.db.prepare('SELECT id,version,analyzed FROM actions WHERE tenant=?').all(tenant).map(v=>[v.id,v]));
  const evaluations=read('SELECT CASE WHEN length(CAST(body AS BLOB))<=1048576 THEN body ELSE NULL END body,length(CAST(body AS BLOB)) bytes FROM evaluations WHERE tenant=? ORDER BY id DESC',[tenant]),evals=new Map();for(const e of evaluations){if(!evals.has(e.actionId))evals.set(e.actionId,[]);evals.get(e.actionId).push(e);}
  const latest=new Map();for(const d of [...verifiedDecisions].reverse())if(!latest.has(d.actionId))latest.set(d.actionId,d);
  // Select the cohort by first retained agent receipt, then evaluate its complete evidence.
- const firstSeen=new Map([...actions].map(([id,ev])=>[id,(ev.find(e=>e.sourceKind==='agent')||ev[0]).receivedAt]));
+ const firstSeen=new Map([...actions].map(([id,ev])=>[id,(ev.find(agentReport)||ev[0]).receivedAt]));
  const inWindow=id=>{const at=Date.parse(firstSeen.get(id));return at<=end&&(start===null||at>=start);};
  const all=[];
  for(const g of groups.values()){
@@ -71,5 +80,5 @@ export function agentInventory(store,principals,tenant,params,now=Date.now(),ver
   for(const d of item.details){const bucket=Math.min(bins-1,Math.floor((Date.parse(d.firstSeen)-from)/step));trend[bucket].counts[d.state]++;trend[bucket].actions++;d.bucket=bucket;}
   return {...common,item,trend};}
  const summary={agents:searched.length,violation:searched.filter(g=>g.counts.violation).length,unconfirmed:searched.filter(g=>g.counts.unconfirmed).length,stale:searched.filter(g=>g.reviews.stale).length,inactive:searched.filter(g=>!g.actions).length};
- return {...common,items:filtered.slice(offset,offset+limit),total:filtered.length,summary,unattributedActions:[...actions.keys()].filter(id=>!owners.has(id)&&inWindow(id)).length,ambiguousActions:[...owners].filter(([id,ids])=>ids.size>1&&inWindow(id)).length,offset,limit};
+ return {...common,items:filtered.slice(offset,offset+limit),total:filtered.length,summary,unattributedActions:[...actions.keys()].filter(id=>!owners.has(id)&&!folded.has(id)&&inWindow(id)).length,ambiguousActions:[...owners].filter(([id,ids])=>ids.size>1&&inWindow(id)).length,offset,limit};
 }

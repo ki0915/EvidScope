@@ -1,35 +1,50 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark light">
   <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23167b72'/%3E%3C/svg%3E">
   <title>EvidScope · AI 행동 감사</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/graphs.css">
   <link rel="stylesheet" href="/k8s-evidence.css">
   <link rel="stylesheet" href="/team-support.css">
   <link rel="stylesheet" href="/console.css">
+  <link rel="stylesheet" href="/theme-dark-base.css">
+  <link rel="stylesheet" href="/theme-dark.css">
+  <link rel="stylesheet" href="/ops.css">
   <script src="/live-graphs.js" defer></script>
   <script src="/k8s-chart-data.js" defer></script>
   <script src="/k8s-evidence.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/team-support.js" defer></script>
   <script src="/console.js" defer></script>
+  <script src="/registry.js" defer></script>
+  <script src="/approvals.js" defer></script>
+  <script src="/home.js" defer></script>
+  <script src="/governance-model.js" defer></script>
+  <script src="/ops.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 이동</a>
   <aside class="sidebar">
-    <a class="brand" href="#overview"><span class="brand-symbol">E</span><span>EvidScope<small>AI VISIBILITY & GOVERNANCE</small></span></a>
+    <a class="brand" href="#dashboard"><span class="brand-symbol">E</span><span>EvidScope<small>AI VISIBILITY & GOVERNANCE</small></span></a>
     <div class="workspace-label">감사 워크스페이스</div>
     <nav aria-label="주 메뉴">
-      <button type="button" data-section="status" data-view="overview"><span aria-hidden="true">◫</span>현황</button>
-      <button type="button" data-section="assets" data-view="visibility"><span aria-hidden="true">◉</span>AI 자산·수집</button>
-      <button type="button" data-section="investigate" data-view="investigations"><span aria-hidden="true">◎</span>탐색·조사</button>
-      <button type="button" data-section="governance" data-view="governance"><span aria-hidden="true">⊞</span>거버넌스</button>
-      <button type="button" data-section="review" data-view="assistance"><span aria-hidden="true">✎</span>AI 검토실</button>
-      <button type="button" data-section="operations" data-view="health"><span aria-hidden="true">⌁</span>운영·설정</button>
+      <div class="nav-group">모니터링</div>
+      <button type="button" data-section="status" data-view="dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>대시보드</button>
+      <button type="button" data-section="logs" data-view="logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/><circle cx="19" cy="17" r="2.5"/><path d="M21 19l1.5 1.5"/></svg>로그 탐색</button>
+      <button type="button" data-section="signals" data-view="alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>탐지·경보</button>
+      <div class="nav-group">조사</div>
+      <button type="button" data-section="investigate" data-view="investigations"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.3-4.3"/></svg>조사·사건</button>
+      <button type="button" data-section="assets" data-view="visibility"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>AI 자산·수집</button>
+      <div class="nav-group">거버넌스</div>
+      <button type="button" data-section="governance" data-view="governance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>요구사항·증거</button>
+      <button type="button" data-section="review" data-view="assistance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>AI 검토실</button>
+      <div class="nav-group">설정</div>
+      <button type="button" data-section="operations" data-view="health"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>운영·설정</button>
     </nav>
     <div class="sidebar-foot"><span class="small-label">독립 감사 영역</span><p>관측과 근거를 연결하고,<br>최종 판단은 사람에게.</p><span class="scope-badge">업무 실행 경로 밖에서 관측</span></div>
   </aside>

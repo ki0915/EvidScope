@@ -1,5 +1,5 @@
 import {fork} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {initialize} from './init.mjs';
@@ -48,11 +48,13 @@ export function createLocalRuntime(options=localOptions()){
   try{
    const config=initialize(directory),worker=config.principals.find(p=>p.role==='worker');
    if(!worker?.token)throw Error('Local worker identity is missing');
+   // The heads signer (docs/signer.md) of `upgrade-local --heads-signer` starts first: the vault asks it for heads checkpoints.
+   const signerFile=join(directory,'signer','serve.json'),headsSigner=existsSync(signerFile)?await startSigner(signerFile):null;
    for(const [index,mode]of ['vault','ingress','audit','worker'].entries()){
     if(stopping)throw Error('Local startup cancelled');
     const port=portBase===0?0:portBase+index;
     const address=await new Promise((res,rej)=>{
-     const child=fork(join(root,'src/server.mjs'),[],{cwd:root,execArgv:[],env:{...process.env,MODE:mode,PORT:String(port),HOST:host,DATA_DIR:join(directory,'data'),CONFIG_FILE:join(directory,'config.json'),SIGNING_KEY_FILE:join(directory,'signing-private.pem'),VAULT_URL:endpoints.vault||`http://${host==='::1'?'[::1]':host}:${port}`,WORKER_TOKEN:worker.token},stdio:['ignore','inherit','inherit','ipc']});
+     const child=fork(join(root,'src/server.mjs'),[],{cwd:root,execArgv:[],env:{...process.env,MODE:mode,PORT:String(port),HOST:host,DATA_DIR:join(directory,'data'),CONFIG_FILE:join(directory,'config.json'),SIGNING_KEY_FILE:join(directory,'signing-private.pem'),...(existsSync(join(directory,'data-encryption.key'))?{DATA_KEY_FILE:join(directory,'data-encryption.key')}:{}),...(!process.env.EVENT_KEYSTORE_DIR&&existsSync(join(directory,'event-keystore','keystore.json'))?{EVENT_KEYSTORE_DIR:join(directory,'event-keystore')}:{}),...(!process.env.TRANSPARENCY_CONFIG_FILE&&existsSync(join(directory,'transparency.json'))?{TRANSPARENCY_CONFIG_FILE:join(directory,'transparency.json')}:{}),VAULT_URL:endpoints.vault||`http://${host==='::1'?'[::1]':host}:${port}`,WORKER_TOKEN:worker.token},stdio:['ignore','inherit','inherit','ipc']});
      children.push(child);
      let settled=false;
      const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(error)rej(error);else res(value);};
@@ -71,8 +73,31 @@ export function createLocalRuntime(options=localOptions()){
     endpoints[mode]=address;
    }
    if(stopping||failure)throw failure||Error('Local startup cancelled');
-   return {endpoints:{...endpoints},childPids:children.map(child=>child.pid),configurationFile:join(directory,'config.json'),profile:config.profile};
+   return {endpoints:{...endpoints},childPids:children.map(child=>child.pid),configurationFile:join(directory,'config.json'),profile:config.profile,...(headsSigner?{headsSigner}:{})};
   }catch(error){await stop();throw error;}
+ }
+ // serve.json: {format:'evidscope-local-signer-v1',args:[...scripts/signer.mjs serve arguments]}. DATA_DIR lets the signer refuse a
+ // state directory inside the vault data directory.
+ function startSigner(file){
+  let spec=null;try{spec=JSON.parse(readFileSync(file,'utf8'));}catch{}
+  if(spec?.format!=='evidscope-local-signer-v1'||!Array.isArray(spec.args)||!spec.args.every(arg=>typeof arg==='string'))throw Error(`Heads signer file ${file} is not an evidscope-local-signer-v1 file`);
+  return new Promise((res,rej)=>{
+   const child=fork(join(root,'scripts/signer.mjs'),['serve',...spec.args],{cwd:root,execArgv:[],env:{...process.env,DATA_DIR:join(directory,'data')},stdio:['ignore','inherit','inherit','ipc']});
+   children.push(child);
+   let settled=false;
+   const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(error)rej(error);else res(value);};
+   const timer=setTimeout(()=>finish(Error('heads signer startup timeout')),10000);
+   child.once('message',message=>{
+    if(stopping)return finish(Error('Local startup cancelled'));
+    if(!message?.ready||typeof message.address!=='string')return finish(Error('heads signer invalid readiness'));
+    finish(null,message.address);
+   });
+   child.once('error',error=>finish(Error(`heads signer startup failed: ${error.code||error.name}`)));
+   child.once('exit',(code,signal)=>{
+    finish(Error(`heads signer exited before readiness: ${signal||code}`));
+    if(!stopping){failure=Error(`heads signer exited unexpectedly: ${signal||code}`);options.onFailure?.(failure);void stop().catch(error=>options.onFailure?.(error));}
+   });
+  });
  }
  return {start,stop,get failure(){return failure;},get childPids(){return children.map(child=>child.pid);}};
 }

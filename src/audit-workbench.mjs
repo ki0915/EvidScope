@@ -1,6 +1,5 @@
 import {randomUUID,sign,createHash,createPublicKey} from 'node:crypto';
 import {canonical,digest} from './crypto.mjs';
-import {decryptEvent} from './encryption.mjs';
 import {fail,cleanText,identifier,date} from './model.mjs';
 
 const limits={events:1000,evaluations:100,decisions:200,contextBytes:8*1024*1024,reportBytes:10*1024*1024,rowBytes:2*1024*1024};
@@ -13,6 +12,9 @@ const sortEvents=events=>events.sort((a,b)=>a.receivedAt.localeCompare(b.receive
 const contextHash=(tenant,actionId,events,evaluations,version)=>digest({tenant,actionId,events,evaluations,analysis:{version:version?.version??null,analyzed:version?.analyzed??null}});
 const state=(decision,hash,now=Date.now())=>!decision?'unreviewed':decision.contextHash!==hash||Date.parse(decision.nextReviewAt)<=now?'stale':decision.conclusion==='inconclusive'?'inconclusive':'reviewed';
 const outcome=events=>{const results=events.filter(e=>e.sourceKind==='tool'&&e.kind==='result');const success=results.some(e=>e.status==='success'),failure=results.some(e=>e.status==='failure');return success&&failure?'mixed_results':success?'independently_reported_success':failure?'independently_reported_failure':'unconfirmed';};
+// The correlated MAX(received) needs events(tenant,action_id,received); test/read-path-indexes.test.mjs pins the plan.
+export const INVESTIGATION_ROWS_SQL=`SELECT a.*, (SELECT MAX(received) FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id) AS last_seen FROM actions a WHERE a.tenant=? AND
+ (?='' OR a.id LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id AND e.body LIKE ? ESCAPE '\\')) ORDER BY last_seen DESC,a.id`;
 const distinct=(events,key)=>{const values=[...new Set(events.map(e=>e[key]).filter(Boolean))];return values.length>1?'multiple':values[0]||'unknown';};
 
 export function createAuditWorkbench(store,key){
@@ -26,41 +28,22 @@ export function createAuditWorkbench(store,key){
  }
  const projectedEvents=(tenant,actionId)=>boundedRows('SELECT body FROM events WHERE tenant=? AND action_id=? ORDER BY received,source,id',[tenant,actionId],limits.events);
  const projectedEvaluations=(tenant,actionId)=>boundedRows('SELECT body FROM evaluations WHERE tenant=? AND action_id=? ORDER BY id DESC',[tenant,actionId],limits.evaluations);
- const projectedDecisions=(tenant,caseId)=>boundedRows("SELECT body FROM objects WHERE tenant=? AND type='case_decision' AND json_extract(body,'$.caseId')=? ORDER BY rowid DESC",[tenant,caseId],limits.decisions);
  const version=(tenant,actionId)=>store.db.prepare('SELECT version,analyzed FROM actions WHERE tenant=? AND id=?').get(tenant,actionId);
  const verifyActions=tenant=>{try{store.checkActionProjection(tenant);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}};
  function getCase(p,id){const row=store.db.prepare("SELECT CASE WHEN length(CAST(body AS BLOB))<=? THEN body ELSE NULL END AS body FROM objects WHERE tenant=? AND type='case' AND id=?").get(limits.rowBytes,p.tenant,id);if(!row)fail(404,'사건을 찾을 수 없습니다');if(row.body===null)fail(413,'사건 기록 한도 초과');return JSON.parse(row.body);}
+ // Served from the incremental verified state after every core facet held: the retained events, evaluations, decisions and
+ // case are the signed values, and their SQL copies were compared with them (cold or for each verified suffix).
  function verifyContext(p,id){
   verifyActions(p.tenant);
   const projectedCase=getCase(p,id),actionId=projectedCase.actionId;
-  const events=[],evaluations=[],decisions=[];let originalCase=null,totalBytes=0,retainedCount=0;
-  const collect=(arr,value,count)=>{if(arr.length>=count||(totalBytes+=bytes(value))>limits.contextBytes)fail(413,'사건 검토 자료 한도 초과: 부분 결과를 발급하지 않습니다');arr.push(value);};
-  const eventProjection=store.db.prepare(`SELECT CASE WHEN length(CAST(body AS BLOB))<=${limits.rowBytes} THEN body ELSE NULL END AS body FROM events WHERE tenant=? AND source=? AND id=?`),keyQuery=store.db.prepare('SELECT key FROM event_keys WHERE tenant=? AND key_id=?');
-  const disposed=store.db.prepare("SELECT 1 FROM ledger l,json_each(l.body,'$.payload.keyIds') k WHERE l.tenant=? AND l.seq>? AND json_extract(l.body,'$.type')='retention_disposition' AND k.value=? LIMIT 1");
-  for(const row of store.verifiedRows(p.tenant,limits.rowBytes)){
-   if(row.oversized)fail(413,'원장 단일 기록이 검토 한도를 초과했습니다');
-   if(row.type==='retention_disposition'){for(const keyId of row.payload.keyIds||[])if(keyQuery.get(p.tenant,keyId))fail(409,'정당한 파기 이력과 실제 키 상태가 일치하지 않습니다');}
-   if(row.type==='event'){
-    let event=row.payload;
-    if(event.format==='evidscope-encrypted-event-v1'){
-     if(event.tenant!==p.tenant||event.seq!==row.seq)fail(409,'이벤트 암호화 봉투 범위 불일치');
-     const k=keyQuery.get(p.tenant,event.keyId);if(!k){if(!disposed.get(p.tenant,row.seq,event.keyId))fail(409,'정당한 파기 증거 없이 이벤트 키가 누락되었습니다');continue;}event=decryptEvent(event,k.key);
-    }
-    const original={...event,seq:row.seq,hash:row.hash},projected=eventProjection.get(p.tenant,event.source,event.id);retainedCount++;
-    if(!projected||projected.body===null||!same(JSON.parse(projected.body),original))fail(409,'원본 이벤트와 조회 사본이 다릅니다. 무결성을 확인하세요');
-    if(event.actionId===actionId)collect(events,original,limits.events);
-   }else if(row.type==='case'&&row.payload.id===id)originalCase=row.payload;
-   else if(row.type==='evaluation'&&row.payload.actionId===actionId)collect(evaluations,row.payload,limits.evaluations);
-   else if(row.type==='case_decision'&&row.payload.caseId===id)collect(decisions,row.payload,limits.decisions);
-  }
-  if(retainedCount!==store.db.prepare('SELECT COUNT(*) n FROM events WHERE tenant=?').get(p.tenant).n)fail(409,'원본에 없는 조회 이벤트가 존재합니다');
-  if(!originalCase||!same(originalCase,projectedCase))fail(409,'사건 조회 사본이 서명 원장과 일치하지 않습니다');
+  let material;try{material=store.cachedCaseMaterial(p.tenant,id,actionId,limits);}catch{fail(409,'행동 상태 조회 사본이 서명 원장과 일치하지 않습니다');}
+  if(material.oversized)fail(413,'원장 단일 기록이 검토 한도를 초과했습니다');
+  const {events,evaluations,decisions}=material;
+  if(material.overLimit||[...events,...evaluations,...decisions].reduce((total,value)=>total+bytes(value),0)>limits.contextBytes)fail(413,'사건 검토 자료 한도 초과: 부분 결과를 발급하지 않습니다');
+  if(!material.case||!same(material.case,projectedCase))fail(409,'사건 조회 사본이 서명 원장과 일치하지 않습니다');
   sortEvents(events);evaluations.reverse();decisions.reverse();
-  if(!same(evaluations,projectedEvaluations(p.tenant,actionId)))fail(409,'분석 조회 사본이 서명 원장과 일치하지 않습니다');
-  const order=a=>[...a].sort((a,b)=>a.id.localeCompare(b.id));
-  if(!same(order(decisions),order(projectedDecisions(p.tenant,id))))fail(409,'인간 판단 조회 사본이 서명 원장과 일치하지 않습니다');
   const actionVersion=version(p.tenant,actionId),hash=contextHash(p.tenant,actionId,events,evaluations,actionVersion),latestDecision=decisions[0]||null;
-  const context={case:originalCase,events,references:refs(events),evaluations,analysis:{version:actionVersion?.version??null,analyzed:actionVersion?.analyzed??null,pending:!!actionVersion&&actionVersion.analyzed<actionVersion.version},contextHash:hash,reviewState:state(latestDecision,hash),latestDecision,decisions,limitations};
+  const context={case:material.case,events,references:refs(events),evaluations,analysis:{version:actionVersion?.version??null,analyzed:actionVersion?.analyzed??null,pending:!!actionVersion&&actionVersion.analyzed<actionVersion.version},contextHash:hash,reviewState:state(latestDecision,hash),latestDecision,decisions,limitations};
   if(bytes(context)>limits.contextBytes)fail(413,'사건 검토 문맥 한도 초과');return context;
  }
  function decide(p,id,x){
@@ -78,23 +61,23 @@ export function createAuditWorkbench(store,key){
    if(Date.parse(nextReviewAt)<=Date.now())fail(400,'재검토 기한이 지나 다시 입력해야 합니다');
    const decision={id:randomUUID(),caseId:id,actionId:context.case.actionId,contextHash:context.contextHash,conclusion:x.conclusion,reason,scope,limitations:reviewLimitations,nextReviewAt,evidence,
     evidenceManifest:context.events.map(e=>({ref:`${e.source}/${e.id}`,hash:e.hash,seq:e.seq})),evaluationManifest:context.evaluations.map(e=>({id:e.id,version:e.version})),analysisVersion:context.analysis,
-    checkpoint:JSON.parse(store.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(p.tenant).body),reviewedBy:p.id,createdAt:new Date().toISOString()};
+    checkpoint:store.checkpoint(p.tenant),reviewedBy:p.id,createdAt:new Date().toISOString()};
    return store.put(p,'case_decision',decision.id,decision);
   });
  }
  function report(p,id){return store.transaction(()=>{
-  const context=verifyContext(p,id),checkpoint=JSON.parse(store.db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get(p.tenant).body);
+  const context=verifyContext(p,id),checkpoint=store.checkpoint(p.tenant);
   const snapshot={tenant:p.tenant,exportedAt:new Date().toISOString(),exportedBy:p.id,case:context.case,action:{actionId:context.case.actionId,events:context.events,references:context.references,evaluations:context.evaluations,analysis:context.analysis},review:{state:context.reviewState,latestDecision:context.latestDecision,decisions:context.decisions,contextHash:context.contextHash},checkpoint,limitations:[...limitations,'이 서명은 EvidScope 서버가 이 보고서 문맥을 발급했다는 증명이며 외부 사실 확인·독립 시각 봉인·법적 결론 보증이 아닙니다.','전체 서명 원장과 독립 신뢰 기준점은 별도 /api/export로 확보해야 합니다. 공개키 지문은 신뢰할 수 있는 별도 경로로 대조하세요.','테넌트 이벤트 조회 사본과 이 사건·분석·인간 판단 사본을 서명 원장과 대조했습니다.']};
   const signed={format:'evidscope-case-report-v1',snapshot};if(bytes(signed)>limits.reportBytes-1024)fail(413,'서명 보고서 크기 한도 초과');
-  return {...signed,signature:sign(null,Buffer.from(canonical(signed)),key).toString('base64'),publicKeyFingerprint};
+  const transparency=store.tlogReport?.(p.tenant,checkpoint,context.events);
+  return {...signed,signature:sign(null,Buffer.from(canonical(signed)),key).toString('base64'),publicKeyFingerprint,...(transparency?{transparency}:{})};
  });}
  function investigations(p,params){
   verifyActions(p.tenant);
   const q=cleanText(params.get('q')||'',200).trim(),filter=params.get('state')||'all';if(!['needs_review','reviewed','all'].includes(filter))fail(400,'검토 상태 필터 오류');
   const pageNumber=(name,fallback,max)=>{const s=params.get(name);if(s===null)return fallback;const n=Number(s);if(!Number.isSafeInteger(n)||n<0||(name==='limit'&&n<1)||n>max)fail(400,'목록 페이지 범위 오류');return n;};
   const limit=pageNumber('limit',50,100),offset=pageNumber('offset',0,10000000),pattern=`%${q.replace(/[\\%_]/g,'\\$&')}%`;
-  const rows=store.db.prepare(`SELECT a.*, (SELECT MAX(received) FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id) AS last_seen FROM actions a WHERE a.tenant=? AND
-   (?='' OR a.id LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM events e WHERE e.tenant=a.tenant AND e.action_id=a.id AND e.body LIKE ? ESCAPE '\\')) ORDER BY last_seen DESC,a.id`);
+  const rows=store.db.prepare(INVESTIGATION_ROWS_SQL);
   const latestDecisions=new Map(),caseIdsByAction=new Map(),caseOverflowActions=new Set();for(const value of store.cachedSignedObjects(p.tenant,['case','case_decision'])){if(value.type==='case_decision'){if(bytes(value.body)>limits.rowBytes)fail(413,'사람 판단 기록 크기 한도 초과');latestDecisions.set(value.body.actionId,value.body);}else if(value.type==='case'){const ids=caseIdsByAction.get(value.body.actionId)||[];if(ids.length>=1000){caseOverflowActions.add(value.body.actionId);continue;}ids.push(value.id);caseIdsByAction.set(value.body.actionId,ids);}}
   const items=[],counts={needsReview:0,reviewed:0,analysisPending:0};let total=0,itemBytes=4096;
   for(const row of rows.iterate(p.tenant,q,pattern,pattern)){

@@ -74,7 +74,7 @@ test('local token workflow keeps credentials in memory and preserves a visible f
   const f = fixture({ mode: 'local', fetchHandler: (request, reply) => request.path === '/api/overview' && request.headers.Authorization === 'Bearer invalid' ? reply({ error: 'invalid token' }, 401) : undefined }); await f.flush();
   await f.node('#auth-toggle').emit('click'); assert.equal(f.node('#auth-dialog').open, true);
   f.node('#auth-token').value = 'invalid'; await f.node('#auth-form').emit('submit');
-  assert.equal(f.core.getToken(), ''); assert.equal(f.node('#auth-token').value, ''); assert.equal(f.node('#auth-dialog').open, true); assert.match(f.node('#auth-error').textContent, /인증이 만료/);
+  assert.equal(f.core.getToken(), ''); assert.equal(f.node('#auth-token').value, ''); assert.equal(f.node('#auth-dialog').open, true); assert.match(f.node('#auth-error').textContent, /토큰이 맞지 않습니다/);
   f.node('#auth-token').value = 'valid-local'; await f.node('#auth-form').emit('submit');
   assert.equal(f.node('#auth-dialog').open, false); assert.equal(f.core.getToken(), 'valid-local');
   const request = f.requests.findLast(item => item.path === '/api/overview'); assert.equal(request.headers.Authorization, 'Bearer valid-local'); assert.equal(request.credentials, 'omit'); assert.equal(request.headers['X-Evid-CSRF'], undefined);

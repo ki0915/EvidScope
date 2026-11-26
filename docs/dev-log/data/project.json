@@ -1,0 +1,43 @@
+{
+  "name": "EvidScope",
+  "one_liner": {
+    "ko": "AI 코딩 에이전트의 실제 행동을 실시간으로 받아 위험을 탐지하고, 운영자도 몰래 바꿀 수 없는 서명 원장에 남겨 ISMS-P·인공지능기본법·EU AI Act 검토 증거로 쓰게 하는 AI 거버넌스·보안 감사 도구",
+    "en": "An AI governance and security audit tool that collects what AI coding agents actually do, detects risky actions in real time, and keeps the record in a signed, witness-cosigned ledger usable as evidence for ISMS-P, the Korean AI Basic Act and the EU AI Act."
+  },
+  "summary": {
+    "ko": "Claude Code·Codex의 도구 호출을 hook으로 서명 수집하고 위험 규칙과 행동 순서 규칙으로 경보를 내며, 확실한 위험만 실행 전에 막는다. 기록은 Merkle 트리와 독립 위트니스 공동서명으로 되돌리기·삭제를 탐지하고, 감사인은 운영자를 믿지 않고 오프라인에서 다시 검증한다. 규칙 오경보는 로컬 판정 모델 두 개(JEV-9B, Qwen3-4B)가 교차 검증해 낮추고, 법·인증 항목은 서명된 대응표가 계산한다.",
+    "en": "Claude Code and Codex tool calls are collected through hooks, scored by risk and sequence rules, and the clearly dangerous ones are blocked before they run. Records go into a Merkle-tree ledger whose checkpoints independent witnesses cosign, so auditors can verify offline without trusting the operator. Two local judge models (JEV-9B and Qwen3-4B) cross-check rule false alarms, and a signed mapping table, not a model, computes the related compliance items."
+  },
+  "repository": "https://github.com/ki0915/EvidScope",
+  "branch": "claude/evidence-layer",
+  "period": {"from": "2026-09-09", "to": null},
+  "status": {
+    "ko": "진행 중인 개인 프로젝트. 로컬·폐쇄망 파일럿이며 고객 운영 실적과 법률 인증은 없다. 판정 모델은 학습 중이고 PC 배포 전이다.",
+    "en": "Ongoing personal project; a local and closed-network pilot with no customer deployment or legal certification. Judge models are in training and not yet deployed."
+  },
+  "role": {
+    "ko": "1인 프로젝트 오너. 문제 정의, 방향과 우선순위, 보안·비용·모델 조건, 결과 검토와 공개 판단을 맡았고, 설계·구현·적대적 감사는 역할을 나눈 AI 코딩 에이전트와 협업했다.",
+    "en": "Sole project owner: defined the problem, direction and priorities, set the security, cost and model constraints, and reviewed and accepted results; design, implementation and adversarial audits were done with role-separated AI coding agents."
+  },
+  "domains": ["AI governance", "AI security", "AI agent monitoring", "LLM security", "audit evidence", "tamper-evident logging",
+    "compliance (ISMS-P, Korean AI Basic Act, EU AI Act)", "LLM-as-a-judge training and evaluation"],
+  "stack": {
+    "backend": ["Node.js 24 (ESM, node:http, node:crypto, node:sqlite)", "SQLite WAL"],
+    "integrity": ["Ed25519 signed ledger", "RFC 6962 Merkle tree", "C2SP checkpoints and witnesses", "HKDF key separation",
+      "AES-256-GCM envelope encryption", "DSSE and in-toto attestations"],
+    "integration": ["Claude Code and Codex hooks", "OpenTelemetry OTLP/HTTP", "OCSF 1.3/1.9", "Splunk HEC", "Langfuse", "Arize Phoenix",
+      "OIDC"],
+    "ml": ["Python", "PyTorch", "Transformers", "PEFT", "QLoRA (4-bit NF4)", "Qwen3-4B-Instruct-2507", "JEV-9B", "Foundation-Sec 8B (retired)",
+      "bge-m3", "Ollama"],
+    "infra": ["Docker", "Kubernetes (HPA, NetworkPolicy)", "GitHub Actions", "NVIDIA RTX 3080 12GB", "vast.ai RTX 5060 Ti 16GB x2"],
+    "frontend": ["Vanilla JavaScript", "CSS (generated dark theme)", "no external CDN or fonts"]
+  },
+  "documents": {
+    "readme": "README.md",
+    "dev_log": "docs/dev-log/README.md",
+    "reflection": "docs/dev-log/reflection.md",
+    "entries": "docs/dev-log/entries.jsonl",
+    "career_profile": "docs/dev-log/career-profile.json",
+    "portfolio_context": "docs/portfolio-context.ko.md"
+  }
+}

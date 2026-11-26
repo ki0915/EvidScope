@@ -1,0 +1,22 @@
+{
+ "schemaVersion": 1,
+ "id": "prowler-kisa-isms-p-2023-aws",
+ "title": "Prowler compliance framework file KISA-ISMS-P 2023 (AWS): 101 requirements with English AuditChecklist, AuditEvidence and NonComplianceCases",
+ "licence": {
+  "name": "Apache License 2.0 (LICENSE in this directory)",
+  "use": "shipped in the repository with attribution; the file is unchanged"
+ },
+ "attribution": "Prowler (https://github.com/prowler-cloud/prowler), file prowler/compliance/aws/kisa_isms_p_2023_aws.json, retrieved 2026-10-11 from raw.githubusercontent.com (master)",
+ "files": [
+  {
+   "file": "kisa_isms_p_2023_aws.json",
+   "sha256": "cd33ecd042c349016ad29f72be725e0f675f27ac62d6ed7adf78a1ada35fec8b",
+   "bytes": 346055
+  },
+  {
+   "file": "LICENSE",
+   "sha256": "a0666bd9911fb4b653372b3721c500fdbd097ed1ca83466adb07e7ae7afb82e0",
+   "bytes": 11348
+  }
+ ]
+}

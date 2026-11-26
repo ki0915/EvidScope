@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {scoreRoleOutput} from '../src/role-evaluation.mjs';
 import {reviewedPayloadHash} from './model-training-data.mjs';
+export {assessGovernanceReport,verifyGovernanceReport} from '../src/governance-mapping-eval.mjs';
 
 const sha=/^[a-f0-9]{64}$/;
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

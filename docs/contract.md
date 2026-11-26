@@ -26,7 +26,7 @@ X-Evid-Signature: <HMAC-SHA256 hex>
 }
 ```
 
-필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
+필수: id/kind/occurredAt/traceId/actionId. 일반 문자열 256자, note 1,024자. 식별자는 영숫자 `._:@/-`, 최대 120자. optional: parentActionId, actor/model/tool/action/resource/destination/status, dataCategories(16개), policyVersion, validFrom/validUntil, scope, authorityId, reviewer, targetVersion, note, purpose. `executor`는 agent 출처만, `account`·`host`·`repository`·`gitUser` 문자열(각 256자)로 된 객체다(hook이 보고한 실행자, [에이전트 레지스트리](agent-registry.md#실행자와-책임자)). `chain`은 agent 출처만, `{stream, seq, prev}`(stream은 영숫자·`-` 8~64자, seq는 1 이상 정수, prev는 SHA-256 hex 또는 `genesis`)이다(hook 기록 순번과 앞 기록 지문, [수집 연속성](agent-monitoring.md#수집-연속성)). `collection`은 agent 출처만, 값은 `history_import`뿐이다(AI 도구의 대화 기록에서 사후에 가져온 기록, [에이전트 감시](agent-monitoring.md)). 알 수 없는 필드는 거부한다. source/tenant/sourceKind/assurance/receivedAt/hash는 서버가 결정하며 제출자가 보내면 거부한다.
 
 `dataRefs`는 최대16개 참조 배열이다. 각 항목은 `{id,kind,version,hash,role,locator?,description?}`. kind=document/dataset/record/retrieval/artifact, role=input/retrieved/output, hash는 SHA-256 hex 또는 not_provided다. 자료 본문·prompt·secret·verification 필드는 받지 않는다. locator는 자동 조회하지 않는다. `/api/actions/:id`는 참조마다 source/eventId/assurance/observedAt/verification을 서버에서 붙이고, 수신 업무 이벤트 중 참조가 있는 건수와 제한된 분모를 표시한다. 전체 모델 지식/자료의 coverage 비율이 아니다.
 
@@ -52,13 +52,15 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 
 | 경로 | 의미 |
 |---|---|
-| GET /api/overview | 수집 건강·사건·backlog·한계 |
+| GET /api/overview | 수집 건강·사건·backlog·한계; counts.syntheticAlerts는 합성 행위자만 있는 행동의 경보 수 |
 | GET /api/events?q=&traceId=&kind=&limit=100&offset=0 | 문자열 검색·필터·최대 500건 반환 |
 | GET /api/actions/:actionId | 이벤트 및 최신순 평가 이력 |
 | GET /api/agents?range=7d&focus=all&sort=attention | 기간별 에이전트 현황; 상세 id, 종료 end, 검색 q, limit/offset 지원. [산정 기준](agent-policy-metrics.md) |
+| GET /api/collection/chains | 사람 역할. hook 기록 스트림별 순번·빠진 구간·연결 불일치·재시작 ([수집 연속성](agent-monitoring.md#수집-연속성)) |
+| POST /api/collection/chains/check | 검토자. 새 문제를 서명된 gap 기록으로 한 번씩 남김 |
 | GET /api/monitoring?range=1h | 수신 시각 기반 운영 시계열; range=10m/1h/24h/7d, 선택적 source |
-| GET /api/alerts | 최신 평가의 경보, 예외 억제 상태 |
-| GET/POST /api/assets | 자산 등록·소유자·목적·버전·허용 목적지 |
+| GET /api/alerts | 최신 평가의 경보, 예외 억제 상태; 경보마다 synthetic, data=real\|synthetic으로 실제·합성 기록 구분(보기 분류일 뿐 평가·원장은 그대로) |
+| GET/POST /api/assets | 자산 등록·소유자·목적·버전·허용 목적지; synthetic:true는 데모·시험 행위자(검토자만 표시, 출처가 스스로 표시할 수 없음) |
 | GET/POST /api/cases | 사건 목록/생성 |
 | POST /api/cases/:id | owner, comment, status, reason, task 변경; closed는 reason 필수 |
 | GET/POST /api/rules | 룰 버전 목록/초안 |
@@ -67,20 +69,28 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET/POST /api/exceptions | ruleId,actionId,reason,owner,expiresAt(90일 이내) |
 | POST /api/exceptions/:id/approve | 작성자/소유자와 다른 검토자 |
 | GET /api/export, /api/integrity | 독립 export·해시체인 검사 |
+| GET /api/export?attest=intoto | 같은 export 바이트와 그 DSSE in-toto 증명(`evidscope-attested-file-v1`). [표준 영수증](receipts.md) |
+| GET /api/receipts/record?seq= | 레코드 하나의 `c2sp.org/tlog-proof@v1`과 tenant 로그 `c2sp.org/tlog-policy`(`evidscope-record-receipt-v1`). 투명성 off는 409, 아직 서명된 tenant 로그에 없는 seq는 404 |
 | POST /api/rebuild | admin 전용 원장 기반 검색 사본 재생성 |
 | GET /api/metrics | tenant 접수·분석·backlog와 vault RSS |
 | GET /api/governance | 요구사항·시스템·평가·보완과제 |
 | POST /api/governance/systems | 사실관계 및 별도 한국/EU 분류 입력 |
-| POST /api/governance/assessments | 출처 snapshot·통제·증거·인간 평가·기한 |
-| GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제 |
-| POST /api/governance/tasks/:id | status,reason; 조치/재검토 기록 |
-| GET /api/retention | 보존 정책·대상·hold·파기계획·한계 |
+| POST /api/governance/assessments | 출처 snapshot·통제·증거·인간 평가·기한. 평가마다 과제를 연다(작성자의 `legalReview`와 무관, 2라운드 S11) |
+| POST /api/governance/assessments/:id/legal-review | reason; 평가 작성자가 아닌 reviewer·admin이 최신 평가(해시 결합)의 법률 검토를 확인 |
+| GET /api/governance/report?systemId= | 적용성 초안·미충족·검토 상태·과제, 항목별 `evidenceAssurance`·`legalReview`. 증거별 보증은 `vault_verified_document`·`authenticated_source_record`·`vault_retained_supplier_bundle`·`self_asserted`이고 수준은 `source_bound`·`mixed`·`self_asserted`·`no_evidence`다. vault는 공급사 서명을 검증하지 않는다. 공급사 묶음은 실제 자료로 신고되고 평가 작성자가 아닌 사람이 그 묶음 내용의 출처를 확인했을 때만 `vault_retained_supplier_bundle`이며, 합성 묶음이나 작성자 혼자 확인한 묶음은 `self_asserted`다(2라운드 S11) |
+| POST /api/governance/tasks/:id | status,reason; 조치/재검토 기록. 종결은 작성자 외 법률 검토 확인 뒤, 포함된 평가의 작성자가 아닌 검토자 |
+| GET /api/retention | 보존 정책·대상·hold·파기계획·한계; counts는 전체, items는 검토 순서(계획 가능→만료 보류→종료 임박)로 limit건(기본 200, 최대 5000) |
 | POST /api/retention/policy | retentionSeconds,purpose,reason,legalReview; 새 이벤트에만 적용 |
 | POST /api/retention/holds | scope(tenant 또는 actionId),reason |
 | POST /api/retention/holds/:id/release | reason; 다른 검토자 해제 |
 | POST /api/retention/plans | reason; 만료·hold·사건 확인한 최대1,000건 구체 계획 |
 | POST /api/retention/plans/:id/approve | reason; 작성자와 다른 검토자 |
 | POST /api/retention/plans/:id/execute | admin, 승인 후 상태 재확인; live key/검색 사본 파기 |
+| GET /api/retention/rotation | 정기 로테이션 정책·스케줄러·분류별 파기 건수·접근 기록 정리 경계([정기 로테이션](retention-rotation.md)) |
+| POST /api/retention/rotation | classes,accessLogRetentionSeconds,maxPerRun,validDays,purpose,reason; 검토자 제안, 중요 분류는 400 |
+| POST /api/retention/rotation/:id/approve | admin, 제안자와 다른 사람; 활성화(이전 활성 정책은 superseded) |
+| POST /api/retention/rotation/:id/reject, /suspend | reason; 검토자 한 명이 반려·즉시 중지 |
+| POST /api/retention/rotation/run | admin; 활성 정책으로 지금 한 번 실행 |
 
 정상 접수는 암호화 `event`와 source/id/fingerprint·event seq/hash를 결합한 `event_receipt`를 같은 transaction에서 서명한 뒤 SQL 영수증 사본을 기록한다. durable duplicate 응답은 SQL 행만으로 발급하지 않고 서명 이력과 정확히 일치해야 한다. 기존 버전에서 보존 중인 이벤트에 영수증이 없으면 파기 transaction이 복호화·검증된 원본으로 `verified_before_retention` 영수증을 먼저 서명하고 그 뒤 키와 검색 사본을 파기한다. 영수증이 파기 기록보다 늦거나, 이미 파기돼 원본과 서명 영수증이 모두 없는 기록은 복구나 정상 상태로 승격하지 않는다. `basis`가 없는 과거 서명 영수증은 event seq/hash와 보존 원본 결합을 확인해 호환하지만 새 principal 의미를 소급해 주장하지 않는다.
 
@@ -92,7 +102,9 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 
 반복 조회와 worker 분석은 매번 전체 원장을 다시 재생하지 않는다. 프로세스가 확인한 서명 checkpoint와 projection 상태를 tenant별로 보관하고, 다음 읽기에서 현재 checkpoint 서명·head, 이후 서명 원장 suffix, 이벤트·영수증·행동·키·객체·평가 projection delta와 SQLite mutation clock을 같은 transaction 안에서 인증한다. 외부 DB 변경, schema 변경, row 수 감소, checkpoint 후퇴·동일 길이 교체, 알 수 없는 trigger 부작용은 cache를 폐기하거나 409로 차단한다. `Store.transaction` 바깥에서 시작된 transaction의 중간 상태는 cache에 게시하지 않는다. 사람 판단의 최신 순서는 변경 가능한 SQL `rowid`가 아니라 서명 원장 `seq`로 정한다. `/api/integrity`, 전체 export, backup 검증은 이 빠른 경로와 별개로 전체 체인·사본을 끝까지 검사한다.
 
-내부 worker 계약은 `/internal/claim` 및 `/internal/complete`다. 일반 source/감사자에 허용하지 않는다. claim 최대5작업/10MiB, lease30초, commit 최대1MiB. worker가 분석해 `{leaseId,result}`를 제출하며 임의 tenant/action/타인의 증거 참조는 거부한다. 예전 `/internal/analyze`는410을 반환한다. 분석 한도 초과는 명시적 격리이며 분석완료로 집계하지 않는다.
+내부 worker 계약은 `/internal/claim` 및 `/internal/complete`다. 일반 source/감사자에 허용하지 않는다. claim 최대5작업/10MiB, lease30초, commit 최대1MiB. worker가 분석해 `{leaseId,result}`를 제출하며 임의 tenant/action/타인의 증거 참조는 거부한다. 예전 `/internal/analyze`는410을 반환한다. 분석 한도 초과는 명시적 격리이며 분석완료로 집계하지 않는다. worker는 config의 `tenants` 목록(없으면 자기 `tenant`)에 있는 tenant의 작업만 받고 제출한다. vault는 lease의 snapshot과 분석 시각으로 결과를 다시 계산해 같을 때만 서명하고, 다르면 422로 거부하며 lease를 닫는다. `suppressedBy`는 승인되고 만료되지 않은 예외만 가리킬 수 있다. 작업 범위와 lease는 principal id가 아니라 인증한 자격(토큰 지문)에 묶인다. lease를 받은 자격만 그 lease를 제출할 수 있고, 다른 자격이 제출하면 403이다(2라운드 S6). 한 자격이 동시에 가진 유효 lease는 최대 64개다. 같은 토큰을 쓰는 worker replica는 이 한도를 함께 쓴다(6 replica × 5작업 = 30). 한도에 닿은 자격의 claim은 빈 작업 목록을 받는다. 만료·거부된 lease 행은 claim 후 24시간이 지나면 다음 claim 때 삭제한다. 완료된 lease 행은 중복 제출 응답을 위해 남긴다.
+
+문서·공급사 묶음·OTLP JSON·worker 결과·보조 결과처럼 본문이 큰 POST는 본문을 읽기 전에 인증과 역할을 확인한다. audit gateway는 업로드를 받기 전에 vault의 `POST /internal/preauthorize`로 확인한다. 경로의 퍼센트 인코딩이 잘못되면 400이다.
 
 증거 ref는 `event`: `sourceId/eventId` (동일 tenant에 실제 존재 검증), document/test/attestation: 인간이 제공한 참조·버전·내용 hash(선택)다. 후자 URL은 다운로드하지 않는다. 보고서는 과거 요구/시스템 hash 및 재검토일을 비교하여 stale 평가를 다시 검토 대상으로 표시한다. 전체 법률 자동 적용 엔진이나 외부 문서 검증 엔진이라고 주장하지 않는다.
 
@@ -108,10 +120,13 @@ grant/human_approval/automated_review는 당시 policyVersion, validFrom/validUn
 | GET /api/cases/:id/review-context | 서명 원장과 사본을 대조한 case/events/references/evaluations/analysis/contextHash/decisions/latestDecision/reviewState |
 | POST /api/cases/:id/decisions | contextHash, conclusion=confirmed_issue\|no_issue_found\|inconclusive, reason, scope, limitations, nextReviewAt, evidence[{ref,supports: supports\|contradicts\|context,note}]. 필수 문구 공백 거부, 미래 재검토 시각, 근거 최대30개·중복 금지·같은 행동/tenant 실존 검증. 유보 외에는 최소1개 근거. 알 수 없는 필드·작성자/시각 위조는400, 변경된 문맥은409. |
 | GET /api/cases/:id/report | evidscope-case-report-v1. snapshot+signature+publicKeyFingerprint. 이벤트·사건·평가·인간 판단 사본을 서명 원본과 대조한 뒤 발급. |
+| GET /api/cases/:id/report?attest=intoto | 같은 보고서 바이트와 그 DSSE in-toto 증명(`evidscope-attested-file-v1`). 보고서 서명은 바뀌지 않는다. [표준 영수증](receipts.md) |
 
 decision은 서버 작성자/시각, 당시 전체 evidenceManifest(ref/hash/seq), evaluationManifest(id/version), analysisVersion 및 checkpoint를 자동 추가한다. 판단 수정 API는 없다. 검토 상태는 unreviewed/reviewed/inconclusive/stale이며 근거·분석 변경, 정당한 원문 파기, 재검토 기한 도래를 반영한다. 근거 변경 보호는 동시 검토자 예약 잠금이나 정족수 승인과 다르다.
 
 보고서는 canonical({format,snapshot})의 Ed25519 base64 서명이다. fingerprint는 공개키 DER SPKI의 SHA-256 hex다. 별도 배포된 신뢰키를 사용하는 `scripts/verify-case-report.mjs`로 검증하며 전체 체인 포함 증명·출처 진실성·외부 시각 봉인·법적 준수로 확대 해석하지 않는다. Markdown은 같은 snapshot의 비서명 읽기용 표현이다.
+
+`?attest=intoto` 증명과 레코드 영수증은 같은 증거를 DSSE·in-toto·C2SP 표준 형식으로 다시 묶은 추가 출력이다. 별도 배포 검증기 `evidscope-verify`나 torchwood 같은 제3자 도구로 확인하며, 증명 범위와 한계는 [표준 영수증](receipts.md)에 따른다.
 
 사건 문맥의 한도: 이벤트1,000개, 평가100개, 판단200개, 합계8MiB, 원장 단일행2MiB. 보고서10MiB. 한도 초과413은 부분 결과를 성공으로 반환하지 않는다. 조사함은 한도 초과 행동을 상세 제한으로 표시한다. `/api/actions/:id`에도 analysis.version/analyzed/pending을 제공한다. 분석 effect는 mixed_results를 지원하며 서비스 성공과 실패가 함께 있으면 성공으로 축약하지 않는다.
 

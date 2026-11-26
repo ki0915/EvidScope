@@ -14,7 +14,9 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function fixture(t){
  const parent=resolve('.test-runs/kr-governance-integration');mkdirSync(parent,{recursive:true});const dir=mkdtempSync(join(parent,'case-'));
  const key=generateKeyPairSync('ed25519').privateKey;
- const principals=[{id:'reviewer',tenant:'alpha',role:'reviewer',token:'r'.repeat(40)},...['telemetry','authority','agent'].map((kind,index)=>({id:kind,tenant:'alpha',role:'source',kind,token:String(index).repeat(40),hmacSecret:String(index+3).repeat(48)})),{id:'beta-reviewer',tenant:'beta',role:'reviewer',token:'b'.repeat(40)}];
+ const principals=[{id:'reviewer',tenant:'alpha',role:'reviewer',token:'r'.repeat(40)},...['telemetry','authority','agent'].map((kind,index)=>({id:kind,tenant:'alpha',role:'source',kind,token:String(index).repeat(40),hmacSecret:String(index+3).repeat(48)})),{id:'beta-reviewer',tenant:'beta',role:'reviewer',token:'b'.repeat(40)},
+  // S11: legal review confirmation and task closure come from a reviewer other than the assessment author.
+  {id:'legal-reviewer',tenant:'alpha',role:'reviewer',token:'l'.repeat(40)}];
  let service=createService({dataDir:dir,key,config:{principals},requirements});
  t.after(()=>{service.store.close();assert.ok(resolve(dir).startsWith(parent+sep));rmSync(dir,{recursive:true,force:true});});
  const call=(path,body,who=principals[0])=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+who.token},body===undefined?'':JSON.stringify(body));
@@ -31,7 +33,10 @@ async function fixture(t){
  }
  const assess=(id,evidence,extra={})=>call('/api/governance/assessments',{systemId:system.id,requirementId:id,applicability:'applicable',assessment:'sufficient',legalReview:'reviewed',control:'Recorded control review',owner:'reviewer',reason:'Named reviewer assessed the retained measurement and its stated scope',nextReviewAt:'2099-01-01T00:00:00.000Z',evidence,...extra});
  const report=()=>call('/api/governance/report?systemId=credit');
- return {call,document,ingest,check,assess,report,system,principals,get service(){return service;},restart(nextRequirements=requirements){service.store.close();service=createService({dataDir:dir,key,config:{principals},requirements:nextRequirements});}};
+ const legal=principals.find(p=>p.id==='legal-reviewer');
+ const confirm=saved=>call(`/api/governance/assessments/${saved.id}/legal-review`,{reason:'Independent legal review'},legal);
+ const close=(id,reason)=>call('/api/governance/tasks/'+id,{status:'closed',reason},legal);
+ return {call,document,ingest,check,assess,report,confirm,close,system,principals,get service(){return service;},restart(nextRequirements=requirements){service.store.close();service=createService({dataDir:dir,key,config:{principals},requirements:nextRequirements});}};
 }
 
 const noticeMetrics={noticeAt:'2026-10-01T00:00:00.000Z',providedAt:rawSystem.providedAt,noticeAtUncertaintyMs:100,providedAtUncertaintyMs:100,noticeDelivered:true,deliveryMethod:'screen',methodBasisRecorded:false,targetUsersCovered:true};
@@ -52,11 +57,15 @@ test('HMAC source ingestion, retained file and fixed versions support a measured
  const h=await fixture(t),doc=await h.document('notice-screenshot',Buffer.alloc(256*1024,7));
  const event=await h.check('KR-31-1','notice_pre_delivery',noticeMetrics,doc);
  const missing=await h.assess('KR-31-1',[{type:'attestation',ref:'missing'}]);
- await h.assess('KR-31-1',refs(doc,event));
+ const current=await h.assess('KR-31-1',refs(doc,event));
  const item=(await h.report()).items.find(i=>i.requirement.id==='KR-31-1');
  assert.equal(item.status,'human_evidence_assessed');assert.equal(item.technicalEvidence.measurementTrust,'authenticated_reported_measurement_not_independent_truth');assert.equal(item.technicalEvidence.automaticLegalVerdict,false);
  await assert.rejects(h.call('/api/governance/tasks/'+missing.id,{status:'closed',reason:'   '}),e=>e.status===400);
- assert.equal((await h.call('/api/governance/tasks/'+missing.id,{status:'closed',reason:'Current measured review'})).status,'closed');
+ await assert.rejects(h.close(missing.id,'Legal review only claimed by the author'),e=>e.status===409);
+ await assert.rejects(h.call(`/api/governance/assessments/${current.id}/legal-review`,{reason:'Own review'}),e=>e.status===403);
+ await h.confirm(current);
+ await assert.rejects(h.call('/api/governance/tasks/'+missing.id,{status:'closed',reason:'Author closes'}),e=>e.status===403);
+ assert.equal((await h.close(missing.id,'Current measured review')).status,'closed');
  assert.deepEqual(Buffer.from((await h.call('/api/governance/documents/'+doc.id+'/export')).contentBase64,'base64'),Buffer.alloc(256*1024,7));
  assert.equal((await h.call('/api/governance')).documentLimits.maximumBytes,4*1024*1024);
 });
@@ -91,8 +100,8 @@ test('current report and closure both reject changed purpose, expired review, pe
  await assert.rejects(h.call('/api/governance/tasks/'+task.id,{status:'closed',reason:'Expired'}),e=>e.status===409);
  await h.assess('KR-31-1',refs(doc,newEvent),{legalReview:'pending'});
  await assert.rejects(h.call('/api/governance/tasks/'+task.id,{status:'closed',reason:'No legal review'}),e=>e.status===409);
- await h.assess('KR-31-1',refs(doc,newEvent));
- assert.equal((await h.call('/api/governance/tasks/'+task.id,{status:'closed',reason:'Fresh scoped review'})).status,'closed');
+ await h.confirm(await h.assess('KR-31-1',refs(doc,newEvent)));
+ assert.equal((await h.close(task.id,'Fresh scoped review')).status,'closed');
  h.restart(requirements.map(r=>r.id==='KR-31-1'?{...r,requirement:r.requirement+' Source correction.'}:r));
  assert.equal((await h.report()).items.find(i=>i.requirement.id==='KR-31-1').status,'review_required');
  await assert.rejects(h.call('/api/governance/tasks/'+task.id,{status:'closed',reason:'Prior catalog'}),e=>e.status===409);
@@ -101,9 +110,9 @@ test('current report and closure both reject changed purpose, expired review, pe
 test('human non-applicability is recorded separately and needs a recoverable basis before closure',async t=>{
  const h=await fixture(t),saved=await h.assess('KR-31-1',[{type:'attestation',ref:'missing'}],{applicability:'not_applicable'});
  await assert.rejects(h.call('/api/governance/tasks/'+saved.id,{status:'closed',reason:'Unfetched basis'}),e=>e.status===409);
- const doc=await h.document('scope-rationale');await h.assess('KR-31-1',[{type:'document',ref:'governance-document:'+doc.id}],{applicability:'not_applicable'});
+ const doc=await h.document('scope-rationale'),basis=await h.assess('KR-31-1',[{type:'document',ref:'governance-document:'+doc.id}],{applicability:'not_applicable'});
  const item=(await h.report()).items.find(i=>i.requirement.id==='KR-31-1');assert.equal(item.status,'human_marked_not_applicable');assert.equal(item.technicalEvidence.automaticLegalVerdict,false);
- assert.equal((await h.call('/api/governance/tasks/'+saved.id,{status:'closed',reason:'Reviewed retained scope basis'})).status,'closed');
+ await h.confirm(basis);assert.equal((await h.close(saved.id,'Reviewed retained scope basis')).status,'closed');
 });
 
 test('the existing vault document alone cannot imply publication or a qualified human oversight plan',async t=>{
@@ -123,11 +132,11 @@ test('a different government order cannot close a prior order task; a fresh matc
  const metrics=orderId=>({authority:'MSIT',orderId,orderReceivedAt:'2026-09-30T00:00:00.000Z',deadline:'2099-01-01T00:00:00.000Z',requestedMeasures:['correct'],requestedMeasuresCovered:true,implementationRecorded:true,responseAccepted:true,receiptId:'receipt-'+orderId,responseAt:'2026-10-01T00:00:00.000Z'});
  const failedA=await h.check('KR-40-ORDER','authority_order_response',metrics('order-A'),docA,{sourceKind:'authority',checkOverrides:{result:'fail'}}),taskA=await h.assess('KR-40-ORDER',refs(docA,failedA));
  const recorded=(await h.call('/api/governance')).tasks.find(x=>x.id===taskA.id);assert.deepEqual(recorded.orderTargets,[{checkType:'authority_order_response',orderId:'order-A'}]);
- const passB=await h.check('KR-40-ORDER','authority_order_response',metrics('order-B'),docB,{sourceKind:'authority'});await h.assess('KR-40-ORDER',refs(docB,passB));
+ const passB=await h.check('KR-40-ORDER','authority_order_response',metrics('order-B'),docB,{sourceKind:'authority'});await h.confirm(await h.assess('KR-40-ORDER',refs(docB,passB)));
  assert.equal((await h.report()).items.find(i=>i.requirement.id==='KR-40-ORDER').status,'human_evidence_assessed');
- await assert.rejects(h.call('/api/governance/tasks/'+taskA.id,{status:'closed',reason:'Order B passed'}),e=>e.status===409&&/다른 명령/.test(e.message));
+ await assert.rejects(h.close(taskA.id,'Order B passed'),e=>e.status===409&&/다른 명령/.test(e.message));
  assert.equal((await h.call('/api/governance')).tasks.find(x=>x.id===taskA.id).status,'open');
- const passA=await h.check('KR-40-ORDER','authority_order_response',metrics('order-A'),docA,{sourceKind:'authority'});await h.assess('KR-40-ORDER',refs(docA,passA));
- assert.equal((await h.call('/api/governance/tasks/'+taskA.id,{status:'closed',reason:'Current response to order A reviewed'})).status,'closed');
+ const passA=await h.check('KR-40-ORDER','authority_order_response',metrics('order-A'),docA,{sourceKind:'authority'});await h.confirm(await h.assess('KR-40-ORDER',refs(docA,passA)));
+ assert.equal((await h.close(taskA.id,'Current response to order A reviewed')).status,'closed');
  assert.ok(h.service.store.ledgerEvents('alpha').some(e=>e.id===failedA.ref.split('/')[1]&&e.governanceCheck.result==='fail'));
 });

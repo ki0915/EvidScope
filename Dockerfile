@@ -9,6 +9,7 @@ COPY --chown=1000:1000 data/ ./data/
 COPY --chown=1000:1000 roles/ ./roles/
 COPY --chown=1000:1000 scripts/k8s-load.mjs ./scripts/k8s-load.mjs
 COPY --chown=1000:1000 scripts/k8s-distribution.mjs ./scripts/k8s-distribution.mjs
+COPY --chown=1000:1000 scripts/signer.mjs ./scripts/signer.mjs
 USER 1000:1000
 EXPOSE 8080
 STOPSIGNAL SIGTERM

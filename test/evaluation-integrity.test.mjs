@@ -52,14 +52,21 @@ test('overview, action and alert reads reject a forged evaluation instead of ren
 test('valid reads preserve latest-first behavior and the integrity scope remains explicit',async t=>{
  const h=fixture(t),overview=await h.call('/api/overview'),action=await h.call('/api/actions/action-a'),alerts=await h.call('/api/alerts'),integrity=await h.call('/api/integrity');
  assert.equal(overview.counts.alerts,1);assert.deepEqual(action.evaluations.map(value=>value.version),[2,1]);assert.equal(alerts.items.length,1);assert.equal(alerts.items[0].message,'Original signed finding');
- assert.equal(integrity.valid,true);assert.deepEqual(integrity.evaluationProjection,{valid:true,evaluations:2});assert.deepEqual(integrity.actionProjection,{valid:true,actions:1});assert.deepEqual(integrity.developmentRunProjection,{valid:true,developmentEvents:0});assert.deepEqual(integrity.governanceDocumentProjection,{valid:true,documents:0,revisions:0});assert.deepEqual(integrity.documentFiles,{valid:true,financeFiles:0,governanceFiles:0,uniqueFiles:0,plaintextBytes:0,verification:'referenced_ciphertext_decrypted_authenticated_and_hashed_per_file',unreferencedFilesScanned:false,filesystemSnapshotProven:false});assert.deepEqual(integrity.verificationScope.notChecked,[]);
+ assert.equal(integrity.valid,true);assert.deepEqual(integrity.evaluationProjection,{valid:true,evaluations:2});assert.deepEqual(integrity.actionProjection,{valid:true,actions:1});assert.deepEqual(integrity.developmentRunProjection,{valid:true,developmentEvents:0});assert.deepEqual(integrity.governanceDocumentProjection,{valid:true,documents:0,revisions:0});assert.deepEqual(integrity.documentFiles,{valid:true,financeFiles:0,governanceFiles:0,uniqueFiles:0,plaintextBytes:0,verification:'referenced_ciphertext_decrypted_authenticated_and_hashed_per_file',unreferencedFilesScanned:false,filesystemSnapshotProven:false});assert.deepEqual(integrity.verificationScope.notChecked,['rollback','truncation','tenant_removal']);
 });
 
-test('evaluation verification and response use one writer-excluding snapshot',async t=>{
- const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0});
+test('evaluation verification and response use one read snapshot; a concurrent write is not served and fails the next read',async t=>{
+ const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),checkpoint=h.store.checkpoint('alpha');
  try{
-  const original=h.store.verifiedRows.bind(h.store);let attempted=false,changed=false,blocked;
-  h.store.verifiedRows=function*(...args){yield* original(...args);if(!attempted){attempted=true;try{const row=other.prepare("SELECT id,body FROM evaluations WHERE tenant='alpha' AND version=2").get(),value=JSON.parse(row.body);value.findings[0].message='Forged after verification';other.prepare('UPDATE evaluations SET body=? WHERE id=?').run(JSON.stringify(value),row.id);changed=true;}catch(error){blocked=error;}}};
-  const result=await h.call('/api/actions/action-a');assert.equal(attempted,true);assert.equal(changed,false);assert.equal(blocked?.errcode,5);assert.match(blocked?.message||'',/locked|busy/i);assert.equal(result.evaluations[0].findings[0].message,'Original signed finding');
+  const original=h.store.verifiedRows.bind(h.store);let attempted=false,changed=false;
+  h.store.verifiedRows=function*(...args){
+   yield* original(...args);
+   if(!attempted){attempted=true;const row=other.prepare("SELECT id,body FROM evaluations WHERE tenant='alpha' AND version=2").get(),value=JSON.parse(row.body);
+    value.findings[0].message='Forged after verification';other.prepare('UPDATE evaluations SET body=? WHERE id=?').run(JSON.stringify(value),row.id);changed=true;}
+  };
+  const result=await h.call('/api/actions/action-a');assert.equal(attempted,true);assert.equal(changed,true,'the read did not hold the write lock');
+  assert.equal(result.evaluations[0].findings[0].message,'Original signed finding');assert.ok(!JSON.stringify(result).includes('Forged after verification'));
+  await assert.rejects(h.call('/api/actions/action-a'),error=>error.status===409&&/분석 조회 사본/.test(error.message));
+  assert.deepEqual(h.store.checkpoint('alpha'),checkpoint,'no ledger row was appended or re-signed');
  }finally{other.close();}
 });

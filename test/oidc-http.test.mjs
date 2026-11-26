@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
+import {once} from 'node:events';
 import {harness} from './harness.mjs';
 import {startOidcProvider} from './oidc-provider.mjs';
 import {submit} from '../src/client.mjs';
 import {createIdentity} from '../src/identity.mjs';
 import {Store} from '../src/store.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 
 function browser(base){
  const jar=new Map();let csrf;
@@ -100,9 +101,10 @@ test('OIDC provider → audit gateway → vault: authenticated identity, isolati
   assert.equal((await login('bob')).result.location,'/?auth=failed','forged projection cannot enable signed disabled account');
   // A normal change rebuilds this projection only from the authenticated ledger.
   await admin.request('/api/access/subjects/bob-auditor',{body:{action:'disable',reason:'restore signed projection'}});
-  const privateKey=readFileSync(join(h.dir,'signing-private.pem'),'utf8'),backupDir=join(h.dir,'backup'),restoreDir=join(h.dir,'restored');
-  const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,publicKey:h.publicKey});
-  await restoreVaultBackup({backupDir,restoreDir,privateKey,publicKey:h.publicKey,anchor});
+  const privateKey=readFileSync(join(h.dir,'signing-private.pem'),'utf8'),dataKey=readFileSync(join(h.dir,'data-encryption.key')),backupDir=join(h.dir,'backup'),restoreDir=join(h.dir,'restored');
+  const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,dataKey,publicKey:h.publicKey});
+  const latest=await createVaultRecoveryFrontier({dataDir:join(h.dir,'data'),privateKey,dataKey,publicKey:h.publicKey,anchor,config:h.config});
+  const recoveredReceipt=await restoreVaultBackup({backupDir,restoreDir,privateKey,dataKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(recoveredReceipt.activationAccepted,true);
   const recovered=await h.start('vault',{DATA_DIR:restoreDir});
   assert.equal((await browser(recovered.url).request('/auth/session',{headers:{cookie:old}})).status,401);
   const recoveredDb=new DatabaseSync(join(restoreDir,'evidence.db'),{readOnly:true});try{const item=JSON.parse(recoveredDb.prepare("SELECT body FROM objects WHERE tenant='alpha' AND type='identity_access' AND id='bob-auditor'").get().body);assert.equal(item.disabled,true);}finally{recoveredDb.close();}
@@ -129,6 +131,28 @@ test('OIDC provider → audit gateway → vault: authenticated identity, isolati
   try{for(const metadata of [{issuer:'https://wrong.invalid'},{jwks_uri:'https://wrong.invalid/jwks'},{authorization_endpoint:'https://wrong.invalid/authorize'},{token_endpoint:'https://wrong.invalid/token'}]){provider.controls.metadata=metadata;const identity=createIdentity({store,config:h.config});await assert.rejects(identity.http('GET',new URL(h.audit.url+'/auth/login')));}}
   finally{provider.controls.metadata={};store.close();}
  });
+});
+
+test('old backup made before Bob disable cannot re-enable a fresh OIDC HTTP login after accepted recovery',{timeout:60000},async t=>{
+ const provider=await startOidcProvider({host:process.env.EVIDSCOPE_TEST_HOST||'127.0.0.1'});t.after(()=>provider.close());
+ const h=await harness({vaultOnly:true});t.after(()=>h.close());
+ h.config.oidc={enabled:true,syntheticLocalIdp:true,issuer:provider.issuer,publicOrigin:h.audit.url,clientId:provider.clientId,clientSecret:provider.clientSecret,requiredAcrValues:['urn:evidscope:test:mfa'],bindings:[{id:'alice-admin',subject:'alice',tenant:'alpha',role:'admin'},{id:'bob-auditor',subject:'bob',tenant:'alpha',role:'auditor'}]};
+ writeFileSync(join(h.dir,'config.json'),JSON.stringify(h.config));await h.restart();
+ const origin=h.audit.url;
+ async function login(subject){const b=browser(origin),start=await b.request('/auth/login');assert.equal(start.status,302);assert.equal(new URL(start.location).searchParams.get('redirect_uri'),origin+'/auth/callback');const callback=await provider.authorize(start.location,{claims:{sub:subject}}),result=await b.request(callback.href);if(result.location==='/')assert.equal((await b.request('/auth/session')).status,200);return {b,result};}
+ const admin=(await login('alice')).b,beforeDisable=await login('bob');assert.equal(beforeDisable.result.location,'/');
+ const privateKey=readFileSync(join(h.dir,'signing-private.pem'),'utf8'),dataKey=readFileSync(join(h.dir,'data-encryption.key')),backupDir=join(h.dir,'old-before-disable-backup'),restoreDir=join(h.dir,'latest-frontier-restored');
+ const anchor=await createVaultBackup({dataDir:join(h.dir,'data'),backupDir,privateKey,dataKey,publicKey:h.publicKey});
+ assert.equal((await admin.request('/api/access/subjects/bob-auditor',{body:{action:'disable',reason:'withdrawn after archived snapshot'}})).status,200);
+ assert.equal((await beforeDisable.b.request('/api/overview')).status,401);assert.equal((await login('bob')).result.location,'/?auth=failed');
+ const latest=await createVaultRecoveryFrontier({dataDir:join(h.dir,'data'),privateKey,dataKey,publicKey:h.publicKey,anchor,config:h.config});
+ const withdrawal=latest.frontier.tenants.find(v=>v.tenant==='alpha').identityAccess.find(v=>v.payload.id==='bob-auditor');assert.equal(withdrawal.payload.disabled,true);assert.ok(withdrawal.seq>anchor.checkpoints.alpha.count,'disabled access record was written after the archived checkpoint');
+ const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey,dataKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(receipt.activationAccepted,true);assert.equal(receipt.servicesStarted,false);
+ const original=h.vault,exited=once(original.child,'exit');original.child.send('shutdown');await exited;
+ const recovered=await h.start('vault',{PORT:String(original.port),DATA_DIR:restoreDir});assert.equal(recovered.url,origin,'same registered OIDC callback/publicOrigin on recovered vault');
+ const tokenCalls=provider.counters.token,denied=await login('bob');assert.equal(provider.counters.token,tokenCalls+1,'fresh valid provider authorization was exchanged against recovered vault');assert.equal(denied.result.location,'/?auth=failed');assert.equal((await denied.b.request('/auth/session')).status,401);assert.equal(denied.result.cookies.some(v=>v.startsWith('evidscope-session=')),false);
+ assert.equal((await login('alice')).result.location,'/','accepted recovery remains operational for authorized admin');
+ const db=new DatabaseSync(join(restoreDir,'evidence.db'),{readOnly:true});try{const access=JSON.parse(db.prepare("SELECT body FROM objects WHERE tenant='alpha' AND type='identity_access' AND id='bob-auditor'").get().body);assert.equal(access.disabled,true);}finally{db.close();}
 });
 
 test('enterprise transport and principal binding fail closed at configuration time',()=>{

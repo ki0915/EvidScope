@@ -42,10 +42,18 @@ test('unsigned action state cannot erase backlog, mint compliance, or enter a si
  const beta=await h.call('/api/integrity','beta');assert.equal(beta.valid,true);assert.deepEqual(beta.actionProjection,{valid:true,actions:1});
 });
 
-test('action verification and response share one writer-excluding snapshot',async t=>{
- const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.checkActionProjection.bind(h.store);let attempted=false,changed=false,blocked;
+// A GET is a read snapshot (BEGIN DEFERRED, query_only), so another connection may commit while it runs; what was
+// verified is still what is served, the concurrent change fails the next read closed, and the read appends nothing.
+test('action verification and response share one read snapshot; a concurrent write is not served and fails the next read',async t=>{
+ const h=fixture(t),other=new DatabaseSync(join(h.dir,'evidence.db'),{timeout:0}),original=h.store.checkActionProjection.bind(h.store);let attempted=false;
+ const ledger=()=>h.store.db.prepare("SELECT COUNT(*) n,MAX(seq) head FROM ledger WHERE tenant='alpha'").get(),before=ledger(),checkpoint=h.store.checkpoint('alpha');
  try{
-  h.store.checkActionProjection=(...args)=>{const result=original(...args);if(!attempted){attempted=true;try{other.prepare("UPDATE actions SET version=2 WHERE tenant='alpha' AND id='work'").run();changed=true;}catch(error){blocked=error;}}return result;};
-  const result=await h.call('/api/actions/work');assert.equal(result.analysis.pending,true);assert.equal(attempted,true);assert.equal(changed,false);assert.equal(blocked?.errcode,5);assert.match(blocked?.message||'',/locked|busy/i);
+  h.store.checkActionProjection=(...args)=>{const result=original(...args);if(!attempted){attempted=true;other.prepare("UPDATE actions SET version=7 WHERE tenant='alpha' AND id='work'").run();}return result;};
+  const result=await h.call('/api/actions/work');assert.equal(attempted,true);
+  assert.equal(other.prepare("SELECT version FROM actions WHERE tenant='alpha' AND id='work'").get().version,7,'the read did not hold the write lock');
+  assert.notEqual(result.analysis.version,7,'the response comes from the verified snapshot');assert.equal(result.analysis.pending,true);
+  h.store.checkActionProjection=original;
+  await assert.rejects(h.call('/api/actions/work'),error=>error.status===409);
+  assert.deepEqual(ledger(),before);assert.deepEqual(h.store.checkpoint('alpha'),checkpoint);
  }finally{other.close();}
 });

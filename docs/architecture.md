@@ -28,9 +28,9 @@ Node API [SQLite](https://nodejs.org/docs/latest-v24.x/api/sqlite.html)는 동�
 |---|---|---|
 | Source | 인증된 tenant·sourceKind에 맞는 이벤트 제출 | 원본/검색/export/룰/사건/키 조회, tenant 선택, 독립 출처 사칭 |
 | Auditor | 자신의 tenant 조사, 사건 검토, 거버넌스 조회·보고서 발급, 예외 요청 | 거버넌스 시스템·평가·과제 변경, source 승인 발급, 원본 overwrite, 룰 배포 |
-| Reviewer | 인간 기능 + 거버넌스 시스템·평가·과제 변경, 룰 작성·시험·다른 작성자의 룰/예외 승인 | 자기 룰 승인, 자기 소유 예외 단독 승인 |
+| Reviewer | 인간 기능 + 거버넌스 시스템·평가·과제 변경, 룰 작성·시험·다른 작성자의 룰/예외 승인, 다른 작성자 평가의 법률 검토 확인 | 자기 룰 승인, 자기 소유 예외 단독 승인, 자기 평가의 법률 검토 확인·그 평가가 포함된 과제 종결 |
 | Admin | reviewer + 검색 사본 재구축 | HTTP로 원본 덮어쓰기·삭제·서명키 읽기 |
-| Worker | `/internal/claim`으로 배정된 자료만 받아 deterministic 분석, `/internal/complete` 제출 | 인간 조회 API, 자의적 tenant 선택, 사건/법률 판단, 실행 승인 |
+| Worker | config에 묶인 tenant(`tenants` 목록, 없으면 자기 `tenant`)에 대해 `/internal/claim`으로 배정된 자료만 받아 deterministic 분석, `/internal/complete` 제출. vault는 같은 snapshot·분석 시각으로 직접 재계산한 결과와 같을 때만 서명한다 | 인간 조회 API, 묶이지 않은 tenant 자료 수신, 재계산과 다른 finding·억제 기록(승인 전 예외 포함), 사건/법률 판단, 실행 승인 |
 | Vault 프로세스/운영 관리자 | 원본·키를 운영하는 높은 신뢰 영역 | 별도 통제 없이 침해 내성을 보장할 수 없음 |
 
 Kubernetes에서는 config/서명키/PVC는 vault에만 mount, worker는 worker token, gateway는 TLS 자격만 보유한다. gateway는 사용자 자격을 전달하고 vault가 최종 인증한다. NetworkPolicy로 수집·감사·worker 경로를 나눈다. 동일 노드/cluster administrator/OS 사용자 침해는 독립 trust anchor와 외부 보존 통제를 요구한다. namespace나 Pod만으로 완전 격리되는 것은 아니다. [Kubernetes multi-tenancy](https://kubernetes.io/docs/concepts/security/multi-tenancy/)
@@ -49,9 +49,9 @@ Kubernetes에서는 config/서명키/PVC는 vault에만 mount, worker는 worker 
 
 각 commit의 Ed25519 checkpoint는 마지막 해시·개수·tenant를 서명한다. export는 축약 없이 원장 전체와 checkpoint를 포함하며 외부 키로 검증한다. 악의적인 일부 추출·내용 변조·순서 변경은 검출된다. 유효하게 서명된 과거 export rollback은 별도 최신 checkpoint가 있어야 검출된다. 키·원본·checkpoint가 함께 침해되거나 독립 출처가 거짓인 경우 내용 진실성을 보장하지 않는다. 공개키를 동일 침해 영역에서만 가져오지 않는다. [Node Ed25519 sign/verify](https://nodejs.org/docs/latest-v24.x/api/crypto.html)
 
-수집과 반복 조회는 이미 인증한 checkpoint 이후의 원장 suffix와 조회 사본의 delta를 검증한다. SQLite `data_version`·`schema_version`과 mutation clock으로 외부 writer·직접 SQL 변경을 감지하고, checkpoint 후퇴·행 감소·알 수 없는 보호 테이블 trigger는 실패 처리한다. transaction 완료 전 상태는 검증 cache에 게시하지 않는다. `/api/integrity`, 전체 export와 backup 검증은 이 cache에 의존하지 않고 전체 체인과 조회 사본을 확인한다. 성능 최적화와 무결성 검사 범위는 [10월 5일 구현·검증 기록](../reports/enterprise-incremental-integrity-performance-20261005.md)에 구분했다.
+수집과 반복 조회는 이미 인증한 checkpoint 이후의 원장 suffix와 조회 사본의 delta를 검증한다. SQLite `data_version`·`schema_version`과 mutation clock으로 외부 writer·직접 SQL 변경을 감지하고, checkpoint 후퇴·행 감소·알 수 없는 보호 테이블 trigger는 실패 처리한다. transaction 완료 전 상태는 검증 cache에 게시하지 않는다. `/api/integrity`, 전체 export와 backup 검증은 이 cache에 의존하지 않고 전체 체인과 조회 사본을 확인한다. 정책 객체·평가·이벤트·사건 검토 자료·거버넌스 문서 조회는 이 검증 상태에서 서명 순서대로 복사본을 반환하며, 조회 사본 변조는 해당 facet(객체 유형·이벤트·평가 등)을 쓰는 조회만 409로 막는다. 검증 상태는 `verifiedAt`을 노출하고 최대 10분마다 처음부터 다시 검증한다. GET 요청 전체는 하나의 deferred WAL read snapshot(`PRAGMA query_only`)에서 실행되어 쓰기를 할 수 없고, 검증한 snapshot의 값만 응답한다. 그 사이 다른 연결이 commit한 변경은 응답에 섞이지 않고 다음 조회에서 409로 차단된다. 성능 최적화와 무결성 검사 범위는 [10월 5일 구현·검증 기록](../reports/enterprise-incremental-integrity-performance-20261005.md)에 구분했다.
 
-조회용 `events`, 평가 `evaluations`, 인간 작업 `objects`는 서로 구분된다. 원장은 관리 변경 및 조회/export도 기록한다. 접근 감사는 source ingestion을 재호출하지 않아 무한 수집 루프가 없다. 검색 사본은 원장 무결성 확인 후 다시 생성한다. worker는 durable 30초 lease와 snapshot hash를 받아 프로세스 밖에서 계산하고 version/lease 일치 결과만 transaction으로 확정한다. worker 장애·늦은 결과·정책 변경은 만료/충돌로 처리한다. 새 증거/룰/예외 승인/예외 만료는 과거 평가를 남기고 새 평가를 추가한다. 원장 streaming 검증은 전체 배열 대신 제한된 사건과 정책 자료만 모은다. 이벤트 1,000개/10MiB snapshot 한도 초과는 격리 상태와 backlog로 남기며, findings 100개 초과는 반환 범위·전체 수를 명시한다.
+조회용 `events`, 평가 `evaluations`, 인간 작업 `objects`는 서로 구분된다. 원장은 관리 변경을 기록한다. 인증된 조회는 라우팅 전에 별도 SQLite 파일(`access-log.db`)의 tenant별 SHA-256 해시 체인에 조회 시점의 서명 checkpoint와 함께 먼저 기록되고(기록 실패 시 503, checkpoint와 head 불일치 시 기록 후 409), 연속 구간이 개수·체인 head·RFC 6962 Merkle root를 담은 `audit_access_batch` 원장 기록으로 봉인된다(60초 주기, 미봉인 1,000건, export·integrity 직전, heads checkpoint 게시 직전, 종료 시). `/api/integrity`는 봉인 구간의 연속성·root와 미봉인 구간의 체인·경과 시간을 검사하고, 감사자는 `/api/audit/reads/proof`로 개별 조회의 포함 증명을 받는다. backup은 접근 기록 파일을 암호화해 포함한다. 접근 감사는 source ingestion을 재호출하지 않아 무한 수집 루프가 없다. 검색 사본은 원장 무결성 확인 후 다시 생성한다. worker는 durable 30초 lease와 snapshot hash를 받아 프로세스 밖에서 계산하고 version/lease 일치 결과만 transaction으로 확정한다. worker 장애·늦은 결과·정책 변경은 만료/충돌로 처리한다. 새 증거/룰/예외 승인/예외 만료는 과거 평가를 남기고 새 평가를 추가한다. 원장 streaming 검증은 전체 배열 대신 제한된 사건과 정책 자료만 모은다. 이벤트 1,000개/10MiB snapshot 한도 초과는 격리 상태와 backlog로 남기며, findings 100개 초과는 반환 범위·전체 수를 명시한다.
 
 ## 관측과 분석의 한계
 

@@ -1,6 +1,7 @@
 import {digest,canonical} from './crypto.mjs';
 import {primaryModelPolicy} from './model-policy.mjs';
 import {createPrimaryInference} from './isolated-inference-client.mjs';
+import {mappingDraft,mappingRequestFor} from './governance-mapping-assist.mjs';
 
 const configuredModel=primaryModelPolicy().model;
 const maxResponseBytes=1024*1024;
@@ -32,12 +33,22 @@ export async function runAssistance({credential,baseUrl,signal,tls,infer}={}){
  verifyClaimedPackage(claimed);
  try{
   if(canonical(claimed.package.profileSnapshot.modelPolicy)!==canonical(primaryModelPolicy())||canonical(claimed.run.modelPolicy)!==canonical(primaryModelPolicy()))throw Error('approved_model_policy_mismatch');
+  const mappingTask=claimed.package.governanceSnapshot?.mappingTask;
+  // Governance-mapping package: one constrained request, exactly as evaluated; an invalid output fails the run (never repaired).
+  if(mappingTask){
+   const request=mappingRequestFor(mappingTask),inference=infer||createPrimaryInference(tls);
+   const result=await inference({messages:request.messages,schema:request.responseFormat.schema,adapter:request.adapter,signal:combined});responsesUsed++;
+   providerReport=result.providerReport;if(providerReport?.model!==configuredModel)throw Error('provider_model_mismatch');
+   let draft;try{draft=mappingDraft(result.content||'',mappingTask);}catch{throw Error('model_mapping_output_invalid');}
+   const body={packageHash:claimed.run.packageHash,providerReportedModel:providerReport.model,providerReport,responsesUsed,outcome:draft.abstained?'abstained':'completed',draft};
+   return await internal(base,path+'/result',credential.token,{method:'POST',body:JSON.stringify(body),signal:combined});
+  }
   const messages=prompt(claimed.package);if(Buffer.byteLength(JSON.stringify(messages))>24000)throw Error('prompt_budget_exceeded');
   const inference=infer||createPrimaryInference(tls),result=await inference({messages,schema:draftSchema(claimed.package.evidence.map(e=>e.ref),(claimed.package.governanceSnapshot.requirements||[]).map(r=>r.id)),signal:combined});responsesUsed++;
   providerReport=result.providerReport;if(providerReport?.model!==configuredModel)throw Error('provider_model_mismatch');const draft=parseDraft(result.content||'');const outcome=draft.abstained===true?'abstained':'completed';
   return await internal(base,path+'/result',credential.token,{method:'POST',body:JSON.stringify({packageHash:claimed.run.packageHash,providerReportedModel:providerReport.model,providerReport,responsesUsed,outcome,draft}),signal:combined});
  }catch(error){
-  const outcome=combined.aborted||error.name==='AbortError'||error.name==='TimeoutError'?'timed_out':'failed',known=['approved_model_policy_mismatch','isolated_runtime_not_configured','isolated_connection_failed','isolated_service_unavailable','model_output_incomplete','provider_model_mismatch','prompt_budget_exceeded'],errorCode=outcome==='timed_out'?'isolated_inference_timeout':known.includes(error.message)?error.message:'isolated_inference_failed';
+  const outcome=combined.aborted||error.name==='AbortError'||error.name==='TimeoutError'?'timed_out':'failed',known=['approved_model_policy_mismatch','isolated_runtime_not_configured','isolated_connection_failed','isolated_service_unavailable','model_output_incomplete','provider_model_mismatch','prompt_budget_exceeded','model_mapping_output_invalid'],errorCode=outcome==='timed_out'?'isolated_inference_timeout':known.includes(error.message)?error.message:'isolated_inference_failed';
   try{return await internal(base,path+'/result',credential.token,{method:'POST',body:JSON.stringify({packageHash:claimed.run.packageHash,providerReportedModel:providerReport.model,providerReport,responsesUsed,outcome,errorCode}),signal:AbortSignal.timeout(5000)});}catch(submitError){submitError.cause=error;throw submitError;}
  }
 }

@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {createHash,generateKeyPairSync,verify} from 'node:crypto';
-import {mkdtempSync,readFileSync,readdirSync,writeFileSync} from 'node:fs';
+import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {tmpdir} from 'node:os';
 import {createService} from '../src/service.mjs';
 import {canonical} from '../src/crypto.mjs';
 import {createDocumentAdapter} from '../src/finance-evidence.mjs';
+import {tempDir} from './temp-dir.mjs';
 
 const reqs=JSON.parse(readFileSync('data/requirements.json','utf8'));
 const system={id:'credit',name:'합성 대출 심사',owner:'감사팀',purpose:'대출 심사 보조',role:'deployer',krRoles:['deployer'],markets:['KR'],domain:'credit',generative:false,highImpact:'candidate',supplierId:'supplier-a',modelId:'credit-score',modelVersion:'v1',suppliedModelVersion:'v1',suppliedPurpose:'대출 심사 보조',substantialModification:false};
 export function supplierBundle(){const bytes=Buffer.from('합성 공급사 시험 근거. 실제 금융 고객 자료가 아닙니다.');return {id:'supplier-v1',systemId:'credit',synthetic:true,supplierId:'supplier-a',modelId:'credit-score',modelVersion:'v1',purpose:system.purpose,testScope:'합성 대출 심사 사례',measures:['KR-34-RISK','KR-34-EXPLAIN'],documents:[{id:'doc-1',name:'합성 시험.txt',contentBase64:bytes.toString('base64'),sha256:createHash('sha256').update(bytes).digest('hex')}],reviewerNotes:'법적 인정 별도 검토'};}
-function fixture(t){const dir=mkdtempSync(join(tmpdir(),'evidscope-finance-')),key=generateKeyPairSync('ed25519').privateKey;const principals=[['reviewer','alpha','r'],['auditor','alpha','a'],['reviewer','beta','b']].map(([role,tenant,prefix])=>({id:prefix,role,tenant,token:prefix.repeat(40)}));const service=createService({dataDir:dir,key,config:{principals},requirements:reqs});t.after(()=>service.store.db.close());const call=(path,body,who=0)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principals[who].token},body===undefined?'':JSON.stringify(body));return {dir,service,call};}
+function fixture(t){const dir=tempDir('evidscope-finance-'),key=generateKeyPairSync('ed25519').privateKey;const principals=[['reviewer','alpha','r'],['auditor','alpha','a'],['reviewer','beta','b']].map(([role,tenant,prefix])=>({id:prefix,role,tenant,token:prefix.repeat(40)}));const service=createService({dataDir:dir,key,config:{principals},requirements:reqs});t.after(()=>service.store.db.close());const call=(path,body,who=0)=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principals[who].token},body===undefined?'':JSON.stringify(body));return {dir,service,call};}
 const assess={systemId:'credit',requirementId:'KR-34-RISK',applicability:'applicable',assessment:'sufficient',legalReview:'reviewed',evidence:[{type:'document',ref:'supplier-bundle:supplier-v1'}],control:'공급사 증빙 대조',owner:'감사팀',reason:'합성 검토',nextReviewAt:'2099-01-01T00:00:00Z'};
 
 test('verified supplier bytes, role isolation, immutable signed review and changed model invalidation',async t=>{
@@ -34,7 +34,7 @@ test('verified supplier bytes, role isolation, immutable signed review and chang
 });
 
 test('same private key representation can restore encrypted document bytes',()=>{
- const dir=mkdtempSync(join(tmpdir(),'evidscope-finance-key-')),key=generateKeyPairSync('ed25519').privateKey,bytes=Buffer.from('synthetic');
+ const dir=tempDir('evidscope-finance-key-'),key=generateKeyPairSync('ed25519').privateKey,bytes=Buffer.from('synthetic');
  const first=createDocumentAdapter(dir,key),hash=first.put('tenant-a',bytes);
  const restored=createDocumentAdapter(dir,key.export({type:'pkcs8',format:'pem'}));assert.deepEqual(restored.read('tenant-a',hash),bytes);assert.throws(()=>restored.read('tenant-b',hash));
 });
@@ -102,7 +102,7 @@ test('altered system or supplier projection cannot be legitimized by a new signe
 });
 
 test('legacy system facts migrate once to unknown without rewriting historical assessments',()=>{
- const dir=mkdtempSync(join(tmpdir(),'evidscope-finance-migration-')),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
+ const dir=tempDir('evidscope-finance-migration-'),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
  let service=createService(options);const old={...system,schemaVersion:2,updatedAt:'2026-09-01T00:00:00Z'};for(const field of ['krRoles','supplierId','modelId','substantialModification'])delete old[field];
  const historicalAssessment={id:'prior-human',systemId:old.id,requirementId:'KR-34-RISK',applicability:'applicable',assessment:'insufficient',legalReview:'pending',reason:'Prior human review',owner:'reviewer',evidence:[]};
  service.store.transaction(()=>{service.store.put(p,'system',old.id,old);service.store.put(p,'assessment',historicalAssessment.id,historicalAssessment);});service.store.db.close();
@@ -111,7 +111,7 @@ test('legacy system facts migrate once to unknown without rewriting historical a
 });
 
 test('startup refuses a downgraded and altered system projection without re-signing it',()=>{
- const dir=mkdtempSync(join(tmpdir(),'evidscope-finance-migration-tamper-')),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
+ const dir=tempDir('evidscope-finance-migration-tamper-'),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
  let service=createService(options);service.store.transaction(()=>service.store.put(p,'system',system.id,{...system,schemaVersion:3}));
  const checkpoint=service.store.db.prepare("SELECT body FROM checkpoints WHERE tenant='alpha'").get().body,ledgerCount=service.store.db.prepare("SELECT COUNT(*) n FROM ledger WHERE tenant='alpha'").get().n,original=service.store.get('alpha','system','credit');
  service.store.db.prepare("UPDATE objects SET body=? WHERE tenant='alpha' AND type='system' AND id='credit'").run(JSON.stringify({...original,schemaVersion:2,owner:'attacker-owner',purpose:'attacker-purpose'}));service.store.close();
@@ -120,7 +120,7 @@ test('startup refuses a downgraded and altered system projection without re-sign
 });
 
 for(const attack of ['insert','delete','sql-id'])test(`startup refuses ${attack} system projection drift`,()=>{
- const dir=mkdtempSync(join(tmpdir(),`evidscope-finance-migration-${attack}-`)),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
+ const dir=tempDir(`evidscope-finance-migration-${attack}-`),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
  let service=createService(options);service.store.transaction(()=>service.store.put(p,'system',system.id,{...system,schemaVersion:3}));const before=service.store.db.prepare("SELECT COUNT(*) n FROM ledger WHERE tenant='alpha'").get().n;
  if(attack==='insert')service.store.db.prepare("INSERT INTO objects VALUES('alpha','system','injected',?)").run(JSON.stringify({...system,id:'injected',schemaVersion:2}));
  if(attack==='delete')service.store.db.prepare("DELETE FROM objects WHERE tenant='alpha' AND type='system' AND id='credit'").run();
@@ -130,7 +130,7 @@ for(const attack of ['insert','delete','sql-id'])test(`startup refuses ${attack}
 });
 
 test('startup verifies every tenant before leaving any partial migration',()=>{
- const dir=mkdtempSync(join(tmpdir(),'evidscope-finance-migration-tenants-')),key=generateKeyPairSync('ed25519').privateKey,alpha={id:'alpha-reviewer',tenant:'alpha',role:'reviewer',token:'a'.repeat(40)},beta={id:'beta-reviewer',tenant:'beta',role:'reviewer',token:'b'.repeat(40)},options={dataDir:dir,key,config:{principals:[alpha,beta]},requirements:reqs};
+ const dir=tempDir('evidscope-finance-migration-tenants-'),key=generateKeyPairSync('ed25519').privateKey,alpha={id:'alpha-reviewer',tenant:'alpha',role:'reviewer',token:'a'.repeat(40)},beta={id:'beta-reviewer',tenant:'beta',role:'reviewer',token:'b'.repeat(40)},options={dataDir:dir,key,config:{principals:[alpha,beta]},requirements:reqs};
  let service=createService(options);const legacy={...system,schemaVersion:2};for(const field of ['krRoles','supplierId','modelId','substantialModification'])delete legacy[field];service.store.transaction(()=>{service.store.put(alpha,'system',legacy.id,legacy);service.store.put(beta,'system',system.id,{...system,schemaVersion:3});});const alphaSystems=service.store.db.prepare("SELECT COUNT(*) n FROM ledger WHERE tenant='alpha' AND json_extract(body,'$.type')='system'").get().n;
  const betaSystem=service.store.get('beta','system','credit');service.store.db.prepare("UPDATE objects SET body=? WHERE tenant='beta' AND type='system' AND id='credit'").run(JSON.stringify({...betaSystem,owner:'attacker-owner'}));service.store.close();
  assert.throws(()=>createService(options),/서명 원장/);
@@ -138,7 +138,7 @@ test('startup verifies every tenant before leaving any partial migration',()=>{
 });
 
 for(const attack of ['catalog','assessment'])test(`catalog change refuses altered ${attack} projection before signing review tasks`,()=>{
- const dir=mkdtempSync(join(tmpdir(),`evidscope-catalog-migration-${attack}-`)),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
+ const dir=tempDir(`evidscope-catalog-migration-${attack}-`),key=generateKeyPairSync('ed25519').privateKey,p={id:'reviewer',tenant:'alpha',role:'reviewer',token:'x'.repeat(40)},options={dataDir:dir,key,config:{principals:[p]},requirements:reqs};
  let service=createService(options);service.store.transaction(()=>service.store.put(p,'assessment','assessment-one',{id:'assessment-one',systemId:'credit',requirementId:'KR-34-RISK',owner:'original-owner'}));const before=service.store.db.prepare("SELECT COUNT(*) n FROM ledger WHERE tenant='alpha'").get().n;
  const type=attack,id=attack==='catalog'?'current':'assessment-one',value=service.store.get('alpha',type,id);service.store.db.prepare('UPDATE objects SET body=? WHERE tenant=? AND type=? AND id=?').run(JSON.stringify(attack==='catalog'?{...value,hash:'f'.repeat(64)}:{...value,owner:'attacker-owner'}),'alpha',type,id);service.store.close();
  const changed={...options,requirements:[...reqs,{id:'TEST-CHANGE',title:'Synthetic catalog change'}]};assert.throws(()=>createService(changed),/서명 원장/);

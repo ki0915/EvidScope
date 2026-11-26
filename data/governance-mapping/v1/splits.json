@@ -1,0 +1,16 @@
+{
+ "schemaVersion": 1,
+ "task": "governance-mapping",
+ "taskVersion": 1,
+ "method": "requirement_level",
+ "note": "Frozen on 2026-10-08. A requirement belongs to exactly one split. An item goes to test when any of its labels is a test requirement, else to validation when any label is a validation requirement, else to tune; abstain items go by sha256('governance-mapping-v1:' + familyId) mod 20 (0-11 tune, 12-14 validation, 15-19 test). A requirement missing here stops the build: assign it here first.",
+ "requirements": {
+  "test": ["EU-AIA-12-2-B", "EU-AIA-26-6", "EU-AIA-14-4-D", "KR-31-2", "KR-32-MONITOR", "KR-34-EXPLAIN", "KR-35-IMPACT", "KR-36-REPRESENTATIVE",
+   "ISMS-P-1.2.1", "ISMS-P-2.2.2", "ISMS-P-2.5.1", "ISMS-P-2.5.6", "ISMS-P-2.9.3", "ISMS-P-2.11.5"],
+  "validation": ["EU-AIA-72-1-2", "KR-30-EFFORT", "KR-34-PROTECT", "ISMS-P-2.10.1", "ISMS-P-2.3.3", "ISMS-P-2.5.3", "ISMS-P-2.7.2", "ISMS-P-2.6.7"],
+  "tune": ["EU-AIA-12-1", "EU-AIA-12-2-A", "EU-AIA-12-2-C", "EU-AIA-19-1", "EU-AIA-14-4-A", "EU-AIA-14-4-E",
+   "KR-31-1", "KR-31-3", "KR-32-RISK", "KR-32-SUBMIT", "KR-33", "KR-34-RISK", "KR-34-OVERSIGHT", "KR-34-DOCUMENT", "KR-35-PUBLIC", "KR-30-PUBLIC", "KR-40-ORDER",
+   "ISMS-P-1.4.1", "ISMS-P-2.1.3", "ISMS-P-2.2.5", "ISMS-P-2.3.1", "ISMS-P-2.5.2", "ISMS-P-2.5.5", "ISMS-P-2.6.3", "ISMS-P-2.7.1", "ISMS-P-2.8.5",
+   "ISMS-P-2.9.1", "ISMS-P-2.9.2", "ISMS-P-2.9.4", "ISMS-P-2.9.5", "ISMS-P-2.11.3", "ISMS-P-3.1.2", "ISMS-P-3.4.1"]
+ }
+}

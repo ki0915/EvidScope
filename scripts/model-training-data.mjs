@@ -2,6 +2,9 @@ import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {evaluateLoraAdmission,scoreRoleOutput} from '../src/role-evaluation.mjs';
+import {TASK as GOVERNANCE_MAPPING,outputMatchesTruth} from '../src/governance-mapping.mjs';
+// A governance-mapping record (src/governance-mapping-data.mjs) is approved against its mapping truth, other roles by their fixture assertions.
+const reviewedOutputValid=(record,output)=>record.task===GOVERNANCE_MAPPING?outputMatchesTruth(record.truth,output,{locators:record.evidence.map(e=>e.id)}):scoreRoleOutput(record,output).passed;
 export const recordHash=record=>createHash('sha256').update(JSON.stringify(record)).digest('hex');
 function sorted(value){return Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,sorted(value[k])])):value;}
 export const reviewedPayloadHash=record=>recordHash(sorted(Object.fromEntries(['id','roleId','split','familyId','sourceId','language','prompt','evidence','truth','approvedOutput'].map(k=>[k,record[k]??null]))));
@@ -36,7 +39,7 @@ export function importHumanReviews(records,input){
   const review=byId.get(record.id);if(!review)return structuredClone(record);
   if(review.recordHash!==recordHash(record))throw Error('review_record_hash_mismatch');
   if(review.approved!==true||review.sourceConsent!==true||review.piiReviewed!==true||typeof review.reviewerId!=='string'||!review.reviewerId.trim()||!Number.isFinite(Date.parse(review.reviewedAt))||Date.parse(review.reviewedAt)>Date.now())throw Error('review_incomplete');
-  if(!review.approvedOutput||!scoreRoleOutput(record,review.approvedOutput).passed)throw Error('reviewed_output_invalid');
+  if(!review.approvedOutput||!reviewedOutputValid(record,review.approvedOutput))throw Error('reviewed_output_invalid');
   const imported={...record,humanReviewed:true,reviewStatus:'HUMAN_REVIEWED',reviewerId:review.reviewerId,reviewedAt:review.reviewedAt,sourceConsent:true,piiReviewed:true,approvedOutput:review.approvedOutput,reviewBinding:review.recordHash};return {...imported,reviewedPayloadHash:reviewedPayloadHash(imported)};
  });return result;
 }

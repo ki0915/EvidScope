@@ -1,0 +1,30 @@
+# Example OPA configuration for the EvidScope kill switch (docs/kill-switch.md). OPA pulls; EvidScope never calls OPA.
+# The bearer token is the enforcement point's own `enforcement` source credential (one per enforcement point).
+services:
+  evidscope:
+    url: https://ingress.example.com/api/enforcement/opa
+    credentials:
+      bearer:
+        token_path: /var/run/secrets/evidscope/token
+bundles:
+  evidscope:
+    service: evidscope
+    resource: bundles/evidscope          # GET /api/enforcement/opa/bundles/evidscope (ETag / If-None-Match → 304)
+    persist: true
+    polling:
+      min_delay_seconds: 5
+      max_delay_seconds: 15
+    # Only when the vault signs bundles (OPA_BUNDLE_SIGNING_KEY_FILE, OPA_BUNDLE_SIGNING_KEY_ID); leave `scope` unset.
+    # signing:
+    #   keyid: evidscope
+status:
+  service: evidscope                     # POST /api/enforcement/opa/status: activations become signed records
+decision_logs:
+  console: false
+# keys:
+#   evidscope:
+#     algorithm: ES256                   # RS256 for an RSA signing key
+#     key: |
+#       -----BEGIN PUBLIC KEY-----
+#       ...
+#       -----END PUBLIC KEY-----

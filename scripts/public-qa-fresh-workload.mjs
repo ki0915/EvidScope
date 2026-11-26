@@ -7,6 +7,8 @@ import {immutableGroundingWrite} from './prepare-public-qa-grounding.mjs';
 import {FRESH_EVALUATION_STAGE,FRESH_EVALUATION_OUTPUT,FRESH_EVALUATION_PINS,selectFreshEvaluation} from './prepare-public-qa-fresh-evaluation.mjs';
 import {groundingArtifactChecks} from './verify-public-qa-grounding.mjs';
 import {verifyPublicQaGroundingContinuation} from './verify-public-qa-grounding-continuation.mjs';
+import {verifyPublicQaGroundingBalanced} from './verify-public-qa-grounding-balanced.mjs';
+import {balancedRunBinding,BLIND_STAGE,SOURCE_PINS as BALANCED_SOURCE_PINS,selectBalancedBlind} from './prepare-public-qa-grounding-balanced.mjs';
 
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const requireValue=(value,reason)=>{if(!value)throw Error('fresh_evaluation_'+reason);};
@@ -20,9 +22,35 @@ export const FRESH_SOURCE_PINS=Object.freeze({candidateMarkerSha256:'4f25923e903
 export const FRESH_DATA_PINS=Object.freeze({datasetSha256:'dc8a7bb0c9eb9de9abbc6f3cea39851453db8c60cc91602223f3a9aaeb628142',manifestSha256:'c131723029cd014d718974bb426098925f02f6d4ced914637791e3fb76596ed1'});
 export const FRESH_RUNTIME_SHA256='57fb2c41b016a570e667d291510da397facf05dba7cbcf437586e091012bb100';
 export const FRESH_RUN_ID=/^public-qa-fresh-[a-z0-9-]{1,28}$/;
+export const BALANCED_FRESH_RUN_ID='public-qa-fresh-balanced-r2-20261006';
+export const BALANCED_FRESH_SOURCE_RUN='public-qa-balanced-20261006-r2';
+// The old runtime pin remains authoritative for historical source80 snapshots.
+export const FRESH_CURRENT_RUNTIME_SHA256='2c692faae220fe77c0a41778f762a9fdb92c1723c5032f922efeb6db7483251a';
+export function freshEvaluationContract(runId,binding={}){
+ if(runId!==BALANCED_FRESH_RUN_ID){requireValue(FRESH_RUN_ID.test(runId),'run_id_invalid');return {stage:FRESH_EVALUATION_STAGE,sourceRunId:FRESH_SOURCE_RUN,history:80,sourceHistory:60,sourceStage:'public_qa_grounding_continuation_v1',sourceStatus:'trained_public_qa_grounding_continuation_v1',sourcePins:FRESH_SOURCE_PINS,dataPins:FRESH_DATA_PINS,dataSubPath:'fresh-evaluation',adapterSubPath:`grounding-continuation-runs/${FRESH_SOURCE_RUN}/candidate`,criRequired:true};}
+ const frozen=balancedRunBinding(BALANCED_FRESH_SOURCE_RUN),sourcePins=Object.fromEntries(Object.keys(FRESH_SOURCE_PINS).map(key=>[key,binding[key]]));
+ requireValue(sourcePins.artifactLockSha256===FRESH_SOURCE_PINS.artifactLockSha256&&Object.entries(sourcePins).every(([key,value])=>key==='criInspectionSha256'?value===null||digest(value):digest(value)),'balanced_source_pins_invalid');
+ requireValue(binding.sourceCompletionKind===(sourcePins.criInspectionSha256===null?'controller_normal_exit':'cri_exit_reconciled'),'balanced_source_completion_invalid');
+ return {stage:BLIND_STAGE,sourceRunId:BALANCED_FRESH_SOURCE_RUN,history:100,sourceHistory:80,sourceStage:'public_qa_grounding_balanced_v1',sourceStatus:'trained_public_qa_grounding_balanced_v1',sourcePins,dataPins:{datasetSha256:frozen.blindDatasetSha256,manifestSha256:frozen.blindManifestSha256},dataSubPath:`grounding-balanced/${BALANCED_FRESH_SOURCE_RUN}/blind-evaluation`,adapterSubPath:`grounding-balanced-runs/${BALANCED_FRESH_SOURCE_RUN}/candidate`,criRequired:sourcePins.criInspectionSha256!==null};
+}
+export function balancedFreshBinding(candidateIdentity,pins){
+ const contract=freshEvaluationContract(BALANCED_FRESH_RUN_ID,pins);
+ return {...freshBinding(BALANCED_FRESH_RUN_ID,candidateIdentity),stage:contract.stage,sourceRunId:contract.sourceRunId,sourceOptimizerHistoryUpdates:contract.history,...contract.sourcePins,...contract.dataPins,sourceCompletionKind:pins.sourceCompletionKind};
+}
 const freshBinding=(runId,candidateIdentity)=>({schemaVersion:1,mode:'public_qa_fresh_paired_evaluation',stage:FRESH_EVALUATION_STAGE,diagnosticOnly:true,runId,sourceRunId:FRESH_SOURCE_RUN,sourceGlobalStep:20,sourceOptimizerHistoryUpdates:80,sourceTrainingExecutionVerified:true,candidateIdentity,...FRESH_SOURCE_PINS,...FRESH_DATA_PINS,rows:128,baselineExecutedThisRun:true,executionOrder:['baseline','candidate'],baselineKind:'fixed_reasoning_base_without_adapter',evaluationScope:FRESH_SCOPE,qualityClaimAllowed:false,promotionAllowed:false,localHumanReviewPerformed:false});
 
-export function verifyFrozenFreshEvaluation({workspaceRoot=process.cwd()}={}){
+export function verifyFrozenFreshEvaluation({workspaceRoot=process.cwd(),runId}={}){
+ if(runId===BALANCED_FRESH_RUN_ID){
+  const frozen=balancedRunBinding(BALANCED_FRESH_SOURCE_RUN),directory=join(frozen.directory,'blind-evaluation'),dataPath=join(directory,'data.jsonl'),manifestPath=join(directory,'manifest.json'),data=read(workspaceRoot,dataPath),raw=read(workspaceRoot,manifestPath),manifest=JSON.parse(raw);
+  requireValue(sha(data)===frozen.blindDatasetSha256&&sha(raw)===frozen.blindManifestSha256,'balanced_blind_changed');
+  requireValue(manifest.stage===BLIND_STAGE&&manifest.plannedTrainingRunId===BALANCED_FRESH_SOURCE_RUN&&manifest.frozenBeforeBalancedTraining===true&&manifest.datasetSha256===frozen.blindDatasetSha256&&same(manifest.counts,{total:128,answerable:64,impossible:64})&&same(manifest.sourcePins,BALANCED_SOURCE_PINS)&&manifest.sourceInputs?.length===9&&new Set(manifest.sourceInputs.map(input=>input.name)).size===9&&same(manifest.sourceInputs.map(input=>input.name).sort(),Object.keys(BALANCED_SOURCE_PINS).sort()),'balanced_blind_scope_changed');
+  requireValue(manifest.originalHumanLabelsPreserved===true&&['trainingUsed','heldoutUsedForTraining','automaticallyGeneratedLabels','localHumanReviewPerformed','qualityClaimAllowed','promotionAllowed'].every(key=>manifest[key]===false),'balanced_blind_claim_changed');
+  const source={};for(const input of manifest.sourceInputs){const bytes=read(workspaceRoot,input.path);requireValue(input.sha256===BALANCED_SOURCE_PINS[input.name]&&sha(bytes)===input.sha256,'balanced_blind_source_changed');source[input.name]=input.name==='sourceManifest'?JSON.parse(bytes):rows(bytes);requireValue(input.rows===(input.name==='sourceManifest'?null:source[input.name].length),'balanced_blind_source_count_changed');}
+  const training=read(workspaceRoot,join(frozen.directory,BALANCED_FRESH_SOURCE_RUN,'data.jsonl'));requireValue(sha(training)===frozen.pins.datasetSha256,'balanced_blind_training_changed');
+  const selected=selectBalancedBlind(source.heldout,[...['oldTraining','diagnostic','previousGrounding','continuation','observedFresh','sourceTrain','sourceValidation'].flatMap(key=>source[key]),...rows(training)]);
+  requireValue(same(rows(data),selected.rows)&&same(manifest.rowIds,selected.rows.map(row=>row.id))&&same(manifest.previousExposureOverlap,{id:0,family:0,context:0}),'balanced_blind_exclusion_changed');
+  return {data:dataPath,manifest:manifestPath,datasetSha256:frozen.blindDatasetSha256,manifestSha256:frozen.blindManifestSha256,rows:128,manifestReceipt:manifest};
+ }
  const dataPath=join(FRESH_EVALUATION_OUTPUT,'data.jsonl'),manifestPath=join(FRESH_EVALUATION_OUTPUT,'manifest.json'),data=read(workspaceRoot,dataPath),manifestBytes=read(workspaceRoot,manifestPath),manifest=JSON.parse(manifestBytes);
  requireValue(sha(data)===FRESH_DATA_PINS.datasetSha256&&sha(manifestBytes)===FRESH_DATA_PINS.manifestSha256,'fixed_dataset_changed');
  requireValue(manifest.schemaVersion===1&&manifest.stage===FRESH_EVALUATION_STAGE&&manifest.task==='korean_extractive_qa'&&manifest.datasetSha256===FRESH_DATA_PINS.datasetSha256&&same(manifest.counts,{total:128,answerable:64,impossible:64})&&same(manifest.sourcePins,FRESH_EVALUATION_PINS)&&manifest.originalHumanLabelsPreserved===true&&manifest.automaticallyGeneratedLabels===false&&manifest.trainingUsed===false&&manifest.heldoutUsedForTraining===false&&manifest.frozenBeforeContinuationTraining===true&&manifest.localHumanReviewPerformed===false&&manifest.qualityClaimAllowed===false&&manifest.promotionAllowed===false,'dataset_scope_changed');
@@ -38,12 +66,13 @@ export function verifyFrozenFreshEvaluation({workspaceRoot=process.cwd()}={}){
 const runtimeFiles=Object.freeze({'evaluate-public-qa-fresh.py':'evaluate-public-qa-fresh.py','evaluate-public-qa-diagnostic.py':'evaluate-public-qa-diagnostic.py','training_artifacts.py':'training_artifacts.py','public_qa_cuda_runtime.py':'public-qa-cuda-runtime.py','public_qa_memory_gate.py':'public-qa-memory-gate.py','public_qa_thermal.py':'public-qa-thermal.py'});
 export function freshEvaluationRuntimeConfigMap(){
  const data=Object.fromEntries(Object.entries(runtimeFiles).map(([target,source])=>[target,readFileSync('scripts/'+source,'utf8')])),hash=sha(JSON.stringify(data));
- requireValue(hash===FRESH_RUNTIME_SHA256,'fixed_runtime_changed');
+ requireValue(hash===FRESH_CURRENT_RUNTIME_SHA256,'fixed_runtime_changed');
  return {apiVersion:'v1',kind:'ConfigMap',metadata:{name:'public-qa-fresh-'+hash.slice(0,16),namespace:QA_NAMESPACE,annotations:{'evidscope.io/code-sha256':hash}},immutable:true,data};
 }
 
 export async function publicQaFreshEvaluationInputs({runId='public-qa-fresh-20261006-r1',directory=join(FRESH_BINDING_DIRECTORY,runId),workspaceRoot=process.cwd()}={}){
  requireValue(FRESH_RUN_ID.test(runId),'run_id_invalid');
+ if(runId===BALANCED_FRESH_RUN_ID)return balancedFreshInputs({runId,directory,workspaceRoot});
  const paths={sourceController:`.local/training/public-qa-run/${FRESH_SOURCE_RUN}/controller-receipt.json`,sourceVerification:'reports/public-qa-grounding-continuation-verification-20261006.json',candidateMarker:`.local/training/runs/${FRESH_SOURCE_RUN}/candidate/candidate-complete.json`,adapter:`.local/training/runs/${FRESH_SOURCE_RUN}/candidate/adapter_model.safetensors`,sourceRuntime:`.local/training/public-qa-run/${FRESH_SOURCE_RUN}/runtime-configmap.json`,provenance:`.local/public-training/grounding-continuation/20261006/${FRESH_SOURCE_RUN}/provenance.json`,criInspection:'.local/training/public-qa-run/continuation-preparation-20261006-r3/cri-inspect.json',lock:`.local/training/base/${QA_BASE_REVISION}/artifact-lock.json`};
  const sourceBytes=Object.fromEntries(Object.entries(paths).map(([key,path])=>[key,read(workspaceRoot,path)]));
  for(const [name,pin]of Object.entries({sourceController:'sourceControllerSha256',sourceVerification:'sourceVerificationSha256',candidateMarker:'candidateMarkerSha256',adapter:'adapterSha256',sourceRuntime:'sourceRuntimeConfigMapSha256',provenance:'provenanceSha256',criInspection:'criInspectionSha256',lock:'artifactLockSha256'}))requireValue(sha(sourceBytes[name])===FRESH_SOURCE_PINS[pin],'source_pin_changed:'+name);
@@ -61,18 +90,55 @@ export async function publicQaFreshEvaluationInputs({runId='public-qa-fresh-2026
 }
 
 export function freshEvaluationJob(runId,inputs,{tokenCheck=false}={}){
+ if(runId===BALANCED_FRESH_RUN_ID)return balancedFreshJob(runId,inputs,{tokenCheck});
  requireValue(FRESH_RUN_ID.test(runId)&&inputs?.runId===runId&&inputs.mode==='public_qa_fresh_paired_evaluation'&&inputs.stage===FRESH_EVALUATION_STAGE&&inputs.sourceRunId===FRESH_SOURCE_RUN&&inputs.sourceGlobalStep===20&&inputs.sourceOptimizerHistoryUpdates===80&&inputs.sourceTrainingExecutionVerified===true&&inputs.rows===128&&inputs.baselineExecutedThisRun===true&&same(inputs.executionOrder,['baseline','candidate'])&&inputs.baselineKind==='fixed_reasoning_base_without_adapter'&&inputs.evaluationScope===FRESH_SCOPE&&inputs.qualityClaimAllowed===false&&inputs.promotionAllowed===false&&same(inputs.binding?.candidateIdentity,inputs.candidateIdentity)&&inputs.binding?.runId===runId&&/^public-qa-fresh-[a-f0-9]{16}$/.test(inputs.runtimeConfigMap)&&digest(inputs.runtimeSha256)&&digest(inputs.bindingSha256),'job_binding_invalid');
  for(const [key,value]of Object.entries({...FRESH_SOURCE_PINS,...FRESH_DATA_PINS}))requireValue(inputs[key]===value&&inputs.binding?.[key]===value,'job_pin_changed:'+key);
  requireValue(same(inputs.binding,freshBinding(runId,inputs.candidateIdentity))&&inputs.bindingSha256===sha(JSON.stringify(inputs.binding,null,2)+'\n')&&inputs.runtimeConfigMap==='public-qa-fresh-'+inputs.runtimeSha256.slice(0,16)&&inputs.candidateIdentity?.baseRepository==='fdtn-ai/Foundation-Sec-8B-Reasoning'&&inputs.candidateIdentity.baseRevision===QA_BASE_REVISION&&inputs.candidateIdentity.baseArtifactLockSha256===FRESH_SOURCE_PINS.artifactLockSha256&&inputs.candidateIdentity.image===QA_IMAGE&&inputs.candidateIdentity.stage==='public_qa_grounding_continuation_v1'&&inputs.candidateIdentity.maxSteps===20,'job_binding_content_changed');
+ return buildFreshJob(runId,inputs,{tokenCheck},freshEvaluationContract(runId));
+}
+function buildFreshJob(runId,inputs,{tokenCheck},contract){
  const spec=podSpec({gpu:!tokenCheck}),c=spec.containers[0];spec.volumes=spec.volumes.filter(volume=>volume.name!=='checkpoints');c.volumeMounts=c.volumeMounts.filter(mount=>mount.name!=='checkpoints');
- const dataMount=c.volumeMounts.find(mount=>mount.name==='data');dataMount.mountPath='/data/fresh';dataMount.subPath='fresh-evaluation';spec.volumes.find(volume=>volume.name==='data').persistentVolumeClaim.readOnly=true;
+ const dataMount=c.volumeMounts.find(mount=>mount.name==='data');dataMount.mountPath='/data/fresh';dataMount.subPath=contract.dataSubPath;dataMount.readOnly=true;spec.volumes.find(volume=>volume.name==='data').persistentVolumeClaim.readOnly=true;
  spec.volumes.push({name:'adapters',persistentVolumeClaim:{claimName:'public-qa-checkpoints',readOnly:true}},{name:'fresh-output',persistentVolumeClaim:{claimName:'public-qa-checkpoints'}},{name:'binding',persistentVolumeClaim:{claimName:'public-qa-data',readOnly:true}},{name:'runtime',configMap:{name:inputs.runtimeConfigMap}});
- c.volumeMounts.push({name:'adapters',mountPath:'/adapters/candidate',subPath:`grounding-continuation-runs/${FRESH_SOURCE_RUN}/candidate`,readOnly:true},{name:'fresh-output',mountPath:'/checkpoints/fresh-evaluations',subPath:'fresh-evaluations',readOnly:false},{name:'binding',mountPath:'/bindings',subPath:`fresh-evaluation-bindings/${runId}`,readOnly:true},{name:'runtime',mountPath:'/runtime',readOnly:true});
+ c.volumeMounts.push({name:'adapters',mountPath:'/adapters/candidate',subPath:contract.adapterSubPath,readOnly:true},{name:'fresh-output',mountPath:'/checkpoints/fresh-evaluations',subPath:'fresh-evaluations',readOnly:false},{name:'binding',mountPath:'/bindings',subPath:`fresh-evaluation-bindings/${runId}`,readOnly:true},{name:'runtime',mountPath:'/runtime',readOnly:true});
  c.command=['python','/runtime/evaluate-public-qa-fresh.py'];c.args=['--data','/data/fresh/data.jsonl','--manifest','/data/fresh/manifest.json','--binding','/bindings/binding.json','--verification','/bindings/verification.json','--provenance','/bindings/provenance.json','--cri-inspection','/bindings/cri-inspect.json','--model-dir','/models/foundation-base','--adapter-dir','/adapters/candidate','--output',`/checkpoints/fresh-evaluations/${runId}`];if(tokenCheck)c.args.push('--token-check');
+ if(!contract.criRequired)c.args.splice(c.args.indexOf('--cri-inspection'),2);
  c.env=Object.entries({PYTHONPATH:'/runtime',PYTORCH_CUDA_ALLOC_CONF:'garbage_collection_threshold:0.5,max_split_size_mb:128',EVIDSCOPE_MEMORY_HIGH_REQUIRED:'1',EVIDSCOPE_ISOLATED:'1',EVIDSCOPE_FRESH_EVALUATION_BINDING_SHA256:inputs.bindingSha256,EVIDSCOPE_DIAGNOSTIC_DATA_SHA256:inputs.datasetSha256,EVIDSCOPE_DIAGNOSTIC_MANIFEST_SHA256:inputs.manifestSha256,EVIDSCOPE_DIAGNOSTIC_CONTROLLER_SHA256:inputs.sourceControllerSha256,EVIDSCOPE_DIAGNOSTIC_VERIFICATION_SHA256:inputs.sourceVerificationSha256,EVIDSCOPE_DIAGNOSTIC_CANDIDATE_SHA256:inputs.candidateMarkerSha256,EVIDSCOPE_DIAGNOSTIC_ADAPTER_SHA256:inputs.adapterSha256,EVIDSCOPE_BASE_REPOSITORY:'fdtn-ai/Foundation-Sec-8B-Reasoning',EVIDSCOPE_BASE_REVISION:QA_BASE_REVISION,EVIDSCOPE_BASE_ARTIFACT_LOCK_SHA256:inputs.artifactLockSha256,EVIDSCOPE_TRAINING_IMAGE:QA_IMAGE}).map(([name,value])=>({name,value}));
  return {apiVersion:'batch/v1',kind:'Job',metadata:{name:runId,namespace:QA_NAMESPACE,annotations:{'evidscope.io/run-kind':tokenCheck?'explicit-public-qa-fresh-token-check':'explicit-public-qa-fresh-evaluation','evidscope.io/dataset-sha256':inputs.datasetSha256,'evidscope.io/manifest-sha256':inputs.manifestSha256,'evidscope.io/binding-sha256':inputs.bindingSha256,'evidscope.io/source-controller-sha256':inputs.sourceControllerSha256,'evidscope.io/source-verification-sha256':inputs.sourceVerificationSha256,'evidscope.io/quality-claim-allowed':'false'}},spec:{backoffLimit:0,activeDeadlineSeconds:3600,template:{metadata:{labels:{app:'public-qa-fresh-evaluation'}},spec}}};
 }
 
+export function assertBalancedFreshSource({report,recomputed,marker,controller,provenance,pins}){
+ const strip=value=>Object.fromEntries(Object.entries(value).filter(([key])=>key!=='verifiedAt'));
+ requireValue(same(strip(report),strip(recomputed)),'balanced_source_recomputed_changed');
+ requireValue(['verified','verificationPassed','actualTrainingExecutionVerified','sourceTrainingExecutionVerified','trainingRunCompleted','terminationConfirmed'].every(key=>report[key]===true)&&report.syntheticFixture===false&&report.runId===BALANCED_FRESH_SOURCE_RUN&&report.globalStep===20&&report.actualOptimizerUpdates===20&&report.optimizerUpdatesThisRun===20&&report.sourceOptimizerUpdates===80&&report.totalAdapterHistoryOptimizerUpdates===100&&report.optimizerStateRestored===false&&report.schedulerStateRestored===false&&report.qualityClaimAllowed===false&&report.promotionAllowed===false,'balanced_source_execution_unverified');
+ requireValue(report.controllerSha256===pins.sourceControllerSha256&&report.runtimeConfigMapSha256===pins.sourceRuntimeConfigMapSha256&&report.artifactSha256===pins.candidateMarkerSha256&&report.adapterSha256===pins.adapterSha256&&same(marker.identity,report.identity)&&marker.globalStep===20&&report.identity.stage==='public_qa_grounding_balanced_v1'&&report.identity.baseArtifactLockSha256===FRESH_SOURCE_PINS.artifactLockSha256&&report.identity.baseRevision===QA_BASE_REVISION&&report.identity.image===QA_IMAGE&&provenance.targetRunId===BALANCED_FRESH_SOURCE_RUN&&same(provenance.targetIdentity,report.identity)&&provenance.sourceOptimizerHistoryUpdates===80&&provenance.targetOptimizerSteps===20,'balanced_source_identity_changed');
+ requireValue(controller.runId===BALANCED_FRESH_SOURCE_RUN&&controller.terminationConfirmed===true&&controller.jobUid===report.jobUid&&controller.podUid===report.podUid&&!controller.cleanupError,'balanced_source_controller_changed');
+ requireValue(pins.sourceCompletionKind==='controller_normal_exit'?controller.state==='process_completed'&&controller.exit?.exitCode===0&&!controller.error&&!report.runtimeExitReconciliation:controller.state==='error'&&report.runtimeExitReconciliation?.reconciliationPassed===true&&report.runtimeExitReconciliation.criInspectionSha256===pins.criInspectionSha256,'balanced_source_completion_invalid');
+}
+export async function verifyBalancedFreshSource({workspaceRoot=process.cwd(),sourceVerification='reports/public-qa-balanced-r2-verification-20261006.json',criInspectionPath}={}){
+ const run=BALANCED_FRESH_SOURCE_RUN,frozen=balancedRunBinding(run),paths={sourceController:`.local/training/public-qa-run/${run}/controller-receipt.json`,sourceVerification,candidateMarker:`.local/training/runs/${run}/candidate/candidate-complete.json`,adapter:`.local/training/runs/${run}/candidate/adapter_model.safetensors`,sourceRuntime:`.local/training/public-qa-run/${run}/runtime-configmap.json`,provenance:join(frozen.directory,run,'provenance.json'),lock:`.local/training/base/${QA_BASE_REVISION}/artifact-lock.json`};
+ const sourceBytes=Object.fromEntries(Object.entries(paths).map(([key,path])=>[key,read(workspaceRoot,path)])),report=JSON.parse(sourceBytes.sourceVerification),controller=JSON.parse(sourceBytes.sourceController);
+ const criPath=criInspectionPath??report.runtimeExitReconciliation?.criInspectionPath;
+ if(criPath){paths.criInspection=criPath;sourceBytes.criInspection=read(workspaceRoot,criPath);}
+ const pins=Object.fromEntries(Object.entries({candidateMarkerSha256:'candidateMarker',adapterSha256:'adapter',sourceControllerSha256:'sourceController',sourceVerificationSha256:'sourceVerification',provenanceSha256:'provenance',sourceRuntimeConfigMapSha256:'sourceRuntime',artifactLockSha256:'lock'}).map(([key,name])=>[key,sha(sourceBytes[name])]));
+ pins.criInspectionSha256=criPath?sha(sourceBytes.criInspection):null;pins.sourceCompletionKind=criPath?'cri_exit_reconciled':'controller_normal_exit';freshEvaluationContract(BALANCED_FRESH_RUN_ID,pins);
+ const recomputed=await verifyPublicQaGroundingBalanced({runDirectory:resolve(workspaceRoot,`.local/training/runs/${run}`),controllerReceipt:resolve(workspaceRoot,paths.sourceController),workspaceRoot,...(criPath?{criInspectionPath:resolve(workspaceRoot,criPath)}:{})});
+ assertBalancedFreshSource({report,recomputed,controller,marker:JSON.parse(sourceBytes.candidateMarker),provenance:JSON.parse(sourceBytes.provenance),pins});
+ return {paths,sourceBytes,pins,report};
+}
+async function balancedFreshInputs({runId,directory,workspaceRoot}){
+ const {paths,sourceBytes,pins,report}=await verifyBalancedFreshSource({workspaceRoot}),fresh=verifyFrozenFreshEvaluation({workspaceRoot,runId}),binding=balancedFreshBinding(report.identity,pins);
+ const code=freshEvaluationRuntimeConfigMap();
+ const target=resolve(workspaceRoot,directory),within=relative(resolve(workspaceRoot),target);requireValue(within&&!within.startsWith('..')&&!isAbsolute(within),'binding_directory_outside_workspace');mkdirSync(target,{recursive:true});
+ const bindingPath=join(directory,'binding.json');immutableGroundingWrite(resolve(workspaceRoot,bindingPath),JSON.stringify(binding,null,2)+'\n');
+ for(const [name,key]of Object.entries({'verification.json':'sourceVerification','provenance.json':'provenance','controller.json':'sourceController',...(pins.criInspectionSha256?{'cri-inspect.json':'criInspection'}:{})}))immutableGroundingWrite(join(target,name),sourceBytes[key]);
+ return {...paths,...fresh,...binding,binding,bindingPath,bindingSha256:sha(read(workspaceRoot,bindingPath)),directory,runtimeConfigMap:code.metadata.name,runtimeSha256:code.metadata.annotations['evidscope.io/code-sha256'],runtimeFiles:Object.fromEntries(Object.entries(code.data).map(([name,value])=>[name,sha(value)])),pvcOutputRelativePath:'fresh-evaluations/'+runId};
+}
+function balancedFreshJob(runId,inputs,{tokenCheck}){
+ const contract=freshEvaluationContract(runId,inputs?.binding),binding=balancedFreshBinding(inputs?.candidateIdentity,inputs?.binding);
+ requireValue(inputs?.runId===runId&&same(inputs.binding,binding)&&inputs.bindingSha256===sha(JSON.stringify(binding,null,2)+'\n')&&Object.entries(binding).every(([key,value])=>same(inputs[key],value))&&inputs.candidateIdentity?.baseRepository==='fdtn-ai/Foundation-Sec-8B-Reasoning'&&inputs.candidateIdentity.baseRevision===QA_BASE_REVISION&&inputs.candidateIdentity.baseArtifactLockSha256===FRESH_SOURCE_PINS.artifactLockSha256&&inputs.candidateIdentity.image===QA_IMAGE&&inputs.candidateIdentity.stage===contract.sourceStage&&inputs.candidateIdentity.maxSteps===20&&digest(inputs.runtimeSha256)&&inputs.runtimeConfigMap==='public-qa-fresh-'+inputs.runtimeSha256.slice(0,16),'balanced_job_binding_invalid');
+ return buildFreshJob(runId,inputs,{tokenCheck},contract);
+}
 export function assertFreshEvaluationMounts(pod,inputs){
  const expected=freshEvaluationJob(inputs.runId,inputs).spec.template.spec,allowed=['base','data','adapters','fresh-output','binding','runtime','tmp','podinfo'];
  requireValue(pod?.spec?.containers?.length===1&&!pod.spec.initContainers?.length&&!pod.spec.ephemeralContainers?.length,'live_extra_container');

@@ -1,0 +1,661 @@
+{
+ "format": "evidscope-test-fixture-v1",
+ "description": "Export written by commit 9a15b5f (before the agent registry): tenant alpha, an asset, an active rule, three events and v1 evaluations.",
+ "baseCommit": "9a15b5f",
+ "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAZa36g357du47mP5j6hwne8/u5OnZwyonsqsoSwraxQ8=\n-----END PUBLIC KEY-----\n",
+ "exportBundle": {
+  "format": "evidscope-export-v2",
+  "records": [
+   {
+    "payload": {
+     "createdAt": "2026-10-07T12:19:24.418Z",
+     "hash": "c6125a730ea79d6ad47bb17a7be21ea2e9e3a290c4a615a6e38ce39cc1dba91b",
+     "legalSourceCoverage": {
+      "automaticLegalVerdict": false,
+      "checkedAt": null,
+      "hash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+      "jurisdiction": "KR",
+      "limitations": [
+       "법률·시행령 원문 확인과 하위 고시·위원회 결정 확인은 별개입니다. 미확인은 부존재·적용 제외·법 위반 판정이 아닙니다.",
+       "개별 조치의 기술 근거 또는 사람의 충분성 평가가 확인되어도 한국법 전체 지원 완료를 의미하지 않습니다."
+      ],
+      "registeredRequirements": 0,
+      "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schemaVersion": 1,
+      "scope": "selected_ai_operator_and_public_user_governance_requirements",
+      "scopeDescription": "등록된 주요 사업자·공공 이용자의 거버넌스 의무를 검토하며 한국 AI 기본법 전체를 포괄하지 않습니다.",
+      "status": "not_recorded",
+      "unresolvedSources": [],
+      "unverifiedDetailNoticeRequirementIds": [],
+      "version": "evidscope-kr-legal-source-coverage-v1",
+      "wholeLawComplete": false
+     },
+     "legalSourceCoverageHash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+     "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "requirements": [],
+     "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "schemaVersion": 2
+    },
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "principal": "catalog-loader",
+    "recordedAt": "2026-10-07T12:19:24.418Z",
+    "seq": 1,
+    "tenant": "alpha",
+    "type": "catalog",
+    "hash": "2bcbcd12454b30233730fe1389ce37657039801065cc3ef09ba8808b1d54ab50"
+   },
+   {
+    "payload": {
+     "actor": "pre-agent",
+     "approvalRequired": true,
+     "destinations": [
+      "mail.internal"
+     ],
+     "id": "pre-asset",
+     "owner": "owner",
+     "policyVersion": "p1",
+     "purpose": "",
+     "tool": "mailer",
+     "updatedAt": "2026-10-07T12:19:24.423Z",
+     "validFrom": "2026-01-01T00:00:00.000Z",
+     "version": "unknown"
+    },
+    "previous": "2bcbcd12454b30233730fe1389ce37657039801065cc3ef09ba8808b1d54ab50",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-07T12:19:24.425Z",
+    "seq": 2,
+    "tenant": "alpha",
+    "type": "asset",
+    "hash": "20e0132aa7330473c89c047ee155773ff161d702fd39d4032c8a196363294794"
+   },
+   {
+    "payload": {
+     "actionId": "pre-action",
+     "ciphertext": "VJw9yIkR9/5PM+ap4fp8+kYH+ImOAWLnGsSS0awMdwsEqeVc9jXsNW9I60y9c1N609WNCmZ0nnhqjMjsArGVX88Y6aTP8nHZZi7cFsUMXgAYeZMKDlC+Tr6y6t0hDM7sCjLGdjyqiqoHFvzggSNSP0Buvuw0X0DiWS5uQatgiwPMmlwJh6rDeciRUrd2ULg7ygJ0ap7ZIOtTFU5paz3wnfrC0QLQlhQJ+q90f0iV5EIManyU5Y/a90Lgpx+Mry1yIHtmcmegPYfcHNV2MIM1eEzxi1XK3e602en3YS+Ux+RDZuY65IOA9GHmviEKwnHcqoPLPkfFtayJcU/5k52FsUV9RPGH6bmuxWakeviNnbNtfjkMF9zY9sy8/eCcPuirnwg/iHkF/odrlYJWfOU6UqT17nmZoFhMgAA9kamjy2KlbBpVOth7tBeVtdn19JWUKYfJ49aus7nGDzN0DyBUgnVFZJe4lT5xnRPQYAhYUL64q0ILg8ab/SnbvXoondz4nH9TJ/0y2agOJfJqryXsbmvrtwSlpYruVNinISWHI+zdAYL4LGULU28dRnFNYYhQP7+V8oekg0DnjJ6gCUxGFIoqoXePOC+C/akeiUANXSFowXgar9Dn8KCqQwlzdSqinw6MkoEI7h8Yk7MIcX3wttCX0NMlWBLmPIqqqkjNZZu/LCD3gMn4IGMDdqmsH/mMCn2ZoDjs0orsqZ83rZ3UmgGdKYp6GVqd8P5KXKEfnl/eZxMT/jgQL4P/hHJ0DGhd+tg5U+fL8eTDESXQ9lh4yIeUEfTDryoWPrVIODAEVFXA2+ytMryW0g4PvD69WKSDm6WELo3S53jhKxLu0cvVUQ==",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "RdsIo+s61AO55obS",
+     "keyEpoch": "2026-11",
+     "keyId": "8648373a-5712-4929-b16c-0e2f78bea833",
+     "payloadCommitment": "e5d491ceb1fe86fed0bb4a5631fd8bd2da9c33b1b5d6f4a0cbcb55eb597fee4f",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-06T12:19:24.428Z",
+     "seq": 3,
+     "tag": "iT6Rh2gAUnR+R57+91Or0g==",
+     "tenant": "alpha"
+    },
+    "previous": "20e0132aa7330473c89c047ee155773ff161d702fd39d4032c8a196363294794",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-07T12:19:24.432Z",
+    "seq": 3,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "6d0f6dd5dbebc7f8c5e5b3a52a5f3473e61db97774368765bcbea2fa63b5d8e7"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "6d0f6dd5dbebc7f8c5e5b3a52a5f3473e61db97774368765bcbea2fa63b5d8e7",
+     "eventSeq": 3,
+     "fingerprint": "fp2:2026-11:8b040efc85cac36ed13dc22c3b219208eb992b66fac37fc99f6c27c8c2b5a2b1",
+     "format": "evidscope-event-receipt-v1",
+     "id": "pre-intent",
+     "source": "alpha-agent"
+    },
+    "previous": "6d0f6dd5dbebc7f8c5e5b3a52a5f3473e61db97774368765bcbea2fa63b5d8e7",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-07T12:19:24.432Z",
+    "seq": 4,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "e0d1572fc4af6e3b749094a35f092782a6524df382a8f76ba0d77336b38a5351"
+   },
+   {
+    "payload": {
+     "actionId": "pre-action",
+     "ciphertext": "yhMdnfd2n4w4JQJwVq6eaz/9l6oIS0N8MvifsAso6lLc3kEgicJ430T8ZfL2+IVit2mLqHKlejoo6L84HK1SIxA3omkL0gYDGaJetO5Cn9SGImZAnGEeIsUOZu85aiWDQ3NHwmWI8dgCtThRybbQCJ5X8LB7sGl6yvTzOPxi/tRBXDrbyEI4D2v7Ie3xLrxEsY74Mls6y1iV7CJxyB5YJPwJKfehtocg2zSY+sSoNnrkjQyTW+v+HtcViednHdF/tTk44pIZb9momejo8vcH55Wuq5tRzSyc/t7qowVcjpgkIKGcxNZRaIuklhBdGlBYVjIET5AunVgMo4+84x2i7PaRDEbHgMjn5UXcAjTpSqiAXSNYx3NAb24cJceGwgdoCJsGEktjvvhZBQDQoH6qm8C+AS+I5QSpe2CuTCrsK1xC+OhT5CkgTVlXNVFx1bPFZTh8YxJLDmK1GPtWAJ8LW51/bG57EizQfXWdtFgP+bCpqrCL3bsYO+fkujXBNPKER3YuIZar+1Su9Cw2Y6/fjmrbuy7Wv0QiXPWLd9GrvQW3lG2uZV62YPqcMcA5Jew90IhxKDV/4KFeWLAPy5j3p0hUwlepf9H90VDBySOOkiQv9O73HNN9XHnkYbvC5LIdsI1uGiPKVvBvIphYaj6QJ8lH6uDMWZJAbGVEsNTCeQJS/+A3WrBFSr8N/OF+v5gah2L3Mz1IiJRRpmMTVUV6kFkylolEYcCKGYageSIH72Fj2EVnYDXTthTCQK2SX4Rz",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "ctefdEraT03TVv3r",
+     "keyEpoch": "2026-11",
+     "keyId": "21f13c5d-b526-4f19-b271-a61ab2f44cc0",
+     "payloadCommitment": "d16fa8ef35f5cf977e66bb73bf4c8fccc4c4944e7059c17f9434147d36f76bcc",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-06T12:19:24.434Z",
+     "seq": 5,
+     "tag": "mE56HiucANWMCj+NSrbZkg==",
+     "tenant": "alpha"
+    },
+    "previous": "e0d1572fc4af6e3b749094a35f092782a6524df382a8f76ba0d77336b38a5351",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-07T12:19:24.438Z",
+    "seq": 5,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "afc1699fc793808dc4ccde4b80300fc6aa9e07293d39e4acd2ff4eb0472f7f64"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "afc1699fc793808dc4ccde4b80300fc6aa9e07293d39e4acd2ff4eb0472f7f64",
+     "eventSeq": 5,
+     "fingerprint": "fp2:2026-11:74605ac20464bcfe33012d94b3616cd06aedb7db73056df1d034b1067b945b75",
+     "format": "evidscope-event-receipt-v1",
+     "id": "pre-exec",
+     "source": "alpha-tool"
+    },
+    "previous": "afc1699fc793808dc4ccde4b80300fc6aa9e07293d39e4acd2ff4eb0472f7f64",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-07T12:19:24.438Z",
+    "seq": 6,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "2435ac210e50fc1eecfedfdb432796032ec2f184df9bb1f461146266f4ce9e7e"
+   },
+   {
+    "payload": {
+     "actionId": "pre-other-action",
+     "ciphertext": "g26ay9MsbMGEEjJ1fJw6uhmlDHKmkWko7h8zh9n5mqxA7IRsgb+I3u9zx0DtuKBEU0PGdh53mX/kXD7uq2nGxEGJYqZeio9+6TB80sGQPtplrq4Sz1MQFlaKVd89Tr9YMehNcB2p4laqj9ycL8dGD0QRTFipa+ktyb/NlJeS/4NlUhT5mliDYs2FijVYRbrkjNXHdI4vBfH1ok4GHD9JhAI6bbP3/WUYJCDbTzqt2/JER77gDyMUzOQviekUGgWIgHz9gMzYvBqz3SYdsknhKFem5gKbREx0h+pLEPYBFxeE3TeGc8GKW7w3u6yQ9FC6D020/cl1cNsjKmm64Gmo97oLn6eZooEnwvfpYd31C/p5JiEH+7nO1cCLY4e0O4Oo0rsNCseu9HsSYepbnS6mrOGHF64JHp//mZoPLUKcn/juvhTprwwZfpwVIJg80INb9iJ1E8FkhJzW5BZk/etrijQ9qLbNCYmUCIhiTRPfNoqMDuy7nu+ubXGB1TZYX0L1g8DbXE5Ip138LxkOF2QCkDgj//sR8uYSakAZkUd1TFUTBjsQ4CrJEXuHv36rRBkirUfbewA2CYnDrJUFf+Z3VLEuI4QuY5jyMh0qlVtfyHriTfDAcV0GOSyw1XNAzTQyI9waTy7AhPjLg7jpJAsVWen7GIthrebVOp9wicBYqmAKAwULH1Uuk/dzaJwsUxnhNm8RYA+wRG7rb8DCEqSkHJwXxHntkw5yE1tlu6gcWLPE07Jf6pKczv3TzDilUQ8nJ3Pdr+CN7HSEm7W+S0HQjomsr4pQp6DBVnYrGnwpRxr7zAmZqDqzGUltvPMEoRP4aOCursUbtPYSjawNkUFqdQ==",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "2ynjLmJvxLQb7pjy",
+     "keyEpoch": "2026-11",
+     "keyId": "af940ca2-b231-47f2-9395-8cd07d64fd19",
+     "payloadCommitment": "15f752b5029b8e5d6c7d97fc476cee19300695eb9e4a913fee05dc59299ea2e0",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-06T12:19:24.439Z",
+     "seq": 7,
+     "tag": "WWhtCbcLYnQXL2YBPGLxcg==",
+     "tenant": "alpha"
+    },
+    "previous": "2435ac210e50fc1eecfedfdb432796032ec2f184df9bb1f461146266f4ce9e7e",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-07T12:19:24.442Z",
+    "seq": 7,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "94fcc317d89b7daf28a9423b1ac32169fe6dd63dae626e841271147e4b928383"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "94fcc317d89b7daf28a9423b1ac32169fe6dd63dae626e841271147e4b928383",
+     "eventSeq": 7,
+     "fingerprint": "fp2:2026-11:f4fee7bf466ac2b2e8ec2269beec1be81266ed740def0180f9ab1516146b02fe",
+     "format": "evidscope-event-receipt-v1",
+     "id": "pre-other",
+     "source": "alpha-agent"
+    },
+    "previous": "94fcc317d89b7daf28a9423b1ac32169fe6dd63dae626e841271147e4b928383",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-07T12:19:24.442Z",
+    "seq": 8,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "8c2aa5f9153a56851fda92e30c80c4665ad49702b99fc1a613ebc573fbb07754"
+   },
+   {
+    "payload": {
+     "actionId": "pre-action",
+     "analysisTime": "2026-10-07T12:19:24.447Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 3,
+      "totalFindings": 3,
+      "truncated": false
+     },
+     "createdAt": "2026-10-07T12:19:24.461Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "DESTINATION_OUTSIDE_POLICY",
+       "evidence": [
+        "alpha-agent/pre-intent"
+       ],
+       "message": "행동 시점에 유효한 등록 정책 밖 목적지입니다",
+       "severity": "high"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/pre-exec"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/pre-exec"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      }
+     ],
+     "id": "adb0bf24-ed69-4d30-a602-584a19e6d2dc",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 1,
+       "events": [
+        3,
+        5
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "34558a543245dde96c25e913d9b10d0a31c0d163d623cb016bf9127038cb53be",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "8c2aa5f9153a56851fda92e30c80c4665ad49702b99fc1a613ebc573fbb07754",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-07T12:19:24.461Z",
+    "seq": 9,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "34a790223e61824d57a4ac8d8223dc90ac6767b4c8a3137047ed953a3ba16521"
+   },
+   {
+    "payload": {
+     "actionId": "pre-other-action",
+     "analysisTime": "2026-10-07T12:19:24.447Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 0,
+      "totalFindings": 0,
+      "truncated": false
+     },
+     "createdAt": "2026-10-07T12:19:24.464Z",
+     "effect": "unconfirmed",
+     "findings": [],
+     "id": "ee7992ad-5212-44ef-b68f-40def36edb30",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 1,
+       "events": [
+        7
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "946af2f4bed14f34e23b1110478106a94ad5026cae99f36053aad00a75c0ac6f",
+     "status": "evaluated",
+     "version": 1,
+     "worker": "analysis-worker"
+    },
+    "previous": "34a790223e61824d57a4ac8d8223dc90ac6767b4c8a3137047ed953a3ba16521",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-07T12:19:24.465Z",
+    "seq": 10,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "b0e50decd9cad35193ba6c2ceb10dc2e926146669ad16c1dcdd398793d985032"
+   },
+   {
+    "payload": {
+     "id": "external",
+     "versions": [
+      {
+       "author": "alpha-reviewer",
+       "createdAt": "2026-10-07T12:19:24.469Z",
+       "field": "destination",
+       "id": "external",
+       "op": "eq",
+       "severity": "medium",
+       "status": "draft",
+       "title": "External destination",
+       "value": "external.example",
+       "version": 1
+      }
+     ]
+    },
+    "previous": "b0e50decd9cad35193ba6c2ceb10dc2e926146669ad16c1dcdd398793d985032",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-07T12:19:24.469Z",
+    "seq": 11,
+    "tenant": "alpha",
+    "type": "rule",
+    "hash": "fdb89557565d78829e81a27ae7c2eb889b6c3e2ed215f4564f15bf4ff25fc2fc"
+   },
+   {
+    "payload": {
+     "id": "external",
+     "versions": [
+      {
+       "author": "alpha-reviewer",
+       "createdAt": "2026-10-07T12:19:24.469Z",
+       "field": "destination",
+       "id": "external",
+       "op": "eq",
+       "severity": "medium",
+       "status": "draft",
+       "test": {
+        "bounded": true,
+        "evaluated": 3,
+        "matches": [
+         "alpha-agent/pre-intent"
+        ],
+        "testedAt": "2026-10-07T12:19:24.474Z",
+        "testedBy": "alpha-reviewer",
+        "version": 1
+       },
+       "title": "External destination",
+       "value": "external.example",
+       "version": 1
+      }
+     ]
+    },
+    "previous": "fdb89557565d78829e81a27ae7c2eb889b6c3e2ed215f4564f15bf4ff25fc2fc",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-07T12:19:24.475Z",
+    "seq": 12,
+    "tenant": "alpha",
+    "type": "rule",
+    "hash": "9ddb26f74bce9e7442add19bd2a4a43f1d5a4f0b337e8247fab473c3a6913840"
+   },
+   {
+    "payload": {
+     "id": "external",
+     "versions": [
+      {
+       "approvedAt": "2026-10-07T12:19:24.477Z",
+       "approvedBy": "alpha-admin",
+       "author": "alpha-reviewer",
+       "createdAt": "2026-10-07T12:19:24.469Z",
+       "field": "destination",
+       "id": "external",
+       "op": "eq",
+       "severity": "medium",
+       "status": "active",
+       "test": {
+        "bounded": true,
+        "evaluated": 3,
+        "matches": [
+         "alpha-agent/pre-intent"
+        ],
+        "testedAt": "2026-10-07T12:19:24.474Z",
+        "testedBy": "alpha-reviewer",
+        "version": 1
+       },
+       "title": "External destination",
+       "value": "external.example",
+       "version": 1
+      }
+     ]
+    },
+    "previous": "9ddb26f74bce9e7442add19bd2a4a43f1d5a4f0b337e8247fab473c3a6913840",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-07T12:19:24.477Z",
+    "seq": 13,
+    "tenant": "alpha",
+    "type": "rule",
+    "hash": "2f300cd27f2e66249572b4763724191a46fe3c58ba05fd50a3549ae1e4779e72"
+   },
+   {
+    "payload": {
+     "actionId": "pre-action",
+     "analysisTime": "2026-10-07T12:19:24.479Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 4,
+      "totalFindings": 4,
+      "truncated": false
+     },
+     "createdAt": "2026-10-07T12:19:24.483Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "DESTINATION_OUTSIDE_POLICY",
+       "evidence": [
+        "alpha-agent/pre-intent"
+       ],
+       "message": "행동 시점에 유효한 등록 정책 밖 목적지입니다",
+       "severity": "high"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/pre-exec"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/pre-exec"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "CUSTOM:external:v1",
+       "evidence": [
+        "alpha-agent/pre-intent"
+       ],
+       "message": "External destination",
+       "severity": "medium"
+      }
+     ],
+     "id": "817235c8-7045-4cc3-b52a-ffeeab1aeabe",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 1,
+       "events": [
+        3,
+        5
+       ],
+       "exceptions": 0,
+       "rules": [
+        {
+         "id": "external",
+         "version": 1
+        }
+       ]
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "5372f11473a3d5520ecfd6e65f3474076cf8deb6cd4d1c59c63b8b37ee9efcf5",
+     "status": "evaluated",
+     "version": 3,
+     "worker": "analysis-worker"
+    },
+    "previous": "2f300cd27f2e66249572b4763724191a46fe3c58ba05fd50a3549ae1e4779e72",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-07T12:19:24.483Z",
+    "seq": 14,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "41c9e8285f67b4b5a9eb047a36248edc4883838f22e737ac8d8e6568b3836d4e"
+   },
+   {
+    "payload": {
+     "actionId": "pre-other-action",
+     "analysisTime": "2026-10-07T12:19:24.479Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 0,
+      "totalFindings": 0,
+      "truncated": false
+     },
+     "createdAt": "2026-10-07T12:19:24.486Z",
+     "effect": "unconfirmed",
+     "findings": [],
+     "id": "1eeb3ed1-df07-495c-a055-82c36c62074b",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 1,
+       "events": [
+        7
+       ],
+       "exceptions": 0,
+       "rules": [
+        {
+         "id": "external",
+         "version": 1
+        }
+       ]
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "f68baf0393fe652f34fac3c3dcce96dd13bcbd4dd963c91f4401095b6ed399b9",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "41c9e8285f67b4b5a9eb047a36248edc4883838f22e737ac8d8e6568b3836d4e",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-07T12:19:24.486Z",
+    "seq": 15,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "831b2c640c9c809c80b027e1543d6d41e02990b7eca903de909f104bd8fa8278"
+   }
+  ],
+  "checkpoint": {
+   "format": "evidscope-checkpoint-v1",
+   "tenant": "alpha",
+   "count": 15,
+   "head": "831b2c640c9c809c80b027e1543d6d41e02990b7eca903de909f104bd8fa8278",
+   "signature": "bLJ0th49q5PAxfmKFdoi9q3eIXHiui2LWEs0StJdK7ww5kC3Rtc7Xi0M8tT7+DC/67WkB6LsqUS5r/ReyUKzCg=="
+  },
+  "limitations": [
+   "Minimized receipt evidence; no original prompt or response",
+   "Signature authenticates local vault, not truth of source claims",
+   "Pin public key and checkpoint out of band to detect replacement and rollback",
+   "Erasure covers live event keys and query copies; prior exports/backups need separate disposition"
+  ],
+  "disclosures": [
+   {
+    "seq": 3,
+    "event": {
+     "action": "send",
+     "actionId": "pre-action",
+     "actor": "pre-agent",
+     "assurance": "authenticated_self_report",
+     "destination": "external.example",
+     "fingerprint": "fp2:2026-11:8b040efc85cac36ed13dc22c3b219208eb992b66fac37fc99f6c27c8c2b5a2b1",
+     "id": "pre-intent",
+     "kind": "intent",
+     "late": false,
+     "occurredAt": "2026-10-07T12:18:24.421Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-07T12:19:24.428Z",
+     "resource": "case-1",
+     "source": "alpha-agent",
+     "sourceKind": "agent",
+     "tenant": "alpha",
+     "tool": "mailer",
+     "traceId": "pre-trace"
+    },
+    "salt": "3a64ab4c481a8f165122253180af00615789500ab79a40744f7c9fc06bff7381"
+   },
+   {
+    "seq": 5,
+    "event": {
+     "action": "send",
+     "actionId": "pre-action",
+     "actor": "pre-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:74605ac20464bcfe33012d94b3616cd06aedb7db73056df1d034b1067b945b75",
+     "id": "pre-exec",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-07T12:18:24.421Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-07T12:19:24.434Z",
+     "resource": "case-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "mailer",
+     "traceId": "pre-trace"
+    },
+    "salt": "30b73ec4f270c2eb6cb8dff0e0c1d798e66e8b6e9107aa78b13f20be92a56029"
+   },
+   {
+    "seq": 7,
+    "event": {
+     "action": "send",
+     "actionId": "pre-other-action",
+     "actor": "pre-agent",
+     "assurance": "authenticated_self_report",
+     "fingerprint": "fp2:2026-11:f4fee7bf466ac2b2e8ec2269beec1be81266ed740def0180f9ab1516146b02fe",
+     "id": "pre-other",
+     "kind": "self_report",
+     "late": false,
+     "note": "synthetic",
+     "occurredAt": "2026-10-07T12:18:24.421Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-07T12:19:24.439Z",
+     "resource": "case-1",
+     "source": "alpha-agent",
+     "sourceKind": "agent",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "mailer",
+     "traceId": "pre-trace"
+    },
+    "salt": "bc278fc3a5a61b7b615fcc96e6ca4bed190f1c5a1fbc813204740831e7cf670a"
+   }
+  ]
+ }
+}

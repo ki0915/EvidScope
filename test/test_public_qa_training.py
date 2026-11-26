@@ -178,6 +178,11 @@ class PublicQaTrainingTests(unittest.TestCase):
             with self.subTest(features_length=len(features)):
                 with self.assertRaisesRegex(ValueError, "training_batch_sequence_invalid"):
                     qa.pad_batch(features, 2)
+        # The governance trainer allows its own sequence length (1536); longer still fails.
+        long = {"input_ids": [1] * 1500, "attention_mask": [1] * 1500, "labels": [1] * 1500}
+        self.assertEqual(len(qa.pad_batch([long], 2, 1536)[0]["input_ids"]), 1500)
+        with self.assertRaisesRegex(ValueError, "training_batch_sequence_invalid"):
+            qa.pad_batch([{k: v * 2 for k, v in long.items()}], 2, 1536)
 
 
 if __name__ == "__main__":

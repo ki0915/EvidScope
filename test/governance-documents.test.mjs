@@ -5,7 +5,7 @@ import {mkdtempSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {createService} from '../src/service.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 import {harness} from './harness.mjs';
 import {appendKrCheck,publicationMetrics} from './fixtures/kr-check-fixture.mjs';
 
@@ -95,7 +95,12 @@ test('assessment binds the signed document system, version, content hash and sna
  item=(await h.call('/api/governance/report?systemId=credit')).items.find(value=>value.requirement.id==='KR-34-DOCUMENT');
  assert.equal(item.status,'human_evidence_assessed');assert.equal(item.technicalStatus,'authenticated_reported_measurement_supported');
  assert.equal(saved.evidence[1].eventSnapshot.governanceCheck.documentHash,document.sha256);assert.equal(item.technicalEvidence.automaticLegalVerdict,false);
- assert.equal((await h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'verified bytes and snapshot'})).status,'closed');
+ assert.equal(item.evidenceAssurance.items[0].assurance,'vault_verified_document');
+ // S11: an admin other than the author confirms the legal review and closes; the author cannot close.
+ await assert.rejects(h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'unconfirmed legal review'},1),error=>error.status===409);
+ await h.call(`/api/governance/assessments/${saved.id}/legal-review`,{reason:'independent legal review'},1);
+ await assert.rejects(h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'author closes'}),error=>error.status===403);
+ assert.equal((await h.call(`/api/governance/tasks/${open.id}`,{status:'closed',reason:'verified bytes and snapshot'},1)).status,'closed');
 });
 
 test('new document revision invalidates the assessment and corruption keeps review work open until a new verified snapshot',async t=>{
@@ -143,14 +148,16 @@ test('HTTP boundary accepts and retrieves a complete 4 MiB document and rejects 
 
 test('vault backup verifies and restores governance document ciphertext and signed metadata without claiming elapsed retention',async t=>{
  const h=fixture(t),bytes=Buffer.from('recoverable first-party governance evidence'),revisedBytes=Buffer.from('revised recoverable governance evidence'),savedSystem=await h.call('/api/governance/systems',system);
- const output=mkdtempSync(join(tmpdir(),'evidscope-governance-recovery-'));
+ const output=mkdtempSync(join(tmpdir(),'evidscope-governance-recovery-'));let restored;
+ t.after(()=>{restored?.store.close();assert.ok(resolve(output).startsWith(resolve(tmpdir())+sep));rmSync(output,{recursive:true,force:true});});
  await h.call('/api/governance/documents',input('recoverable',bytes));const saved=await h.call('/api/governance/documents',input('recoverable',revisedBytes)),backupDir=join(output,'backup'),restoreDir=join(output,'restored');
  const measurement=appendKrCheck(h.service,savedSystem,requirements.find(r=>r.id==='KR-34-DOCUMENT'),saved,'document_publication_retention',publicationMetrics);await h.call('/api/governance/assessments',assessment([{type:'document',ref:'governance-document:recoverable'},measurement]));
  const anchor=await createVaultBackup({dataDir:h.dir,backupDir,privateKey:h.privateKey,publicKey:h.publicKey});
  const manifest=JSON.parse(readFileSync(join(backupDir,'manifest.json'))),members=manifest.files.filter(file=>file.path.startsWith('governance-documents/'));
  assert.equal(members.length,2);assert.match(manifest.scope,/does not prove elapsed five-year retention/);for(const member of members){const encrypted=readFileSync(join(backupDir,...member.path.split('/')));assert.equal(encrypted.includes(bytes),false);assert.equal(encrypted.includes(revisedBytes),false);}
- const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor});assert.equal(receipt.governanceDocuments,2);assert.match(receipt.scope,/not elapsed five-year retention/);
- const restored=createService({dataDir:restoreDir,key:h.privateKey,config:{principals:h.principals},requirements});t.after(()=>restored.store.close());t.after(()=>{assert.ok(resolve(output).startsWith(resolve(tmpdir())+sep));rmSync(output,{recursive:true,force:true});});
+ const config={principals:h.principals},latest=await createVaultRecoveryFrontier({dataDir:h.dir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,config});
+ const receipt=await restoreVaultBackup({backupDir,restoreDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config});assert.equal(receipt.activationAccepted,true);assert.equal(receipt.governanceDocuments,2);assert.match(receipt.scope,/Not elapsed five-year retention/);
+ restored=createService({dataDir:restoreDir,key:h.privateKey,config,requirements});
  const call=(path,who=0)=>restored.handle('GET',new URL(path,'http://local'),{authorization:'Bearer '+h.principals[who].token});
  const metadata=await call('/api/governance/documents/recoverable');assert.equal(metadata.snapshotHash,saved.snapshotHash);assert.equal(metadata.verification.status,'hash_verified_and_retrievable');
  assert.equal((await call('/api/governance/documents/recoverable/export')).contentBase64,revisedBytes.toString('base64'));assert.equal(restored.store.rawBundle('alpha').records.filter(row=>row.type==='governance_document').length,2);

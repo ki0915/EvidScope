@@ -122,6 +122,10 @@
                     "value": "/keys/signing-private.pem"
                   },
                   {
+                    "name": "DATA_KEY_FILE",
+                    "value": "/data-key/data-encryption.key"
+                  },
+                  {
                     "name": "POD_NAME",
                     "valueFrom": {
                       "fieldRef": {
@@ -154,6 +158,11 @@
                   {
                     "name": "signing",
                     "mountPath": "/keys",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "data-key",
+                    "mountPath": "/data-key",
                     "readOnly": true
                   }
                 ],
@@ -236,6 +245,13 @@
                 "name": "signing",
                 "secret": {
                   "secretName": "vault-signing",
+                  "defaultMode": 288
+                }
+              },
+              {
+                "name": "data-key",
+                "secret": {
+                  "secretName": "vault-data-key",
                   "defaultMode": 288
                 }
               }

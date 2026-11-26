@@ -11,13 +11,21 @@
 | 경로 | 동작 |
 |---|---|
 | `POST /api/governance/systems` | 기존 등록에 `krRoles`, `supplierId`, `modelId`, `decisionInfluence`, `suppliedModelVersion`, `suppliedPurpose`, `substantialModification` 추가 |
-| `POST /api/governance/bundles` | 검토자/관리자가 합성 증빙 JSON 가져오기. 문서 바이트 해시 검사, 암호화 로컬 보관 |
+| `POST /api/governance/bundles` | 검토자/관리자가 자료 유형을 명시한 증빙 JSON 가져오기. 실제 자료 신고에는 출처 메타데이터 필요. 문서 해시 검사, 암호화 로컬 보관 |
+| `POST /api/governance/bundles/{id}/provenance-reviews` | 현재 증빙 해시에 연결된 담당자의 출처 확인·미확인·거부 기록 |
+| `GET /api/governance/bundles/{id}/provenance-reviews` | 같은 테넌트·증빙 ID의 개정별 출처 검토 이력 |
 | `GET /api/governance/bundles/{id}/export` | 같은 테넌트 문서를 복구·검증한 후 JSON 반환. 복구 실패 시 409 |
 | `GET /api/governance/finance?systemId=...` | 현재 문서·모델·목적 대조, 명시적인 시스템 연결 이벤트, 분석·보완 과제 |
 | `POST /api/governance/finance/report` | `{systemId}`의 법령·시스템·증거·사람 판단 snapshot을 서명·저장 |
 | `GET /api/governance/finance/reports/{id}` | 변경하지 않은 과거 snapshot과 서명 조회 |
 
-증빙 입력 예시는 `reports/finance-supplier-example.json`이다. `id`, `systemId`, `synthetic:true`, `supplierId`, `modelId`, `modelVersion`, `purpose`, `testScope`, `measures`, `documents`를 받는다. 각 문서는 `id`, `name`, `sha256`, `contentBase64`를 포함한다. 문서는 1~10개, 전체 decoded bytes 64KiB, HTTP JSON 128KiB 한도다. 사용자가 보낸 파일명은 저장 경로로 사용하지 않는다. 임의 URL·파일 경로를 읽지 않는다.
+합성 입력 예시는 `reports/finance-supplier-example.json`이다. `id`, `systemId`, `synthetic:true|false`, `supplierId`, `modelId`, `modelVersion`, `purpose`, `testScope`, `measures`, `documents`를 받는다. 각 문서는 `id`, `name`, `sha256`, `contentBase64`를 포함한다. 문서는 1~10개, 전체 decoded bytes 64KiB, HTTP JSON 128KiB 한도다. 사용자가 보낸 파일명은 저장 경로로 사용하지 않는다. 임의 URL·파일 경로를 읽지 않는다.
+
+`synthetic:false`로 신고한 자료에는 `provenance:{channel,reference,suppliedAt?}`가 필요하다. 경로는 `supplier_portal`, `email`, `contract_attachment`, `manual_upload` 중 하나이며 참조는 수신 번호 등 담당자가 다시 확인할 수 있는 값이다. `suppliedAt`은 공급사가 신고한 시각이며 서버의 실제 접수 시각 `createdAt`과 구별한다. 불필요한 개인정보·자격 정보나 실제 고객 심사 원문은 제외한다. 신고 자체가 실제 공급사 진위의 인증은 아니다. 기존 합성 증빙·개정·평가 이력은 자동으로 실제 증빙이나 검토 완료 기록으로 바꾸지 않는다.
+
+처음 받은 실제 자료 신고는 `unreviewed`로 표시하고 충분 평가를 차단한다. 화면의 **출처 검토 기록**에서 검토 결과·사유를 입력한다. 확인 검토에는 공급사 신원, 전달 참조, 모델·목적·시험 범위의 세 항목을 모두 명시적으로 확인해야 한다. API 본문은 `{bundleHash,decision,reason,checks:{supplierIdentityChecked,deliveryReferenceChecked,modelPurposeScopeChecked}}`이며 `decision`은 `verified`, `unverified`, `rejected`다. 기본은 미확인·항목 미선택이다. 담당자와 검토 시각은 인증된 서버에서 기록하고, 다른 증빙 해시·조회 사본 변조·권한 없는 검토는 거부한다.
+
+이 검토는 **권한 있는 담당자의 수동 확인 진술**이다. `sourceAuthentication:'not_independently_verified'`는 확인 검토 후에도 유지된다. 공급사 서명·메일 원본·포털 인증을 이 어댑터가 독립적으로 검사하는 것은 아니다. 기술 대조와 법률상 공급사 조치 인정도 별도로 판단한다. 제출 문서 해시와 출처 검토 해시를 평가 당시 서버가 고정한다. 증빙 개정이나 이후 출처 검토가 변경되면 기존 평가를 재검토 상태로 돌리고 과제를 생성한다. 과거 보고서·평가·검토 기록은 다시 쓰지 않는다.
 
 조치별 기존 평가에 `type:document`, `ref:supplier-bundle:<id>`를 지정하면 수신한 증빙 해시를 서버가 연결한다. 대상 시스템과 조치 범위가 달라지거나 문서를 검증할 수 없으면 충분 평가를 거절한다. 증빙 revision·모델·목적·법령·시스템 변경은 재검토 대상으로 표시한다. `KR-34-RISK`, `KR-34-EXPLAIN`, `KR-34-PROTECT`만 공급사 활용 후보로 받는다. 인간 감독·문서 보관은 자동 승계하지 않는다. 법률상 간주 인정은 사람이 판단한다.
 

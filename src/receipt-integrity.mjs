@@ -1,3 +1,5 @@
+import {RECEIPT_FINGERPRINT} from './crypto.mjs';
+
 const receiptKey=(source,id)=>JSON.stringify([source,id]);
 const digest=/^[a-f0-9]{64}$/;
 
@@ -11,7 +13,7 @@ function receiptEntries(tenant,records,events){
  for(const row of records){
   if(row.type!=='event_receipt')continue;
   const value=row.payload||{},event=eventRows.get(value.eventSeq);
-  if(value.format!=='evidscope-event-receipt-v1'||typeof value.source!=='string'||!value.source||typeof value.id!=='string'||!value.id||!digest.test(value.fingerprint||'')||!Number.isSafeInteger(value.eventSeq)||value.eventSeq<1||!digest.test(value.eventHash||'')||!event||event.hash!==value.eventHash||row.seq<=value.eventSeq)throw Error('Receipt signed history is invalid');
+  if(value.format!=='evidscope-event-receipt-v1'||typeof value.source!=='string'||!value.source||typeof value.id!=='string'||!value.id||!RECEIPT_FINGERPRINT.test(value.fingerprint||'')||!Number.isSafeInteger(value.eventSeq)||value.eventSeq<1||!digest.test(value.eventHash||'')||!event||event.hash!==value.eventHash||row.seq<=value.eventSeq)throw Error('Receipt signed history is invalid');
   const dispositionSeq=disposedAt.get(event.payload?.keyId);if(dispositionSeq!==undefined&&row.seq>=dispositionSeq)throw Error('Receipt was not preserved before event disposition');
   if(value.basis!==undefined&&!['source_ingest','verified_before_retention'].includes(value.basis))throw Error('Receipt signed history has an invalid basis');
   if(value.basis==='source_ingest'&&row.principal!==value.source)throw Error('Receipt source attestation principal differs');

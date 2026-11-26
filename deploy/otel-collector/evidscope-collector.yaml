@@ -1,0 +1,102 @@
+# EvidScope edge Collector (OpenTelemetry Collector core distribution, otelcol >= 0.140; core components only).
+# Receives OTLP from existing SDKs/Collectors, removes GenAI content before it leaves your network and forwards
+# GenAI spans to the EvidScope ingress gateway (POST /v1/traces). See README.ko.md.
+#
+# Required environment:
+#   EVIDSCOPE_OTLP_ENDPOINT  full URL, e.g. https://evidscope-ingress.example.com:8080/v1/traces
+#   EVIDSCOPE_OTLP_TOKEN     bearer token of the tenant's otlp principal (never commit it)
+# Optional: EVIDSCOPE_CA_FILE, OTELCOL_OTLP_GRPC_ENDPOINT, OTELCOL_OTLP_HTTP_ENDPOINT, OTELCOL_HEALTH_ENDPOINT,
+#           OTELCOL_METRICS_LEVEL (none|basic|normal|detailed)
+extensions:
+  health_check:
+    endpoint: ${env:OTELCOL_HEALTH_ENDPOINT:-127.0.0.1:13133}
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:OTELCOL_OTLP_GRPC_ENDPOINT:-127.0.0.1:4317}
+      http:
+        endpoint: ${env:OTELCOL_OTLP_HTTP_ENDPOINT:-127.0.0.1:4318}
+processors:
+  memory_limiter: { check_interval: 1s, limit_mib: 512, spike_limit_mib: 128 }
+  # EvidScope stores GenAI spans only (OTel GenAI semconv or OpenInference). Anything else would come back as
+  # partialSuccess "not_genai"; dropping it here keeps that traffic and those warnings off the wire.
+  filter/genai-only:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["gen_ai.operation.name"] == nil and attributes["openinference.span.kind"] == nil'
+  # Span events that carry prompts/completions (deprecated GenAI span events). Exception events are kept.
+  filter/genai-content-events:
+    error_mode: ignore
+    traces:
+      spanevent:
+        - 'name == "gen_ai.content.prompt"'
+        - 'name == "gen_ai.content.completion"'
+        - 'IsMatch(name, "^gen_ai\\.(user|system|assistant|tool)\\.message$")'
+        - 'name == "gen_ai.choice"'
+        - 'name == "gen_ai.client.inference.operation.details"'
+  # Opt-in content attributes. EvidScope also allowlists at its ingress; this keeps content inside your network.
+  attributes/drop-genai-content:
+    actions:
+      - { key: gen_ai.input.messages, action: delete }
+      - { key: gen_ai.output.messages, action: delete }
+      - { key: gen_ai.system_instructions, action: delete }
+      - { key: gen_ai.tool.definitions, action: delete }
+      - { key: gen_ai.tool.call.arguments, action: delete }
+      - { key: gen_ai.tool.call.result, action: delete }
+      - { key: gen_ai.tool.description, action: delete }
+      - { key: gen_ai.agent.description, action: delete }
+      - { key: gen_ai.retrieval.query.text, action: delete }
+      - { key: gen_ai.retrieval.documents, action: delete }
+      - { key: gen_ai.memory.query.text, action: delete }
+      - { key: gen_ai.memory.records, action: delete }
+      - { key: gen_ai.evaluation.explanation, action: delete }
+      - { key: mcp.resource.uri, action: delete }
+      - { pattern: '^gen_ai\.prompt\.variable\..+$', action: delete }
+      # deprecated semconv and OpenLLMetry/Traceloop flattened content
+      - { key: gen_ai.prompt, action: delete }
+      - { key: gen_ai.completion, action: delete }
+      - { pattern: '^gen_ai\.(prompt|completion)\.[0-9]+\..+$', action: delete }
+      - { pattern: '^traceloop\.(entity\.(input|output)|prompt\.template(_variables)?)$', action: delete }
+      # OpenInference (Arize Phoenix) content
+      - { pattern: '^(input|output)\.value$', action: delete }
+      - { pattern: '^llm\.(input_messages|output_messages|prompts|prompt_template\.(template|variables)|tools|choices|function_call)(\..*)?$', action: delete }
+      - { pattern: '^(embedding\.(text|embeddings|vector)|reranker\.(query|input_documents|output_documents))(\..*)?$', action: delete }
+      - { pattern: '^(retrieval\.documents|message\.contents?|tool_call\.function\.arguments)(\..*)?$', action: delete }
+      # credentials that some HTTP client instrumentations capture
+      - { pattern: '^http\.request\.header\.(authorization|x-api-key|api-key|cookie)$', action: delete }
+  resource/drop-process-args:
+    attributes:
+      - { key: process.command_args, action: delete }
+      - { key: process.command_line, action: delete }
+  # Keep each request well below EvidScope's limits (8192 spans, 4 MiB compressed / 8 MiB decompressed):
+  # 413 is not retried by exporters, so an oversized batch would be dropped.
+  batch: { send_batch_size: 512, send_batch_max_size: 1024, timeout: 2s }
+exporters:
+  otlphttp/evidscope:
+    traces_endpoint: ${env:EVIDSCOPE_OTLP_ENDPOINT}
+    encoding: proto
+    compression: gzip
+    timeout: 30s
+    # EvidScope closes idle keep-alive connections after 5 s.
+    idle_conn_timeout: 4s
+    tls:
+      ca_file: ${env:EVIDSCOPE_CA_FILE:-}
+    headers:
+      Authorization: "Bearer ${env:EVIDSCOPE_OTLP_TOKEN}"
+    # EvidScope answers 503 + Retry-After for backlog/storage problems; only 429/502/503/504 are retried.
+    retry_on_failure: { enabled: true, initial_interval: 1s, max_interval: 30s, max_elapsed_time: 600s }
+    # In-memory queue (core distribution). A Collector restart loses queued spans; for durable buffering use the
+    # contrib distribution's file_storage extension with sending_queue.storage.
+    sending_queue: { enabled: true, num_consumers: 4, queue_size: 1000 }
+service:
+  extensions: [health_check]
+  telemetry:
+    logs: { level: info }
+    metrics: { level: "${env:OTELCOL_METRICS_LEVEL:-basic}" }
+  pipelines:
+    traces/evidscope:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/genai-only, filter/genai-content-events, attributes/drop-genai-content, resource/drop-process-args, batch]
+      exporters: [otlphttp/evidscope]

@@ -49,7 +49,7 @@ function fixture() {
   const packageFunction = source.slice(source.indexOf('  function packagePreview('), source.indexOf('  function credentialPanel('));
   const requestFunctions = source.slice(source.indexOf('  function governanceRequirementPicker('), source.indexOf('  async function requestBuilder('));
   const appSource = readFileSync('public/app.js', 'utf8'), systemFunctions = appSource.slice(appSource.indexOf('const systemTriFacts ='), appSource.indexOf('function systemEditor('));
-  const helpers = { ...core, stringify: value => JSON.stringify(value, null, 2), rlabel: value => ({ accept: '채택', reject: '반려' }[value] || value) };
+  const helpers = { ...core, TextEncoder, stringify: value => JSON.stringify(value, null, 2), rlabel: value => ({ accept: '채택', reject: '반려' }[value] || value) };
   vm.runInNewContext(functions + packageFunction + requestFunctions + systemFunctions + '\nglobalThis.helpers = { draftDiff, reviewHistory, packagePreview, governanceRequirementPicker, assistanceRequestOptions, systemFactsPayload };', helpers);
   return { console: sandbox.window.EvidScopeConsole, helpers: helpers.helpers, core, routes, calls, navigations, responses };
 }
@@ -118,10 +118,10 @@ test('human adopted drafts and sequential changes preserve machine original and 
   assert.match(helpers.reviewHistory([...edits, { action: 'accept', draft: second }], original).textContent, /직전 저장 초안과 변경점/);
 });
 
-test('six primary task groups retain all existing destinations and local-only assets', () => {
+test('eight primary task groups (dashboard, logs and signals added) retain all existing destinations and local-only assets', () => {
   const html = readFileSync('public/index.html', 'utf8'), source = readFileSync('public/console.js', 'utf8');
-  assert.equal((html.match(/data-section=/g) || []).length, 6);
-  for (const route of ['agents', 'graphs', 'investigations', 'overview', 'events', 'alerts', 'cases', 'rules', 'governance', 'retention', 'health', 'team', 'assistance']) assert.ok(source.includes(`['${route}',`), route);
+  assert.equal((html.match(/data-section=/g) || []).length, 8);
+  for (const route of ['dashboard', 'logs', 'agents', 'graphs', 'investigations', 'overview', 'events', 'alerts', 'cases', 'rules', 'governance', 'retention', 'health', 'team', 'assistance']) assert.ok(source.includes(`['${route}',`), route);
   assert.doesNotMatch(html, /(?:src|href)="https?:\/\//);
   assert.match(readFileSync('public/console.css', 'utf8'), /prefers-reduced-motion/);
 });

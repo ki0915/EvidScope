@@ -1,0 +1,134 @@
+/* Operations theme (dark by default, light kept behind the toggle): dense panels, one accent, severity colours that mean the same
+   thing everywhere. Loaded after the generated theme-dark-base.css, which darkens every light rule of the older stylesheets. */
+:root[data-theme="dark"]{
+  --bg:#0b0c0e;--bg-2:#111217;--panel:#181b1f;--panel-2:#1f2329;--panel-3:#262b33;--border:#2a2e35;--border-strong:#3a404a;
+  --text:#d8d9e0;--text-2:#a0a4ae;--text-3:#6f747e;--accent:#6e9fff;--primary:#3d71d9;--primary-hover:#5285f0;
+  --crit:#f2495c;--high:#ff7a45;--med:#f5c542;--low:#73bf69;--info:#5794f2;--ok:#73bf69;
+  --claude:#e08a5f;--codex:#19c37d;--other-agent:#8e93a0;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,"D2Coding",monospace;
+  --navy:#111217;--teal:#3d71d9;--muted:#a0a4ae;--red:#f2495c;--orange:#ff7a45;
+  color-scheme:dark;color:var(--text);background:var(--bg);
+  font-family:Inter,"Pretendard","Segoe UI","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+:root[data-theme="dark"] ::selection{background:#3d71d966}
+:root[data-theme="dark"] :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:root[data-theme="dark"] a{color:var(--accent)}
+:root[data-theme="dark"] h1,:root[data-theme="dark"] h2,:root[data-theme="dark"] h3,:root[data-theme="dark"] strong{color:#eceef3}
+:root[data-theme="dark"] .muted,:root[data-theme="dark"] .stat-note,:root[data-theme="dark"] .card-header p,:root[data-theme="dark"] small{color:var(--text-2)}
+:root[data-theme="dark"] .mono,:root[data-theme="dark"] .data-number,:root[data-theme="dark"] code,:root[data-theme="dark"] pre{font-family:var(--mono)}
+:root[data-theme="dark"] *{scrollbar-color:#3a404a transparent;scrollbar-width:thin}
+
+/* Shell: narrow dark navigation, a 48px top bar with the time range and refresh, compact page heading. */
+:root[data-theme="dark"] .sidebar{width:212px;padding:12px 8px;background:var(--bg-2);border-right:1px solid var(--border);color:var(--text-2)}
+:root[data-theme="dark"] .shell{margin-left:212px}
+:root[data-theme="dark"] .brand{font-family:inherit;font-size:16px;letter-spacing:-.2px;margin:2px 8px 18px;color:#f1f2f6;gap:9px}
+:root[data-theme="dark"] .brand small{font:600 9px/1.4 inherit;letter-spacing:.9px;color:var(--text-3);margin-top:1px}
+:root[data-theme="dark"] .brand-symbol{width:28px;height:28px;border-radius:7px;font:700 15px/1 inherit;background:linear-gradient(135deg,#ff7a45,#f2495c 45%,#8c6cf2);color:#fff}
+:root[data-theme="dark"] .workspace-label{margin:0 10px 6px;font-size:10px;letter-spacing:.8px;color:var(--text-3)}
+:root[data-theme="dark"] .sidebar nav{gap:2px}
+:root[data-theme="dark"] .sidebar nav button{border:0;width:100%;text-align:left;display:flex;align-items:center;gap:10px;min-height:34px;padding:7px 10px;border-radius:4px;font-size:13px;font-weight:500;
+  color:var(--text-2);background:transparent;box-shadow:none}
+:root[data-theme="dark"] .sidebar nav button svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+:root[data-theme="dark"] .sidebar nav button > span[aria-hidden]{display:none}
+:root[data-theme="dark"] .sidebar nav button:hover{background:var(--panel-2);color:var(--text)}
+:root[data-theme="dark"] .sidebar nav button.active{background:var(--panel-3);color:#fff;box-shadow:inset 2px 0 var(--high)}
+:root[data-theme="dark"] .nav-group{margin:14px 10px 4px;font-size:10px;letter-spacing:.8px;color:var(--text-3);text-transform:uppercase}
+:root[data-theme="dark"] .sidebar-foot{padding:10px;border-top:1px solid var(--border)}
+:root[data-theme="dark"] .sidebar-foot p,:root[data-theme="dark"] .sidebar-foot .small-label{display:none}
+:root[data-theme="dark"] .scope-badge{background:transparent;color:var(--text-3);padding:0;font-size:10px}
+:root[data-theme="dark"] .topbar{height:48px;padding:0 16px;background:var(--bg-2);border-bottom:1px solid var(--border);color:var(--text-2);font-size:12px;position:sticky;top:0;z-index:20}
+:root[data-theme="dark"] .top-actions{gap:6px}
+:root[data-theme="dark"] .status-dot{width:7px;height:7px;background:#5a606b}
+:root[data-theme="dark"] .status-dot.connected{background:var(--ok);box-shadow:0 0 0 3px #73bf6926}
+:root[data-theme="dark"] main{padding:12px 16px 28px}
+:root[data-theme="dark"] .section-tabs{min-height:36px;gap:18px;margin:0 0 10px;border-bottom:1px solid var(--border)}
+:root[data-theme="dark"] .section-tab{min-height:35px;padding:8px 0;font-size:12.5px;font-weight:500;color:var(--text-2);background:transparent;border:0}
+:root[data-theme="dark"] .section-tab:hover{color:var(--text);background:transparent}
+:root[data-theme="dark"] .section-tab[aria-current="page"]{color:#fff;box-shadow:inset 0 -2px var(--high)}
+:root[data-theme="dark"] .page-heading{margin-bottom:12px;align-items:center}
+:root[data-theme="dark"] .page-heading .eyebrow{display:none}
+:root[data-theme="dark"] .page-heading h1{font-size:19px;font-weight:650;letter-spacing:-.3px;line-height:1.3;margin:0;color:#f1f2f6}
+:root[data-theme="dark"] .page-heading p:last-child{font-size:12px;color:var(--text-3);margin:3px 0 0;max-width:none;line-height:1.5}
+:root[data-theme="dark"] .live-label{font:11px var(--mono);color:var(--text-3);padding:0}
+:root[data-theme="dark"] footer{background:transparent;border-top:1px solid var(--border);color:var(--text-3);font-size:11px;padding:10px 16px}
+
+/* Controls */
+:root[data-theme="dark"] button{min-height:30px;padding:5px 12px;border-radius:4px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--text);
+  font-weight:500;font-size:12.5px}
+:root[data-theme="dark"] button:hover{background:var(--panel-3);border-color:#4a515c}
+:root[data-theme="dark"] button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+:root[data-theme="dark"] button.primary:hover{background:var(--primary-hover)}
+:root[data-theme="dark"] button.ghost{background:transparent;border-color:transparent;color:var(--text-2)}
+:root[data-theme="dark"] button.ghost:hover{background:var(--panel-2);color:var(--text)}
+:root[data-theme="dark"] button.small{min-height:24px;padding:2px 8px;font-size:11.5px}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:#0f1115;color:var(--text);border:1px solid #30353e;border-radius:4px;
+  min-height:30px;padding:4px 9px;font-size:12.5px}
+:root[data-theme="dark"] input:focus,:root[data-theme="dark"] select:focus,:root[data-theme="dark"] textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px #6e9fff33}
+:root[data-theme="dark"] .field{color:var(--text-2);font-size:11.5px;gap:4px}
+:root[data-theme="dark"] .toolbar{gap:8px;align-items:flex-end}
+
+/* Panels */
+:root[data-theme="dark"] .card,:root[data-theme="dark"] .stat,:root[data-theme="dark"] .panel{background:var(--panel);border:1px solid var(--border);border-radius:4px;box-shadow:none;
+  padding:12px 14px;margin-bottom:12px;color:var(--text)}
+:root[data-theme="dark"] .card-header{margin-bottom:10px}
+:root[data-theme="dark"] .card-header h2{font-size:13px;font-weight:600;margin:0}
+:root[data-theme="dark"] .card-header p{font-size:12px;line-height:1.55;margin:3px 0 0}
+:root[data-theme="dark"] .grid.stats{gap:10px;margin-bottom:12px}
+:root[data-theme="dark"] .grid.two{gap:12px}
+:root[data-theme="dark"] .stat-label{font-size:11.5px;color:var(--text-2);margin-bottom:4px}
+:root[data-theme="dark"] .stat-value{font:600 24px/1.2 var(--mono);color:#f1f2f6}
+:root[data-theme="dark"] .empty{background:transparent;border:1px dashed var(--border-strong);color:var(--text-2);border-radius:4px}
+:root[data-theme="dark"] .empty strong{color:var(--text)}
+:root[data-theme="dark"] .loading{color:var(--text-2)}
+
+/* Tables: dense rows, sticky header, hover */
+:root[data-theme="dark"] .table-wrap{border:1px solid var(--border);border-radius:4px;background:var(--panel)}
+:root[data-theme="dark"] table{font-size:12.5px;border-collapse:collapse}
+:root[data-theme="dark"] th{background:var(--panel-2);color:var(--text-2);font-weight:600;font-size:11.5px;padding:7px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
+:root[data-theme="dark"] td{padding:6px 10px;border-bottom:1px solid #22262c;color:var(--text);vertical-align:middle}
+:root[data-theme="dark"] tbody tr:hover td{background:#1c2026}
+
+/* Badges: one colour per meaning */
+:root[data-theme="dark"] .badge{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:600;line-height:18px;
+  background:#2a2f37;color:#c7cad3;border:0}
+:root[data-theme="dark"] .badge.critical{background:#f2495c26;color:#ff8a98}
+:root[data-theme="dark"] .badge.high{background:#ff7a4526;color:#ffa07a}
+:root[data-theme="dark"] .badge.medium{background:#f5c54222;color:#f5d36e}
+:root[data-theme="dark"] .badge.low{background:#73bf6922;color:#96d98d}
+:root[data-theme="dark"] .badge.info{background:#5794f222;color:#8ab8ff}
+:root[data-theme="dark"] .badge.open{background:#5794f222;color:#8ab8ff}
+:root[data-theme="dark"] .badge.suppressed,:root[data-theme="dark"] .badge.retired{background:#2a2f37;color:var(--text-3)}
+
+/* Messages: errors stay loud; "limits of what was observed" become a quiet footnote */
+:root[data-theme="dark"] .message{background:#1d2129;border:1px solid var(--border);border-left:3px solid var(--info);border-radius:4px;color:var(--text);padding:8px 12px;font-size:12.5px}
+:root[data-theme="dark"] .message.error{border-left-color:var(--crit);background:#2a1519}
+:root[data-theme="dark"] .message.warning{border-left-color:var(--med);background:#221f14}
+:root[data-theme="dark"] .message.warning:has(> ul.limitations){background:transparent;border:0;border-top:1px solid var(--border);border-radius:0;padding:8px 2px 0;
+  color:var(--text-3);font-size:11.5px;margin-top:8px}
+:root[data-theme="dark"] .message.warning:has(> ul.limitations) strong{color:var(--text-3);font-weight:600;font-size:11px}
+:root[data-theme="dark"] ul.limitations{margin:3px 0 0;padding-left:16px}
+:root[data-theme="dark"] details{border-color:var(--border)}
+:root[data-theme="dark"] summary{color:var(--text-2);cursor:pointer}
+:root[data-theme="dark"] pre.json{background:#0f1115;border:1px solid var(--border);color:#c9d1e0;border-radius:4px;font-size:11.5px}
+:root[data-theme="dark"] dialog{background:var(--panel);color:var(--text);border:1px solid var(--border-strong);border-radius:6px;box-shadow:0 24px 64px #000a}
+:root[data-theme="dark"] dialog::backdrop{background:#05060899}
+
+/* Older components keep their structure, toned down */
+:root[data-theme="dark"] .evidence-ribbon{background:var(--panel);border-color:var(--border)}
+:root[data-theme="dark"] .ribbon-step{background:transparent;border-color:var(--border)}
+:root[data-theme="dark"] .home-count,:root[data-theme="dark"] .coverage-fact{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;color:var(--text)}
+:root[data-theme="dark"] .home-count:hover,:root[data-theme="dark"] .coverage-fact:hover{background:var(--panel-3)}
+:root[data-theme="dark"] .home-count.alert{border-color:#f2495c66;box-shadow:inset 3px 0 var(--crit)}
+:root[data-theme="dark"] .home-count.warn{border-color:#f5c54255;box-shadow:inset 3px 0 var(--med)}
+:root[data-theme="dark"] .home-count.ok{box-shadow:inset 3px 0 var(--ok)}
+:root[data-theme="dark"] .home-count strong{font-family:var(--mono);color:#f1f2f6}
+
+/* Light theme: the original stylesheets, plus the new panels made readable */
+:root[data-theme="light"] .sidebar nav button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;margin-right:8px}
+:root[data-theme="light"] .sidebar nav button > span[aria-hidden]{display:none}
+:root[data-theme="light"] .nav-group{margin:14px 14px 4px;font-size:10px;letter-spacing:1px;color:#8a9cb6}
+:root[data-theme="light"]{--panel:#fff;--panel-2:#f4f6fa;--panel-3:#e9eef5;--border:#e0e6ef;--border-strong:#cfd8e3;--text:#22334a;--text-2:#5b6b82;--text-3:#8a97aa;
+  --accent:#1f6feb;--crit:#d6334a;--high:#e5652e;--med:#c99a06;--low:#3f9d4a;--info:#3a7bd5;--ok:#3f9d4a;--claude:#c96442;--codex:#0f9a6a;--other-agent:#8a93a3;
+  --mono:Consolas,"D2Coding",monospace;--bg:#f4f6fa;--bg-2:#fff}
+:root[data-theme="dark"] svg text{fill:#d8d9e0}

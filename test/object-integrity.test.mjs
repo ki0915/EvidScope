@@ -5,7 +5,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {createService} from '../src/service.mjs';
-import {createVaultBackup,restoreVaultBackup} from '../src/vault-recovery.mjs';
+import {createVaultBackup,createVaultRecoveryFrontier,restoreVaultBackup} from '../src/vault-recovery.mjs';
 
 function fixture(t){
  const root=mkdtempSync(join(tmpdir(),'evidscope-object-integrity-')),dataDir=join(root,'data'),{privateKey,publicKey}=generateKeyPairSync('ed25519');
@@ -14,11 +14,11 @@ function fixture(t){
  t.after(()=>{store.close();assert.ok(resolve(root).startsWith(resolve(tmpdir())+sep));rmSync(root,{recursive:true,force:true});});
  const call=(path='/api/integrity',tenant='alpha',{method='GET',body}={})=>service.handle(method,new URL(path,'http://local'),{authorization:'Bearer '+principals.find(p=>p.tenant===tenant).token},body===undefined?'':JSON.stringify(body));
  const put=(type,id,body)=>store.transaction(()=>store.put(principals[0],type,id,body));
- const sample=(type)=>type==='catalog'?{id:'current',body:store.get('alpha','catalog','current')}:type==='assistance_profile'?{id:'profile@1',body:{id:'profile',version:1,title:'Original profile'}}:{id:type+'-one',body:{id:type+'-one',title:'Original',...(type==='identity_access'?{disabled:true,epoch:1}:type==='system'?{schemaVersion:4,name:'Synthetic system',owner:'reviewer',purpose:'Projection verification'}:type==='rule'?{versions:[{version:1,status:'draft'}]}:type==='exception'?{status:'pending'}:{})}};
+ const sample=(type)=>type==='catalog'?{id:'current',body:store.get('alpha','catalog','current')}:type==='assistance_profile'?{id:'profile@1',body:{id:'profile',version:1,title:'Original profile'}}:type==='identity_access'?{id:'identity_access-one',body:{id:'identity_access-one',disabled:true,epoch:1,action:'disable',reason:'Original access state'}}:{id:type+'-one',body:{id:type+'-one',title:'Original',...(type==='system'?{schemaVersion:4,name:'Synthetic system',owner:'reviewer',purpose:'Projection verification'}:type==='rule'?{versions:[{version:1,status:'draft'}]}:type==='exception'?{status:'pending'}:{})}};
  return {root,dataDir,privateKey,publicKey,config,service,store,db,call,put,sample};
 }
 
-for(const type of ['rule','assessment','governance_task','identity_access','catalog','assistance_profile'])for(const alteration of ['forged','missing','extra','sql-id','body-id'])test(`integrity rejects ${type} ${alteration} projection`,async t=>{
+for(const type of ['rule','assessment','governance_task','identity_access','catalog','assistance_profile','supplier_provenance_review'])for(const alteration of ['forged','missing','extra','sql-id','body-id'])test(`integrity rejects ${type} ${alteration} projection`,async t=>{
  const h=fixture(t),sample=h.sample(type);if(type!=='catalog')h.put(type,sample.id,sample.body);
  if(alteration==='forged')h.db.prepare('UPDATE objects SET body=? WHERE tenant=? AND type=? AND id=?').run(JSON.stringify({...sample.body,title:'Forged',disabled:false}),'alpha',type,sample.id);
  if(alteration==='missing')h.db.prepare('DELETE FROM objects WHERE tenant=? AND type=? AND id=?').run('alpha',type,sample.id);
@@ -31,14 +31,16 @@ for(const type of ['rule','assessment','governance_task','identity_access','cata
 
 test('valid latest objects and every assistance profile version survive API verification and backup recovery',async t=>{
  const h=fixture(t);
- for(const type of ['system','assessment','governance_task','asset','case','case_decision','rule','exception','retention_policy','retention_hold','retention_plan','supplier_bundle','finance_report','assistance_package','assistance_run','assistance_review','identity_access']){const item=h.sample(type);h.put(type,item.id,item.body);h.put(type,item.id,{...item.body,title:'Latest signed value'});}
+ for(const type of ['system','assessment','governance_task','asset','case','case_decision','rule','exception','retention_policy','retention_hold','retention_plan','supplier_bundle','supplier_provenance_review','finance_report','assistance_package','assistance_run','assistance_review','identity_access']){const item=h.sample(type);h.put(type,item.id,item.body);h.put(type,item.id,{...item.body,...(type==='identity_access'?{reason:'Latest signed reason'}:{title:'Latest signed value'})});}
  h.put('assistance_profile','profile@1',{id:'profile',version:1,title:'First immutable version'});h.put('assistance_profile','profile@2',{id:'profile',version:2,title:'Second immutable version'});
  const rawBundle=h.store.rawBundle.bind(h.store);let scans=0;h.store.rawBundle=(...args)=>{scans++;return rawBundle(...args);};
- const result=await h.call();assert.equal(result.valid,true);assert.deepEqual(result.objectProjection,{valid:true,objects:20});assert.equal(result.projection.valid,true);assert.equal(scans,1,'integrity reuses the verified bundle for event and object checks');
- assert.deepEqual(result.verificationScope.checks,['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files']);
- assert.deepEqual(result.verificationScope.notChecked,[]);assert.equal(result.documentFiles.uniqueFiles,0);assert.equal(result.governanceDocumentProjection.revisions,0);
+ const result=await h.call();assert.equal(result.valid,true);assert.deepEqual(result.objectProjection,{valid:true,objects:21});assert.equal(result.projection.valid,true);assert.equal(scans,1,'integrity reuses the verified bundle for event and object checks');
+ assert.deepEqual(result.verificationScope.checks,['signed_ledger','retained_event_bodies','event_indexes','receipt_projections','development_run_projections','object_projections','evaluation_projections','action_projections','governance_document_projections','document_files',
+  'access_log']);
+ assert.deepEqual(result.verificationScope.notChecked,['rollback','truncation','tenant_removal']);assert.equal(result.documentFiles.uniqueFiles,0);assert.equal(result.governanceDocumentProjection.revisions,0);
  const backupDir=join(h.root,'backup'),anchor=await createVaultBackup({dataDir:h.dataDir,backupDir,privateKey:h.privateKey,publicKey:h.publicKey});
- const receipt=await restoreVaultBackup({backupDir,restoreDir:join(h.root,'restored'),privateKey:h.privateKey,publicKey:h.publicKey,anchor});
+ const latest=await createVaultRecoveryFrontier({dataDir:h.dataDir,privateKey:h.privateKey,publicKey:h.publicKey,anchor,config:h.config});
+ const receipt=await restoreVaultBackup({backupDir,restoreDir:join(h.root,'restored'),privateKey:h.privateKey,publicKey:h.publicKey,anchor,frontier:latest.frontier,frontierAnchor:latest.anchor,config:h.config});assert.equal(receipt.activationAccepted,true);
  const restored=createService({dataDir:receipt.restoredDirectory,key:h.privateKey,config:h.config});try{const checked=await restored.handle('GET',new URL('/api/integrity','http://local'),{authorization:'Bearer '+h.config.principals[0].token});assert.deepEqual(checked.objectProjection,result.objectProjection);assert.equal(checked.valid,true);assert.equal(restored.store.get('alpha','assistance_profile','profile@1').title,'First immutable version');}finally{restored.store.close();}
 });
 

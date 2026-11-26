@@ -1,16 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,randomUUID} from 'node:crypto';
-import {mkdtempSync} from 'node:fs';
-import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {createService} from '../src/service.mjs';
 import {digest,mac} from '../src/crypto.mjs';
 import {validateEvent} from '../src/model.mjs';
+import {tempDir} from './temp-dir.mjs';
 
 function fixture(t){
- const root=mkdtempSync(join(tmpdir(),'evidscope-receipt-')),{privateKey}=generateKeyPairSync('ed25519');
+ const root=tempDir('evidscope-receipt-'),{privateKey}=generateKeyPairSync('ed25519');
  const source={id:'alpha-tool',tenant:'alpha',role:'source',kind:'tool',token:'s'.repeat(40),hmacSecret:'receipt-hmac-secret'};
  const reviewer={id:'alpha-reviewer',tenant:'alpha',role:'reviewer',token:'r'.repeat(40)};
  const admin={id:'alpha-admin',tenant:'alpha',role:'admin',token:'a'.repeat(40)};

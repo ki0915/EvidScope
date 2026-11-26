@@ -20,13 +20,22 @@ function fixture(t){
 const system={id:'credit',name:'Synthetic credit',owner:'reviewer',purpose:'대출 심사 보조',role:'deployer',krRoles:['deployer'],markets:['KR'],domain:'credit',generative:false,highImpact:'candidate',supplierId:'supplier',modelId:'model',modelVersion:'v1',suppliedModelVersion:'v1',suppliedPurpose:'대출 심사 보조',substantialModification:false};
 function bundle(){const bytes=Buffer.from('합성 시험 문서');return {id:'bundle',systemId:'credit',synthetic:true,supplierId:'supplier',modelId:'model',modelVersion:'v1',purpose:system.purpose,testScope:'Original test scope',reviewerNotes:'Original notes',measures:['KR-34-RISK'],documents:[{id:'doc',name:'synthetic.txt',contentBase64:bytes.toString('base64'),sha256:createHash('sha256').update(bytes).digest('hex')}]};}
 
-for(const operation of ['view','export','import','report','saved-report'])test(`finance ${operation} keeps verification and consumption in one writer-excluding snapshot`,async t=>{
+// POST operations hold the write lock (BEGIN IMMEDIATE) from verification to the signed write. GET operations are read
+// snapshots: a concurrent write may commit, but it is never served, the next read fails closed and nothing is appended.
+const reads=new Set(['view','export','saved-report']);
+for(const operation of ['view','export','import','report','saved-report'])test(`finance ${operation} keeps verification and consumption in one ${reads.has(operation)?'read':'writer-excluding'} snapshot`,async t=>{
  const h=fixture(t);await h.call('/api/governance/systems',system);await h.call('/api/governance/bundles',bundle());
  const saved=operation==='saved-report'?await h.call('/api/governance/finance/report',{systemId:'credit'}):null;
  const verify=h.store.checkProjection.bind(h.store);let attempted=false,changed=false,blocked;
+ const ledger=h.state();
  h.store.checkProjection=(tenant)=>{const result=verify(tenant);if(!attempted){attempted=true;try{h.other.prepare("UPDATE objects SET body=json_set(body,'$.reviewerNotes','forged after verification','$.revision',33) WHERE tenant='alpha' AND type='supplier_bundle'").run();changed=true;}catch(error){blocked=error;}}return result;};
  let result;if(operation==='view')result=await h.call('/api/governance/finance?systemId=credit');if(operation==='export')result=await h.call('/api/governance/bundles/bundle/export');if(operation==='import')result=await h.call('/api/governance/bundles',bundle());if(operation==='report')result=await h.call('/api/governance/finance/report',{systemId:'credit'});if(operation==='saved-report')result=await h.call('/api/governance/finance/reports/'+saved.id);
- assert.equal(attempted,true);assert.equal(changed,false,'a second SQLite writer must not alter a verified object before use');assert.equal(blocked?.errcode,5,'the competing write is rejected with SQLITE_BUSY');assert.match(blocked?.message||'',/locked|busy/i);assert.ok(!JSON.stringify(result).includes('forged after verification'));
+ assert.equal(attempted,true);assert.ok(!JSON.stringify(result).includes('forged after verification'));
+ if(reads.has(operation)){
+  assert.equal(changed,true,'a read snapshot does not hold the write lock');assert.equal(blocked,undefined);
+  await assert.rejects(h.call('/api/governance/finance?systemId=credit'),error=>error.status===409,'the next read fails closed');
+  const after=JSON.parse(h.state()),before=JSON.parse(ledger);assert.deepEqual(after.ledger,before.ledger);assert.deepEqual(after.checkpoints,before.checkpoints);
+ }else{assert.equal(changed,false,'a second SQLite writer must not alter a verified object before use');assert.equal(blocked?.errcode,5,'the competing write is rejected with SQLITE_BUSY');assert.match(blocked?.message||'',/locked|busy/i);}
  if(operation==='import')assert.equal(result.revision,2);if(operation==='report')assert.equal(result.snapshot.bundles[0].reviewerNotes,'Original notes');if(operation==='export')assert.equal(result.documents[0].contentBase64,bundle().documents[0].contentBase64);
  assert.equal(h.store.db.isTransaction,false);assert.equal(verifyBundle(h.store.bundle('alpha'),h.store.publicKey).valid,true);
 });

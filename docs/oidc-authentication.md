@@ -17,6 +17,7 @@ OIDC를 활성화하면 조직 인증 공급자에 로그인하고, 서버에 �
     "sessionTtlSeconds": 900,
     "idleTtlSeconds": 300,
     "maxAuthenticationAgeSeconds": 300,
+    "tokenExchangesPerMinute": 60,
     "requiredAcrValues": [],
     "bindings": [
       {"id": "audit-admin-01", "subject": "REPLACE_WITH_STABLE_SUBJECT", "tenant": "finance", "role": "admin"}
@@ -35,9 +36,45 @@ authorization·token·JWKS endpoint는 기본적으로 issuer와 동일한 origi
 
 운영 IdP와 publicOrigin은 HTTPS만 허용한다. audit·vault 인증서와 신뢰 CA는 `TLS_CERT_FILE`, `TLS_KEY_FILE`, `NODE_EXTRA_CA_CERTS`로 배치한다. 프록시는 원래 public Host를 유지하고 audit까지 HTTPS로 전달해야 한다. `X-Forwarded-*`로 출처·프로토콜을 추정하지 않는다. HTTP 종료 프록시 뒤에서 public HTTPS를 구성하는 방식은 지원하지 않는다.
 
-기존 `deploy/kubernetes.json`의 vault는 outbound deny-all이다. OIDC 설정만 추가해도 이 정책을 통과하지 못한다. 실제 배포에는 조직에서 확정한 IdP endpoint와 DNS로만 나가는 별도 egress 정책, 사설 IdP라면 vault용 신뢰 CA mount가 필요하다. 기본 네트워크 격리를 자동 해제하지 않았으며 해당 운영 overlay와 CNI 실증은 미완료다.
+기존 `deploy/kubernetes.json`의 vault는 outbound deny-all이다. OIDC 설정만 추가해도 이 정책을 통과하지 못한다. 선택형 `deploy/enterprise-oidc-overlay.mjs`는 기존 renderer의 JSON List를 읽어 vault 전용 IdP·DNS egress와 선택 CA mount를 추가한다. 기본 배포 파일, 자격, 다른 컴포넌트의 권한은 변경하지 않는다. 생성 결과의 정적 범위 검사는 구현됐으며 실제 CNI·DNS·TLS·조직 로그인 실증은 별도로 필요하다.
 
-세션은 무작위 opaque cookie이며 `__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/를 사용하고 Domain은 발급하지 않는다. vault는 cookie의 SHA-256 및 세션 정보를 메모리에 보관한다. ID/access/refresh token, PKCE verifier, flow state, cookie·CSRF는 증적 DB·백업에 저장하지 않는다. 로그인 흐름은 5분간 메모리에 보관하며 동시 흐름 1,000개·세션 10,000개로 제한한다.
+### 선택형 enterprise 연결 overlay
+
+실제 vault 설정은 `profile: "enterprise"`, `oidc.enabled: true`여야 한다. 공개 정책 파일은 다음 구조다. 예시 주소는 실제로 승인한 IdP 목적지로 교체한다. `privateCaSecret`은 선택 사항이며 기존 Secret의 `ca.crt`만 읽는다. CA·Secret·인증 자격을 생성하지 않는다.
+
+```json
+{
+  "schemaVersion": 1,
+  "destinations": [
+    {
+      "origin": "https://id.example.org",
+      "addresses": ["10.20.30.40", "2001:db8::10"]
+    }
+  ],
+  "privateCaSecret": "finance-oidc-ca"
+}
+```
+
+```powershell
+node deploy/enterprise-oidc-overlay.mjs --oidc-config .local/enterprise-vault.json --policy .local/enterprise-oidc-policy.json --output deploy/enterprise-oidc-rendered.json
+node --test --test-concurrency=1 test/enterprise-oidc-overlay.test.mjs
+```
+
+출력은 **새 파일**이어야 한다. CLI는 배포하지 않으며 vault 설정·client secret·subject를 출력에 복사하지 않는다. stdout 영수증은 입력·출력 결합 해시와 정적 검증 범위를 기록하며 `runtimeConnectivityVerified: false`를 유지한다. 정책은 issuer의 origin과 `allowedEndpointOrigins`의 모든 origin에 대해 목적지를 명시해야 한다. 별도 endpoint origin은 실제 vault 설정에도 먼저 등록해야 하며 포트는 각 HTTPS origin에서 가져온다. issuer는 discovery URL이 아니어야 한다. HTTP·wildcard·자격/쿼리 포함 URL·미등록 origin·넓은 CIDR·다른 컴포넌트 권한 변경을 거부한다.
+
+주소는 IPv4/IPv6 단일 호스트만 허용한다. 동등한 `/32`·`/128` 표기는 가능하며 넓은 subnet은 허용하지 않는다. DNS는 기존 배포와 같은 `kube-system` namespace의 `k8s-app=kube-dns` Pod에 UDP/TCP 53만 허용한다. CA를 지정하면 vault에 `/oidc-ca/ca.crt` 읽기 전용 mount와 `NODE_EXTRA_CA_CERTS`를 추가한다. 기존 CA 설정 충돌은 자동 덮어쓰지 않는다. 기존 mountPath는 절대 POSIX 경로로 정규화해 `/oidc-ca`와 상위·하위 경로가 겹치면 거부한다. 루트 `/`와 `/oidc-ca/ca.crt`도 충돌이며, `/oidc-ca-other`는 충돌로 취급하지 않는다. 생성 결과에 추가 정책·다른 Pod selector·포트·기본 deny-all·다른 Deployment 변경이 있으면 범위 검증을 실패 처리한다.
+
+NetworkPolicy는 지정 IP·포트만 통제하며 HTTPS hostname·URL path·IdP의 진실성을 확인하지 않는다. 도메인의 DNS 주소나 endpoint·포트·CA 변경 시 운영자가 실제 설정과 정책을 다시 검토·생성하고 rollout해야 한다. IP와 도메인의 대응은 이번 생성기가 네트워크로 조회하지 않는다. Service/NAT 목적지의 `ipBlock` 처리와 DNS 구현은 CNI별로 실측해야 한다. 실제 허용 IdP 경로와 미승인 origin·무라벨 Pod·직접 vault 접근의 거부를 TLS 및 패킷 근거로 확인하기 전 운영 연결 완료로 표시하지 않는다. 기존 런타임의 issuer·endpoint origin 제한과 TLS peer 검증도 계속 적용된다.
+
+세션은 무작위 opaque cookie이며 `__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/를 사용하고 Domain은 발급하지 않는다. vault는 cookie의 SHA-256 및 세션 정보를 메모리에 보관한다. ID/access/refresh token, PKCE verifier, flow state, cookie·CSRF는 증적 DB·백업에 저장하지 않는다. 세션은 10,000개로 제한한다.
+
+로그인 흐름(state·nonce·PKCE verifier·만료 시각)은 vault 메모리에 두지 않고, vault 프로세스마다 새로 만드는 키로 AES-256-GCM 봉인한 5분짜리 `__Host-evidscope-flow` cookie(HttpOnly, SameSite=Lax)에 담는다. 따라서 익명 `/auth/login` 반복 요청은 서버 상태를 만들지 않으며 다른 사용자의 로그인을 막지 못한다(감사 S9; 이전의 동시 흐름 1,000개 제한과 429 응답은 없앴다). callback은 봉인을 열어 URL의 `state`와 상수 시간으로 비교하고 만료를 확인한 뒤, token 교환을 허용할지 판단한다. vault를 재시작하면 진행 중인 로그인 흐름은 무효가 되어 다시 로그인해야 한다.
+
+token 교환은 confidential client 비밀을 IdP에 사용하는 유일한 callback 단계다. 이전에는 계정 없는 익명 login/callback 한 쌍마다 token 요청이 하나씩 발생했다(2라운드 재감사 S9). 이제 vault 프로세스 전체가 하나의 token bucket과 동시 실행 제한을 거친다. 기본값은 분당 60회(`tokenExchangesPerMinute`, 정수 1~600), 연속 허용(burst) 20회(분당 값이 20보다 작으면 그 값), 동시 교환 4개다. 제한을 넘은 callback은 IdP에 아무 요청도 보내지 않고 `/?auth=failed`로 이동한다. 이때 state는 사용 완료로 기록하지 않으며 사용자는 다시 로그인하면 된다.
+
+허용된 교환은 token 요청 전에 그 state를 사용 완료로 기록한다. 이 기록은 해당 흐름이 만료될 때까지(사용 후 최대 5분) 메모리에 두고 만료된 기록만 지운다. 용량은 burst + 5 × 분당 값(기본 320개)이다. 시계가 정상적으로 흐르면 bucket이 5분 동안 허용하는 교환 수를 넘지 않으므로 차지 않는다. 시계가 뒤로 조정되는 등으로 용량이 차면 기록을 버리지 않고 새 callback을 실패시킨다(fail closed). 따라서 이미 사용한 callback을 다시 보내면 흐름 만료 전에는 이 기록에서, 만료 후에는 만료 검사에서 token endpoint 호출 없이 실패한다. 다른 vault 프로세스는 flow cookie를 열 수 없다. 재사용된 authorization code는 IdP도 거부한다.
+
+이 제한은 IP나 계정별이 아니라 vault 프로세스 전체에 하나다. 익명 callback 반복 요청이 만드는 IdP token 요청은 분당 값 이내로 묶이지만, 그동안 실제 사용자의 로그인도 `/?auth=failed`로 실패할 수 있다. 운영에서는 reverse proxy·WAF에서 IP별 `/auth/login`·`/auth/callback` 요청 제한을 함께 두고, 예상 로그인 수에 맞게 `tokenExchangesPerMinute`를 조정한다.
 
 state·nonce·PKCE와 별도 flow cookie를 결합해 검증한다. `openid-client`의 `enableNonRepudiationChecks`를 명시 적용해 ID token 서명을 검증한다. HTTPS만으로 서명 확인을 대체하지 않는다. 모든 cookie 인증 POST에는 고정 publicOrigin과 세션별 `X-Evid-CSRF`가 필요하다. Bearer 자격 혼용은 거부한다.
 
@@ -65,6 +102,7 @@ IdP의 외부 계정 삭제·그룹 변경을 실시간 수신하는 SCIM·back-
 ```powershell
 npm ci --ignore-scripts --no-audit --no-fund
 node --test --test-concurrency=1 test/identity-state.test.mjs test/oidc-http.test.mjs test/oidc-tls.test.mjs test/oidc-ui.test.mjs
+node --test --test-concurrency=1 test/oidc-login-flood.test.mjs test/oidc-callback-replay.test.mjs
 ```
 
 독립 합성 IdP와 audit·vault 프로세스에서 서명·코드 교환·권한·회수·만료·재시작·복구를 검증한다. HTTPS 시험은 임시 CA와 정상 hostname 검증을 사용하고 TLS 검증을 해제하지 않는다. UI 자동 시험은 VM DOM이다. 실제 조직 IdP, 다중 vault 세션 공유, 비밀 관리·회전, 고가용성·운영 부하 기준은 별도 검증이 필요하다.

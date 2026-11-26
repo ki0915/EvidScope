@@ -1,0 +1,2599 @@
+[
+  {
+    "id": "AM-01",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "방향 전환: 학습보다 수집·탐지 먼저",
+    "title_en": "Change of direction: collection and detection before more model training",
+    "summary": "오너가 “위협도 감사도 아무것도 안 되는 것 아니냐”고 지적하자, 거버넌스 매핑 모델 학습을 배경 작업으로 돌리고 오너 PC의 실제 AI 도구 기록을 받아 위험을 표시하는 일을 먼저 하기로 했다. 약속한 순서는 실제 기록을 AI 기본법·ISMS-P 증거로 잇기, Codex 연결, 여러 행동을 엮은 이상 탐지였고, 이후 AM-02~AM-05가 그 순서대로 하루 안에 만들어졌다.",
+    "context": "10-15 아침까지 프로젝트의 중심은 증거 문장을 규제 항목 ID에 붙이는 거버넌스 매핑 모델 학습이었다. 파일럿 13까지 돌렸지만 어느 것도 게이트를 넘지 못했고, 오너는 같은 날 목표를 99%로 올리면서 “어떤 기준으로 감사를 수행하는지 모르겠다”고 말했다. 오너가 AI가 시스템 비밀번호 파일 같은 민감 파일 읽기를 탐지하느냐고 묻자, 그런 기본 규칙이 없고 모델도 위협 탐지기가 아니라는 답이 돌아갔다. 증거 계층(서명 원장, 재생, 증거 묶음)은 9~10월 라운드로 갖춰져 있었지만 PC의 어떤 AI 도구도 기록을 보내지 않아 화면에 실제 활동이 하나도 없었다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "10-15 오너가 학습 진행 상황을 보다가 제품이 실제로는 아무것도 감시하지 못한다고 지적했다. 직전에 민감 파일 읽기를 탐지하느냐는 질문에 ‘아니다’라는 답을 받은 뒤였다.",
+      "quote": "위협도 감사도 아무것도 안되는 거 아니야?"
+    },
+    "problem": "PC의 어떤 AI 도구도 EvidScope로 기록을 보내지 않았다. 기존 개발용 수집기는 도구 종류(셸, 파일 읽기)만 남겨서 무엇을 읽었는지 구분하지 못했다. 규칙은 행동 하나씩만 판단했고, 여러 행동을 엮는 규칙은 ‘한 행위자가 10분에 3번 이상 거부됨’ 하나뿐이었으며 민감 파일 경로 규칙도 없었다. 학습 중인 모델은 증거 문장을 조항에 붙이는 일만 했기 때문에 위협을 찾아 주지 못했다.",
+    "constraints": [
+      "실제 기록은 오너 PC 밖으로 내보내지 않음",
+      "AI 도구의 작업을 방해하면 안 됨(오너가 매일 쓰는 도구)",
+      "1인 개발, AI 코딩 에이전트가 구현",
+      "기존 서명 원장·재생 구조를 깨지 않아야 함"
+    ],
+    "options": [
+      {
+        "option": "거버넌스 매핑 모델 학습을 계속해 99% 목표에 먼저 도달",
+        "pros": "이미 만든 학습 파이프라인과 271문항 시험을 그대로 이어 쓸 수 있음",
+        "cons": "모델이 위협 탐지기가 아니라서 학습이 성공해도 ‘무엇이 위험한가’는 여전히 답하지 못함, 파일럿 13까지 게이트 미통과",
+        "chosen": false,
+        "reason": "오너가 보기에 보여 줄 수 있는 실제 기능이 없었음"
+      },
+      {
+        "option": "실제 AI 도구 기록 수집과 규칙 탐지를 먼저 하고 학습은 배경에서 계속",
+        "pros": "하루 안에 오너 자신의 도구에서 나온 실제 경보를 보여 줄 수 있음, 이후 모델이 넘어야 할 규칙 기준선이 생김",
+        "cons": "모델 학습 진척이 늦어짐",
+        "chosen": true,
+        "reason": "오너가 카드에서 ‘수집·탐지 먼저’를 고름"
+      }
+    ],
+    "decision": {
+      "what": "학습은 배경으로 돌리고 실제 기록 수집과 위험 탐지를 먼저 한다. 순서는 실제 기록을 법·인증 증거로 잇기, Codex 연결, 여러 행동 이상 탐지.",
+      "why": "보여 줄 수 있는 실제 탐지가 먼저 있어야 제품이 의미가 있다고 판단했다.",
+      "decided_by": "owner"
+    },
+    "actions": [
+      "PC에서 실제로 기록을 보내는 AI 도구가 없다는 점과 기존 수집기의 한계(도구 종류만 기록)를 확인",
+      "오너에게 수집·탐지 우선 여부를 카드로 묻고 ‘수집·탐지 먼저’ 선택을 받음",
+      "Claude Code hook 추가 여부를 묻고 ‘추가’ 선택을 받음(AM-02)",
+      "Codex hook 추가 여부를 묻고 ‘추가’ 선택을 받음(AM-04)",
+      "실제 기록을 법·인증 증거로, Codex, 여러 행동 이상 탐지 순서로 작업 계획을 약속"
+    ],
+    "tech": [
+      "Claude Code hooks",
+      "Codex CLI hooks"
+    ],
+    "skills": [
+      "problem_definition",
+      "decision_making",
+      "user_feedback",
+      "requirements"
+    ],
+    "metrics": [
+      {
+        "name": "EvidScope로 기록을 보내는 PC의 AI 도구 수",
+        "before": "0",
+        "after": "2(Claude Code, Codex)",
+        "unit": "개",
+        "scope": "오너 PC, 10-15 하루 동안",
+        "source": "작업 메모"
+      },
+      {
+        "name": "여러 행동을 엮는 규칙 수(전환 시점)",
+        "before": null,
+        "after": "1(한 행위자 10분 3회 이상 거부)",
+        "unit": "개",
+        "scope": "전환 결정 시점의 평가 엔진",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "같은 날 Claude Code hook(AM-02), 대응표 v3(AM-03), Codex hook(AM-04), 평가 엔진 v5 순서 규칙(AM-05)이 차례로 만들어져 약속한 세 단계가 하루 안에 끝났다. 학습은 이후 위협 시나리오 기반 세션 판정(JM 트랙)으로 다시 설계되어 이어졌다.",
+    "tradeoffs": [
+      "거버넌스 매핑 모델의 99% 목표 달성은 뒤로 미룸",
+      "hook 기록은 AI 도구 안에서 나오는 자기 보고라 독립 관측은 여전히 없음"
+    ],
+    "lessons": [
+      "기술적으로 쌓은 것이 많아도 사용자가 자기 환경에서 실제 결과를 못 보면 제품이 없는 것과 같다.",
+      "모델이 하는 일(증거를 조항에 붙이기)과 사용자가 기대하는 일(위협 탐지)이 다를 수 있으니 처음부터 맞춰 봐야 한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "학습을 멈추지 않고 수집과 병행했다면 거버넌스 매핑 모델이 세션 판정으로 재설계되는 시점이 더 빨랐을까, 늦었을까?",
+        "처음부터 hook 수집을 첫 기능으로 잡았다면 9~10월 증거 계층 라운드의 우선순위가 어떻게 달라졌을까?",
+        "PC 한 대에서 보여 주는 실제 탐지와 회사 내부망 감사라는 최종 목표 사이의 거리를 어떤 순서로 좁혀야 할까?"
+      ],
+      "what_if": [
+        "학습을 계속했다면 99% 목표에 매달린 채 PC에서는 여전히 아무 경보도 볼 수 없었을 것이다(추정)."
+      ],
+      "revisit_when": "회사 내부망 여러 호스트로 확장할 때, 수집과 모델 개발의 우선순위를 다시 정할 때"
+    },
+    "resume": {
+      "ko": [
+        "“아무것도 안 되는 것 아니냐”는 사용자 피드백에 모델 학습을 뒤로 미루고 실제 AI 도구 기록 수집·탐지로 방향을 바꿔, 하루 안에 AI 에이전트 2종 실시간 수집과 위험 규칙 경보를 PC에서 동작시킴"
+      ],
+      "en": [
+        "Re-prioritised from model training to live collection and detection after user feedback, getting two AI coding agents streaming signed records and raising risk alerts on the user's PC within one day"
+      ]
+    },
+    "interview": [
+      {
+        "q": "학습 중이던 모델을 왜 뒤로 미뤘나요?",
+        "a_points": [
+          "모델은 증거 문장을 조항에 붙이는 일만 했고 위협 탐지기가 아니었다",
+          "사용자 PC의 어떤 AI 도구도 기록을 보내지 않아 보여 줄 실제 결과가 없었다",
+          "수집과 규칙 탐지가 먼저 있어야 모델이 넘어야 할 기준선도 생긴다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-02",
+      "AM-03",
+      "AM-04",
+      "AM-05",
+      "JM-08"
+    ],
+    "uncertain": [
+      "오너가 고른 카드에 ‘수집·탐지 먼저’ 외에 어떤 선택지가 있었는지는 메모에 남아 있지 않다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-02",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "Claude Code hook 실시간 수집과 기본 위험 규칙 50개",
+    "title_en": "Live Claude Code hook collection and a 50-rule baseline risk pack",
+    "summary": "Claude Code가 도구를 쓰기 직전과 직후에 실행되는 hook이 각 호출을 서명된 기록으로 EvidScope에 보내도록 했다. 대상(경로·명령·URL)까지 담아 기존 사용자 규칙 엔진 위에서 위험 규칙 50개가 경보를 내고, hook은 절대 작업을 막거나 실패시키지 않게 설계했다.",
+    "context": "AM-01에서 수집·탐지를 먼저 하기로 정한 직후의 첫 구현이다. EvidScope에는 서명된 수집 계약, agent·tool 같은 출처 구분, 검토자 작성과 관리자 승인을 거치는 사용자 규칙 엔진이 이미 있었다. 빠진 것은 실제 AI 도구에서 대상까지 담은 기록을 받아 오는 수집기와 민감 행동을 가르는 기본 규칙이었다. 오너는 Claude Code를 실제 업무에 매일 쓰고 있었기 때문에 수집이 붙으면 바로 실제 기록이 흐를 수 있었다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "AM-01 결정 뒤 오너가 Claude Code 설정에 hook을 ‘추가’하는 선택지를 골랐다.",
+      "quote": null
+    },
+    "problem": "기존 개발 수집기는 도구 종류만 남겨 시스템 비밀번호 파일을 읽은 것과 README를 읽은 것을 구분하지 못했다. AI 도구가 무엇을 읽고, 실행하고, 어디로 보냈는지가 기록되지 않아 위험 규칙을 걸 대상이 없었다. 또 hook이 잘못 동작하면 오너가 쓰는 AI 작업 자체가 멈출 수 있었다.",
+    "constraints": [
+      "hook이 AI 작업을 막거나 느리게 하거나 실패시키면 안 됨",
+      "명령 속 비밀번호·토큰은 저장하지 않아야 함",
+      "기록은 오너 PC의 EvidScope에만 저장",
+      "Node.js 내장 모듈만 사용(무의존성), 한글·공백 경로가 hook 명령줄에 들어가지 않게"
+    ],
+    "options": [
+      {
+        "option": "기존 개발 수집기를 그대로 사용",
+        "pros": "추가 작업 없음",
+        "cons": "도구 종류만 남아 대상이 없으므로 위험 규칙을 걸 수 없음",
+        "chosen": false,
+        "reason": "무엇을 읽고 보냈는지 모르면 탐지가 불가능"
+      },
+      {
+        "option": "Claude Code의 실행 전·후 hook으로 대상까지 담은 서명 기록 전송",
+        "pros": "도구 호출마다 행위자·도구·행동 분류·대상·목적지·결과가 남음, 기존 수집 계약과 규칙 엔진 재사용",
+        "cons": "AI 도구 안에서 도는 자기 보고라 독립 관측이 아님",
+        "chosen": true,
+        "reason": "하루 안에 실제 기록과 경보를 볼 수 있는 가장 짧은 길"
+      }
+    ],
+    "decision": {
+      "what": "실행 전 hook은 intent 기록(행위자, 도구, 행동 분류, 대상, 목적지)을, 실행 후 hook은 결과(성공·실패) 기록을 보낸다. hook은 아무것도 출력하지 않고 항상 정상 종료하며 EvidScope가 꺼져 있으면 대기열에 둔다. 위험 규칙 50개를 검토자 작성·관리자 승인으로 올린다.",
+      "why": "탐지에 필요한 대상 정보를 얻으면서도 오너의 AI 작업을 절대 방해하지 않기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "scripts/claude-code-hook.mjs: 실행 전·후 hook, HMAC 서명 수집 요청, 1초 시간 제한, 최대 5MiB 로컬 대기열과 다음 호출 때 최대 20건 재전송",
+      "src/agent-hook-events.mjs: 도구 이름을 행동 분류(셸 실행, 파일 읽기·쓰기, 검색, 웹, MCP 호출, 하위 에이전트)로 바꾸고 대상은 256자, 메모는 1024자로 자름",
+      "명령 속 비밀번호·토큰·인증 헤더·URL 사용자 정보·잘 알려진 키 형식을 가림(최선 노력)",
+      "기록을 agent 출처의 자기 보고로 구분해 도구 출처 실행 기록용 권한·승인 규칙이 잘못 걸리지 않게 함",
+      "data/risk-rules/ai-agent-baseline.json: 자격증명 파일, 자격 탈취, 파괴적 명령, 외부 전송, 보안 설정 변경, 감시 우회 6개 묶음 50개 규칙",
+      "scripts/install-agent-monitoring.mjs: 에이전트를 자산으로 등록, 규칙을 검토자 작성과 관리자 승인(4-eyes)으로 적재, Claude Code 설정을 백업한 뒤 hook만 추가, hook 파일을 ASCII 경로 폴더로 복사",
+      "test/agent-hook-events.test.mjs로 분류·가림·자르기 시험"
+    ],
+    "tech": [
+      "Node.js",
+      "Claude Code hooks (PreToolUse/PostToolUse)",
+      "HMAC-SHA256",
+      "JSONL spool"
+    ],
+    "skills": [
+      "system_architecture",
+      "detection_engineering",
+      "security_architecture",
+      "privacy",
+      "access_control",
+      "operations"
+    ],
+    "metrics": [
+      {
+        "name": "기본 위험 규칙 수",
+        "before": "0",
+        "after": "50",
+        "unit": "개",
+        "scope": "규칙 팩 data/risk-rules/ai-agent-baseline.json",
+        "source": "4b1d35f"
+      },
+      {
+        "name": "hook 대기열 상한",
+        "before": null,
+        "after": "5",
+        "unit": "MiB",
+        "scope": "EvidScope가 꺼져 있을 때 보관하는 기록",
+        "source": "4b1d35f"
+      },
+      {
+        "name": "기록에 남는 정보",
+        "before": "도구 종류만",
+        "after": "행위자·도구·행동 분류·대상·목적지·결과",
+        "unit": null,
+        "scope": "Claude Code 도구 호출 하나",
+        "source": "4b1d35f"
+      }
+    ],
+    "result": "오너가 실제로 쓰는 Claude Code 세션의 도구 호출이 서명 기록으로 흐르기 시작했다. 50개 규칙이 기존 사용자 규칙 엔진에서 경보를 냈고, 이 규칙 수는 이후 56(AM-04), 60(AM-06), 67(AM-12)로 늘었다.",
+    "tradeoffs": [
+      "hook 기록은 AI 도구 안에서 도는 자기 보고라 독립 실행 기록보다 약한 증거",
+      "처음 규칙은 문자열 일부 비교라 플래그 순서 변형과 긴 명령 뒷부분을 놓침(AM-06에서 수정)",
+      "비밀 가림은 최선 노력이며 모든 형식을 보장하지 않음",
+      "AI가 만든 스크립트가 나중에 따로 실행될 때의 행동은 보이지 않음"
+    ],
+    "lessons": [
+      "감시 도구가 감시 대상의 작업을 망가뜨리면 바로 꺼진다. 막지 않고, 출력하지 않고, 항상 정상 종료하는 것이 첫 요구사항이었다.",
+      "출처를 ‘자기 보고’와 ‘독립 실행 기록’으로 나눠 두면 같은 규칙 엔진을 써도 잘못 걸리는 규칙을 피할 수 있다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "hook 자기 보고를 OS 프로세스·네트워크 기록 같은 독립 관측과 교차 확인하지 않는다면, 에이전트가 hook을 우회하는 경우를 어디까지 놓칠까?",
+        "비밀 가림을 최선 노력 대신 허용 목록 방식(알려진 안전 필드만 저장)으로 바꾸면 탐지 정확도와 프라이버시가 어떻게 바뀔까?",
+        "1초 시간 제한과 5MiB 대기열이 회사 규모의 장시간 장애에서도 충분할까?"
+      ],
+      "what_if": [
+        "OpenTelemetry 계측으로만 받으려 했다면 AI 코딩 도구 대부분이 해당 신호를 내지 않아 수집 자체가 늦어졌을 것이다(추정)."
+      ],
+      "revisit_when": "독립 관측(OS·프록시·DNS 기록)을 붙일 때, 또는 hook 기록과 실제 실행이 어긋난 사례가 나올 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 코딩 에이전트(Claude Code)의 모든 도구 호출을 작업을 방해하지 않는 hook으로 서명 수집하고, 6개 범주 50개 위험 규칙과 4-eyes 승인 설치기로 실시간 경보를 구현"
+      ],
+      "en": [
+        "Built a non-blocking Claude Code hook that signs and ships every tool call, with a 50-rule risk pack across 6 categories installed under four-eyes approval"
+      ]
+    },
+    "interview": [
+      {
+        "q": "hook이 AI 작업을 방해하지 않게 어떻게 설계했나요?",
+        "a_points": [
+          "기본은 절대 막지 않고 아무것도 출력하지 않으며 항상 0으로 종료",
+          "1초 시간 제한, EvidScope가 꺼져 있으면 5MiB 대기열에 두었다가 다음 호출 때 전송",
+          "Node 내장 모듈만 써서 의존성 문제를 없애고 ASCII 경로로 복사"
+        ]
+      },
+      {
+        "q": "자기 보고 기록의 한계는 무엇인가요?",
+        "a_points": [
+          "hook은 AI 도구 안에서 돌기 때문에 독립 증거가 아니다",
+          "그래서 출처를 agent로 구분해 독립 실행 기록용 규칙이 걸리지 않게 했다",
+          "교차 확인할 독립 관측은 아직 남은 공백이다"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "4b1d35f"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-01",
+      "AM-03",
+      "AM-04",
+      "AM-06",
+      "AM-13"
+    ],
+    "uncertain": [
+      "설치 직후 첫날 들어온 실제 기록 건수는 메모에 따로 남아 있지 않다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-03",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "대응표 v3: 에이전트 경보를 ISMS-P·인공지능기본법·EU AI Act 항목에 연결",
+    "title_en": "Mapping v3: linking AI agent alerts to ISMS-P, Korean AI Basic Act and EU AI Act items",
+    "summary": "에이전트 위험 규칙의 경보가 어떤 요구사항의 증거도 아니어서 증거 묶음과 홈 거버넌스 집계에서 빠지던 문제를, 서명·digest로 고정한 대응표 v3로 풀었다. 모든 에이전트 위험 경보가 ISMS-P 2.11.3, AI 기본법 제32조·제34조, EU AI Act 12(2)(a)·14(4)(a)의 검토 자료로 세어지고, 외부 전송·보안 도구 변경·로그 조작은 해당 ISMS-P 항목에도 더해진다.",
+    "context": "AM-02로 실제 경보가 나오기 시작했지만, 경보는 콘솔 안에서 ‘위험하다’고만 말했다. 오너는 같은 날 아침 어떤 기준으로 감사를 수행하는지 모르겠다고 말한 상태였다. EvidScope에는 이미 AI 기본법·ISMS-P·EU AI Act 증거 묶음과 버전별 대응표(v1, v2)가 있었고, 거버넌스 매핑 모델의 학습 데이터와 어댑터가 v2 대응표의 digest에 묶여 있었다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "오너가 10-15 아침 99% 목표를 말하면서 감사 기준을 모르겠다고 했고, 경보만으로는 ‘그래서 어느 조항과 관련되나’를 답할 수 없었다.",
+      "quote": "사실 어떤 기준으로 감사를 수행하는지 모르겠어."
+    },
+    "problem": "사용자 규칙 경보는 대응표에 없어서 증거 묶음과 홈의 항목별 증거 수에서 빠졌다. 콘솔은 경보를 보여 줄 뿐 그 경보가 어느 조항을 검토할 때 볼 자료인지 말하지 않았다. 사용자 규칙 코드에는 규칙 버전이 붙어 있어 코드를 정확히 일치시키면 규칙을 고칠 때마다 대응표도 고쳐야 했다.",
+    "constraints": [
+      "대응표는 법 해석이 아니라 사람 검토 전 초안이어야 함(준수 판정 금지)",
+      "이미 학습한 거버넌스 매핑 어댑터·데이터셋의 digest가 바뀌면 안 됨",
+      "예전 증거 묶음이 새 검증기에서도 그대로 통과해야 함"
+    ],
+    "options": [
+      {
+        "option": "경보 코드를 버전까지 정확히 일치시켜 대응표에 등록",
+        "pros": "구현이 단순하고 기존 code 필드 그대로 사용",
+        "cons": "규칙을 고쳐 버전이 오를 때마다 대응표를 새로 만들어야 함",
+        "chosen": false,
+        "reason": "규칙 갱신과 대응표 갱신이 묶이면 운영 부담이 큼"
+      },
+      {
+        "option": "코드 접두어(codePrefix)로 규칙 묶음이나 규칙의 모든 버전을 함께 지정",
+        "pros": "규칙 버전이 바뀌어도 대응표가 그대로 유효",
+        "cons": "검증기와 집계 코드에 접두어 일치를 새로 넣어야 함",
+        "chosen": true,
+        "reason": "규칙 운영과 대응표 버전 관리를 분리할 수 있음"
+      },
+      {
+        "option": "거버넌스 매핑 모델의 카탈로그도 v3로 함께 올림",
+        "pros": "모든 곳이 같은 대응표 버전을 씀",
+        "cons": "학습 데이터와 어댑터의 digest가 바뀌어 기존 학습 결과가 무효가 됨",
+        "chosen": false,
+        "reason": "카탈로그는 v2에 고정(CATALOG_MAPPING_VERSION)"
+      }
+    ],
+    "decision": {
+      "what": "증거 묶음 대응표 v3를 만들어 에이전트 위험 규칙 경보를 codePrefix로 요구사항 항목에 연결하고, 3개 프레임워크 파일을 digest로 고정해 검증기 패키지에도 싣는다. 모델 카탈로그는 v2에 둔다.",
+      "why": "경보가 곧 감사 증거 위치가 되게 하면서 규칙 갱신, 기존 묶음, 학습 결과를 모두 깨지 않기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "data/evidence-pack-mappings/ 아래 ISMS-P, AI 기본법, EU AI Act v3 파일 추가",
+      "모든 에이전트 위험 규칙을 ISMS-P 2.11.3, KR-32-MONITOR, KR-34-RISK, EU AI Act 12(2)(a)·14(4)(a)에 연결",
+      "외부 전송 규칙은 ISMS-P 2.6.7, 보안 도구 변경은 2.10.1, 로그·감시 조작은 2.9.4에도 연결",
+      "src/evidence-pack-frameworks.mjs: 증거 항목이 code 또는 codePrefix를 받도록 하고 checkMapping으로 검사, measure()와 홈 집계가 접두어 일치를 셈",
+      "GET /api/home/finding-requirements와 콘솔 ‘관련 기준’ 칸 추가, ‘증거 위치이지 준수 판정이 아님’ 안내",
+      "같은 날 1dbe574에서 관련 기준 칸을 프레임워크마다 한 줄 항목 번호로 압축",
+      "test/agent-risk-mapping.test.mjs 추가, 검증기 패키지 시험 갱신"
+    ],
+    "tech": [
+      "ISMS-P",
+      "인공지능기본법",
+      "EU AI Act",
+      "DSSE",
+      "in-toto",
+      "SHA-256 digest pinning"
+    ],
+    "skills": [
+      "compliance",
+      "standards_integration",
+      "cryptography_integrity",
+      "documentation",
+      "system_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "에이전트 경보가 증거로 세어지는 요구사항 항목 수",
+        "before": "0",
+        "after": "8(ISMS-P 4, AI 기본법 2, EU AI Act 2)",
+        "unit": "개",
+        "scope": "대응표 v3의 에이전트 위험 규칙 연결",
+        "source": "987223e"
+      },
+      {
+        "name": "경보 하나의 관련 기준 표시 줄 수",
+        "before": "약 20",
+        "after": "프레임워크마다 1",
+        "unit": "줄",
+        "scope": "콘솔 경보 목록",
+        "source": "1dbe574"
+      }
+    ],
+    "result": "에이전트 위험 경보가 증거 묶음과 홈의 항목별 증거에 세어지고, 콘솔이 경보마다 관련 기준을 보여 주게 됐다. 대응표 v3는 digest로 고정되어 검증기가 바이트 단위로 확인하며, 모델 카탈로그는 v2에 남아 학습 결과가 그대로 유효했다. 별도 정확도 수치는 없다.",
+    "tradeoffs": [
+      "대응표는 사람 검토 전 초안이며 법 해석이 아님",
+      "모든 에이전트 경보를 같은 기본 항목에 넓게 연결해, 항목별로 더 세밀한 구분은 하지 않음",
+      "모델 카탈로그(v2)와 증거 묶음 대응표(v3)가 서로 다른 버전을 쓰는 상태를 감수"
+    ],
+    "lessons": [
+      "버전이 붙은 식별자는 접두어로 묶어야 규칙 운영과 대응표 관리가 서로 묶이지 않는다.",
+      "‘증거 위치’와 ‘준수 판정’을 화면과 문서에서 분명히 나눠야 비전문가 사용자가 오해하지 않는다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "모든 에이전트 경보를 2.11.3 같은 넓은 항목에 일괄 연결한 것이, 감사인이 실제로 원하는 세밀도와 맞을까?",
+        "대응표 초안을 사람 전문가가 검토하는 절차를 언제, 누구에게 맡겨야 할까?",
+        "모델 카탈로그를 v2에 고정한 결정이 세션 판정 모델로 옮긴 지금도 필요한가?"
+      ],
+      "what_if": [
+        "코드 정확 일치를 택했다면 AM-06에서 규칙 팩을 v2로 옮길 때 대응표도 새 버전을 내야 했을 것이다."
+      ],
+      "revisit_when": "실제 감사인이 증거 묶음을 검토하고 피드백을 줄 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 에이전트 위험 경보를 ISMS-P·인공지능기본법·EU AI Act 8개 항목에 digest로 고정한 서명 대응표로 연결해, 경보가 곧 감사 증거 위치가 되게 함"
+      ],
+      "en": [
+        "Linked AI-agent risk alerts to 8 ISMS-P, Korean AI Basic Act and EU AI Act items through a digest-pinned mapping table, so every alert lands in the auditor evidence pack"
+      ]
+    },
+    "interview": [
+      {
+        "q": "규칙 버전이 바뀌어도 대응표가 깨지지 않게 어떻게 했나요?",
+        "a_points": [
+          "사용자 규칙 코드에 버전이 붙어 정확 일치는 유지 비용이 큼",
+          "codePrefix로 규칙 묶음이나 규칙의 모든 버전을 지정",
+          "검증기와 집계가 접두어 일치를 같은 방식으로 셈"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "987223e",
+        "1dbe574"
+      ],
+      "docs": [
+        "docs/evidence-pack.md",
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-02",
+      "AM-05",
+      "AM-07",
+      "UX-09",
+      "EL-14",
+      "EL-20",
+      "JM-04"
+    ],
+    "uncertain": [
+      "오너의 ‘감사 기준을 모르겠다’ 발언이 이 작업의 직접 계기였는지, 수집 우선 결정의 약속 1단계(실제 기록을 법·인증 증거로)였는지는 메모상 둘 다 해당한다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-04",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "Codex CLI hook 추가와 업로드 규칙 확장(규칙 56개)",
+    "title_en": "Codex CLI hook and broader upload rules (56 rules)",
+    "summary": "PC의 두 번째 AI 에이전트인 Codex도 Claude Code와 같은 형식의 hook으로 도구 호출을 보내게 했고, 두 hook의 서명·대기열 코드를 공용 실행기로 묶었다. 업로드 방식 4종과 Codex hook·설정 접근 규칙 2개를 더해 규칙이 56개가 됐으며, hook 신뢰는 반드시 오너가 직접 하도록 남겼다.",
+    "context": "AM-01에서 약속한 두 번째 단계다. Claude Code hook(AM-02)은 이미 실제 기록을 보내고 있었지만 Codex는 아무 기록도 남기지 않았다. Codex는 Claude Code와 비슷한 실행 전·후 hook을 지원하지만, 직접 넣지 않은 hook은 사용자가 Codex 안에서 신뢰해야 실행된다. Windows의 Codex 데스크톱 앱과 CLI가 함께 쓰이고 있었다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "오너가 Codex hook ‘추가’를 골랐다. 규칙 쪽은 일부 업로드 방식에 경보가 없다는 점이 함께 드러났다.",
+      "quote": null
+    },
+    "problem": "Codex의 도구 호출은 EvidScope에 남지 않았다. 셸 명령이 인자 목록으로 오거나 파일 수정이 패치 형식으로 와서 Claude Code와 다르게 처리해야 했다. 또 몇 가지 파일 업로드 방식은 외부 전송 규칙에 걸리지 않았고, Codex hook을 끌 수 있는 설정 파일 접근도 감시되지 않았다.",
+    "constraints": [
+      "hook 신뢰·활성화를 오너 대신 하거나 신뢰 확인을 우회하지 않음",
+      "패치 본문 같은 내용은 보내지 않음",
+      "두 hook의 코드 중복을 피해야 함",
+      "Codex의 Windows 샌드박스가 셸을 띄우지 못하는 환경"
+    ],
+    "options": [
+      {
+        "option": "Codex 전용 hook을 따로 작성",
+        "pros": "Codex 형식에 맞춘 자유로운 구현",
+        "cons": "서명·대기열·적체 처리 코드가 두 벌이 되어 고칠 곳이 두 군데",
+        "chosen": false,
+        "reason": "같은 수집 계약을 쓰므로 공용화가 맞음"
+      },
+      {
+        "option": "공용 실행기(src/agent-hook-runner.mjs)와 얇은 에이전트별 래퍼",
+        "pros": "서명·대기열·재전송을 한 곳에서 관리",
+        "cons": "기존 Claude Code hook을 리팩터링해야 함",
+        "chosen": true,
+        "reason": "앞으로 다른 에이전트를 붙일 때도 래퍼만 추가"
+      },
+      {
+        "option": "hook 신뢰 확인을 우회하는 옵션으로 바로 실행",
+        "pros": "오너 손을 거치지 않음",
+        "cons": "AI 도구의 안전 장치를 감사 도구가 무력화하는 셈",
+        "chosen": false,
+        "reason": "신뢰는 반드시 사용자가 하도록 남기기로 함"
+      }
+    ],
+    "decision": {
+      "what": "Codex hook을 같은 기록 형식으로 붙이고, 셸 명령은 인자 목록을 이어 붙여 싣고 파일 패치는 패치가 건드린 파일 이름만 싣는다. hook 신뢰와 활성화는 오너가 Codex 안에서 직접 한다.",
+      "why": "같은 규칙과 원장으로 두 에이전트를 감시하면서 내용 유출과 안전 장치 우회를 피하기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "scripts/codex-hook.mjs 래퍼 추가, 도구 이름을 codex로 기록",
+      "서명·대기열·적체 처리를 src/agent-hook-runner.mjs로 옮겨 두 래퍼가 공유",
+      "src/agent-hook-events.mjs: 셸 인자 목록 이어 붙이기, 패치에서 파일 이름만 추출",
+      "규칙 6개 추가: 업로드 방식 4종, Codex hook 설정·Codex 설정 파일 접근 2개",
+      "설치기에 Codex 옵션 추가, hook 폴더 복사 대상을 공용 모듈까지 확장",
+      "PC 확인: 첫 실제 기록은 실행 후 결과만 왔고, 원인이 실행 전 hook이 꺼져 있던 것이라 오너에게 켜 달라고 안내",
+      "오너가 다시 시도한 뒤 Codex 데스크톱 앱의 실행 전 기록 수신 확인"
+    ],
+    "tech": [
+      "Codex CLI hooks",
+      "Node.js",
+      "HMAC-SHA256"
+    ],
+    "skills": [
+      "detection_engineering",
+      "system_architecture",
+      "operations",
+      "security_architecture",
+      "ai_collaboration"
+    ],
+    "metrics": [
+      {
+        "name": "위험 규칙 수",
+        "before": "50",
+        "after": "56",
+        "unit": "개",
+        "scope": "규칙 팩 data/risk-rules/ai-agent-baseline.json",
+        "source": "f26b4c3"
+      },
+      {
+        "name": "기록을 보내는 AI 에이전트 수",
+        "before": "1",
+        "after": "2",
+        "unit": "개",
+        "scope": "오너 PC",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "오너가 Codex에서 hook을 신뢰하고 실행 전 hook을 켠 뒤 Codex 데스크톱 앱의 실행 전 기록이 들어오는 것을 확인했다. MCP 호출에는 실행 후 기록도 왔지만, 셸 명령에는 실행 후 기록이 오지 않는 현상이 남았다. Codex의 Windows 샌드박스가 셸을 띄우지 못하는 것으로 보인다.",
+    "tradeoffs": [
+      "Codex 셸 명령의 실행 후 기록(성공·실패)이 오지 않아 결과는 확인 불가",
+      "Codex 데스크톱 앱과 VS Code 확장이 같은 hook 설정을 읽는지 확정하지 못함",
+      "샌드박스를 끄고 시험하려던 실행은 자동 모드 안전 분류기가 거부했고 다시 시도하지 않음",
+      "패치 본문을 보내지 않아 패치 내용 기반 탐지는 불가"
+    ],
+    "lessons": [
+      "외부 도구의 안전 장치(hook 신뢰)는 감사 도구라도 대신 넘지 않아야 신뢰를 얻는다.",
+      "‘기록이 왔다’와 ‘탐지에 필요한 기록이 왔다’는 다르다. 실행 후 기록만 오면 대상이 없어 규칙이 걸리지 않는다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "에이전트 종류가 늘어날 때 래퍼 방식이 유지될까, 아니면 공통 hook 스키마(예: OpenTelemetry)로 옮겨야 할까?",
+        "실행 후 기록이 오지 않는 셸 명령은 결과를 어떻게 교차 확인해야 할까?",
+        "hook 신뢰를 사용자에게 맡기는 원칙이 회사 배포에서 관리자 일괄 설정과 어떻게 양립할까?"
+      ],
+      "what_if": [
+        "신뢰 확인을 우회했다면 수집은 몇 시간 빨랐겠지만 감사 도구가 보안 장치를 끄는 사례를 스스로 만들었을 것이다."
+      ],
+      "revisit_when": "Codex의 Windows 샌드박스 문제가 해결되거나 회사 관리형 hook 배포를 설계할 때"
+    },
+    "resume": {
+      "ko": [
+        "두 번째 AI 에이전트(Codex)를 공용 hook 실행기로 같은 서명 기록 형식에 붙이고 업로드 탐지 규칙을 6개 더해 규칙 56개로 확장, hook 신뢰는 사용자 몫으로 남김"
+      ],
+      "en": [
+        "Extended collection to a second agent (Codex) through a shared signed hook runner and grew the risk pack from 50 to 56 rules, leaving hook trust to the user"
+      ]
+    },
+    "interview": [
+      {
+        "q": "Codex에서 실행 전 기록이 오지 않았을 때 어떻게 원인을 찾았나요?",
+        "a_points": [
+          "실행 후 결과 기록만 오는 것을 보고 실행 전 hook 상태를 확인",
+          "신뢰는 됐지만 실행 전 hook이 꺼져 있던 것이 원인",
+          "설정을 대신 고치지 않고 오너에게 켜 달라고 안내한 뒤 수신 확인"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "f26b4c3"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-01",
+      "AM-02",
+      "AM-09",
+      "AM-13"
+    ],
+    "uncertain": [
+      "Codex 셸 명령에 실행 후 기록이 오지 않는 원인이 Windows 샌드박스라는 것은 관찰에 근거한 추정이다(추정).",
+      "Codex 데스크톱 앱이 재시작 없이 hook 설정을 읽은 경위는 확인하지 못했다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-05",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "평가 엔진 v5: 여러 행동을 엮는 순서 규칙 5개와 대응표 v4, 실제 미끼 시연",
+    "title_en": "Evaluation engine v5: five cross-action sequence rules, mapping v4 and a live decoy demo",
+    "summary": "같은 AI 에이전트의 위험 단계를 함께 읽어, 민감 파일 접근 뒤 외부 전송 같은 다섯 가지 행동 순서 패턴을 표시하는 평가 엔진 v5를 만들었다. 오프라인 재생 호환성을 지키도록 입력을 필요한 평가에만 넣었고, 실제 Claude Code로 가짜 자격증명 미끼를 읽고 보내는 시연에서 high 순서 경보가 났다.",
+    "context": "AM-01의 세 번째 약속(여러 행동 이상 탐지)이다. 그 시점 규칙은 도구 호출 하나씩만 판단했고, 여러 행동을 엮는 규칙은 거부 반복 하나뿐이었다. EvidScope의 평가는 결정적이고 엔진 버전과 함께 원장에 서명되어, 검증기가 나중에 같은 결과를 다시 계산(재생)할 수 있어야 했다. 판단 로직을 바꾸면서 이 재현성을 깨지 않는 것이 핵심 제약이었다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "AM-01에서 오너와 약속한 순서의 3단계.",
+      "quote": null
+    },
+    "problem": "자격증명 파일을 읽고 2분 뒤 파일을 외부로 보내도 서로 무관한 경보 두 개일 뿐, 유출 패턴이라고 말해 주는 것이 없었다. 반복되는 파괴적 명령이나 보안 기능을 끈 뒤의 위험 행동도 따로 떨어진 사건처럼 보였다. 평가 입력에 다른 행동 정보를 넣으면 모든 기존 평가의 재생 결과가 달라질 위험이 있었다.",
+    "constraints": [
+      "기존 평가의 오프라인 재생 결과가 바뀌면 안 됨",
+      "평가는 결정적이어야 함(LLM 없음)",
+      "로컬 API 시험 같은 정상 개발 작업이 유출로 보이면 안 됨",
+      "증거 인용은 이 호출의 기록으로 한정"
+    ],
+    "options": [
+      {
+        "option": "모든 평가 입력에 같은 행위자의 관련 단계 요약을 항상 넣기",
+        "pros": "구현 단순",
+        "cons": "위험과 무관한 평가까지 입력이 바뀌어 기존 재생 결과가 모두 달라짐",
+        "chosen": false,
+        "reason": "감사 재현성이 깨짐"
+      },
+      {
+        "option": "이 행동에 위험 단계가 있을 때만 관련 단계 요약(relatedSteps)을 넣고, 재생은 v5라고 적힌 평가에만 입력을 다시 만듦",
+        "pros": "그 밖의 모든 평가는 예전 엔진과 결과가 같음, 엔진 되돌림도 잡을 수 있음",
+        "cons": "재생 로직이 엔진 버전별로 갈라져 복잡해짐",
+        "chosen": true,
+        "reason": "판단 로직 확장과 재현성 유지를 동시에 만족"
+      },
+      {
+        "option": "이 PC 자신에게 보내는 전송도 외부 전송으로 셈",
+        "pros": "규칙이 단순",
+        "cons": "로컬 API 시험이 유출 패턴으로 보임",
+        "chosen": false,
+        "reason": "정상 개발 작업의 오탐을 피하기 위해 제외"
+      }
+    ],
+    "decision": {
+      "what": "src/sequence-rules.mjs에 순서 규칙 5개(high 3, medium 2)를 두고, 위험 단계가 있는 행동의 평가에만 relatedSteps를 넣는다. v5 평가가 원장에 나온 뒤 이전 엔진으로 적힌 평가는 엔진 되돌림(불일치)으로 잡는다. 대응표 v4가 다섯 코드를 같은 기준 항목에 센다.",
+      "why": "행동 순서를 탐지하면서도 감사 재현성과 기존 결과를 지키기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "high 3개: 민감 파일 접근 뒤 30분 안 외부 전송, 보안 기능 해제 뒤 30분 안 위험 행동, 위험 행동 뒤 30분 안 로그·감시 설정 조작",
+      "medium 2개: 10분 안 서로 다른 민감 대상 5곳 이상, 10분 안 파괴적 명령 3번 이상",
+      "평가 입력에 같은 행위자의 창 안 최근 50개 위험 단계 요약을 위험 단계가 있을 때만 추가",
+      "src/policy-replay.mjs: v5 평가에만 입력을 다시 만들고 엔진 되돌림을 불일치로 보고, v5를 모르는 검증기는 engine_unavailable",
+      "메시지는 이 호출의 역할(앞·뒤 단계)과 엮인 다른 행동 수를 알리되 증거는 이 호출의 기록만 인용",
+      "대응표 v4: 다섯 코드를 ISMS-P 2.11.3, AI 기본법 KR-32·KR-34, EU AI Act 12(2)(a)·14(4)(a)에, 연쇄별로 2.6.7·2.9.4·2.10.1에도 연결",
+      "test/sequence-rules.test.mjs(207줄)로 규칙별·한도·재생 왕복·되돌림 시험",
+      "PC 반영 후 가짜 자격증명 미끼 시연을 실제 Claude Code로 실행"
+    ],
+    "tech": [
+      "Node.js",
+      "deterministic policy replay",
+      "ISMS-P",
+      "인공지능기본법",
+      "EU AI Act"
+    ],
+    "skills": [
+      "detection_engineering",
+      "threat_modeling",
+      "cryptography_integrity",
+      "system_architecture",
+      "qa_testing",
+      "compliance"
+    ],
+    "metrics": [
+      {
+        "name": "여러 행동을 엮는 규칙 수",
+        "before": "1",
+        "after": "6(기존 거부 반복 1 + 순서 규칙 5)",
+        "unit": "개",
+        "scope": "평가 엔진",
+        "source": "116140d"
+      },
+      {
+        "name": "미끼 시연에서 난 경보",
+        "before": null,
+        "after": "3(자격증명 접근 high, 데이터 전송 medium, 순서 패턴 high)",
+        "unit": "건",
+        "scope": "PC 실제 Claude Code, 두 번의 실행",
+        "source": "작업 메모"
+      },
+      {
+        "name": "재시작 뒤 실제 개발 기록의 잘못된 경보",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "약 450건의 실제 기록",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "PC 시연이 통과했다. 가짜 자격증명 파일(미끼)을 읽고 존재하지 않는 외부 주소로 데이터를 보내자 자격증명 접근(high), 데이터 전송(medium), 순서 패턴(high, 엮인 다른 행동 1건) 경보가 났다. 무인 실행 Claude가 두 동작을 한 요청으로 묶는 것을 거부해 두 번의 실행으로 나눠 진행했고, 재시작 뒤 실제 개발 기록 약 450건에서 잘못된 경보는 0건이었다.",
+    "tradeoffs": [
+      "위험 규칙에 걸린 단계만 엮으므로 규칙에 없는 중간 단계(예: 압축)는 보지 않음",
+      "같은 행위자끼리만 엮어 서로 다른 AI 도구 사이의 연쇄는 놓침",
+      "정상 개발에서도 걸릴 수 있음(예: 환경 파일 읽은 뒤 AI 설정 수정), 판정이 아니라 검토 신호",
+      "재생 로직이 엔진 버전별로 갈라져 유지 비용 증가"
+    ],
+    "lessons": [
+      "결정적 엔진의 판단을 넓힐 때는 ‘새 입력이 필요한 평가에만 넣는다’는 원칙으로 과거 결과를 지킬 수 있다.",
+      "AI 에이전트 자체가 수상한 요청을 거부하는 경우가 있어, 시연 설계도 실제 에이전트 동작을 고려해야 한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "30분과 10분이라는 시간 창은 실제 공격 속도와 정상 개발 패턴 중 어디에 더 맞춰져 있을까?",
+        "규칙에 걸리지 않은 중간 단계까지 엮으려면 결정적 규칙을 늘려야 할까, 세션 판정 모델에 맡겨야 할까?",
+        "서로 다른 AI 도구 사이의 연쇄를 엮으려면 행위자 대신 무엇(사용자, 호스트, 세션)을 기준으로 삼아야 할까?"
+      ],
+      "what_if": [
+        "모든 평가 입력을 바꿨다면 9월 이후 쌓인 평가 전체가 재생 불일치로 보여 증거 묶음 검증이 무너졌을 것이다(추정)."
+      ],
+      "revisit_when": "실제 세션 데이터에서 순서 규칙의 오탐률이 측정되거나, 여러 호스트·도구를 엮어야 할 때"
+    },
+    "resume": {
+      "ko": [
+        "단일 호출 규칙을 넘어 ‘민감 파일 읽기 뒤 외부 전송’ 같은 행동 순서 5종을 탐지하는 결정적 평가 엔진 v5를 만들고, 감사 재생 호환성을 지킨 채 실제 미끼 시연에서 high 경보, 실제 기록 약 450건 오탐 0을 확인"
+      ],
+      "en": [
+        "Built a deterministic sequence engine (5 cross-action patterns) that keeps offline replay compatible, firing a high alert in a live decoy-exfiltration demo with 0 false alerts on ~450 real records"
+      ]
+    },
+    "interview": [
+      {
+        "q": "판단 로직을 바꾸면서 감사 재현성은 어떻게 지켰나요?",
+        "a_points": [
+          "새 입력은 위험 단계가 있는 평가에만 넣어 다른 평가는 예전과 결과가 같음",
+          "재생은 엔진 버전을 보고 v5 평가에만 입력을 다시 만듦",
+          "v5 평가 뒤에 옛 엔진 평가가 나타나면 되돌림으로 잡음"
+        ]
+      },
+      {
+        "q": "순서 탐지의 한계는 무엇인가요?",
+        "a_points": [
+          "규칙에 걸린 단계만 엮으므로 규칙에 없는 단계는 보지 않음",
+          "같은 행위자 안에서만 엮음",
+          "정상 작업도 걸릴 수 있어 판정이 아닌 검토 신호로 둠"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "116140d"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md",
+        "docs/evidence-pack.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-01",
+      "AM-03",
+      "AM-06",
+      "AM-08",
+      "AM-09",
+      "AM-10",
+      "EL-11"
+    ],
+    "uncertain": [
+      "오너가 직접 시도한 시연 두 번은 Claude Code 세션까지 도달하지 못해, 통과한 시연은 AI 에이전트가 PC에서 대신 실행한 것이다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-06",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "QA 1차: 증거 묶음 생성 실패 해결, 단어 순서 규칙(엔진 v6), 규칙 60개",
+    "title_en": "QA round 1: evidence packs fixed, word-order rules (engine v6), 60 rules",
+    "summary": "PC에서 실제 사용자처럼 EvidScope를 시험해 증거 묶음이 아예 만들어지지 않는 문제, 변형 위험 명령 11건 누락, 평범한 작업 6건 오탐, 호출 하나에 경보 2개를 찾았다. 옛 평가를 위조로 보지 않는 재생 규칙과, 정규식 없이 단어를 순서대로 찾는 words 연산자(엔진 v6)로 고쳐 시험 명령 113/114 정답, 실제 기록 1,767건 새 오탐 0을 만들었다.",
+    "context": "AM-02~AM-05로 수집과 탐지가 하루 만에 붙었지만, 사용자 관점에서 끝까지 써 본 적은 없었다. 오너가 QA를 요청했고, 화면 6개와 API 43개 목록을 만들어 모든 화면을 열고 자동 테스트 전체를 돌렸다. 규칙은 시험 명령으로, 증거 묶음은 AI 기본법·ISMS-P·EU AI Act 세 가지로 실제 생성과 변조 검증을 해 봤다.",
+    "trigger": {
+      "type": "qa",
+      "detail": "오너가 사용자 시점 QA를 요청했다.",
+      "quote": "그럼 QA 좀 진행해봐"
+    },
+    "problem": "PC에서 증거 묶음이 하나도 만들어지지 않았다. 9월 데모 기록 4건이 재생 정보(엔진 ID)가 없던 시절의 평가라 지금 코드로 다시 계산한 값과 달랐고, 이를 위조로 판정해 생성 자체를 거부했다. 규칙은 명령 글자를 일부 비교해 플래그 순서를 바꾼 전송·삭제 명령과 256자를 넘는 긴 명령의 뒷부분 등 변형 11건을 놓쳤고, 예시 환경 파일·공개 인증서·안전한 강제 푸시 옵션·이 PC로 보내는 전송 같은 평범한 작업 6건에 경보를 냈다. 같은 명령이 실행 전·후 기록 때문에 경보 2개를 냈다.",
+    "constraints": [
+      "위조 탐지는 약해지면 안 됨(옛 기록 예외는 원장 앞쪽으로 한정)",
+      "규칙 하나가 분석 전체를 멈추게 하면 안 됨",
+      "규칙 변경은 검토자 작성·관리자 승인을 거쳐야 함",
+      "PC 반영은 파일 해시 대조와 원본 백업을 남김"
+    ],
+    "options": [
+      {
+        "option": "정규식 규칙",
+        "pros": "표현력이 높음",
+        "cons": "과도한 되추적으로 규칙 하나가 분석을 멈추게 할 수 있음, 작성·검토가 어려움",
+        "chosen": false,
+        "reason": "감사 도구의 가용성 위험"
+      },
+      {
+        "option": "기존 contains(글자 일부 비교) 유지하며 규칙만 추가",
+        "pros": "변경 최소",
+        "cons": "플래그 순서·사이 단어 변형을 근본적으로 놓침",
+        "chosen": false,
+        "reason": "QA에서 놓친 11건의 원인 자체"
+      },
+      {
+        "option": "words 연산자: 단어를 순서대로 찾고 대안·와일드카드·부정 단어 지원, 정규식을 만들지 않고 한 번 훑음",
+        "pros": "변형에 강하고 분석을 멈출 위험이 없음, 부정 단어로 예외를 규칙 안에 적을 수 있음",
+        "cons": "새 엔진 버전(v6)과 재생 분기 필요",
+        "chosen": true,
+        "reason": "표현력과 안전성의 균형"
+      },
+      {
+        "option": "옛 평가 불일치를 계속 위조로 판정",
+        "pros": "가장 엄격",
+        "cons": "재생 정보가 없던 시절의 정상 기록 때문에 증거 묶음을 영원히 만들 수 없음",
+        "chosen": false,
+        "reason": "원장 앞쪽 옛 기록만 재계산 불가로 보고하고 그 뒤 불일치는 여전히 위조로 잡기로 함"
+      }
+    ],
+    "decision": {
+      "what": "재생 정보가 있는 첫 평가보다 앞선 옛 평가는 차이와 함께 ‘옛 엔진이라 재계산 불가’로 보고한다. 규칙은 words 연산자(엔진 v6)로 옮겨 규칙 팩 v2(60개)로 바꾸고, words 규칙은 호출당 한 번(실행 전 기록)만 건다.",
+      "why": "위조 탐지 강도를 유지하면서 실제 증거 묶음을 만들 수 있게 하고, 규칙의 누락과 오탐을 함께 줄이기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "src/policy-replay.mjs: 옛 평가를 not_replayable(사유 legacy_engine_unrecorded)로 보고, 메타데이터가 있는 기록 뒤에 빠진 기록은 여전히 불일치",
+      "src/rule-words.mjs(69줄) words 연산자와 test/rule-words.test.mjs(138줄)",
+      "규칙 팩 v2: 60개 규칙을 words로 이전, 4개 추가(브라우저 저장 비밀번호, 방화벽 끄기, 명령 기록 지우기, 순서를 바꾼 삭제)",
+      "부정 단어로 이 PC로 보내는 전송 같은 예외를 규칙 안에 표현, 대문자가 든 단어만 대소문자 구분",
+      "설치기가 필드·연산자까지 비교해 달라진 규칙만 새 버전으로 올림",
+      "콘솔: 규칙 편집기 words 선택, 규칙 표 줄바꿈, 아이콘 내장, 틀린 토큰 안내 문구 수정(UX-10)",
+      "테스트가 Windows 경로에서도 돌도록 수정",
+      "PC에 바뀐 파일 21개를 해시 대조로 반영, 원본 백업 후 재시작"
+    ],
+    "tech": [
+      "Node.js",
+      "deterministic policy replay",
+      "DSSE",
+      "in-toto"
+    ],
+    "skills": [
+      "qa_testing",
+      "detection_engineering",
+      "cryptography_integrity",
+      "performance_optimization",
+      "operations",
+      "user_feedback"
+    ],
+    "metrics": [
+      {
+        "name": "시험 명령 정답",
+        "before": "76/94",
+        "after": "113/114",
+        "unit": "건",
+        "scope": "위험 명령과 평범한 개발 명령 시험 세트(수정 중 20개 추가)",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "놓친 변형 위험 명령",
+        "before": "11",
+        "after": "0",
+        "unit": "건",
+        "scope": "QA 시험 세트",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "평범한 작업의 잘못된 경보",
+        "before": "6",
+        "after": "0",
+        "unit": "건",
+        "scope": "QA 시험 세트",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "새 규칙의 실제 기록 오탐",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "PC 실제 기록 1,767건에 미리 적용",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "증거 묶음 생성·검증",
+        "before": "0/3",
+        "after": "3/3",
+        "unit": "종",
+        "scope": "AI 기본법·ISMS-P·EU AI Act, 원장 7,064건 서명·재계산 일치, 변조 사본·다른 키는 실패",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "호출 하나당 경보 수",
+        "before": "2",
+        "after": "1",
+        "unit": "개",
+        "scope": "words 규칙",
+        "source": "3bd926b"
+      },
+      {
+        "name": "위험 규칙 수",
+        "before": "56",
+        "after": "60",
+        "unit": "개",
+        "scope": "규칙 팩 v2",
+        "source": "3bd926b"
+      },
+      {
+        "name": "자동 테스트 통과",
+        "before": null,
+        "after": "1,537(실패 0, 외부 도구 없어 17개 건너뜀)",
+        "unit": "개",
+        "scope": "컨테이너 전체",
+        "source": "QA 보고서(10-15)"
+      }
+    ],
+    "result": "시험 명령은 76/94에서 113/114로 올랐고, 남은 1건은 코딩 명령 속 HTML 표기를 로그 주입으로 본 문제였다(AM-08에서 해결). 새 규칙을 실제 기록 1,767건에 적용했을 때 새 오탐은 0건이었고, 증거 묶음 3종이 생성·검증을 통과했으며 한 바이트 바꾼 사본과 다른 키는 실패했다. PC에서 새 규칙 60개가 활성, 옛 규칙 56개는 은퇴 상태가 됐고 규칙마다 검토자 시험과 관리자 승인 기록이 남았다.",
+    "tradeoffs": [
+      "규칙은 여전히 문자열 기반이라 변수·인코딩으로 감춘 명령은 놓칠 수 있음",
+      "옛 평가는 재계산 불가로 남아 그 부분의 재생 증명은 약함",
+      "재시작 직후에는 새 기록이 없어 실제 경보로 새 규칙을 바로 확인하지 못함"
+    ],
+    "lessons": [
+      "사용자 시점 QA는 단위 테스트가 놓친 ‘아예 동작하지 않는’ 기능(증거 묶음)을 찾아낸다.",
+      "규칙 언어를 고를 때 표현력보다 ‘규칙 하나가 시스템을 멈출 수 없음’이 감사 도구에선 더 중요하다.",
+      "엄격한 검증에도 과거 데이터에 대한 명시적 예외 경계가 필요하다. 경계 밖은 그대로 엄격하게."
+    ],
+    "reflection": {
+      "open_questions": [
+        "114개 시험 명령은 실제 공격 변형의 얼마를 대표할까? 시험 세트를 어떻게 키워야 정답률에 의미가 생길까?",
+        "words 연산자로 표현하기 어려운 탐지가 늘어나면 정규식 대신 어떤 안전한 표현 방식을 더해야 할까?",
+        "옛 평가를 재계산 불가로 두는 대신 9월 데모 데이터를 원장에서 분리했다면 감사 관점에서 더 깔끔했을까?"
+      ],
+      "what_if": [
+        "정규식을 택했다면 표현력은 늘었겠지만 악의적이거나 실수한 규칙 하나가 분석 적체를 일으킬 위험을 감수해야 했을 것이다."
+      ],
+      "revisit_when": "규칙 수가 크게 늘거나, 인코딩·변수로 감춘 명령 우회 사례가 실제로 나올 때"
+    },
+    "resume": {
+      "ko": [
+        "사용자 시점 QA로 놓친 변형 명령 11건·오탐 6건·증거 묶음 생성 실패를 찾아, 정규식 없는 단어 순서 규칙 엔진으로 시험 정답 76/94를 113/114로, 실제 기록 1,767건 새 오탐 0을 달성"
+      ],
+      "en": [
+        "Ran user-style QA that surfaced 11 missed command variants, 6 false alerts and a broken evidence pack; a regex-free word-order rule engine raised accuracy from 76/94 to 113/114 with 0 new false alerts on 1,767 real records"
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 정규식 대신 자체 연산자를 만들었나요?",
+        "a_points": [
+          "정규식은 과도한 되추적으로 규칙 하나가 분석을 멈추게 할 수 있음",
+          "words는 정규식을 만들지 않고 단어를 한 번 훑어 그 위험이 없음",
+          "순서·대안·와일드카드·부정 단어로 QA에서 놓친 변형과 오탐을 대부분 처리"
+        ]
+      },
+      {
+        "q": "증거 묶음이 만들어지지 않던 원인과 해결은?",
+        "a_points": [
+          "재생 정보가 없던 시절의 데모 평가 4건을 위조로 판정",
+          "재생 정보가 있는 첫 평가보다 앞선 기록만 재계산 불가로 보고",
+          "그 뒤 기록의 불일치는 여전히 위조로 잡아 탐지 강도 유지"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "3bd926b"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md",
+        "docs/evidence-layer.md"
+      ],
+      "notes": [
+        "QA 보고서(10-15)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-05",
+      "AM-07",
+      "AM-08",
+      "UX-10",
+      "EL-11",
+      "EL-20"
+    ],
+    "uncertain": [
+      "QA 보고서의 ‘시험 범위’ 절에는 자동 테스트 1,554개가 적혀 있는데, 이는 이후 콘솔 작업 뒤 수치로 보이며 1차 수정 시점의 통과 수는 1,537개다(추정)."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-07",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "증거 묶음과 OCSF 내보내기: 에이전트 경보를 감사인과 SIEM으로",
+    "title_en": "Evidence packs and OCSF export: taking agent alerts to auditors and SIEMs",
+    "summary": "에이전트 위험 경보가 대응표 v3·v4를 통해 AI 기본법·ISMS-P·EU AI Act 감사인용 증거 묶음에 들어가고, 같은 발견사항을 OCSF Detection Finding으로 내보낼 수 있게 이어졌다. 새 출력 경로를 만들지 않고 10월 초에 만든 증거 묶음·OCSF 경로에 에이전트 경보를 연결한 것으로, PC에서 증거 묶음 3종 생성·검증까지 확인했다.",
+    "context": "EvidScope는 10-06에 ‘SIEM이 아니라 AI 에이전트 행동 증거 계층’으로 방향을 바꾸면서, 상관분석 대신 기존 SIEM이 읽는 OCSF로 내보내는 경로(bd70c54)를 만들었다. 10-08에는 감사인이 오프라인으로 검증하는 증거 묶음(4737888)이 생겼다. 10-15에 에이전트 경보가 생기자, 이 경보를 감사인과 보안팀이 이미 쓰는 도구로 넘길 수 있는지가 남은 질문이었다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "수집 우선 결정의 1단계(실제 기록을 법·인증 증거로)의 연장으로, 대응표 v3·v4와 QA 1차 수정 뒤 출력 경로를 점검했다.",
+      "quote": null
+    },
+    "problem": "경보가 EvidScope 화면 안에만 있으면 감사인과 보안팀이 기존 도구에서 쓸 수 없다. 대응표 v3 전에는 에이전트 경보가 증거 묶음에 들어가지 않았고, QA 1차 전에는 PC에서 증거 묶음 생성 자체가 실패했다.",
+    "constraints": [
+      "SIEM의 상관분석·UEBA를 새로 만들지 않음",
+      "Amazon Security Lake 사용자 정의 소스는 OCSF 1.3까지만 받음",
+      "증거 묶음은 운영자를 믿지 않고 오프라인 검증기로 다시 계산 가능해야 함"
+    ],
+    "options": [
+      {
+        "option": "EvidScope에 상관분석·UEBA 같은 SIEM 기능을 직접 구현",
+        "pros": "한 도구에서 모든 분석",
+        "cons": "이미 흔한 기능이고 제품의 강점(검증 가능한 증거)과 무관",
+        "chosen": false,
+        "reason": "10-06 방향 전환에서 직렬화만 하기로 정함"
+      },
+      {
+        "option": "OCSF 1.9.0을 기본 출력으로",
+        "pros": "AI 에이전트 필드와 무결성 증명 필드를 담을 수 있음",
+        "cons": "Security Lake 사용자 소스가 받지 못함",
+        "chosen": false,
+        "reason": "1.9.0은 선택으로 두고 1.3.0을 기본으로"
+      },
+      {
+        "option": "기존 증거 묶음·OCSF 경로에 대응표로 에이전트 경보를 연결",
+        "pros": "새 형식 없이 기존 검증 경로를 그대로 사용",
+        "cons": "에이전트 고유 맥락은 OCSF 확장 필드에만 담김",
+        "chosen": true,
+        "reason": "만들지 않고 연결한다는 증거 계층 원칙과 일치"
+      }
+    ],
+    "decision": {
+      "what": "에이전트 경보는 대응표 v3·v4로 증거 묶음에 세고, OCSF는 1.3.0 기본·1.9.0 선택으로 각 발견사항이 원장 위치와 체크포인트를 가리키게 내보낸다.",
+      "why": "감사인과 SIEM 사용자가 기존 도구에서 받으면서도 EvidScope 원장으로 돌아와 다시 검증할 수 있게 하기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "대응표 v3(987223e)로 에이전트 위험 규칙 경보, v4(116140d)로 순서 패턴 경보를 증거 묶음 항목에 연결",
+      "QA 1차(3bd926b)에서 옛 평가 때문에 막혀 있던 증거 묶음 생성을 해결",
+      "OCSF 내보내기(bd70c54): 발견사항마다 테넌트·행동·평가·원장 번호·해시·체크포인트를 확장 필드에 실음",
+      "GET /api/export/ocsf와 scripts/export-ocsf.mjs(검증 후 NDJSON)로 출력",
+      "PC에서 증거 묶음 3종 생성과 오프라인 검증, 변조 사본과 다른 키 실패 확인"
+    ],
+    "tech": [
+      "OCSF Detection Finding 1.3.0/1.9.0",
+      "Amazon Security Lake",
+      "DSSE",
+      "in-toto Statement v1",
+      "NDJSON"
+    ],
+    "skills": [
+      "standards_integration",
+      "compliance",
+      "cryptography_integrity",
+      "system_architecture"
+    ],
+    "metrics": [
+      {
+        "name": "증거 묶음 생성·검증 통과",
+        "before": "0/3",
+        "after": "3/3",
+        "unit": "종",
+        "scope": "PC, AI 기본법·ISMS-P·EU AI Act, 원장 7,064건 서명·재계산 일치",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "지원 OCSF 버전",
+        "before": null,
+        "after": "2(1.3.0 기본, 1.9.0 선택)",
+        "unit": "개",
+        "scope": "Detection Finding(2004) 출력",
+        "source": "bd70c54"
+      }
+    ],
+    "result": "PC에서 에이전트 경보를 포함한 증거 묶음 3종이 생성·검증을 통과했고, 한 바이트 바꾼 사본과 다른 키는 실패했다. OCSF 출력은 발견사항마다 원장 위치·체크포인트를 가리켜 SIEM 사용자가 돌아와 다시 검증할 수 있다. 다만 PC에서 에이전트 경보를 OCSF로 실제 내보낸 기록은 찾지 못했다.",
+    "tradeoffs": [
+      "상관분석·UEBA·SOAR는 만들지 않고 SIEM에 맡김",
+      "OCSF 1.3.0 기본 출력에는 1.9.0의 무결성 증명 필드가 없음",
+      "에이전트 경보의 OCSF 출력은 실제 SIEM에 넣어 본 적 없음"
+    ],
+    "lessons": [
+      "출력 경로를 처음부터 표준 형식으로 만들어 두면 새 탐지 기능이 생겨도 연결만 하면 된다.",
+      "‘내보낼 수 있다’와 ‘실제로 내보내 확인했다’를 기록에서 구분해야 한다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "에이전트 행동 맥락(도구, 세션, 순서 패턴)을 OCSF 확장 필드 대신 표준 필드로 표현할 방법이 생기면 어떻게 옮겨야 할까?",
+        "실제 SIEM(Splunk, Sentinel, Security Lake)에 넣었을 때 분석가가 원장으로 돌아와 검증하는 흐름이 정말 쓰일까?",
+        "증거 묶음을 실제 감사인이 받았을 때 가장 먼저 부족하다고 느낄 정보는 무엇일까?"
+      ],
+      "what_if": [
+        "EvidScope 안에 상관분석을 만들었다면 SIEM과 경쟁하게 되어 증거 계층이라는 차별점이 흐려졌을 것이다(추정)."
+      ],
+      "revisit_when": "회사 SIEM과 실제로 연동하거나 감사인에게 증거 묶음을 처음 제출할 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 에이전트 경보를 서명된 감사인 증거 묶음(3개 규제 프레임워크, 원장 7,064건 재계산 일치)과 OCSF 표준 형식으로 내보내 기존 감사·SIEM 흐름에 연결"
+      ],
+      "en": [
+        "Routed AI-agent alerts into signed auditor evidence packs for 3 frameworks (7,064 ledger records re-verified) and OCSF Detection Findings for existing SIEMs"
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 OCSF 1.3을 기본으로 했나요?",
+        "a_points": [
+          "Amazon Security Lake 사용자 정의 소스가 1.3까지만 받음",
+          "1.9.0은 AI 에이전트·무결성 증명 필드가 있어 선택으로 제공",
+          "두 버전 모두 확장 필드로 원장 위치·체크포인트를 실어 다시 검증 가능"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "bd70c54",
+        "4737888",
+        "987223e",
+        "116140d",
+        "3bd926b"
+      ],
+      "docs": [
+        "docs/evidence-layer.md",
+        "docs/evidence-pack.md"
+      ],
+      "notes": [
+        "QA 보고서(10-15)"
+      ]
+    },
+    "related": [
+      "AM-03",
+      "AM-05",
+      "AM-06",
+      "EL-06",
+      "EL-11",
+      "EL-20"
+    ],
+    "uncertain": [
+      "PC에서 에이전트 경보를 OCSF로 실제 내보낸 기록은 없다.",
+      "이 항목은 새 커밋이 아니라 이전 경로들의 연결을 정리한 것이어서 날짜는 연결이 완성된 10-15로 잡았다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-08",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": null,
+    "status": "done",
+    "title": "QA 2차: 합성 기록 분리와 엔진 v7(코딩 도구 명령 속 코드 표기 무시)",
+    "title_en": "QA round 2: separating synthetic records and engine v7 (ignoring markup in coding-agent commands)",
+    "summary": "경보 70개 중 63개가 9월 데모 데이터라 실제 경보가 묻히던 문제를, 자산에 ‘합성’ 표시를 두고 보기에서만 나누는 방식으로 풀었다. 평가 엔진 v7은 AI 코딩 도구가 실행한 명령 속 HTML·스크립트 표기를 로그 주입으로 보지 않게 해, PC 경보가 실제 6건과 합성 63건으로 분리되고 로그 주입 오탐이 0이 됐다.",
+    "context": "QA 1차(AM-06) 뒤에도 세 가지가 남아 있었다. 경보 목록에 데모 경보가 섞여 있었고, 시험 명령 1건(웹 코드를 검색하는 평범한 명령)이 로그 주입 경보로 떴으며, 보존 화면이 무거웠다. 오너가 바로 고치라고 해 같은 날 저녁 2차 수정과 PC 반영이 이어졌다. 서명 원장은 지울 수 없으므로 데모 데이터를 삭제하는 길은 처음부터 막혀 있었다.",
+    "trigger": {
+      "type": "qa",
+      "detail": "QA 1차에서 남긴 문제를 오너가 고치라고 지시했다.",
+      "quote": "고쳐"
+    },
+    "problem": "경보 70개 중 63개가 9월 데모 데이터라 실제 경보와 섞여 보였다. 웹 코드를 검색하거나 다루는 코딩 에이전트의 평범한 명령에 HTML·스크립트 표기가 들어 있으면 ‘로그 주입 의심’ 경보가 떴고, PC 실제 기록 2건이 그렇게 걸려 있었다.",
+    "constraints": [
+      "서명 원장과 평가는 바꾸거나 지우지 않음",
+      "기록을 보내는 출처가 스스로 합성 표시를 할 수 없어야 함",
+      "감사자를 노린 실제 주입 시도 신호는 남겨야 함",
+      "엔진 변경은 재생 호환을 지켜야 함"
+    ],
+    "options": [
+      {
+        "option": "데모 데이터와 그 경보를 삭제",
+        "pros": "화면이 가장 깨끗함",
+        "cons": "서명 원장의 삭제 거부 원칙과 충돌",
+        "chosen": false,
+        "reason": "원장은 그대로 두고 보기 분류만 함"
+      },
+      {
+        "option": "검토자가 등록하는 자산에 합성 표시를 두고, 행동의 모든 기록이 합성 자산에서 온 경우만 합성으로 보기 분류",
+        "pros": "원장 불변, 출처가 스스로 표시할 수 없음",
+        "cons": "새로 설치해 데모를 돌리면 자산이 없는 일부 데모 기록은 실제 쪽에 보임",
+        "chosen": true,
+        "reason": "증거 무결성을 지키며 실제 경보를 분리"
+      },
+      {
+        "option": "로그 주입 규칙에서 HTML 표기 신호를 전부 제거",
+        "pros": "오탐이 사라짐",
+        "cons": "코딩 도구가 아닌 기록에 들어온 실제 주입 시도도 놓침",
+        "chosen": false,
+        "reason": "누가 실행했나(코딩 도구)와 누구를 노리나(감사자)를 나눠 오탐만 줄임"
+      }
+    ],
+    "decision": {
+      "what": "자산에 synthetic 표시를 추가하고 경보 목록·현황이 실제와 합성을 나눠 세며 기본은 실제만 보여 준다. 엔진 v7은 AI 코딩 도구 명령 안의 코드 표기를 로그 주입 신호로 보지 않되, 감사자에게 지시하는 문장과 다른 기록의 표기는 계속 잡는다.",
+      "why": "원장을 건드리지 않고 실제 경보만 보이게 하며, 코딩 에이전트에게 일상인 HTML 문자열 때문에 생기는 오탐을 없애기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "자산 등록에 synthetic 표시 추가, scripts/demo.mjs가 데모 자산을 합성으로 등록",
+      "경보 목록에 data=real|synthetic 필터, 현황은 합성 경보를 따로 셈, 콘솔 기본은 실제 기록",
+      "PC의 9월 데모 자산을 합성으로 표시하는 스크립트와 되돌리기 옵션 제공",
+      "엔진 v7: 코딩 도구 명령이 있는 행동의 평가에만 agentCommands 입력을 넣고, 재생도 v7 평가에만 다시 만듦, v7 뒤 옛 엔진은 불일치",
+      "보존 화면 API를 전체 대신 건수와 앞쪽 200건으로 줄이고 무결성 결과를 한 줄 요약(UX-11)",
+      "test/agent-command-notes.test.mjs, test/synthetic-records.test.mjs 추가",
+      "PC에 파일 14개를 해시 대조로 반영하고 원본 백업"
+    ],
+    "tech": [
+      "Node.js",
+      "deterministic policy replay"
+    ],
+    "skills": [
+      "qa_testing",
+      "detection_engineering",
+      "data_quality",
+      "cryptography_integrity",
+      "user_feedback"
+    ],
+    "metrics": [
+      {
+        "name": "실제 보기의 경보 구성",
+        "before": "70(그중 데모 63)",
+        "after": "실제 6 + 합성 63(합성은 기본 보기에서 분리)",
+        "unit": "건",
+        "scope": "PC EvidScope 경보 목록",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "로그 주입 오탐",
+        "before": "2",
+        "after": "0",
+        "unit": "건",
+        "scope": "PC 실제 기록",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "자동 테스트 통과",
+        "before": "1,537",
+        "after": "1,541(실패 0)",
+        "unit": "개",
+        "scope": "컨테이너 전체",
+        "source": "QA 보고서(10-15)"
+      },
+      {
+        "name": "보존 화면 응답 크기",
+        "before": "913",
+        "after": "103",
+        "unit": "KB",
+        "scope": "PC 보존 API",
+        "source": "QA 보고서(10-15)"
+      }
+    ],
+    "result": "PC 경보 69개가 실제 6개와 합성 63개로 나뉘었다. 실제 6개는 모두 PC의 Claude Code 기록에서 나온 위험 탐지(자격증명 읽기, 데이터를 붙인 외부 전송, 민감 접근 뒤 외부 전송 순서 패턴 2개, AI 도구 설정·hook 파일 변경)였고 로그 주입 오탐은 0이었다. 실제 기록 2건은 다시 분석되어 경보가 사라졌지만 옛 평가 이력은 원장에 그대로 남았고, 컨테이너 테스트 1,541개가 실패 없이 통과했다.",
+    "tradeoffs": [
+      "새로 설치해 데모를 돌리면 미등록 서비스로 만든 OTLP 데모 기록 3건은 합성으로 표시할 자산이 없어 실제 쪽에 보임",
+      "코딩 도구 명령 속 코드 표기를 통째로 무시하므로, 코딩 도구를 통한 표기 기반 주입은 이 규칙으로는 잡지 않음(감사자 지시 문장은 계속 잡음)",
+      "보존 화면은 전체 원장 검증 때문에 여전히 약 2초"
+    ],
+    "lessons": [
+      "지울 수 없는 원장에서는 데이터 정리 대신 ‘보기 분류’로 문제를 풀어야 하고, 그 분류 권한은 기록을 보낸 출처가 아니라 검토자에게 둬야 한다.",
+      "오탐을 줄일 때 ‘누가 실행했나’와 ‘누구를 노리나’를 분리하면 진짜 신호를 남길 수 있다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "코딩 도구 명령 속 표기를 무시한 규칙이 나중에 프롬프트 주입 경로(도구 결과에 숨은 지시)와 겹칠 때 놓치는 것은 없을까?",
+        "합성 표시를 자산 단위가 아니라 기록 단위로 했다면 섞인 행동을 더 정확히 나눌 수 있었을까?",
+        "데모 데이터를 아예 별도 테넌트로 두는 설계가 처음부터 더 나았을까?"
+      ],
+      "what_if": [
+        "데모 데이터를 별도 테넌트로 분리해 두었다면 합성 표시 기능 없이도 실제 경보가 깨끗했을 것이다(추정)."
+      ],
+      "revisit_when": "합성 기록과 실제 기록이 한 행동에 섞이는 사례가 나오거나, 코딩 도구 경유 주입 시도가 관찰될 때"
+    },
+    "resume": {
+      "ko": [
+        "서명 원장을 지우지 않고 데모 경보 63건을 보기 분류로 분리하고 코딩 도구의 정상 코드 문자열 오탐을 엔진 v7로 제거해, PC 경보를 실제 6건만 남기고 로그 주입 오탐 0을 달성"
+      ],
+      "en": [
+        "Separated 63 demo alerts from 6 real ones without touching the signed ledger and removed markup false positives in coding-agent commands (engine v7), bringing log-injection false alerts to 0"
+      ]
+    },
+    "interview": [
+      {
+        "q": "지울 수 없는 원장에서 데모 데이터를 어떻게 정리했나요?",
+        "a_points": [
+          "삭제 대신 자산 단위 합성 표시로 보기만 분류",
+          "행동의 모든 기록이 합성 자산에서 올 때만 합성",
+          "출처가 스스로 합성 표시를 할 수 없게 해 악용 방지"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "d8ac206"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "QA 보고서(10-15)",
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-05",
+      "AM-06",
+      "UX-11"
+    ],
+    "uncertain": [
+      "로그 주입 오탐 ‘전 2건’은 QA 보고서가 다시 분석되어 경보가 사라졌다고 적은 실제 기록 수다. 실제 보기에서 그 전에 몇 건이 보였는지는 따로 적혀 있지 않다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-09",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-15",
+    "date_end": "2026-10-16",
+    "status": "done",
+    "title": "지난 행동 가져오기와 엔진 v8",
+    "title_en": "Importing past agent actions from local transcripts and engine v8",
+    "summary": "hook 설치 전의 AI 행동을 AI 도구가 PC에 남긴 대화 기록에서 읽어, hook이 그때 보냈을 것과 같은 기록으로 소급 수집했다. 도구 이름과 대상만 보내고 내용은 보내지 않았으며, 같은 id를 써서 실시간 기록과 중복되지 않게 했다. Claude Code 78세션의 도구 호출 4,216건에서 6,237건이 새로 저장됐다.",
+    "context": "AM-02·AM-04로 실시간 수집은 됐지만 hook 설치 전 몇 달간의 AI 행동은 감사 대상이 아니었다. 오너는 같은 시기 콘솔 개편(UX-12)을 요청하면서 지난 행동이 감사되지 않는다는 점도 지적했다. Claude Code와 Codex는 각자 대화 기록 파일을 PC에 남기지만, 그 파일에는 프롬프트·답·도구 출력 등 민감한 내용이 함께 들어 있다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "오너가 실시간 수집 이전의 지난 행동이 감사되지 않는다고 지적했다(콘솔 개편 요청과 함께).",
+      "quote": null
+    },
+    "problem": "hook은 설치 뒤의 도구 호출만 본다. 그 전 행동은 대화 기록 파일에만 있었고, 그 파일을 그대로 넣으면 프롬프트와 파일 내용까지 감사 도구로 들어가 새 유출 경로가 된다. 또 가져온 기록은 원래 늦게 접수되므로 기존 엔진이 기록마다 ‘늦은 증거’ 경보를 내고, 실시간으로 이미 받은 호출과 중복될 수 있었다.",
+    "constraints": [
+      "프롬프트·AI 답·도구 출력·파일 내용·패치 본문은 보내지 않음",
+      "실시간 hook 기록과 중복되면 안 되고 hook 기록이 우선",
+      "여러 번 실행해도 안전해야 함",
+      "약한 증거라는 사실을 숨기지 않음"
+    ],
+    "options": [
+      {
+        "option": "대화 기록 파일 원문을 그대로 수집",
+        "pros": "맥락이 풍부",
+        "cons": "프롬프트·출력·파일 내용이 감사 도구로 들어가 프라이버시와 유출 위험",
+        "chosen": false,
+        "reason": "hook과 같은 최소 정보 원칙 유지"
+      },
+      {
+        "option": "hook이 보냈을 것과 같은 기록(도구 이름·대상·성공 여부)만 같은 id로 전송",
+        "pros": "실시간 기록과 형식·id가 같아 중복이 자동으로 걸러짐, 같은 규칙이 그대로 적용",
+        "cons": "사용자가 고칠 수 있는 파일을 나중에 읽은 것이라 약한 증거",
+        "chosen": true,
+        "reason": "프라이버시와 중복 방지를 함께 만족"
+      },
+      {
+        "option": "자산 등록 시점을 과거로 당겨 ‘당시 정책 미확인’ 경보를 없앰",
+        "pros": "경보가 줄어 보기 좋음",
+        "cons": "당시 정책이 없었다는 사실을 숨기는 것",
+        "chosen": false,
+        "reason": "정직한 공백으로 남기기로 함"
+      }
+    ],
+    "decision": {
+      "what": "가져오기 스크립트가 대화 기록에서 도구 호출을 읽어 hook과 같은 기록을 같은 세션·호출 id로 보내고, 기록에 사후 수집 표시를 붙인다. 엔진 v8은 사후 수집 기록에 기록마다 늦은 증거 경보를 내지 않되 늦었다는 사실은 기록에 남긴다.",
+      "why": "과거 행동을 감사 범위에 넣으면서 내용 유출, 중복, 경보 홍수를 피하고 증거 강도를 정직하게 밝히기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "scripts/import-agent-history.mjs와 src/agent-history.mjs(227줄): Claude Code 대화 기록과 Codex rollout 파일 읽기",
+      "실행 전 기록과, 결과가 있으면 실행 후 기록(성공·실패만)을 hook과 같은 형식·서명 요청으로 전송",
+      "기록에 사후 수집 표시(agent 출처만, 이 값만 허용)를 두고 콘솔이 구분하도록 함",
+      "중복 처리: 같은 내용은 중복, hook이 이미 보낸 id는 충돌로 ‘이미 있음’, hook 대기열에 있는 id는 보내지 않음",
+      "dry-run, 기간·개수 제한, 하위 에이전트 기본 제외 옵션",
+      "엔진 v8: 사후 수집 기록이 있는 행동의 평가에만 입력을 넣고 재생도 v8 평가에만 다시 만듦",
+      "test/agent-history.test.mjs, test/history-import-engine.test.mjs 추가",
+      "PC에서 dry-run 확인 뒤 Claude Code 기록 가져오기 실행(10-16 새벽)"
+    ],
+    "tech": [
+      "Node.js",
+      "JSONL transcripts",
+      "HMAC-SHA256",
+      "deterministic policy replay"
+    ],
+    "skills": [
+      "privacy",
+      "data_quality",
+      "system_architecture",
+      "operations",
+      "documentation",
+      "user_feedback"
+    ],
+    "metrics": [
+      {
+        "name": "가져온 도구 호출",
+        "before": null,
+        "after": "4,216",
+        "unit": "건",
+        "scope": "Claude Code 78세션, 06-30 이후",
+        "source": "작업 메모"
+      },
+      {
+        "name": "새로 저장된 기록",
+        "before": null,
+        "after": "6,237",
+        "unit": "건",
+        "scope": "같은 가져오기",
+        "source": "작업 메모"
+      },
+      {
+        "name": "이미 실시간으로 있던 기록",
+        "before": null,
+        "after": "2,195",
+        "unit": "건",
+        "scope": "같은 가져오기(중복 없이 ‘이미 있음’ 처리)",
+        "source": "작업 메모"
+      },
+      {
+        "name": "거부된 기록",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "같은 가져오기",
+        "source": "작업 메모"
+      },
+      {
+        "name": "당시 정책 미확인(medium) 경보",
+        "before": null,
+        "after": "약 395",
+        "unit": "건",
+        "scope": "자산 등록 전 외부 목적지를 쓴 과거 호출",
+        "source": "작업 메모"
+      },
+      {
+        "name": "자동 테스트 통과",
+        "before": "1,541",
+        "after": "1,554(실패 0)",
+        "unit": "개",
+        "scope": "콘솔 개편과 함께, 컨테이너 전체",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "10-16 새벽 Claude Code 기록 가져오기에서 06-30 이후 78개 세션의 도구 호출 4,216건이 처리되어 6,237건이 새로 저장되고 2,195건은 이미 실시간으로 있어 건너뛰었으며 거부는 0건이었다. 자산 등록 전 외부 접속에 대한 ‘당시 정책 미확인’ 경보가 약 395건 났고, 이는 위협이 아니라 정직한 공백으로 남겼다. 과거 기록에서도 일부 high 발견사항이 나왔다.",
+    "tradeoffs": [
+      "사후 수집 기록은 사용자가 고칠 수 있는 파일을 나중에 읽은 것이라 hook 기록보다 약한 증거",
+      "Claude Code가 오래된 대화 기록을 지우므로 남아 있는 범위까지만 소급 가능",
+      "Codex 가져오기는 오너가 직접 실행하도록 안내만 했고 실행 결과 기록은 없음",
+      "Codex 형식은 공개 구조를 본뜬 합성 시험 자료로만 확인"
+    ],
+    "lessons": [
+      "소급 수집은 실시간 수집과 같은 id 체계를 쓰면 중복 제거가 저장소의 기존 규칙만으로 해결된다.",
+      "보기 좋게 만들려고 시점을 조작하지 않는 것이 감사 도구의 신뢰를 지킨다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "약한 증거인 사후 수집 기록을 증거 묶음에서 실시간 기록과 다르게 가중해야 할까?",
+        "약 395건의 ‘당시 정책 미확인’ 경보를 사람이 한 번에 처리할 수 있는 묶음 방식은 무엇일까?",
+        "대화 기록이 지워지기 전에 주기적으로 가져오는 것이 프라이버시 원칙과 충돌하지 않을까?"
+      ],
+      "what_if": [
+        "등록 시점을 과거로 당겼다면 경보는 줄었겠지만, 감사인이 원장을 재생할 때 정책이 소급 적용된 흔적이 남아 신뢰가 떨어졌을 것이다(추정)."
+      ],
+      "revisit_when": "Codex 기록 가져오기를 실행하거나, 감사인이 사후 수집 기록의 증거 효력을 묻을 때"
+    },
+    "resume": {
+      "ko": [
+        "hook 설치 이전 AI 행동 4,216건을 대화 원문 없이 메타데이터만으로 소급 수집해 6,237건 저장·2,195건 중복 자동 제거·거부 0을 달성하고, ‘약한 증거’와 정책 공백을 숨기지 않고 표시"
+      ],
+      "en": [
+        "Back-filled 4,216 pre-hook agent tool calls from local transcripts as metadata only (6,237 records stored, 2,195 duplicates skipped, 0 rejected), flagging them as weaker after-the-fact evidence"
+      ]
+    },
+    "interview": [
+      {
+        "q": "실시간 기록과 소급 기록의 중복은 어떻게 막았나요?",
+        "a_points": [
+          "대화 기록의 세션 id·호출 id를 그대로 써 hook 기록과 기록 id가 같게 함",
+          "저장소의 출처별 id 검사로 같은 내용은 중복, 다른 내용은 충돌로 ‘이미 있음’",
+          "hook 대기열에 있는 id는 보내지 않아 여러 번 실행해도 안전"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "9e0fb18",
+        "181a8d6"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-02",
+      "AM-04",
+      "AM-05",
+      "UX-12"
+    ],
+    "uncertain": [
+      "오너의 지적은 영어 요약 메모로만 남아 있어 원문 인용은 없다.",
+      "과거 기록의 high 발견사항 건수는 메모에 예시만 있고 총수는 없다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-10",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-16",
+    "date_end": null,
+    "status": "done",
+    "title": "채점 답안: 설계로 정답이 정해진 위협 시나리오로 규칙을 채점",
+    "title_en": "Answer key: scoring the rules on threat scenarios whose labels are fixed by design",
+    "summary": "위협 10개와 정상 7개 시나리오를 실시간 수집과 같은 형식의 합성 기록으로 만들어 위험 규칙과 순서 규칙에 통과시키고 세션 단위로 채점하는 채점 답안 v1을 만들었다. 규칙만으로 위협 재현율 1.0, 완전 정상 오탐 0, 알려진 과탐 3건이라는 기준선이 생겼고, 이후 보지 않은 유형 210세션에서 위협 120건을 규칙이 모두 잡았지만 설계상 정상인 60세션에도 경보를 냈다.",
+    "context": "10-15까지 탐지 성능은 시험 명령 114개와 실제 기록 오탐 수로만 말할 수 있었다. 10-16 오너는 채점 답안, 학습, SIEM 사건화를 한 단계 더 나아가게 하라고 했고 실행은 Opus 에이전트에게 맡겼다. 거버넌스 매핑 모델은 위협 탐지기가 아니었기 때문에, 세션 단위로 위협을 판정하는 새 모델 과제를 정의하려면 먼저 그 모델이 넘어야 할 규칙 기준선이 필요했다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "10-16 오너가 채점 답안·학습·SIEM 사건화를 진전시키라고 요청하고 실행을 에이전트에게 맡겼다. 상세 계획 문서에 데이터 범위·99% 기준·SIEM 범위·학습 시점 네 가지 결정이 걸려 있었다.",
+      "quote": null
+    },
+    "problem": "규칙이 실제로 위협을 얼마나 잡고 정상 작업에 얼마나 잘못 거는지를 세션 단위 숫자로 말할 수 없었다. 실제 공격 기록은 PC에 없고, 모아도 라벨(정답)에 대한 논쟁이 생긴다. 학습 모델이 규칙보다 나은지 판단할 기준선도 없었다.",
+    "constraints": [
+      "실제 공격 기록 없이 채점해야 함",
+      "시나리오 기록은 실시간 hook과 같은 형식이어야 같은 규칙을 그대로 통과",
+      "공격 모양의 명령은 파일 안에만 두고 대화·문서에는 유형과 개수로만 서술",
+      "Store 없이 순수 평가 함수로 돌아야 함(PC 외 환경에서도 실행)"
+    ],
+    "options": [
+      {
+        "option": "실제 공격·사고 기록을 모아 라벨링",
+        "pros": "현실성",
+        "cons": "PC에 실제 공격이 없고, 라벨 논쟁과 개인정보 문제",
+        "chosen": false,
+        "reason": "정답이 생성 시점에 정해지는 설계 시나리오가 라벨 논쟁을 없앰"
+      },
+      {
+        "option": "설계로 정답이 정해진 위협·정상 시나리오를 hook 형식 합성 기록으로 생성해 채점",
+        "pros": "정답이 명확하고 재현 가능, 규칙과 모델을 같은 잣대로 비교",
+        "cons": "설계한 위협 유형 안에서만 의미가 있음",
+        "chosen": true,
+        "reason": "라벨 논쟁 없이 기준선을 숫자로 확보"
+      }
+    ],
+    "decision": {
+      "what": "catalog.json에 위협 10개(유출, 방어 회피, 감사 변조, 파괴, 대량 수집 유형, Claude Code와 Codex 1개)와 정상 7개(완전 정상 4, 알려진 규칙 과탐 3)를 두고, 생성기와 세션 채점기로 규칙+순서 기준선을 잰다.",
+      "why": "세션 판정 모델이 넘어야 할 기준선을 정답 논쟁 없이 숫자로 만들기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "data/threat-scenarios/v1/catalog.json: 17개 시나리오, 각 단계는 hook 실행 전 기록 형식, 유형은 대응표 v4 코드와 정렬",
+      "src/threat-scenarios.mjs: 운영 규칙 팩 v2를 그대로 활성화해 합성 기록을 평가하고 세션 단위로 채점",
+      "scripts/threat-scenarios.mjs: 기준선 점수와 시나리오별 기록 파일 생성 명령",
+      "test/threat-scenarios.test.mjs 6개 시험",
+      "이후 197adbc에서 같은 경보에 맥락별로 정답이 다른 대조 시나리오 13개를 추가하고 위협 단계는 원본 카탈로그를 참조만 하게 해 중복·누수를 막음",
+      "보지 않은 유형으로 이루어진 210세션 시험에서 규칙 기준선을 측정"
+    ],
+    "tech": [
+      "Node.js",
+      "synthetic scenario generation",
+      "session-level scoring"
+    ],
+    "skills": [
+      "dataset_design",
+      "ml_evaluation",
+      "detection_engineering",
+      "threat_modeling",
+      "data_quality"
+    ],
+    "metrics": [
+      {
+        "name": "기준선 위협 재현율",
+        "before": null,
+        "after": "1.0",
+        "unit": null,
+        "scope": "채점 답안 v1의 위협 10개, 규칙+순서",
+        "source": "1e2a524"
+      },
+      {
+        "name": "기준선 순서 패턴 재현율",
+        "before": null,
+        "after": "1.0",
+        "unit": null,
+        "scope": "채점 답안 v1",
+        "source": "1e2a524"
+      },
+      {
+        "name": "완전 정상 시나리오 오탐",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "완전 정상 4개",
+        "source": "1e2a524"
+      },
+      {
+        "name": "알려진 규칙 과탐",
+        "before": null,
+        "after": "3",
+        "unit": "건",
+        "scope": "자기 프로젝트 환경 파일 읽기, 자기 AI 설정 읽기, 자기 브랜치 강제 푸시",
+        "source": "1e2a524"
+      },
+      {
+        "name": "보지 않은 유형 세션의 위협 탐지",
+        "before": null,
+        "after": "120/120",
+        "unit": "건",
+        "scope": "210세션, 규칙만",
+        "source": "작업 메모"
+      },
+      {
+        "name": "설계상 정상인데 규칙이 경보를 낸 세션",
+        "before": null,
+        "after": "60",
+        "unit": "건",
+        "scope": "같은 210세션",
+        "source": "작업 메모"
+      },
+      {
+        "name": "규칙만의 세션 판정 정답률",
+        "before": null,
+        "after": "70",
+        "unit": "%",
+        "scope": "같은 210세션",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "규칙+순서 기준선은 위협 재현율 1.0, 순서 패턴 재현율 1.0, 판정·유형 정확도 1.0, 완전 정상 오탐 0이었고, 알려진 과탐 3건이 위반으로 걸렸다. 보지 않은 유형 210세션에서는 규칙이 위협 120건을 모두 잡았지만 설계상 정상인 세션 60건에도 경보를 내, 규칙만의 정답률은 70%였다. 이 60건이 이후 세션 판정 모델이 줄여야 할 몫이 됐다.",
+    "tradeoffs": [
+      "점수는 설계한 위협 유형 안에서만 의미가 있음",
+      "합성 기록이라 실제 세션의 잡음·길이를 다 반영하지 못함",
+      "라벨이 경보 코드 조합과 강하게 연결되어, 이후 감사에서 모델 없이 코드 몇 개만 무시해도 만점이 나오는 지름길이 드러남(JM-12)"
+    ],
+    "lessons": [
+      "정답을 생성 시점에 고정하면 라벨 논쟁 없이 규칙과 모델을 같은 잣대로 비교할 수 있다.",
+      "답안이 탐지 결과의 단순 함수가 되면 모델이 ‘판단’ 대신 지름길을 배운다. 같은 경보에 맥락별로 정답이 다른 대조 문제가 필요하다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "설계한 위협 유형 밖의 실제 위협에 대해 이 채점 답안의 점수는 얼마나 예측력이 있을까?",
+        "실제 PC 정상 세션을 익명화해 정상 쪽 채점에 넣는다면 규칙의 오탐률은 얼마로 나올까?",
+        "시나리오 수를 늘리는 것과 대조 시나리오를 늘리는 것 중 어느 쪽이 모델 평가에 더 도움이 될까?"
+      ],
+      "what_if": [
+        "처음부터 대조 시나리오를 넣었다면 첫 세션 판정 모델의 ‘1.0’ 결과가 지름길이라는 사실을 더 일찍 알았을 것이다(추정)."
+      ],
+      "revisit_when": "PC 배포 후 실제 세션 오탐률이 측정되거나, 새 위협 유형을 추가할 때"
+    },
+    "resume": {
+      "ko": [
+        "정답이 설계로 고정된 위협·정상 시나리오 채점기를 만들어, 규칙만으로 보지 않은 210세션의 위협 120건을 모두 잡지만 정상 60세션에 오경보를 낸다는 기준선(정답률 70%)을 숫자로 확보"
+      ],
+      "en": [
+        "Built a scenario answer key with design-fixed labels, establishing a rules-only baseline that caught 120/120 threats in 210 unseen sessions but flagged 60 benign ones (70% accuracy)"
+      ]
+    },
+    "interview": [
+      {
+        "q": "실제 공격 데이터 없이 탐지 성능을 어떻게 쟀나요?",
+        "a_points": [
+          "정답이 생성 시점에 정해지는 위협·정상 시나리오를 설계",
+          "실시간 hook과 같은 형식의 합성 기록으로 운영 규칙을 그대로 통과",
+          "세션 단위로 재현율·오탐을 채점해 모델이 넘어야 할 기준선 확보"
+        ]
+      },
+      {
+        "q": "이 방식의 약점은?",
+        "a_points": [
+          "설계한 유형 안에서만 점수가 의미 있음",
+          "라벨이 경보 코드와 묶여 지름길이 생길 수 있었고 감사에서 실제로 드러남",
+          "대조 시나리오와 누수 검사로 보완"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "1e2a524",
+        "197adbc"
+      ],
+      "docs": [],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-05",
+      "AM-11",
+      "JM-09",
+      "JM-10",
+      "JM-11",
+      "JM-12"
+    ],
+    "uncertain": [
+      "210세션에서 규칙이 경보를 낸 정상 세션 수는 1라운드 메모에서는 60건, 감사 후 재학습 메모에서는 63건으로 다르다. 세션 구성이 회차마다 달랐던 것으로 보인다(추정).",
+      "오너의 10-16 요청 원문은 메모에 요약으로만 남아 있다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-11",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-17",
+    "date_end": null,
+    "status": "done",
+    "title": "경보 처리 원칙: 규칙이 1선, 모델은 2선",
+    "title_en": "Alert handling principle: rules first, models second",
+    "summary": "적대적 감사에서 학습 모델이 ‘에이전트가 자기 기록 설정을 고친’ 세션 3건을 정상으로 지운 것이 드러나자, 모델은 규칙 경보를 지울 수 없고 우선순위만 낮출 수 있다는 처리 원칙을 코드로 고정했다. 보안 해제·민감 접근 후 외부 전송 같은 연쇄와 읽기가 아닌 기록 변조는 낮추지도 못하는 보호 경보이며, 이후 판정 오케스트라에서는 경보를 낮추려면 두 판정 모델이 모두 동의해야 한다.",
+    "context": "10-17 오전 첫 세션 판정 LoRA가 ‘처음 보는 60세션에서 1.0’을 냈지만, 오너가 요청한 적대적 감사에서 이 결과가 누수와 지름길로 설명됐다(JM-12). 같은 감사에서 PC 탐침 시험 중 모델이 자기 설정을 고친 세션을 모두 정상으로 판정했다. 그 뒤 오너는 성능·자원·난이도를 함께 본 ‘최고의 오케스트라’ 계획을 요구했고, 놓치면 안 되는 일은 결정적 코드가, 오탐 정리는 모델이 맡는 구조가 채택됐다.",
+    "trigger": {
+      "type": "adversarial_audit",
+      "detail": "오너가 학습과 판정의 오류를 최대한 비판적으로 찾으라고 요청한 적대적 감사에서, 학습 모델이 자기 기록 설정을 고친 세션 3건을 정상으로 지웠다.",
+      "quote": "적대적 감사 해보고 학습이랑 판정에서 어떤 오류가 있는지 최대한 비판적으로 제시해봐"
+    },
+    "problem": "모델 판정을 그대로 최종 결과로 쓰면, 모델이 틀릴 때 확실한 위협 경보까지 사라진다. 실제로 감사 탐침에서 모델은 감사 설정 변조 세션을 정상으로 지웠다. 또 모델이 조항까지 적게 하면 근거 없는 조항이 붙을 수 있었고, 규칙이 못 본 위협을 모델만 찾았을 때 처리 방법도 정해져 있지 않았다.",
+    "constraints": [
+      "확실한 위협은 모델 오류와 무관하게 경보로 남아야 함",
+      "모델의 가치는 규칙 오탐 감소에 둠",
+      "조항은 서명된 대응표에서만 계산",
+      "1인 개발, 12GB GPU 한 대에서 돌릴 수 있는 구조"
+    ],
+    "options": [
+      {
+        "option": "모델 판정을 최종 결과로 사용(정상이면 경보 삭제)",
+        "pros": "오탐이 가장 크게 줄어듦",
+        "cons": "모델이 틀리면 확실한 위협도 사라짐, 감사에서 실제로 발생",
+        "chosen": false,
+        "reason": "놓치면 안 되는 것을 확률 모델에 맡길 수 없음"
+      },
+      {
+        "option": "모델은 경보를 지우지 못하고 우선순위만 낮춤, 일부 경보는 보호",
+        "pros": "위협 누락을 구조적으로 막고 모델은 오탐 정리에만 기여",
+        "cons": "보호 경보에 속한 정상 세션은 계속 경보로 남음",
+        "chosen": true,
+        "reason": "탐지 책임은 결정적 코드에 두기로 함"
+      },
+      {
+        "option": "판정 모델 하나의 의견으로 경보를 낮춤",
+        "pros": "호출 비용이 적음",
+        "cons": "한 모델의 오판이 그대로 반영",
+        "chosen": false,
+        "reason": "오케스트라에서는 두 판정 모델이 모두 동의해야 낮춤"
+      }
+    ],
+    "decision": {
+      "what": "src/session-disposition.mjs: 모델은 경보를 low로만 낮출 수 있고, 보안 기능 해제, 민감 접근 후 외부 전송, 보안 해제 후 행동, 읽기가 아닌 기록 변조와 위험 후 변조 연쇄는 보호 경보로 낮출 수 없다. 규칙이 못 본 세션을 모델이 위반이라 하면 사람 검토 항목이 된다. src/judge-orchestra.mjs: 첫 판정 모델이 모든 세션을 보고, 두 번째 모델은 필요할 때만 부르며, 낮추려면 둘 다 동의해야 한다. 조항은 대응표에서 계산한다.",
+      "why": "놓치면 안 되는 것은 결정적 코드(규칙·순서·내용 검사·대응표)가 맡고 모델은 오탐 감소에만 쓰기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "src/session-disposition.mjs(51줄): 처리 함수와 보호 경보 판정, 읽기 행동의 설정 접근은 낮출 수 있게 구분",
+      "scoreDispositions: 위협이 경보로 남는 비율, 위협이 낮춰진 비율, 규칙이 걸린 정상 세션 중 낮춰진 비율, 보호로 막힌 수를 함께 계산",
+      "모델 출력은 판정·유형·증거 행동 id만 받도록 하고 조항은 대응표로 계산",
+      "src/judge-orchestra.mjs(67줄): 첫 판정(JEV-9B)이 모든 세션, 위반·기권·규칙 경보를 정상이라 할 때만 두 번째 판정(Qwen3-4B) 호출",
+      "모델만 찾은 발견에는 유형 수준 조항 후보만 붙임",
+      "273c4d1에서 ‘주입 문구 뒤 위험 행동’ 연쇄도 보호 경보에 추가",
+      "test/session-disposition.test.mjs, test/judge-orchestra.test.mjs 추가"
+    ],
+    "tech": [
+      "Node.js",
+      "QLoRA judge models (JEV-9B, Qwen3-4B)",
+      "signed mapping table"
+    ],
+    "skills": [
+      "security_architecture",
+      "llm_security",
+      "decision_making",
+      "ml_evaluation",
+      "system_architecture",
+      "adversarial_testing"
+    ],
+    "metrics": [
+      {
+        "name": "모델이 낮춘 위협 세션",
+        "before": null,
+        "after": "0",
+        "unit": "건",
+        "scope": "감사 후 재학습 모델, 보지 않은 7개 유형 210세션",
+        "source": "작업 메모"
+      },
+      {
+        "name": "자기 설정을 고친 세션의 처리",
+        "before": "3건 모두 정상으로 지워짐",
+        "after": "high 경보로 유지(보호 경보)",
+        "unit": null,
+        "scope": "감사 탐침 세션",
+        "source": "197adbc"
+      },
+      {
+        "name": "오케스트라 코드 시험 정답(원래 임계값)",
+        "before": null,
+        "after": "350/350",
+        "unit": "세션",
+        "scope": "2회차 판정 출력, 보지 않은 유형·변형",
+        "source": "작업 메모"
+      },
+      {
+        "name": "오케스트라 코드 시험 정답률(검증 보정 임계값)",
+        "before": null,
+        "after": "71",
+        "unit": "%",
+        "scope": "같은 출력, JEV 기권이 많아 병목",
+        "source": "작업 메모"
+      },
+      {
+        "name": "두 번째 판정 호출 비율",
+        "before": null,
+        "after": "87",
+        "unit": "%",
+        "scope": "같은 시험, 350세션 중 305세션에 규칙 발견이 있어서",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "이 원칙에서는 규칙이 잡는 한 위협은 항상 경보로 남고, 감사에서 지워졌던 설정 변조 세션 3건은 high로 남는다. 감사 후 재학습 모델은 위협을 하나도 낮추지 않았다. 판정 오케스트라를 2회차 출력으로 시험하니 원래 임계값에서는 350/350이었지만 검증으로 보정한 임계값에서는 JEV 기권이 많아 71%에 그쳐, JEV 보정이 다음 회차의 과제가 됐다.",
+    "tradeoffs": [
+      "보호 경보 범주의 정상 세션(예: 정상적인 보안 설정 변경)은 모델이 맞혀도 경보로 남음",
+      "두 모델 동의를 요구해 오탐 정리 비율이 한 모델보다 낮을 수 있음",
+      "규칙이 아예 못 본 위협은 모델 의견이 있어도 사람 검토로만 감",
+      "오케스트라 전체 실행은 학습 회차가 끝난 뒤로 미룸(JM-23)"
+    ],
+    "lessons": [
+      "모델의 역할을 ‘판정’이 아니라 ‘우선순위 조정’으로 제한하면 모델 오류의 최악 영향을 코드로 묶을 수 있다.",
+      "적대적 감사의 탐침 몇 건이 전체 지표보다 설계상의 위험을 더 잘 드러낸다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "두 모델 동의를 요구하는 대신 비용 가중 투표를 했다면 오탐 정리와 위협 누락이 어떻게 바뀌었을까?",
+        "보호 경보 목록은 누가, 어떤 근거로 늘리거나 줄여야 할까?",
+        "규칙이 못 본 세션을 모델만 위반이라 할 때 사람 검토 부담이 실제 운영에서 감당할 만한 수준일까?"
+      ],
+      "what_if": [
+        "모델 판정을 최종 결과로 썼다면 감사 탐침의 설정 변조 3건처럼 확실한 위협이 화면에서 사라졌을 것이다."
+      ],
+      "revisit_when": "PC 배포 후 실제 세션에서 보호 경보의 오탐 비율과 사람 검토 건수가 측정될 때"
+    },
+    "resume": {
+      "ko": [
+        "학습 모델이 감사 설정 변조 세션 3건을 정상으로 지운 감사 결과를 바탕으로 ‘모델은 경보를 지우지 못하고, 보호 경보는 낮추지도 못하며, 낮추려면 두 모델이 동의’하는 처리 원칙을 코드로 강제해 위협 경보 누락 0을 구조적으로 보장"
+      ],
+      "en": [
+        "Encoded a rules-first handling policy after an audit showed a model clearing 3 audit-tampering sessions: models may only lower alerts, protected alerts cannot be lowered, and lowering needs two judges to agree"
+      ]
+    },
+    "interview": [
+      {
+        "q": "왜 모델이 경보를 지우지 못하게 했나요?",
+        "a_points": [
+          "감사 탐침에서 모델이 설정 변조 세션을 정상으로 지움",
+          "확실한 위협 탐지는 결정적 규칙의 책임으로 두고 모델은 오탐 정리만",
+          "일부 연쇄와 변조는 낮추지도 못하는 보호 경보"
+        ]
+      },
+      {
+        "q": "두 판정 모델의 역할 분담은?",
+        "a_points": [
+          "첫 판정 모델이 모든 세션을 먼저 봄",
+          "위반·기권·규칙 경보를 정상이라 할 때만 두 번째 모델 호출",
+          "경보를 낮추려면 두 모델이 모두 동의해야 하고 조항은 대응표가 계산"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "197adbc",
+        "bace6c6",
+        "273c4d1"
+      ],
+      "docs": [],
+      "notes": [
+        "작업 메모",
+        "적대적 감사 문서(비공개)"
+      ]
+    },
+    "related": [
+      "AM-10",
+      "AM-12",
+      "AM-13",
+      "JM-12",
+      "JM-13",
+      "JM-14",
+      "JM-19",
+      "JM-23"
+    ],
+    "uncertain": [
+      "오케스트라 계획에는 ‘판정이 엇갈리면 사람 검토, 기권이면 더 엄격한 상태 유지’도 적혀 있지만, 코드에서 그 규칙이 정확히 같은 형태로 구현됐는지는 이 항목에서 따로 확인하지 않았다.",
+      "처리 원칙이 오너가 고른 오케스트라 계획의 일부이므로 decided_by를 joint로 적었다. 원칙 자체의 초안은 감사 고칠 순서에서 AI 에이전트가 제안했다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-12",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-17",
+    "date_end": null,
+    "status": "done",
+    "title": "평가 엔진 v9: LLM 보안 신호, 작업 범위, 에이전트 간섭 규칙(규칙 67개), 대응표 v5",
+    "title_en": "Evaluation engine v9: LLM security signals, agent scope and interference rules (67 rules), mapping v5",
+    "summary": "hook이 AI가 읽는 글(도구 결과, 선택적으로 사용자 프롬프트)을 메모리에서 검사해 신호의 종류·개수·글자 수·해시만 보내게 하고, 엔진 v9가 이를 간접 주입·비밀/개인정보 전송·‘주입 문구 뒤 위험 행동’ 연쇄 같은 발견사항으로 바꾸게 했다. 실행 전 기록에 권한 모드·샌드박스·작업 폴더 밖 접근을 붙였고, 다른 에이전트 간섭 4개와 EvidScope 수집 중단 3개 규칙을 더해 규칙이 67개가 됐다.",
+    "context": "10-17 기준 남은 공백은 프롬프트 주입·탈옥·목표 탈취, 결과 속 민감 데이터, 다른 에이전트 간섭, EvidScope 기록 삭제·수집 중단이었다. hook은 도구 호출의 대상만 보고 프롬프트나 도구 결과는 보지 않았다. 오너가 고른 오케스트라 계획의 작업 순서가 ‘엔진 v9와 새 규칙, 작업 범위 기록, 차단 기능, 그다음 PC 반영’이었다. 같은 날 오너는 최종 목표가 PC가 아니라 회사 내부망 감사라고 밝혔고, 에이전트의 작업 폴더·권한·샌드박스 모드는 그 목표에서 빠진 항목으로 꼽혀 있었다.",
+    "trigger": {
+      "type": "plan",
+      "detail": "오케스트라 계획의 구현 순서 첫 단계였고, 오너가 밝힌 회사 내부망 감사 목표에서 빠진 항목(에이전트 작업 범위 기록)과 남은 공백 목록이 함께 근거가 됐다.",
+      "quote": "PC 뿐만이 아니라 내부망, 즉 회사나 내부 vpc 내에서 감사를 하는 게 목적"
+    },
+    "problem": "웹 페이지·파일·MCP 응답에 숨은 지시가 에이전트를 움직여도 EvidScope는 알 수 없었다. 비밀 값이나 개인정보가 AI 서비스로 넘어가는 것도 보이지 않았다. 다른 AI 에이전트의 전역 지시 파일·MCP 설정을 바꾸거나 다른 에이전트 프로세스를 끄는 행동, EvidScope 수집을 멈추는 행동에 대한 규칙이 없었다. 에이전트가 승인 확인을 끈 모드에서 일했는지, 작업 폴더 밖을 고쳤는지도 기록에 없었다.",
+    "constraints": [
+      "글 원문을 내보내면 감사 도구가 새 유출 경로가 되므로 원문 전송 금지",
+      "모델 없이 결정적으로 동작해야 하고 재생 호환을 지켜야 함",
+      "프로젝트 안의 정상 작업(지시 파일 수정, 프로세스 조회, 개발 서버 종료)은 걸리면 안 됨",
+      "사용자 프롬프트 검사는 기본으로 켜지 않음"
+    ],
+    "options": [
+      {
+        "option": "프롬프트·도구 결과 원문을 수집해 서버에서 분석",
+        "pros": "분석 자유도 높음",
+        "cons": "감사 도구가 새 유출 경로가 됨",
+        "chosen": false,
+        "reason": "라벨·개수·해시만 보내기로 함"
+      },
+      {
+        "option": "학습된 프롬프트 검사 모델로 주입·탈옥 판정",
+        "pros": "표현 변형에 강할 수 있음",
+        "cons": "PC 검사 서비스 구성과 검증이 필요, 결정적 재생 불가",
+        "chosen": false,
+        "reason": "지금은 정해진 패턴 검사로 하고, 학습 없이 쓰는 검사 모델은 별도 단계로 둠"
+      },
+      {
+        "option": "hook 메모리 안에서 정해진 패턴으로 검사하고 신호 라벨·개수·글자 수·SHA-256만 전송",
+        "pros": "원문이 PC 밖은 물론 EvidScope에도 남지 않음, 결정적이라 재생 가능",
+        "cons": "프롬프트 주입을 설명하는 글도 신호가 됨, 패턴 밖 변형은 놓침",
+        "chosen": true,
+        "reason": "프라이버시와 재현성을 지키면서 공백을 메움, 모두 검토 신호로 취급"
+      }
+    ],
+    "decision": {
+      "what": "src/agent-content-signals.mjs가 7종 신호(지시 변경 문구, 가짜 역할 표식, 보이지 않는 문자, 비밀 값 형식, 고유식별번호, 카드 번호, 연락처 다수)를 세고, src/content-rules.mjs(엔진 v9)가 이를 발견사항과 ‘주입 문구 뒤 30분 안 위험 행동’(high) 연쇄로 바꾼다. 실행 전 기록에 권한 모드·샌드박스·승인 정책·작업 폴더 밖 접근을 싣는다. 규칙 팩 v3과 대응표 v5를 낸다.",
+      "why": "원문을 한 글자도 내보내지 않고 LLM 보안 공백과 에이전트 간섭·수집 중단 공백을 결정적 코드로 메우기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    "actions": [
+      "src/agent-content-signals.mjs(152줄): 도구 결과(기본 켜짐)와 사용자 프롬프트(설치 옵션으로만)를 최대 262,144자까지 메모리에서 검사",
+      "src/content-rules.mjs(131줄): 간접 주입, 프롬프트 무시 문구, 숨은 글자, 비밀·개인정보가 AI 서비스로 전송됨, 주입 뒤 위험 행동, 승인 확인을 끈 모드의 위험 행동, 작업 폴더 밖 파일 수정 등 새 발견사항 코드 10개",
+      "src/agent-hook-events.mjs: 실행 전 기록에 Claude Code 권한 모드, Codex 샌드박스·승인 정책, 작업 폴더 밖 절대 경로 접근 표시",
+      "규칙 팩 v3: 다른 에이전트 간섭 4개(전역 지시 파일, MCP 설정, 다른 에이전트 프로세스 종료 2형태)와 EvidScope 수집 중단 3개 추가",
+      "대응표 v5: 새 발견사항을 ISMS-P 2.11.3, AI 기본법 KR-32·KR-34, EU AI Act 12(2)(a)·14(4)(a)에 셈",
+      "재생: v9 평가에만 입력을 다시 만들고, v9 뒤 옛 엔진은 불일치",
+      "테스트: content-rules(238줄), agent-content-signals, agent-interference-rules",
+      "273c4d1: 이 신호를 담은 위협·대조 시나리오 18개를 채점 답안에 추가"
+    ],
+    "tech": [
+      "Node.js",
+      "SHA-256",
+      "Luhn check",
+      "Unicode tag/bidi detection",
+      "ISMS-P",
+      "인공지능기본법",
+      "EU AI Act"
+    ],
+    "skills": [
+      "llm_security",
+      "detection_engineering",
+      "privacy",
+      "threat_modeling",
+      "compliance",
+      "dataset_design"
+    ],
+    "metrics": [
+      {
+        "name": "위험 규칙 수",
+        "before": "60",
+        "after": "67",
+        "unit": "개",
+        "scope": "규칙 팩 v3",
+        "source": "8544605"
+      },
+      {
+        "name": "LLM 보안 신호 종류",
+        "before": "0",
+        "after": "7",
+        "unit": "종",
+        "scope": "hook 내용 검사",
+        "source": "8544605"
+      },
+      {
+        "name": "엔진 v9 새 발견사항 코드",
+        "before": null,
+        "after": "10",
+        "unit": "개",
+        "scope": "LLM_*, AGENT_*, 주입 뒤 행동 연쇄",
+        "source": "docs/agent-monitoring.md"
+      },
+      {
+        "name": "추가된 채점 시나리오",
+        "before": null,
+        "after": "18",
+        "unit": "개",
+        "scope": "대조 v5, LLM 보안·에이전트 간섭·수집 중단",
+        "source": "273c4d1"
+      },
+      {
+        "name": "합성 카탈로그 기준선 재현율·유형 정확도",
+        "before": null,
+        "after": "1",
+        "unit": null,
+        "scope": "위협 42개·알려진 규칙 과탐 25개 구성, 규칙+v9",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "시나리오 기준선(규칙+v9)은 위협 42개로 구성된 카탈로그에서 재현율과 유형 정확도가 모두 1이었다. 도구 결과의 원문은 hook 밖으로 나가지 않고 신호 라벨·개수·해시만 원장에 남는다. 실제 PC 기록에서 v9 발견사항이 나오는지는 확인하지 못했다.",
+    "tradeoffs": [
+      "결정적 패턴 검사라 주입을 설명하는 기사도 신호가 되고, 패턴 밖 변형은 놓침(모두 검토 신호로만 취급)",
+      "사용자 프롬프트 검사는 옵션으로만 켜짐",
+      "셸 명령 속 경로는 해석하지 않아 작업 폴더 밖 접근은 파일 도구·패치만 판단",
+      "학습 없이 쓰는 프롬프트 검사 모델은 내려받았지만 아직 붙이지 않음"
+    ],
+    "lessons": [
+      "감사 도구는 감시 대상보다 더 많은 원문을 가지면 안 된다. 라벨·개수·해시만으로도 연쇄 탐지가 가능하다.",
+      "정상 작업 예외(프로젝트 안 지시 파일, 프로세스 조회)를 규칙 설계 단계에서 같이 적어야 새 규칙이 오탐 폭탄이 되지 않는다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "정해진 패턴 대신 학습 없이 쓰는 한국어 프롬프트 검사 모델을 붙이면 주입 탐지와 오탐이 어떻게 달라질까?",
+        "해시만 남긴 내용 기록은 사후 조사 때 원문이 필요하면 어떻게 대조할 수 있을까?",
+        "에이전트 간섭 규칙을 회사 환경의 여러 에이전트·여러 사용자로 넓히면 ‘정상 관리 작업’과 어떻게 구분할까?"
+      ],
+      "what_if": [
+        "원문을 수집했다면 탐지 자유도는 높았겠지만 EvidScope가 가장 민감한 데이터 저장소가 되어 보안 요구가 크게 늘었을 것이다(추정)."
+      ],
+      "revisit_when": "PC 실제 기록에서 v9 발견사항의 오탐률이 측정되거나, 프롬프트 검사 모델을 붙일 때"
+    },
+    "resume": {
+      "ko": [
+        "원문을 한 글자도 내보내지 않고 라벨·개수·해시만으로 프롬프트 주입·비밀/개인정보 유출 신호 7종을 수집하고 ‘주입 문구 뒤 위험 행동’ 연쇄를 탐지하는 엔진 v9와 에이전트 간섭·수집 중단 규칙 7개를 추가해 규칙 67개로 확장"
+      ],
+      "en": [
+        "Added engine v9: 7 LLM-security content signals shipped as labels, counts and hashes only, an injection-then-risky-action chain, agent scope recording, and 7 interference/collection-stop rules (67 rules total)"
+      ]
+    },
+    "interview": [
+      {
+        "q": "프롬프트 주입을 원문 없이 어떻게 탐지하나요?",
+        "a_points": [
+          "hook 메모리 안에서 정해진 패턴으로 검사하고 신호 종류·개수·글자 수·해시만 전송",
+          "엔진 v9가 같은 세션에서 주입 신호 뒤 30분 안의 위험 행동을 high 연쇄로 엮음",
+          "결정적 검사라 설명 글도 걸리므로 모두 검토 신호로 취급"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "8544605",
+        "273c4d1"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-03",
+      "AM-11",
+      "AM-13",
+      "JM-22"
+    ],
+    "uncertain": [
+      "한 메모는 ‘엔진 v9 내용 검사는 컨테이너에서만 만들고 시험했으며 PC에는 아직 없다’고, 다른 메모는 8544605를 PC에 반영하고 차단 기능을 설치된 hook에서 확인했다고 적는다. PC 저장소에서 엔진 v9·대응표 v5 평가가 실제로 나오는지는 확인한 기록이 없다.",
+      "docs/evidence-pack.md는 대응표 현재 버전을 4로 적고 v5를 언급하지 않는다(문서 갱신 누락으로 보임).",
+      "학습 없이 쓰는 프롬프트 검사 모델이 ‘오너 승인 대기’라는 기존 기록의 출처를 메모에서 찾지 못했다. 메모에는 모델을 내려받았고 PC 검사 서비스로 붙일 계획만 있다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-13",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-17",
+    "date_end": null,
+    "status": "done",
+    "title": "실행 전 차단: 확실한 것만 차단",
+    "title_en": "Pre-execution blocking: block only the certain cases",
+    "summary": "오너가 ‘확실한 것만 차단’을 골라, Claude Code의 실행 전 hook이 감사·수집 설정 조작, 보안 기능 끄기, 비밀을 읽어 바로 외부로 보내는 한 명령만 실제로 막게 했다. 막을 때는 한국어 이유가 담긴 거부 응답을 내고 그 호출은 ‘차단됨’ 표시와 함께 원장에 남으며, 나머지는 지금처럼 경보만 낸다.",
+    "context": "AM-02부터 hook은 절대 막지 않는 원칙으로 동작했고, 모든 탐지는 일이 일어난 뒤의 경보였다. 오케스트라 계획을 정하던 10-17 오전, 차단 수준을 묻는 카드가 함께 올라갔다. EvidScope는 원래 차단은 집행 지점이 하고 자신은 증거만 남긴다는 설계였지만, 에이전트가 감사 도구 자체를 끄는 행동은 사후 경보로는 늦다. Codex는 거부 응답 형식을 PC에서 확인하지 못한 상태였다.",
+    "trigger": {
+      "type": "owner_request",
+      "detail": "차단 수준 카드에서 오너가 세 선택지 중 ‘확실한 것만 차단’을 골랐다.",
+      "quote": "확실한 것만 차단"
+    },
+    "problem": "경보만으로는 이미 일어난 뒤에 안다. 특히 에이전트가 EvidScope 수집 설정이나 hook을 고치면 그 뒤의 기록이 사라질 수 있다. 반대로 차단이 넓으면 정상 개발 작업이 멈춘다. 설정 파일을 읽기만 하는 것과 고치는 것을 구분하지 않으면 일상 작업까지 막힌다.",
+    "constraints": [
+      "오차단은 개발을 멈추므로 맥락과 무관하게 문제인 것만 막음",
+      "막은 사실도 원장에 남아야 함",
+      "규칙 팩을 읽지 못해도 작업을 멈추지 않아야 함",
+      "Codex 거부 응답 형식은 미확인"
+    ],
+    "options": [
+      {
+        "option": "확실한 것만 차단",
+        "pros": "감사 도구 무력화와 명백한 유출을 실행 전에 막으면서 오차단을 최소화",
+        "cons": "그 밖의 위험 행동은 여전히 사후 경보",
+        "chosen": true,
+        "reason": "오너 선택(추천안)"
+      },
+      {
+        "option": "경보만",
+        "pros": "작업 방해 위험 0",
+        "cons": "감사 설정 변조처럼 사후에는 늦는 행동도 막지 못함",
+        "chosen": false,
+        "reason": "오너가 고르지 않음"
+      },
+      {
+        "option": "고위험 전부 차단",
+        "pros": "가장 강한 보호",
+        "cons": "정상 개발 중 걸리는 high 규칙(예: 자기 브랜치 강제 푸시)까지 막아 개발이 멈춤",
+        "chosen": false,
+        "reason": "오너가 고르지 않음"
+      },
+      {
+        "option": "규칙 팩을 못 읽으면 모두 막기(fail-closed)",
+        "pros": "우회 여지가 적음",
+        "cons": "설치 오류 하나로 AI 작업 전체가 멈춤",
+        "chosen": false,
+        "reason": "작업을 멈추지 않는 fail-open을 택하고 그 사실을 로그에 남김"
+      }
+    ],
+    "decision": {
+      "what": "Claude Code의 실행 전 hook만 차단한다. 대상은 감사·수집 설정 조작(EvidScope hook 설정, AI 도구의 hook 설정 변경, EvidScope 예약 작업·프로세스 중지, 설치된 hook 변경), 보안 기능 끄기, 비밀 읽기와 외부 전송이 한 명령에 함께 걸리는 경우다. 설정 파일 읽기와 보여 주기만 하는 셸 명령은 통과시키되 EvidScope hook 설정은 수집 자격이 있어 읽기도 막는다. Codex는 경보만 낸다.",
+      "why": "오차단으로 개발을 멈추지 않으면서 감사 도구 무력화와 명백한 비밀 유출만 실행 전에 막기 위해서다.",
+      "decided_by": "owner"
+    },
+    "actions": [
+      "src/agent-hook-guard.mjs(62줄): 실행 전 기록을 규칙 팩과 맞춰 차단 대상 규칙 12종과 ‘비밀+외부 전송’ 조합만 거부",
+      "읽기 판단: 파일 읽기·검색 도구와, 리다이렉트·연결·치환 없이 보여 주기만 하는 셸 명령은 읽기로 봄",
+      "거부 시 Claude Code가 읽는 거부 응답(한국어 이유)을 출력하고 정상 종료, 실행 전 기록에 ‘차단됨’ 분류를 붙여 원장에 남김",
+      "규칙 팩을 읽지 못하면 막지 않고 hook 로그에 기록(fail-open)",
+      "설치기 --guard/--no-guard, 둘 다 없으면 기존 설정 유지, hook이 읽을 규칙 팩도 함께 복사",
+      "test/agent-hook-guard.test.mjs(149줄)",
+      "PC에 설치된 hook에서 설정 수정 시도와 설정 읽기를 각각 시험"
+    ],
+    "tech": [
+      "Claude Code hooks (PreToolUse permissionDecision)",
+      "Node.js"
+    ],
+    "skills": [
+      "security_architecture",
+      "access_control",
+      "detection_engineering",
+      "decision_making",
+      "operations",
+      "qa_testing"
+    ],
+    "metrics": [
+      {
+        "name": "실행 전 차단 대상",
+        "before": "0",
+        "after": "규칙 12종 + 비밀·외부 전송 조합 1",
+        "unit": null,
+        "scope": "Claude Code 실행 전 hook",
+        "source": "8544605"
+      },
+      {
+        "name": "PC 설치 hook 확인",
+        "before": null,
+        "after": "설정 수정 시도는 거부·정상 종료·차단됨 기록, 설정 읽기는 통과",
+        "unit": null,
+        "scope": "PC에 설치된 hook, 10-17",
+        "source": "작업 메모"
+      }
+    ],
+    "result": "10-17 PC에 설치된 hook에서 설정 수정 시도는 거부 응답을 내고 정상 종료했으며 ‘차단됨’ 기록이 대기열에 저장됐다. 설정 읽기는 아무 출력 없이 통과했다. 차단은 Claude Code에만 켜지고 Codex는 경보만 낸다.",
+    "tradeoffs": [
+      "fail-open: 규칙 팩을 못 읽으면 아무것도 막지 않음(대신 기록)",
+      "Codex는 차단하지 않음, 정말 필요한 작업은 사용자가 직접 실행",
+      "문자열 규칙 기반이라 감춘 명령은 차단도 놓칠 수 있음",
+      "차단된 호출이 콘솔 화면에서 따로 보이는지는 확인하지 않음"
+    ],
+    "lessons": [
+      "차단 범위는 ‘위험도’가 아니라 ‘맥락과 무관하게 확실한가’로 정해야 오차단 없이 운영할 수 있다.",
+      "막은 사실 자체도 증거다. 차단과 기록을 함께 설계해야 감사 공백이 생기지 않는다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "fail-open 대신 감사 설정 조작만은 fail-closed로 두었다면 우회 위험과 작업 중단 위험의 균형이 어떻게 바뀌었을까?",
+        "회사 환경에서 차단을 hook이 아닌 게이트웨이나 OPA 같은 집행 지점으로 옮기면 무엇을 잃고 얻을까?",
+        "실제 운영에서 차단이 몇 번이나 일어나고, 그중 오차단은 얼마나 될까?"
+      ],
+      "what_if": [
+        "고위험 전부 차단을 골랐다면 자기 브랜치 강제 푸시처럼 알려진 규칙 과탐이 그대로 개발 중단으로 이어졌을 것이다(추정)."
+      ],
+      "revisit_when": "PC에서 차단 건수와 오차단 사례가 쌓이거나, Codex 거부 응답 형식이 확인될 때"
+    },
+    "resume": {
+      "ko": [
+        "감사 도구 무력화·보안 해제·비밀 즉시 전송처럼 맥락과 무관하게 확실한 행동만 실행 전에 막고 막은 사실까지 원장에 남기는 최소 차단 모드를 설계·구현해, PC 설치 hook에서 수정 시도 거부와 읽기 통과를 확인"
+      ],
+      "en": [
+        "Designed a minimal pre-execution guard that denies only audit tampering, defence shutdown and one-command credential exfiltration, logs every denial to the signed ledger, and verified it on the installed hook"
+      ]
+    },
+    "interview": [
+      {
+        "q": "차단 범위를 어떻게 정했나요?",
+        "a_points": [
+          "오너에게 ‘확실한 것만 / 경보만 / 고위험 전부’ 세 선택지를 제시",
+          "맥락과 무관하게 문제인 것만 막고 나머지는 경보로 유지",
+          "읽기와 고치기를 구분해 일상 작업은 통과"
+        ]
+      },
+      {
+        "q": "규칙 파일을 못 읽으면 어떻게 되나요?",
+        "a_points": [
+          "아무것도 막지 않는 fail-open",
+          "AI 작업을 멈추지 않는 쪽을 택하고 그 사실을 로그에 남김",
+          "감사 설정 조작은 별도로 사후 경보에도 걸림"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "8544605"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-02",
+      "AM-04",
+      "AM-11",
+      "AM-12",
+      "EL-16"
+    ],
+    "uncertain": [
+      "차단된 호출이 콘솔 화면에서 따로 보이는지 확인하지 않았다(관련 UI 커밋 없음).",
+      "카드의 세 선택지 장단점 서술은 메모의 선택지 이름과 추천 설명을 바탕으로 정리한 것이다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-14",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-18",
+    "date_end": "2026-10-18",
+    "status": "done",
+    "title": "에이전트 자동 등록과 책임자 연결",
+    "title_en": "Agent auto-registration and accountable-owner mapping",
+    "summary": "오너가 ‘이 에이전트가 누구 것이고 누가 책임지는지 판정하는 기능이 없다’고 지적해, hook이 실행자(OS 계정·PC·git 저장소·git 사용자)를 기록마다 싣고, 새로 보인 에이전트를 책임자 없는 ‘발견됨’ 항목으로 자동 등록하며, 매핑 표로 팀·책임자를 추정하고, 검토자가 확정해야만 ‘확정’이 되게 했다. 경보와 증거 묶음에도 에이전트·실행자·책임자를 함께 보여 준다.",
+    "context": "서명된 에이전트 레지스트리(등록·생애주기·4-eyes)와 미등록 후보 목록, Backstage·A2A 카탈로그 가져오기는 이미 있었다. 하지만 후보는 보여 주기만 하고 사람이 손으로 등록해야 했고, hook 기록에는 ‘에이전트@PC이름’뿐이라 어느 계정·저장소·팀의 작업인지 알 수 없었다. 경보와 증거 묶음에도 책임자가 없었다. 목표 배포는 회사 내부망이라, 여러 사람·여러 PC의 에이전트를 팀과 책임자에 연결해야 감사 서비스로 쓸 수 있다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "판정 테스트 화면을 보던 중 오너가 소유자·책임 판정과 자동 등록이 없다는 점을 지적했다.",
+      "quote": "누구 소유 에이전트인지 어떤 이어 책임 소유인지 판정하기 아직 없지 않냐? 에이전트들 자동 등록 기능이랑 소유자 매핑 같은거"
+    },
+    "problem": "책임 소재를 시스템이 정하면 안 된다. 실행자 정보는 에이전트 자신의 보고라 틀릴 수 있고, 자동 등록한 항목이 행위자를 포함하면 ‘미등록 활동’ 경고가 사람 검토 없이 사라진다. 또 기존 평가 결과와 재계산(재생), 예전 증거 묶음의 검증이 그대로 통과해야 했다.",
+    "constraints": [
+      "책임자 확정은 사람만",
+      "자동 등록이 발견(finding)과 평가 재생 결과를 바꾸면 안 됨",
+      "예전 EvidScope 서버와 예전 증거 묶음과 호환",
+      "hook은 도구 호출마다 실행되므로 git 프로세스를 띄우지 않음",
+      "공개 저장소: 실명·경로·비밀 없음"
+    ],
+    "options": [
+      {
+        "option": "자동 등록 항목에 행위자·출처를 채워 바로 활동을 포함",
+        "pros": "등록 즉시 경보·생애주기와 연결됨",
+        "cons": "사람 검토 없이 미등록 활동 경고가 사라지고 평가 엔진 결과가 바뀜",
+        "chosen": false,
+        "reason": "책임 판단을 시스템이 대신하게 됨"
+      },
+      {
+        "option": "자동 등록은 빈 ‘발견됨’ 항목, 책임자는 추정·확정 2단계",
+        "pros": "발견을 바꾸지 않고 재생 결과도 같음, 추정 근거(규칙·값·표 버전)를 보여 줌",
+        "cons": "검토자가 확정하고 행위자를 넣는 일이 남음",
+        "chosen": true,
+        "reason": "메인 스레드 제안(발견됨→추정→확정)을 따르되, 자동 항목이 활동을 포함하지 않게 해 엔진 버전을 올리지 않음"
+      },
+      {
+        "option": "추정 책임자를 owner 필드에 바로 기록",
+        "pros": "구현이 단순",
+        "cons": "승인 게이트의 책임자 조건이 추정만으로 통과됨",
+        "chosen": false,
+        "reason": "추정과 확정을 구분하지 못함"
+      },
+      {
+        "option": "실행자를 데이터 범주 꼬리표로 싣기",
+        "pros": "수집 계약을 바꾸지 않음",
+        "cons": "64자 제한, 위험 규칙 입력과 섞임",
+        "chosen": false,
+        "reason": "전용 executor 필드를 두고, 예전 서버가 거부하면 hook이 필드를 빼고 다시 보냄"
+      }
+    ],
+    "decision": {
+      "what": "hook이 기록마다 executor(OS 계정·PC·origin 저장소·git 사용자)를 싣는다. 레지스트리 정책 autoRegister를 켜면 1분마다 새 후보를 책임자·출처·행위자·구성이 빈 ‘발견됨’ 항목으로 등록한다. 관리자가 정한 매핑 표(계정·PC·저장소·git 사용자·행위자·출처 → 팀·책임자, 순서가 우선순위)로 책임자를 추정하고, 서로 다른 책임자가 나오면 ‘충돌’로 둔다. 검토자가 사유와 함께 확정해야 ‘확정’이 되고, 승인 게이트는 확정된 책임자만 인정한다. 경보 API·콘솔 경보 표·증거 묶음 accountability.json에 함께 싣는다.",
+      "why": "누구의 에이전트인지 근거와 함께 보여 주되, 책임 확정은 사람의 서명 기록으로만 남기기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "src/agent-ownership.mjs(156줄): 실행자 읽기, 매핑 규칙 일치, 추정·충돌·확정 상태, 기록별 책임 정보, 내보내기의 책임 보고서",
+      "hook: .git/config·~/.gitconfig 파일만 읽어 저장소(주소 속 사용자·토큰 제거)와 git 사용자 확인, 설정 executor:false로 끔, 예전 서버가 거부하면 필드 없이 재전송",
+      "수집 계약: executor 필드는 agent 출처만, 알려진 네 필드만 허용",
+      "레지스트리: autoRegister 정책, POST /api/registry/discover(미리보기), 매핑 표 GET·POST /api/registry/owners(관리자), POST /api/registry/:id/owner(사유 필수), 목록·상세·후보에 실행자와 책임자 상태",
+      "서명 이력 검증: 자동 등록 항목이 빈 발견됨으로 시작했는지, 책임자 확정이 확정한 검토자 서명인지 확인",
+      "경보 API에 accountability, 콘솔 경보 표에 ‘에이전트·실행자·책임자’ 열, 레지스트리 화면에 자동 등록·매핑 표·책임자 확정",
+      "증거 묶음: accountability.json을 넣고 검증기가 내보내기에서 다시 만들어 바이트 대조, 예전 묶음은 그대로 통과",
+      "test/agent-ownership.test.mjs(156줄)와 증거 묶음·화면 테스트 추가"
+    ],
+    "tech": [
+      "Node.js",
+      "Claude Code hooks",
+      "in-toto / DSSE"
+    ],
+    "skills": [
+      "requirements",
+      "access_control",
+      "system_architecture",
+      "cryptography_integrity",
+      "privacy",
+      "ux_design",
+      "qa_testing",
+      "user_feedback"
+    ],
+    "metrics": [
+      {
+        "name": "에이전트 책임자 상태",
+        "before": "owner 문자열 하나(사람 입력 또는 카탈로그)",
+        "after": "미확인·추정·충돌·확정 4단계와 근거",
+        "unit": null,
+        "scope": "레지스트리 항목",
+        "source": "08f18fe"
+      },
+      {
+        "name": "기록당 실행자 정보",
+        "before": "에이전트@PC이름",
+        "after": "OS 계정·PC·저장소·git 사용자",
+        "unit": null,
+        "scope": "Claude Code·Codex hook 기록",
+        "source": "08f18fe"
+      },
+      {
+        "name": "새 기능 테스트",
+        "before": null,
+        "after": "책임 판정 4개 + 증거 묶음 1개 + 화면 1개",
+        "unit": "테스트",
+        "scope": "컨테이너 실행",
+        "source": "test/agent-ownership.test.mjs"
+      }
+    ],
+    "result": "컨테이너 시험에서 에이전트 두 개가 보이면 자동 등록이 둘 다 ‘발견됨’으로 등록하고(다시 돌려도 중복 없음), 저장소 규칙에 맞는 쪽은 ‘추정 pay-lead(payments)’, 맞지 않는 쪽은 ‘미확인’으로 나왔다. 추정만으로는 승인 게이트의 책임자 조건이 충족되지 않았고, 검토자가 확정하자 ‘확정’과 확정자·근거가 새 버전에 남았다. 해당 에이전트의 경보에 계정·책임자가 함께 붙었고, 내보내기의 서명 이력 검증과 책임 보고서 재생성이 통과했다. PC에는 아직 적용하지 않았다.",
+    "tradeoffs": [
+      "실행자는 hook의 자기 보고: 한 계정을 여럿이 쓰거나 SSO 계정과 다르면 매핑이 틀릴 수 있음",
+      "자동 등록 항목은 행위자를 포함하지 않으므로 검토자가 행위자·출처를 넣는 일이 남음",
+      "매핑 표는 관리자 한 사람, 책임자 확정은 검토자 한 사람(4-eyes 없음)",
+      "git 설정의 includeIf·시스템 설정은 읽지 않음",
+      "자동 등록은 1분 간격"
+    ],
+    "lessons": [
+      "‘자동’과 ‘확정’을 같은 필드에 두면 추정이 승인처럼 보인다. 상태와 근거를 분리해야 감사에서 설명할 수 있다.",
+      "새 기능이 기존 평가·재생·증거 묶음을 바꾸지 않게 하는 가장 싼 방법은 새 입력이 기존 판단에 닿지 않게 설계하는 것이다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "회사 내부망에서는 OS 계정 대신 IdP(SSO) 계정이나 사내 프록시 로그로 실행자를 독립 확인해야 하지 않을까?",
+        "자동 등록 항목에 행위자를 채우는 일을 ‘책임자 확정’과 묶었다면 검토가 한 번으로 끝났을까, 아니면 다른 판단을 섞었을까?",
+        "책임자 확정에도 4-eyes를 요구해야 할 조직 규모는 어느 정도일까?"
+      ],
+      "what_if": [
+        "자동 등록 항목이 바로 활동을 포함했다면 평가 엔진 버전을 올리고 예전 재생 결과와의 호환을 따로 설계해야 했을 것이다(추정)."
+      ],
+      "revisit_when": "PC나 사내망에서 여러 사람의 에이전트가 들어오고 매핑 표를 실제로 쓰기 시작할 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 에이전트 hook 기록에 실행자(계정·PC·저장소·git 사용자)를 싣고, 새 에이전트 자동 등록과 매핑 표 기반 책임자 추정을 만들되 확정은 검토자 서명으로만 남게 설계해, 경보와 오프라인 검증되는 증거 묶음에 에이전트·실행자·책임자를 함께 제공"
+      ],
+      "en": [
+        "Added executor identity (account, host, repository, git user) to AI agent hook records, auto-registration of newly seen agents and owner inference from a mapping table, with ownership confirmed only by a reviewer's signed record, surfaced on alerts and in offline-verified evidence packages"
+      ]
+    },
+    "interview": [
+      {
+        "q": "책임자를 자동으로 정하지 않은 이유는?",
+        "a_points": [
+          "실행자 정보는 에이전트 자신의 보고라 틀릴 수 있음",
+          "감사에서 책임 소재는 사람의 결정 기록이어야 함",
+          "추정은 근거(규칙·값·표 버전)와 함께 보여 주고, 확정은 사유와 확정자를 서명 기록으로 남김"
+        ]
+      },
+      {
+        "q": "기존 평가나 증거 묶음과의 호환은 어떻게 지켰나요?",
+        "a_points": [
+          "자동 등록 항목은 행위자·출처가 비어 어떤 활동도 포함하지 않아 발견과 재생 결과가 같음",
+          "매핑 표는 평가 입력이 아님",
+          "증거 묶음의 새 파일은 있으면 재생성해 대조, 없으면 예전처럼 통과"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "08f18fe"
+      ],
+      "docs": [
+        "docs/agent-registry.md",
+        "docs/agent-monitoring.md",
+        "docs/evidence-pack.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-02",
+      "AM-13"
+    ],
+    "uncertain": [
+      "PC와 실제 사내망에서는 아직 실행하지 않았다.",
+      "선택지 중 ‘데이터 범주 꼬리표’는 구현 중 검토한 대안이며 오너와 논의한 것은 아니다."
+    ],
+    "owner_notes": ""
+  },
+  {
+    "id": "AM-15",
+    "track": "agent-monitoring",
+    "date_start": "2026-10-18",
+    "date_end": "2026-10-18",
+    "status": "done",
+    "title": "수집 연속성: hook 기록의 순번·연결과 빠짐 경보",
+    "title_en": "Collection continuity: numbered, linked hook records and gap alerts",
+    "summary": "오너가 ‘모든 LLM 활동 로그를 무결하게 수집하는 것’이 핵심이라고 해, hook이 기록마다 순번과 앞 기록의 지문을 붙이고, 금고가 빠진 순번·앞 기록과 맞지 않는 연결·중복 번호를 찾아 서명된 수집 공백 기록과 높음 경보로 남기게 했다.",
+    "context": "서명 원장은 기록이 EvidScope에 도착한 뒤의 삭제·변경을 드러내지만, PC의 hook에서 금고까지 오는 사이에 기록이 빠지거나 바뀌어도 알 방법이 없었다. 대기 파일(spool)이 가득 차거나 4xx로 버려진 기록, 누가 대기 파일 줄을 지운 경우가 모두 조용히 사라졌다.",
+    "trigger": {
+      "type": "owner_feedback",
+      "detail": "책임자 연결 작업 직후 오너가 수집 무결성을 핵심 요구로 짚었고, 결정 카드에서 ‘빠짐 감지’를 먼저 만들기로 골랐다.",
+      "quote": "사실 중요한 것 중 하나는 모든 llm활동의 로그를 무결하게 수집하는거야"
+    },
+    "problem": "hook은 도구 호출마다 따로 실행되는 짧은 프로세스라 여러 개가 동시에 돌고, 금고가 꺼져 있으면 기록이 나중에 순서가 바뀐 채 도착한다. 이 상태에서 빠짐과 변경을 오탐 없이 가려야 했고, 평가 엔진·예전 서버·예전 증거 묶음은 그대로여야 했다.",
+    "constraints": [
+      "hook은 node 기본 모듈만 사용",
+      "평가 엔진 버전을 올리지 않음",
+      "예전 EvidScope가 새 필드를 거부하면 hook이 필드 없이 다시 보냄",
+      "대기 파일 기록은 늦게 도착할 수 있음",
+      "공개 저장소: 실명·경로·비밀 없음"
+    ],
+    "options": [
+      {
+        "option": "기록마다 순번과 앞 기록 지문(해시 사슬)",
+        "pros": "빠짐·변경·중복을 각각 구분, 금고가 이미 저장하는 원문 지문과 바로 대조",
+        "cons": "상태 파일과 잠금이 필요, 끝부분 삭제는 못 봄",
+        "chosen": true,
+        "reason": "서버가 이미 가진 지문 비교(compareEventFingerprint)를 그대로 쓰고 엔진을 바꾸지 않음"
+      },
+      {
+        "option": "대기 파일에 HMAC 서명",
+        "pros": "대기 파일 변조를 바로 감지",
+        "cons": "서명 키가 hook 설정과 같은 곳에 있어 설정을 읽을 수 있는 사람은 다시 서명 가능",
+        "chosen": false,
+        "reason": "보호 효과가 순번 사슬보다 작고, 지워진 줄은 어차피 순번 빈 곳으로 드러남"
+      },
+      {
+        "option": "주기적 심장박동(heartbeat)으로 끝부분 삭제까지 감지",
+        "pros": "마지막 기록 이후 삭제도 드러남",
+        "cons": "hook은 상주 프로세스가 아니라 별도 발신기가 필요",
+        "chosen": false,
+        "reason": "다음 단계로 남김(결정 카드의 다른 선택지)"
+      }
+    ],
+    "decision": {
+      "what": "hook이 ~/.evidscope/<에이전트>-chain.json 상태와 잠금 파일로 기록마다 chain {stream, seq, prev}를 붙인다. 금고는 출처·스트림별로 순번을 모아 빠진 구간(뒤 순번 도착 1시간 뒤 확정), 연결 불일치, 번호 중복, 재시작을 보고하고, 5분마다 새 문제를 서명된 telemetry gap 기록으로 한 번씩 남겨 기존 COLLECTION_GAP 경보가 되게 한다.",
+      "why": "원장이 지키는 ‘도착 이후’에 더해 ‘도착 이전’ 구간의 유실·변경을 근거와 함께 보이기 위해서다.",
+      "decided_by": "joint"
+    },
+    "actions": [
+      "hook: 정규 JSON 지문 계산(서버와 같은 sha256), 잠금 파일로 동시 프로세스 순번 보장, 상태 파일 원자적 교체, 설정 chain:false로 끔",
+      "수집 계약: chain 필드는 agent 출처만, 정확한 모양만 허용",
+      "src/collection-chain.mjs: 스트림별 빠진 구간(도착 대기·확정)·연결 불일치·번호 중복·재시작·순번 없는 기록 집계와 문제 목록",
+      "금고: GET /api/collection/chains(사람 역할), POST /api/collection/chains/check(검토자), 5분 주기 점검, 같은 문제는 접수 영수증으로 한 번만 기록",
+      "콘솔 그래프 화면에 ‘수집 연속성’ 카드",
+      "test/collection-chain.test.mjs: 사슬 연결, 동시 프로세스 6개×25건 순번 중복 없음, 계약 검증, 보고서, 끝까지(hook→금고→경보)"
+    ],
+    "tech": [
+      "Node.js",
+      "SHA-256 hash chain",
+      "Claude Code hooks"
+    ],
+    "skills": [
+      "system_architecture",
+      "cryptography_integrity",
+      "security_architecture",
+      "detection_engineering",
+      "qa_testing",
+      "user_feedback"
+    ],
+    "metrics": [
+      {
+        "name": "전송 중 유실·변경 감지",
+        "before": "없음",
+        "after": "빠진 순번·연결 불일치·번호 중복을 높음 경보로",
+        "unit": null,
+        "scope": "Claude Code·Codex hook 기록",
+        "source": "234d1a3"
+      },
+      {
+        "name": "동시 hook 프로세스 순번",
+        "before": null,
+        "after": "6개 프로세스 150건, 1~150 중복·누락 없음",
+        "unit": "건",
+        "scope": "컨테이너 시험",
+        "source": "test/collection-chain.test.mjs"
+      },
+      {
+        "name": "새 기능 테스트",
+        "before": null,
+        "after": "5개",
+        "unit": "테스트",
+        "scope": "컨테이너 실행",
+        "source": "test/collection-chain.test.mjs"
+      }
+    ],
+    "result": "컨테이너 시험에서 실제 hook으로 기록 3건을 보낸 뒤 4번을 번호만 받고 보내지 않게 하고, 6번의 앞 기록 지문을 바꿔 보내자 보고서가 ‘4번 빠짐 확정’과 ‘6번 연결 불일치’를 보였고, 점검이 두 문제를 서명된 gap 기록으로 남겨 높음 COLLECTION_GAP 경보 2건이 나왔다. 다시 점검하면 새로 남기는 기록이 없었다. 평가 엔진은 바뀌지 않았다. PC에는 아직 적용하지 않았다.",
+    "tradeoffs": [
+      "보내기 전에 끝부분이 지워지면 드러나지 않음(심장박동 필요)",
+      "상태 파일을 지우면 재시작으로만 보임",
+      "hook 자격 증명을 가진 사람은 앞뒤가 맞는 가짜 사슬을 만들 수 있음",
+      "빠짐 확정까지 1시간 대기(대기 파일 재전송 때문)",
+      "보존 기간이 지난 앞부분은 빠짐으로 세지 않음"
+    ],
+    "lessons": [
+      "무결성은 구간별로 나눠 말해야 정확하다. 원장은 도착 이후를, 순번 사슬은 도착 이전을 지키고, 둘 다 기록 내용이 참이라는 증명은 아니다.",
+      "새 경보를 만들 때 새 평가 규칙 대신 기존 증거 종류(gap)를 서명 기록으로 남기면 엔진·재생 호환을 지킬 수 있다."
+    ],
+    "reflection": {
+      "open_questions": [
+        "끝부분 삭제를 막으려면 hook 밖의 상주 발신기(심장박동)를 어디에 둘까?",
+        "사내망에서는 PC 관리자 권한을 가진 사용자를 막기 위해 프록시나 OS 감사 로그 같은 독립 관측과 대조해야 하지 않을까?"
+      ],
+      "what_if": [
+        "대기 파일에 HMAC만 걸었다면 줄 삭제는 드러났겠지만 설정을 읽을 수 있는 사람에게는 효과가 없었을 것이다(추정)."
+      ],
+      "revisit_when": "PC에 적용해 실제 기록에서 오탐(도착 대기 후 확정)이 나오는지 볼 때"
+    },
+    "resume": {
+      "ko": [
+        "AI 에이전트 hook 기록에 순번·앞 기록 해시 사슬을 붙이고 동시 프로세스에서도 순번이 겹치지 않게 잠금을 설계해, 수집 경로의 유실·변경·중복을 서명된 수집 공백 경보로 자동 기록(평가 엔진 무변경)"
+      ],
+      "en": [
+        "Added a per-host sequence-and-hash chain to AI agent hook records, with locking so concurrent hook processes never reuse a number, and turned loss, alteration or reuse in transit into signed collection-gap alerts without changing the evaluation engine"
+      ]
+    },
+    "interview": [
+      {
+        "q": "원장이 이미 서명되는데 왜 사슬이 또 필요했나요?",
+        "a_points": [
+          "원장은 도착 이후만 지킴",
+          "PC에서 금고까지 오는 사이의 유실(대기 파일 초과·4xx 버림·줄 삭제)은 원장에 흔적이 없음",
+          "순번 빈 곳과 앞 기록 지문 불일치로 그 구간을 드러냄"
+        ]
+      },
+      {
+        "q": "오탐은 어떻게 줄였나요?",
+        "a_points": [
+          "대기 파일 기록은 늦게 오므로 뒤 순번 도착 후 1시간을 기다려 확정",
+          "보존 기간이 지난 앞부분은 빠짐으로 세지 않음",
+          "지문 키가 파기된 연결은 ‘확인 불가’로 따로 셈"
+        ]
+      }
+    ],
+    "evidence": {
+      "commits": [
+        "234d1a3"
+      ],
+      "docs": [
+        "docs/agent-monitoring.md",
+        "docs/contract.md"
+      ],
+      "notes": [
+        "작업 메모"
+      ]
+    },
+    "related": [
+      "AM-14",
+      "AM-02"
+    ],
+    "uncertain": [
+      "PC와 실제 사내망에서는 아직 실행하지 않았다.",
+      "심장박동·대기 파일 서명 선택지는 결정 카드에 올린 대안이다."
+    ],
+    "owner_notes": ""
+  }
+]

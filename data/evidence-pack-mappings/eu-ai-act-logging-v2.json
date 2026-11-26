@@ -1,0 +1,357 @@
+{
+ "format": "evidscope-evidence-pack-mapping-v1",
+ "version": 2,
+ "mappingStatus": "draft_requires_human_review",
+ "id": "eu-ai-act-logging",
+ "title": {
+  "en": "EU AI Act: record-keeping, logs and human oversight",
+  "ko": "EU AI Act: 기록 보존·로그·사람 감독"
+ },
+ "sources": [
+  {
+   "title": "Regulation (EU) 2024/1689 (Artificial Intelligence Act)",
+   "official": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+   "readVia": "https://ai-act-service-desk.ec.europa.eu/en/ai-act",
+   "readAt": "2026-10-08",
+   "note": "Article 12 and an Article 72 paragraph carry Digital Omnibus amendment notices on the Service Desk; the amended text was not read."
+  }
+ ],
+ "items": [
+  {
+   "id": "EU-AIA-12-1",
+   "citation": "Regulation (EU) 2024/1689, Article 12(1)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12",
+   "sourceStatus": "text_read_amendment_unverified",
+   "title": {
+    "en": "Automatic recording of events (logs) over the lifetime of the system",
+    "ko": "시스템 수명 동안 이벤트(로그)의 자동 기록"
+   },
+   "evidence": [
+    {
+     "type": "integrityCheck",
+     "name": "signed_ledger"
+    },
+    {
+     "type": "record",
+     "name": "event"
+    },
+    {
+     "type": "record",
+     "name": "event_receipt"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-12-2-A",
+   "citation": "Regulation (EU) 2024/1689, Article 12(2)(a)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12",
+   "sourceStatus": "text_read_amendment_unverified",
+   "title": {
+    "en": "Events relevant for identifying risk situations (Article 79(1)) or a substantial modification",
+    "ko": "위험 상황(제79조제1항) 또는 실질적 변경을 식별하는 데 관련된 이벤트"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "record",
+     "name": "agent_registry"
+    },
+    {
+     "type": "record",
+     "name": "agent_transition"
+    },
+    {
+     "type": "eventKind",
+     "name": "safety_alert",
+     "source": "safety"
+    },
+    {
+     "type": "record",
+     "name": "agent_stop_order"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-12-2-B",
+   "citation": "Regulation (EU) 2024/1689, Article 12(2)(b)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12",
+   "sourceStatus": "text_read_amendment_unverified",
+   "title": {
+    "en": "Events relevant for post-market monitoring (Article 72)",
+    "ko": "시판 후 모니터링(제72조)에 관련된 이벤트"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "eventKind",
+     "name": "heartbeat",
+     "source": "telemetry"
+    },
+    {
+     "type": "eventKind",
+     "name": "gap",
+     "source": "telemetry"
+    },
+    {
+     "type": "finding",
+     "code": "COLLECTION_GAP"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-12-2-C",
+   "citation": "Regulation (EU) 2024/1689, Article 12(2)(c)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12",
+   "sourceStatus": "text_read_amendment_unverified",
+   "title": {
+    "en": "Events relevant for monitoring the operation (Article 26(5))",
+    "ko": "운영 모니터링(제26조제5항)에 관련된 이벤트"
+   },
+   "evidence": [
+    {
+     "type": "eventKind",
+     "name": "intent",
+     "source": "agent"
+    },
+    {
+     "type": "eventKind",
+     "name": "execution",
+     "source": "tool"
+    },
+    {
+     "type": "eventKind",
+     "name": "result",
+     "source": "tool"
+    },
+    {
+     "type": "eventKind",
+     "name": "policy_decision",
+     "source": "enforcement"
+    },
+    {
+     "type": "eventKind",
+     "name": "guardrail_decision",
+     "source": "enforcement"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-19-1",
+   "citation": "Regulation (EU) 2024/1689, Article 19(1)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-19",
+   "sourceStatus": "text_read",
+   "title": {
+    "en": "Providers keep the automatically generated logs under their control (at least six months)",
+    "ko": "제공자의 자동 생성 로그 보관(최소 6개월)"
+   },
+   "evidence": [
+    {
+     "type": "integrityCheck",
+     "name": "signed_ledger"
+    },
+    {
+     "type": "record",
+     "name": "retention_policy"
+    },
+    {
+     "type": "record",
+     "name": "retention_hold"
+    },
+    {
+     "type": "record",
+     "name": "retention_disposition"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-26-6",
+   "citation": "Regulation (EU) 2024/1689, Article 26(6)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-26",
+   "sourceStatus": "text_read",
+   "title": {
+    "en": "Deployers keep the automatically generated logs under their control (at least six months)",
+    "ko": "배포자의 자동 생성 로그 보관(최소 6개월)"
+   },
+   "evidence": [
+    {
+     "type": "integrityCheck",
+     "name": "signed_ledger"
+    },
+    {
+     "type": "record",
+     "name": "retention_policy"
+    },
+    {
+     "type": "record",
+     "name": "retention_hold"
+    },
+    {
+     "type": "record",
+     "name": "retention_disposition"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-72-1-2",
+   "citation": "Regulation (EU) 2024/1689, Article 72(1) and (2)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-72",
+   "sourceStatus": "text_read_amendment_unverified",
+   "title": {
+    "en": "Post-market monitoring: collect, document and analyse data on performance",
+    "ko": "시판 후 모니터링: 성능 자료의 수집·문서화·분석"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "evaluation"
+    },
+    {
+     "type": "record",
+     "name": "case"
+    },
+    {
+     "type": "record",
+     "name": "case_decision"
+    },
+    {
+     "type": "eventKind",
+     "name": "safety_alert",
+     "source": "safety"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-14-4-A",
+   "citation": "Regulation (EU) 2024/1689, Article 14(4)(a)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14",
+   "sourceStatus": "text_read",
+   "title": {
+    "en": "Overseers monitor the operation and detect anomalies, dysfunctions and unexpected performance",
+    "ko": "감독자가 운영을 모니터링하고 이상·오작동·예상 밖 성능을 탐지"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "case"
+    },
+    {
+     "type": "record",
+     "name": "case_decision"
+    },
+    {
+     "type": "eventKind",
+     "name": "human_oversight_review",
+     "source": "authority"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-14-4-D",
+   "citation": "Regulation (EU) 2024/1689, Article 14(4)(d)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14",
+   "sourceStatus": "text_read",
+   "title": {
+    "en": "Overseers decide not to use, or disregard, override or reverse the output",
+    "ko": "감독자가 사용하지 않거나 출력을 무시·무효화·되돌리기로 결정"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "approval_request"
+    },
+    {
+     "type": "eventKind",
+     "name": "human_approval",
+     "source": "authority"
+    },
+    {
+     "type": "eventKind",
+     "name": "human_oversight_review",
+     "source": "authority"
+    },
+    {
+     "type": "record",
+     "name": "case_decision"
+    }
+   ],
+   "judgement": null
+  },
+  {
+   "id": "EU-AIA-14-4-E",
+   "citation": "Regulation (EU) 2024/1689, Article 14(4)(e)",
+   "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14",
+   "sourceStatus": "text_read",
+   "title": {
+    "en": "Overseers intervene or interrupt the system through a stop button or similar procedure",
+    "ko": "감독자가 정지 버튼 등으로 개입하거나 시스템을 중단"
+   },
+   "evidence": [
+    {
+     "type": "record",
+     "name": "agent_stop_order"
+    },
+    {
+     "type": "eventKind",
+     "name": "stop_requested",
+     "source": "safety"
+    },
+    {
+     "type": "eventKind",
+     "name": "block_registered",
+     "source": "safety"
+    },
+    {
+     "type": "eventKind",
+     "name": "stop_confirmed",
+     "source": "safety"
+    },
+    {
+     "type": "finding",
+     "code": "STOP_UNCONFIRMED"
+    },
+    {
+     "type": "finding",
+     "code": "EXECUTION_AFTER_STOP_REQUEST"
+    }
+   ],
+   "judgement": null
+  }
+ ],
+ "notMapped": [
+  {
+   "ref": "Article 12(3), Article 14(5)",
+   "reason": {
+    "en": "Annex III point 1(a) systems (remote biometric identification): the listed log content and two-person verification are not modelled.",
+    "ko": "부속서 III 1(a) 원격 생체 식별 시스템의 지정 로그 내용과 2인 확인은 EvidScope가 모델링하지 않습니다."
+   }
+  },
+  {
+   "ref": "Article 19(2), Article 26(6) second subparagraph",
+   "reason": {
+    "en": "Financial institutions keep logs in the documentation of financial services law, outside EvidScope.",
+    "ko": "금융기관은 금융 서비스 법령의 문서로 로그를 보관하며 EvidScope 밖입니다."
+   }
+  },
+  {
+   "ref": "Article 14(4)(b) and (c)",
+   "reason": {
+    "en": "Awareness of automation bias and interpretation of output are design and training measures, not recorded events.",
+    "ko": "자동화 편향 인식과 출력 해석은 설계·교육 조치이며 기록되는 이벤트가 아닙니다."
+   }
+  }
+ ]
+}

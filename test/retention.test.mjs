@@ -12,7 +12,7 @@ test('보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 �
  assert.equal((await request('/api/retention/policy',{retentionSeconds:1,purpose:'합성 보존기간 시험',reason:'개인정보 없는 단기 시험; 실제 법적 기간 아님'})).status,200);
  assert.equal((await submit(h.ingress.url,h.principal('agent'),event)).status,202);
  assert.equal((await request('/api/retention/plans',{reason:'아직 기간 전'})).status,409);
- const before=(await h.api('/api/export')).body;assert.equal(before.records.find(r=>r.type==='event').payload.format,'evidscope-encrypted-event-v1');assert.ok(!JSON.stringify(before.records).includes(event.note));assert.equal(before.disclosures[0].event.note,event.note);assert.equal(verifyBundle(before,h.publicKey).disclosedEvents,1);
+ const before=(await h.api('/api/export')).body;assert.equal(before.records.find(r=>r.type==='event').payload.format,'evidscope-encrypted-event-v2');assert.ok(!JSON.stringify(before.records).includes(event.note));assert.equal(before.disclosures[0].event.note,event.note);assert.equal(verifyBundle(before,h.publicKey).disclosedEvents,1);
  const noDisclosure=structuredClone(before);noDisclosure.disclosures=[];assert.throws(()=>verifyBundle(noDisclosure,h.publicKey),/Missing/);
  const altered=structuredClone(before);altered.disclosures[0].event.note='altered';assert.throws(()=>verifyBundle(altered,h.publicKey),/altered/);
  const hold=(await request('/api/retention/holds',{scope:'retention-action',reason:'인간 검토 보존 hold'})).body;
@@ -22,7 +22,8 @@ test('보존 정책·법적 hold·두 사람 승인·암호키 파기·독립 �
  assert.equal((await request(`/api/retention/holds/${hold.id}/release`,{reason:'다른 검토자 확인'},'admin')).status,200);
  const c=(await request('/api/cases',{title:'미종결 사건 보존',actionId:event.actionId,owner:'audit'},'auditor')).body;
  assert.equal((await request('/api/retention/plans',{reason:'미종결 사건 파기 금지'})).status,409);
- await request(`/api/cases/${c.id}`,{status:'closed',reason:'합성 조사 종료'},'auditor');
+ // Four-eyes (S10): the auditor opened the case, so a reviewer closes it.
+ assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'합성 조사 종료'})).status,200);
  const plan=(await request('/api/retention/plans',{reason:'합성 원문 보존 만료'})).body;assert.equal(plan.items.length,1);
  assert.equal((await request(`/api/retention/plans/${plan.id}/approve`,{reason:'자기 승인 금지'})).status,403);
  assert.equal((await request(`/api/retention/plans/${plan.id}/execute`,{},'admin')).status,409);
@@ -68,7 +69,15 @@ test('변경된 원장 head를 정상 조회가 재서명해 정당화하지 않
  const db=new DatabaseSync(join(h.dir,'data','evidence.db'));t.after(()=>db.close());
  const head=db.prepare('SELECT * FROM ledger WHERE tenant=? ORDER BY seq DESC LIMIT 1').get('alpha'),checkpoint=db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body;
  const altered=JSON.parse(head.body);altered.principal='attacker';db.exec('DROP TRIGGER immutable_update');db.prepare('UPDATE ledger SET body=?,hash=? WHERE tenant=? AND seq=?').run(canonical(altered),digest(altered),'alpha',head.seq);
- assert.equal((await h.api('/api/events')).status,503);assert.equal(db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body,checkpoint);
+ // The read is recorded in the access log with the signed state it observed, then refused (409) without serving data,
+ // appending a ledger row or re-signing the altered head.
+ const ledgerRows=()=>db.prepare('SELECT COUNT(*) n FROM ledger WHERE tenant=?').get('alpha').n,rows=ledgerRows();
+ assert.equal((await h.api('/api/events')).status,409);assert.equal(db.prepare('SELECT body FROM checkpoints WHERE tenant=?').get('alpha').body,checkpoint);
+ assert.equal(ledgerRows(),rows);
+ const access=new DatabaseSync(join(h.dir,'data','access-log.db'),{readOnly:true});t.after(()=>access.close());
+ const attempt=JSON.parse(access.prepare("SELECT body FROM access_log WHERE tenant='alpha' ORDER BY seq DESC LIMIT 1").get().body);
+ assert.equal(attempt.target,'/api/events');assert.match(attempt.fault,/Ledger head differs from previously signed checkpoint/);
+ assert.deepEqual(attempt.observed,{count:JSON.parse(checkpoint).count,head:JSON.parse(checkpoint).head});
  const integrity=(await h.api('/api/integrity')).body;assert.equal(integrity.valid,false);assert.equal(integrity.requiresExternalIncidentRecord,true);
 });
 
@@ -95,7 +104,7 @@ test('서명되지 않은 파기 승인·hold·사건 사본 변경은 키 파�
  overwrite('case',{...c,status:'closed'});await rejected();
  assert.equal((await request(`/api/cases/${c.id}`,{comment:'일반 의견으로 변조 상태 재서명 시도'},'auditor')).status,409);
  overwrite('case',c);
- assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'정상 조사 종료'},'auditor')).status,200);
+ assert.equal((await request(`/api/cases/${c.id}`,{status:'closed',reason:'정상 조사 종료'})).status,200);
  db.prepare('INSERT INTO objects VALUES(?,?,?,?)').run('alpha','retention_plan','unsigned-extra',JSON.stringify({...approved,id:'unsigned-extra'}));
  await rejected();db.prepare('DELETE FROM objects WHERE tenant=? AND type=? AND id=?').run('alpha','retention_plan','unsigned-extra');
  // Other tenants' unsigned rows must not deny or influence this tenant's disposition.

@@ -6,11 +6,11 @@ import http from 'node:http';
 import https from 'node:https';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {mkdtempSync, readFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {runPortfolioGovernanceDemo} from '../scripts/portfolio-governance-demo.mjs';
 import {digest} from '../src/crypto.mjs';
+import {removeAfterTests, tempDir} from './temp-dir.mjs';
 
 const requirements = JSON.parse(readFileSync(new URL('../data/requirements.json', import.meta.url), 'utf8'));
 const obligations = new Map([
@@ -24,7 +24,7 @@ test('six governance scenarios pass without network or model transport', async t
   let attempts = 0;
   const denied = () => {attempts++; throw Error('Portfolio demo must remain offline');};
   for (const [object, method] of [[globalThis, 'fetch'], [net, 'connect'], [net, 'createConnection'], [net.Server.prototype, 'listen'], [tls, 'connect'], [http, 'request'], [https, 'request']]) t.mock.method(object, method, denied);
-  const result = await runPortfolioGovernanceDemo();
+  const result = await runPortfolioGovernanceDemo(); removeAfterTests(result.artifactDirectory);
   assert.equal(result.passed, true, JSON.stringify(result.cases.filter(item => !item.passed)));
   assert.equal(result.caseCount, 6); assert.equal(result.passedCases, 6);
   assert.equal(attempts, 0); assert.equal(result.modelCalls, 0);
@@ -108,10 +108,10 @@ test('six governance scenarios pass without network or model transport', async t
 });
 
 test('CLI produces a report and refuses to overwrite an existing deliverable', () => {
-  const output = join(mkdtempSync(join(tmpdir(), 'evidscope-portfolio-cli-')), 'result.json');
+  const output = join(tempDir('evidscope-portfolio-cli-'), 'result.json');
   const run = spawnSync(process.execPath, ['scripts/portfolio-governance-demo.mjs', '--output', output], {encoding: 'utf8', timeout: 30000, windowsHide: true});
   assert.equal(run.status, 0, run.stderr + run.stdout);
-  const original = readFileSync(output, 'utf8'); assert.equal(JSON.parse(original).passedCases, 6);
+  const original = readFileSync(output, 'utf8'); removeAfterTests(JSON.parse(original).artifactDirectory); assert.equal(JSON.parse(original).passedCases, 6);
   const repeated = spawnSync(process.execPath, ['scripts/portfolio-governance-demo.mjs', '--output', output], {encoding: 'utf8', timeout: 30000, windowsHide: true});
   assert.notEqual(repeated.status, 0); assert.equal(readFileSync(output, 'utf8'), original);
 });

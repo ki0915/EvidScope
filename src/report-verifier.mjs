@@ -1,5 +1,6 @@
 import {createHash,createPublicKey,verify} from 'node:crypto';
 import {canonical,digest,verifyCheckpoint} from './crypto.mjs';
+import {verifyReportTransparency} from './tlog.mjs';
 
 // Only a separately distributed public key is trusted. A signed report is an
 // attestation of a vault snapshot, not proof that a source's claim is true.
@@ -21,7 +22,9 @@ export function verifyCaseReport(report,trustedPublicKey,options={}) {
  if(options.expectedCheckpoint&&canonical(options.expectedCheckpoint)!==canonical(s.checkpoint))throw Error('External checkpoint mismatch: possible rollback');
  const reportHash=digest(payload);
  if(options.expectedReportHash&&options.expectedReportHash!==reportHash)throw Error('External report digest mismatch');
- return {valid:true,tenant:s.tenant,caseId:s.case.id,actionId:s.action.actionId,exportedAt:s.exportedAt,reviewState:s.review.state,reportHash,publicKeyFingerprint:fingerprint,rollbackChecked:!!(options.expectedCheckpoint||options.expectedReportHash),scope:'서명된 사건 스냅샷과 체크포인트를 검증했습니다. 원본 전체 체인의 포함·완전성 검증은 별도 전체 증적 내보내기로 수행해야 합니다. 출처 주장의 진실성·외부 효과·법적 준수는 보증하지 않습니다.'};
+ // Opt-in: options.transparency {require, witnesses, quorum, originBase, maxStalenessSeconds}; the top-level material is outside the signed snapshot.
+ const transparency=options.transparency?verifyReportTransparency({report,publicKey:key,options:options.transparency}):null;
+ return {valid:true,tenant:s.tenant,caseId:s.case.id,actionId:s.action.actionId,exportedAt:s.exportedAt,reviewState:s.review.state,reportHash,publicKeyFingerprint:fingerprint,rollbackChecked:!!(options.expectedCheckpoint||options.expectedReportHash||transparency?.rollbackChecked),...(transparency?{transparency}:{}),scope:'서명된 사건 스냅샷과 체크포인트를 검증했습니다. 원본 전체 체인의 포함·완전성 검증은 별도 전체 증적 내보내기로 수행해야 합니다. 출처 주장의 진실성·외부 효과·법적 준수는 보증하지 않습니다.'};
 }
 
 // Finance envelopes contain a signed snapshot, without a ledger checkpoint.

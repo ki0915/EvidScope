@@ -1,0 +1,1768 @@
+{
+ "format": "evidscope-test-fixture-v1",
+ "description": "Export written by commit 503c185 (before OTLP decision spans and the Cedar adapter): tenant alpha, OTLP GenAI events, a 0033 decision span the OTLP source could not store, OPA-style decisions, executions and v1/v2 evaluations.",
+ "baseCommit": "503c185",
+ "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAbe+UX79xyYMir/tFFIRGeREKav+zNodA/UHOkP2mVrw=\n-----END PUBLIC KEY-----\n",
+ "otlpRequest": {
+  "resourceSpans": [
+   {
+    "resource": {
+     "attributes": [
+      {
+       "key": "service.name",
+       "value": {
+        "stringValue": "travel-agent"
+       }
+      },
+      {
+       "key": "service.version",
+       "value": {
+        "stringValue": "1.4.2"
+       }
+      },
+      {
+       "key": "deployment.environment.name",
+       "value": {
+        "stringValue": "staging"
+       }
+      },
+      {
+       "key": "telemetry.sdk.language",
+       "value": {
+        "stringValue": "nodejs"
+       }
+      },
+      {
+       "key": "telemetry.sdk.name",
+       "value": {
+        "stringValue": "opentelemetry"
+       }
+      },
+      {
+       "key": "telemetry.sdk.version",
+       "value": {
+        "stringValue": "2.12.0"
+       }
+      }
+     ],
+     "droppedAttributesCount": 0
+    },
+    "scopeSpans": [
+     {
+      "scope": {
+       "name": "evidscope-capture-genai",
+       "version": "0.1.0"
+      },
+      "spans": [
+       {
+        "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "spanId": "00f067aa0ba902b2",
+        "parentSpanId": "00f067aa0ba902b1",
+        "name": "chat gpt-4o",
+        "kind": 3,
+        "startTimeUnixNano": "1791297000010000000",
+        "endTimeUnixNano": "1791297000900000000",
+        "attributes": [
+         {
+          "key": "gen_ai.operation.name",
+          "value": {
+           "stringValue": "chat"
+          }
+         },
+         {
+          "key": "gen_ai.provider.name",
+          "value": {
+           "stringValue": "openai"
+          }
+         },
+         {
+          "key": "gen_ai.request.model",
+          "value": {
+           "stringValue": "gpt-4o"
+          }
+         },
+         {
+          "key": "gen_ai.response.model",
+          "value": {
+           "stringValue": "gpt-4o-2024-08-06"
+          }
+         },
+         {
+          "key": "gen_ai.response.id",
+          "value": {
+           "stringValue": "chatcmpl-AbC123"
+          }
+         },
+         {
+          "key": "gen_ai.request.temperature",
+          "value": {
+           "doubleValue": 0.2
+          }
+         },
+         {
+          "key": "gen_ai.request.max_tokens",
+          "value": {
+           "intValue": 512
+          }
+         },
+         {
+          "key": "gen_ai.response.finish_reasons",
+          "value": {
+           "arrayValue": {
+            "values": [
+             {
+              "stringValue": "tool_calls"
+             }
+            ]
+           }
+          }
+         },
+         {
+          "key": "gen_ai.usage.input_tokens",
+          "value": {
+           "intValue": 97
+          }
+         },
+         {
+          "key": "gen_ai.usage.output_tokens",
+          "value": {
+           "intValue": 52
+          }
+         },
+         {
+          "key": "gen_ai.conversation.id",
+          "value": {
+           "stringValue": "conv_5j66UpCpwteGg4YSxUnt7lPY"
+          }
+         },
+         {
+          "key": "server.address",
+          "value": {
+           "stringValue": "api.openai.com"
+          }
+         },
+         {
+          "key": "server.port",
+          "value": {
+           "intValue": 443
+          }
+         },
+         {
+          "key": "gen_ai.request.stream",
+          "value": {
+           "boolValue": false
+          }
+         },
+         {
+          "key": "gen_ai.input.messages",
+          "value": {
+           "stringValue": "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Weather in Paris?\"}]}]"
+          }
+         },
+         {
+          "key": "gen_ai.output.messages",
+          "value": {
+           "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_VSPygqKTWdrhaFErNvMV18Yl\",\"name\":\"get_weather\",\"arguments\":{\"location\":\"Paris\"}}],\"finish_reason\":\"tool_call\"}]"
+          }
+         }
+        ],
+        "droppedAttributesCount": 0,
+        "events": [],
+        "droppedEventsCount": 0,
+        "status": {
+         "code": 0
+        },
+        "links": [],
+        "droppedLinksCount": 0,
+        "flags": 257
+       },
+       {
+        "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "spanId": "00f067aa0ba902b3",
+        "parentSpanId": "00f067aa0ba902b1",
+        "name": "execute_tool get_weather",
+        "kind": 1,
+        "startTimeUnixNano": "1791297000905000000",
+        "endTimeUnixNano": "1791297001905000000",
+        "attributes": [
+         {
+          "key": "gen_ai.operation.name",
+          "value": {
+           "stringValue": "execute_tool"
+          }
+         },
+         {
+          "key": "gen_ai.tool.name",
+          "value": {
+           "stringValue": "get_weather"
+          }
+         },
+         {
+          "key": "gen_ai.tool.type",
+          "value": {
+           "stringValue": "function"
+          }
+         },
+         {
+          "key": "gen_ai.tool.call.id",
+          "value": {
+           "stringValue": "call_VSPygqKTWdrhaFErNvMV18Yl"
+          }
+         },
+         {
+          "key": "gen_ai.tool.description",
+          "value": {
+           "stringValue": "Get current weather"
+          }
+         },
+         {
+          "key": "gen_ai.agent.name",
+          "value": {
+           "stringValue": "travel-planner"
+          }
+         },
+         {
+          "key": "gen_ai.conversation.id",
+          "value": {
+           "stringValue": "conv_5j66UpCpwteGg4YSxUnt7lPY"
+          }
+         },
+         {
+          "key": "gen_ai.tool.call.arguments",
+          "value": {
+           "stringValue": "{\"location\":\"Paris\"}"
+          }
+         },
+         {
+          "key": "error.type",
+          "value": {
+           "stringValue": "TimeoutError"
+          }
+         }
+        ],
+        "droppedAttributesCount": 0,
+        "events": [
+         {
+          "attributes": [
+           {
+            "key": "exception.type",
+            "value": {
+             "stringValue": "TimeoutError"
+            }
+           },
+           {
+            "key": "exception.message",
+            "value": {
+             "stringValue": "weather API timed out"
+            }
+           }
+          ],
+          "name": "exception",
+          "timeUnixNano": "1791297001900000000",
+          "droppedAttributesCount": 0
+         }
+        ],
+        "droppedEventsCount": 0,
+        "status": {
+         "code": 2,
+         "message": "weather API timed out"
+        },
+        "links": [],
+        "droppedLinksCount": 0,
+        "flags": 257
+       },
+       {
+        "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "spanId": "00f067aa0ba902b4",
+        "parentSpanId": "00f067aa0ba902b1",
+        "name": "chat gpt-4o",
+        "kind": 3,
+        "startTimeUnixNano": "1791297001910000000",
+        "endTimeUnixNano": "1791297002600000000",
+        "attributes": [
+         {
+          "key": "gen_ai.operation.name",
+          "value": {
+           "stringValue": "chat"
+          }
+         },
+         {
+          "key": "gen_ai.provider.name",
+          "value": {
+           "stringValue": "openai"
+          }
+         },
+         {
+          "key": "gen_ai.request.model",
+          "value": {
+           "stringValue": "gpt-4o"
+          }
+         },
+         {
+          "key": "gen_ai.response.model",
+          "value": {
+           "stringValue": "gpt-4o-2024-08-06"
+          }
+         },
+         {
+          "key": "gen_ai.response.id",
+          "value": {
+           "stringValue": "chatcmpl-AbC124"
+          }
+         },
+         {
+          "key": "gen_ai.response.finish_reasons",
+          "value": {
+           "arrayValue": {
+            "values": [
+             {
+              "stringValue": "stop"
+             }
+            ]
+           }
+          }
+         },
+         {
+          "key": "gen_ai.usage.input_tokens",
+          "value": {
+           "intValue": 160
+          }
+         },
+         {
+          "key": "gen_ai.usage.output_tokens",
+          "value": {
+           "intValue": 31
+          }
+         },
+         {
+          "key": "server.address",
+          "value": {
+           "stringValue": "api.openai.com"
+          }
+         },
+         {
+          "key": "server.port",
+          "value": {
+           "intValue": 443
+          }
+         }
+        ],
+        "droppedAttributesCount": 0,
+        "events": [],
+        "droppedEventsCount": 0,
+        "status": {
+         "code": 0
+        },
+        "links": [],
+        "droppedLinksCount": 0,
+        "flags": 257
+       },
+       {
+        "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "spanId": "00f067aa0ba902b1",
+        "name": "invoke_agent travel-planner",
+        "kind": 1,
+        "startTimeUnixNano": "1791297000000000000",
+        "endTimeUnixNano": "1791297002650000000",
+        "attributes": [
+         {
+          "key": "gen_ai.operation.name",
+          "value": {
+           "stringValue": "invoke_agent"
+          }
+         },
+         {
+          "key": "gen_ai.provider.name",
+          "value": {
+           "stringValue": "openai"
+          }
+         },
+         {
+          "key": "gen_ai.agent.name",
+          "value": {
+           "stringValue": "travel-planner"
+          }
+         },
+         {
+          "key": "gen_ai.agent.id",
+          "value": {
+           "stringValue": "asst_5j66UpCpwteGg4YSxUnt7lPY"
+          }
+         },
+         {
+          "key": "gen_ai.agent.description",
+          "value": {
+           "stringValue": "Plans trips"
+          }
+         },
+         {
+          "key": "gen_ai.agent.version",
+          "value": {
+           "stringValue": "2026-09-30"
+          }
+         },
+         {
+          "key": "gen_ai.conversation.id",
+          "value": {
+           "stringValue": "conv_5j66UpCpwteGg4YSxUnt7lPY"
+          }
+         },
+         {
+          "key": "gen_ai.request.model",
+          "value": {
+           "stringValue": "gpt-4o"
+          }
+         },
+         {
+          "key": "gen_ai.usage.input_tokens",
+          "value": {
+           "intValue": 257
+          }
+         },
+         {
+          "key": "gen_ai.usage.output_tokens",
+          "value": {
+           "intValue": 83
+          }
+         }
+        ],
+        "droppedAttributesCount": 0,
+        "events": [],
+        "droppedEventsCount": 0,
+        "status": {
+         "code": 0
+        },
+        "links": [],
+        "droppedLinksCount": 0,
+        "flags": 257
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "resource": {
+     "attributes": [
+      {
+       "key": "service.name",
+       "value": {
+        "stringValue": "mcp-gateway"
+       }
+      }
+     ]
+    },
+    "scopeSpans": [
+     {
+      "scope": {
+       "name": "gateway"
+      },
+      "spans": [
+       {
+        "traceId": "f5a9d214e6b8c7a9d1e2f3a4b5c6d7e8",
+        "spanId": "7a8b9c1d00000001",
+        "name": "mcp.authorization",
+        "kind": 1,
+        "startTimeUnixNano": "1791364800000000000",
+        "endTimeUnixNano": "1791364800015000000",
+        "status": {
+         "code": 2
+        },
+        "attributes": [
+         {
+          "key": "security_rule.ruleset.name",
+          "value": {
+           "stringValue": "crm_data_access_policy"
+          }
+         },
+         {
+          "key": "event.action",
+          "value": {
+           "stringValue": "deny"
+          }
+         },
+         {
+          "key": "event.outcome",
+          "value": {
+           "stringValue": "success"
+          }
+         },
+         {
+          "key": "gen_ai.agent.id",
+          "value": {
+           "stringValue": "claude-agent-prod-001"
+          }
+         },
+         {
+          "key": "gen_ai.tool.name",
+          "value": {
+           "stringValue": "delete_customer_data"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "otlpEvents": [
+  {
+   "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b2",
+   "occurredAt": "2026-10-06T14:30:00.010Z",
+   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+   "status": "success",
+   "actor": "service:travel-agent",
+   "clockUncertaintyMs": "unknown",
+   "kind": "notice",
+   "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+   "tool": "otel-genai",
+   "action": "chat",
+   "model": "gpt-4o-2024-08-06",
+   "destination": "api.openai.com",
+   "aiObservation": {
+    "version": 2,
+    "assetRef": "otel-service:travel-agent",
+    "collector": {
+     "kind": "otlp",
+     "id": "evidscope-otlp-receiver",
+     "version": "otel-genai-map-1"
+    },
+    "provider": "openai",
+    "model": "gpt-4o-2024-08-06",
+    "correlation": {
+     "method": "trace",
+     "confidence": "exact"
+    },
+    "coverage": {
+     "mode": "metadata",
+     "status": "observed",
+     "reason": "metadata_only"
+    },
+    "timeBasis": "source_observed",
+    "usage": {
+     "inputTokens": 97,
+     "outputTokens": 52
+    },
+    "span": {
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+     "spanId": "00f067aa0ba902b2",
+     "parentSpanId": "00f067aa0ba902b1"
+    },
+    "network": {
+     "destinationHost": "api.openai.com",
+     "destinationPort": 443
+    },
+    "screening": {
+     "status": "off",
+     "safety": "unknown",
+     "categories": [],
+     "processedChunks": 0,
+     "totalChunks": null,
+     "model": "smartm2m-bdg/CipherGuard-V5.0-XLM-RoBERTa",
+     "reason": "disabled"
+    },
+    "signals": []
+   }
+  },
+  {
+   "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+   "occurredAt": "2026-10-06T14:30:00.905Z",
+   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+   "status": "failure",
+   "actor": "travel-planner",
+   "clockUncertaintyMs": "unknown",
+   "kind": "self_report",
+   "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+   "action": "execute_tool",
+   "tool": "get_weather",
+   "resource": "get_weather"
+  },
+  {
+   "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b4",
+   "occurredAt": "2026-10-06T14:30:01.910Z",
+   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+   "status": "success",
+   "actor": "service:travel-agent",
+   "clockUncertaintyMs": "unknown",
+   "kind": "notice",
+   "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+   "tool": "otel-genai",
+   "action": "chat",
+   "model": "gpt-4o-2024-08-06",
+   "destination": "api.openai.com",
+   "aiObservation": {
+    "version": 2,
+    "assetRef": "otel-service:travel-agent",
+    "collector": {
+     "kind": "otlp",
+     "id": "evidscope-otlp-receiver",
+     "version": "otel-genai-map-1"
+    },
+    "provider": "openai",
+    "model": "gpt-4o-2024-08-06",
+    "correlation": {
+     "method": "trace",
+     "confidence": "exact"
+    },
+    "coverage": {
+     "mode": "metadata",
+     "status": "observed",
+     "reason": "metadata_only"
+    },
+    "timeBasis": "source_observed",
+    "usage": {
+     "inputTokens": 160,
+     "outputTokens": 31
+    },
+    "span": {
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+     "spanId": "00f067aa0ba902b4",
+     "parentSpanId": "00f067aa0ba902b1"
+    },
+    "network": {
+     "destinationHost": "api.openai.com",
+     "destinationPort": 443
+    },
+    "screening": {
+     "status": "off",
+     "safety": "unknown",
+     "categories": [],
+     "processedChunks": 0,
+     "totalChunks": null,
+     "model": "smartm2m-bdg/CipherGuard-V5.0-XLM-RoBERTa",
+     "reason": "disabled"
+    },
+    "signals": []
+   }
+  },
+  {
+   "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+   "occurredAt": "2026-10-06T14:30:00.000Z",
+   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+   "status": "success",
+   "actor": "travel-planner",
+   "clockUncertaintyMs": "unknown",
+   "kind": "self_report",
+   "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+   "action": "invoke_agent",
+   "resource": "asst_5j66UpCpwteGg4YSxUnt7lPY",
+   "model": "gpt-4o"
+  }
+ ],
+ "otlpRejected": {
+  "not_genai": 1
+ },
+ "otlpResult": {
+  "accepted": 4,
+  "rejected": 0
+ },
+ "exportBundle": {
+  "format": "evidscope-export-v2",
+  "records": [
+   {
+    "payload": {
+     "createdAt": "2026-10-08T00:10:51.137Z",
+     "hash": "c6125a730ea79d6ad47bb17a7be21ea2e9e3a290c4a615a6e38ce39cc1dba91b",
+     "legalSourceCoverage": {
+      "automaticLegalVerdict": false,
+      "checkedAt": null,
+      "hash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+      "jurisdiction": "KR",
+      "limitations": [
+       "법률·시행령 원문 확인과 하위 고시·위원회 결정 확인은 별개입니다. 미확인은 부존재·적용 제외·법 위반 판정이 아닙니다.",
+       "개별 조치의 기술 근거 또는 사람의 충분성 평가가 확인되어도 한국법 전체 지원 완료를 의미하지 않습니다."
+      ],
+      "registeredRequirements": 0,
+      "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schemaVersion": 1,
+      "scope": "selected_ai_operator_and_public_user_governance_requirements",
+      "scopeDescription": "등록된 주요 사업자·공공 이용자의 거버넌스 의무를 검토하며 한국 AI 기본법 전체를 포괄하지 않습니다.",
+      "status": "not_recorded",
+      "unresolvedSources": [],
+      "unverifiedDetailNoticeRequirementIds": [],
+      "version": "evidscope-kr-legal-source-coverage-v1",
+      "wholeLawComplete": false
+     },
+     "legalSourceCoverageHash": "7aa0eb590692ec3472945f46cbe19af9f612730365b05111c8636a5a166101c6",
+     "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "requirements": [],
+     "requirementsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "schemaVersion": 2
+    },
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "principal": "catalog-loader",
+    "recordedAt": "2026-10-08T00:10:51.138Z",
+    "seq": 1,
+    "tenant": "alpha",
+    "type": "catalog",
+    "hash": "2ac872e2af1cc416e228d355f0e2cd5bbc2584b50fb2f1ae0b0d04060b3ed3f2"
+   },
+   {
+    "payload": {
+     "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+     "ciphertext": "M7g7wmvVVvoMDwUt32dcz+GINswi5KCrj7sFgsdr+3883QCucSWlp9cMlFLGmB1RLqeeRSSFsajWVMyNaHNThrrd5+OHQx/NK4LCXAvRmIIMohb2t30m02ZtPdTxJ4QSxdakITA99gbAHSDVr8JqrpkPZZFjNvs8xXp5Iudk7Z1YLbMi7T6P0nVgnz9gy6yluaZHSdH0xbCahgG7EvjiZgluoKa7pXbtXRSoJQLH/s5cEfvuardRqcrITB9zpb0DQpdEezLMnxffc/ky9tGpHGDl9W/a9OeXgwR2cxfT68khqf6c8/DJem2OTu+l4H34+FvBlF/8bthpBvak+qWBHMejC/4JYSHQcwFAaT5jKsXkG6UYbJ8C96fUsDyrEMAhSS2y9mu68Z4Q75oIzEVUBb9YScAZAkAVkT1ep/NlgPOW9Gf7AiotNDNv1XhapQ18/f6RkYWHV4aKH0jD9zZFQmT0Hi65cLFEgYPzZAY73aSFiwg8Ty3pvwqz29rmzsyM69AuUx7wIpN+uo5Aqt3Y5IfPRThrflGNryB4ayIipJdtRTz0vQwDoCV1iBwl0X+rMvZ7q6EFIM3nzAT2OtlSamRj92XBEHT6u8RrL1nMdx5c/V7diknY3wLyQwV2NjlxKh8JL90bY/mqnHZ3lSn8xIfC14/D4s61aSphelrw1jY+iAxpvvtWO+M247TzfLAVmY+ILEzkS8Ia6k/Dvf3rLUPo6cyaH5/vHkPZVRlejRGezyJ3OHpb4FnALdwdyIQiBDgbjTuZ3HImKO2n81cffSA6V30S1A0rwP1zEqYuyh+PNQyj3/6T+GXjBtChyvcDL+AySQUb0GjkK1GPTqDx0J0ku5A3fe1dCuS7eAFINbdnYHi522CIQMcxvvEujwgXITQ6KT2OfszW0CNY5RRzK6noObfjACUKQtih2Trmbz/OHkCtZgq0Ze2YnHjU4SACh7csNePPCVuwsxJ84UJUSobQRic88S333NC5PNOdlIb5FCGrozIibrAcGVIVag18eUZqc00tzvrDSLOdOCHedfjYz71KSX5fupsHtKaacsEMWMQ0VKYq4CfmsZlIltNXPYdP48VFJ5fnTtlI5NvOqmDZJeKNDLUFi+rsfI8aEQRuhRt+z3W3Uqawm2SZ+w3G4jibmsnpmtI9TdkQQl/5GQXfXBT8VbAt1FkhuDu0VI2Xx9fDNlyghNF8c/ULxv5VxsIxQd3IqiV67uiuNqv50XtrCosvW8l0zFosVXUumDlZNIEA1PCUQBxSt8gBd7wO3JI0K+KSUyzRfTaAX0gywDLqyhTa2pCNu1Hv1tWu+b7IQ7/mF3mfGaYLkweHUHDQ5RjHXypI+fbFxEXGcpJHj2yXd7j1Ghu0EJs3OARLh19+7U474QCdVKFPUDUzhrITP1x0zM1G5f+zfZAgp0jbTjUzmyuWZ5L6GQILrK/Q8P4CrphekY4cm1PPS/78JvASSBOoEfoIt0AiRBBQMgBc1P2U0rHSYmmVpj01xN3m1Gi+GsOBTOThg2EFJX1Y3X3qyR1nHH0hnn4t19zblyW0VUS5GvZDCwNELEhxt/8IEbvdJpNJAYl99pVlp6c21ThvTTLTtRTwQEUbmnc+u3dO6wCfjLHqjWJKVSaTjJM8y+OP9uuMmXdnprnKskmbWXgxr+0KD0mq4AXZgG4Lb69eyq+M+/eC1n/dPIaZ4/FMJE/R6yXoP+LXx2SE3E1sK080PCDQDfB1deS7JRjGJq13PFIcK2ZwlIk4QqKspzhSLYDUvbkrAoxmXxqL7ObHoT3OJ8erSzih+oc2CAunuKdmPGmjHvaq8k1RNwwQNURvsr1H92J7tZR15DG5sj9bpwGN3RV/HSiXOMmLWt5OV7gTX6ecUCy6+leXwO1nR+iAVxYDajOaz0fZB47aHN6JWxT9lMaNtULg8E13JnqSJIpiCtT1AxtYHggNAFhgmdrhwMs5afV+yhryS+tvvf8frGwu8FxJmu+rfDf4CTzx30y4sgfZo+Kw7s3RJPlUrDc05D2WAVvQfJf+Rjkfq+RkSetT",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "VZzkJBVIvQJ7WWZR",
+     "keyEpoch": "2026-11",
+     "keyId": "3018e0cc-73a1-4a5a-858c-b16bf1c67b00",
+     "payloadCommitment": "032c00431a32f9046a94580ee20cbe005650f537a8829042c7761c6d814bb66c",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.155Z",
+     "seq": 2,
+     "tag": "A1DJGTjv+digLRjrIjWxEA==",
+     "tenant": "alpha"
+    },
+    "previous": "2ac872e2af1cc416e228d355f0e2cd5bbc2584b50fb2f1ae0b0d04060b3ed3f2",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.164Z",
+    "seq": 2,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "d6317f793d39922c6809495bca0838d649ea2123cc9425c09563a9acc93f4e12"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "d6317f793d39922c6809495bca0838d649ea2123cc9425c09563a9acc93f4e12",
+     "eventSeq": 2,
+     "fingerprint": "fp2:2026-11:4f1f054463eb20b30aa03afde17f4f654d7fd099dc3ac1f66794953fc597a293",
+     "format": "evidscope-event-receipt-v1",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b2",
+     "source": "alpha-otlp"
+    },
+    "previous": "d6317f793d39922c6809495bca0838d649ea2123cc9425c09563a9acc93f4e12",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.164Z",
+    "seq": 3,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "ce9985bc142e4fa21d7fff01d535045e0fe580ed624dc2b11362dfc3cbaeb36d"
+   },
+   {
+    "payload": {
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+     "ciphertext": "ueNoP1Bbjxx0PAjQZzxDFE55Y/p2GMTgXd5RW5X6nd3ttlUbe4osCaw3knLpJ+K4H5r66Bm+nDAA3OVOZ2bPYWAGTp6RfmQvH7TXZkXbNMnNwRO6lBUQ2LDKX8ds6UnjGUfVHQc7tfbA+uXPtLn5dGkndz7Kz4OvaRJozilBjbyBWuuHDejNHhp130QVpgt0fi5O60BQ4fZdD+7uXw19+3dqNQipQocUpITUuLd8Xd4kBdXcRGmGwu1+GsyrE88kKN8W+Emkrt/TBYIyf4fwG4451zCNem073JCqMqP6KYkQ9zPsgGZNdbi/n32ZCLbWkMptZhPjnISKNwa+cFQoAkUm+EaBq+RcD1jC3y+Cu9rj7rfNOVTG8ED7zxdJiuYT3Ww8BZ9dELnRs1gIfAnKZVAIPRB+0ufxTf17JWRVTWmW2eB5BHTrE2ns9mtgUmgkO/Cn0c55pp1Goa/5LU+lX5r90kyTj3T1qmPhrDatd96ic1u/ljNxfUdeYBUoXCKPRBGvdJCd/mKAxsp0g7iGXQLDnj45v9pTnx2xnsh+Wuk3s9gGbz2wVi8F28K8SavJF8KalsKDV6/FnZ7d3apzRHRqVnvpeStHcaOVKuklySyq8tR/oePhWglL6m1b8kZVD5vD3iFF6hAIxd/RCI1iIMMbp3h2xtDok2kiZ5VEh5b28LmPrkdmRMrFik3sq56QNhLjneHNlhG7lhRi3gpMIjgUPLhS45zJv8BWv/FZkBikO0q09F4UeScuy2cMM72FThlDT8IeZiSjrDw1EUz9WHEnBTIQ+8eXHHG23Z92Cc+rYs7CSSQ4w6Rksj93J68WLLXvkpNUH8F3CiaOLdh3uVTSsOWn4MdFeWEzHeIeuG1LSlNdgDtOYpOJsZB0B0rq6yeSFSCAjMEe7iqoxFI/DC4ivBhK4f9oXrJ2pl5pCaX+Xd8WMfGRRnoAxiN/S1vUnIIpcjiV9wiFKqvxmuBjpE3XtcFG/uhq2YBqf4Vcr7PyLqfROTjPa83YAXvP80oQ",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "dIp9EWQ+EGWGyBkc",
+     "keyEpoch": "2026-11",
+     "keyId": "d62b00ff-a308-4a74-93ec-c27991abef32",
+     "payloadCommitment": "7e7fb70ee442c6f8ba902727fc6e01ce4345e3a56b69af383e718d08c6dbfd10",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.156Z",
+     "seq": 4,
+     "tag": "dMxg4VuVP6AdzCDLJtXdPg==",
+     "tenant": "alpha"
+    },
+    "previous": "ce9985bc142e4fa21d7fff01d535045e0fe580ed624dc2b11362dfc3cbaeb36d",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.166Z",
+    "seq": 4,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "4804f4a5d84690c98c39e821576536201c4f18ce79a4e0d154b5bfd99e2ceec4"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "4804f4a5d84690c98c39e821576536201c4f18ce79a4e0d154b5bfd99e2ceec4",
+     "eventSeq": 4,
+     "fingerprint": "fp2:2026-11:cc9cc5312ceb3f6843b4ccb98f50ed6874e57d211bad762264bc6a77d34a7475",
+     "format": "evidscope-event-receipt-v1",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+     "source": "alpha-otlp"
+    },
+    "previous": "4804f4a5d84690c98c39e821576536201c4f18ce79a4e0d154b5bfd99e2ceec4",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.166Z",
+    "seq": 5,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "163b64a22c824803f6d715464de71e34ddee7a91386a55e2705ad354ac35db13"
+   },
+   {
+    "payload": {
+     "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+     "ciphertext": "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",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "Cw4/GyQXNV36rrEV",
+     "keyEpoch": "2026-11",
+     "keyId": "73698785-0ccf-46cc-8662-f5c0cb4ec898",
+     "payloadCommitment": "41230faa651e0b10610aff74ac5e807a0088fce981e0de81dd381209bf41b7c5",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.156Z",
+     "seq": 6,
+     "tag": "bAbVJzZns34GGSGvcRQ+oA==",
+     "tenant": "alpha"
+    },
+    "previous": "163b64a22c824803f6d715464de71e34ddee7a91386a55e2705ad354ac35db13",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.167Z",
+    "seq": 6,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "986276e2277138c6276047eb138cfac15f900434a93d3eb2db8deae68761cdaa"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "986276e2277138c6276047eb138cfac15f900434a93d3eb2db8deae68761cdaa",
+     "eventSeq": 6,
+     "fingerprint": "fp2:2026-11:285fc9a6d203d5f7279c3de9817a86befb85b9d659ae55a9e7240c9e5ff6b783",
+     "format": "evidscope-event-receipt-v1",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b4",
+     "source": "alpha-otlp"
+    },
+    "previous": "986276e2277138c6276047eb138cfac15f900434a93d3eb2db8deae68761cdaa",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.167Z",
+    "seq": 7,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "ebf4639447974b8f8254541513ea75176270af56c55598168507c474b1a695b3"
+   },
+   {
+    "payload": {
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+     "ciphertext": "NxgYK22UiryhGBOhFjC+ZbUZiy9+7uMtAb7LeEhjz2zJNvVl/vsB7AcK9uEz+xcCzrk9zxoH6Kg+/V5P8KOeESW+Gmhj/WkgBCS584TIePXdS0EWltZ4KrZ1qhzn04J/PtqJyyhM4vx78PM+ZQVzeoTBZELvB/bXVWLjhvEX24lSsQ/WohMwmFidacEEl3ez2qUk11FQcd+a8WuIFzlzbcnLJa3hmz5UDe+bwUucf76qa1PaOyFX2xfgpTKt8LK82MXpWV/+5kiR6n/CcMGT3ZnEFhuvLH3vjlhmObosbPgfmIx1st8mmk+xLKR2lY4OLJ34rDsVkE1usx7cWsBMWsw9Gk+HOavsT1I7LNcBy3BrYsZ7UcOPTOq+iIBQDXKnEeQ2H8pMjYxrYf8vmsq5N3fmr4BrVYh+2wOkcOX8g7yASaSoTAcnmZMYZxoxvWimqKLnjnGjXCHVEw5mdJMs3ESDwx4sHD+3clvlGWqmG0kqxlbMV2zeJ0M0BSXXBhwhectlP+vCJ0uDt+1L7+O3smBzDr6x7IfiNqND6XS7A2egcAzLLJrqQCTJ8cwCHjmFrloRdBg0HjITc+SjDL4wRGBPsWsOTeBzJsmwNnjqZlAPQGFItMxu5Vv65ekcEr6pCc1e330mJKXvnGbGOgCfsdy0nRmq0J3t5bAYWmeorH1U5sWnybWQEbkWsuRHCrjPjw4BbPYdRmmLMd7WECLev7+G+QuO1uAtjgJsPYkG8W5W38n3xvlKcSMMNjCZFua2O++qrDEKn3ebhTQ+w0OZMSjxZBl+ePoHS40s1YQ6L4AffKyD2G+pvp+CEk892i4dobpMrYCStc+L380hXZwIwLyM6gB8VwibHmuCe1DG7LTszmacmTNAwtJUNqoy7TBqRUNeZVgGhEzf3E4KhKCNAF/EYVgD57RZLr89wvfeb2GQqukBKGNOMeB4+NeFsWdupDi0TSVLaZPDzQSgDhCz2zUMt/veG2kAlVUZARsUMJ3vxL4CLht4cxfWwp6IHjCZ",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "q1bz41yjyW8n7Wi7",
+     "keyEpoch": "2026-11",
+     "keyId": "b7dc9044-ff87-4e0e-b16b-21657791d7d3",
+     "payloadCommitment": "e7b531be5d304489788ef4d6c0e422bbbdea69d8790412124447014ed5531a8f",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.156Z",
+     "seq": 8,
+     "tag": "/JLZuszgstbotvzr70Qd/g==",
+     "tenant": "alpha"
+    },
+    "previous": "ebf4639447974b8f8254541513ea75176270af56c55598168507c474b1a695b3",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.169Z",
+    "seq": 8,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "01027c1a434386776eb1d51bc40d215d5e61eba13eb5aacca0097b49e821c40f"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "01027c1a434386776eb1d51bc40d215d5e61eba13eb5aacca0097b49e821c40f",
+     "eventSeq": 8,
+     "fingerprint": "fp2:2026-11:37f622fb1e0dd08fb4b4a6511ebbef2b9544903517cc3b78deaaf9f159f65477",
+     "format": "evidscope-event-receipt-v1",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+     "source": "alpha-otlp"
+    },
+    "previous": "01027c1a434386776eb1d51bc40d215d5e61eba13eb5aacca0097b49e821c40f",
+    "principal": "alpha-otlp",
+    "recordedAt": "2026-10-08T00:10:51.169Z",
+    "seq": 9,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "13842cd4bdae795c0e7e88c33a0fa97a39304ac0e3378b89455c628f434d6065"
+   },
+   {
+    "payload": {
+     "actionId": "pay-1",
+     "ciphertext": "Sn03nHKE0jXrNC//1te6dYAEaQ87CefrAhNNnX8qZTKlx3j6MyLWH8UpyLqBTiiZI0oQgwzfzfZ6Y9xqo/gaHmwRBJ0c9eNvxJikd94HxH3Wk9FXyUFPiJKoFJcWxM5FY8Knc4bTLB5lP+6BTCUmMyuMPe2B/uzaenSlcfkXAI4PD59XTkLQNBXnrnIGh2b5V7NABEz0mojQekxKpnFGIQXkfMXzU2vh0E8qk7Oh20NyVAXclYBMYmP/2WXefaYWcx8xSRa3iFtDqJDTcMan19fo0B5DJSP6+6chnshSDvzffz/ysha2T2gkPNUliFTo8V9PCckKMQXZ5Kp6L4kf+Ybfg0TCwd0oIYGh3b+UoY25opJ/xqe7GuBer6KJgOrgoipmpGxLJNoBL5mrhj4BBqIfU/Gd2gUSuCkYFtjiKawBUmk8zyNaWxz6u2Ee4CJs5/K38QW88uax/PYH/v0LVrO1N2e/GtX1fiV2RNxhknFNrDhHYZpEYeipT+XxYdrnJIIO3qltaYKlb9gGb01qLQ29qm2tzzPT10GSr5iY7Zkr6Szv8UdHzBmHIcE/Osyi11rNIXzu0atn7U7FslkWaRyWTOLGQk5ZlllAt1P4I9qof8tpuVBUu6IlQ2SOz3nxPTwibi2mJUYPvELWPbgd0njJAyRWci3WFQxmReJgkjPpm7ndZsNw7SGHR55TLPgZaKrqV9ifvVpOQ6D6pfaFmjHOb/JFE2HHaNihNDx3RP8FAfgt7/Ly3ZNhRQ88ZOqjP4iOK+d/yKHGeYve0ZR8j9BZm4ciyh1yfY+RzLczejA2yRF35npjRl+yZPPgQvZ3iRJ60vll8cuWTA1kJZ9lrc/C0v8bWSloH/j7/RHfWMHLa+Ng+vavfsUBIOxTUnA/Q4jW71BqG0I6XrBHTvYixV6liXg6H0D/E3RYezMt454=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "Tgbm59mukyLOjyhU",
+     "keyEpoch": "2026-11",
+     "keyId": "de506862-c01b-4d59-989b-23ac656e4a55",
+     "payloadCommitment": "1a393ff5d6f99ff88c9f526cd22bd5f59d9b48192a203bee6755597feb7ca9c1",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.173Z",
+     "seq": 10,
+     "tag": "8acZbmDHJeCwuRY6n2q5rQ==",
+     "tenant": "alpha"
+    },
+    "previous": "13842cd4bdae795c0e7e88c33a0fa97a39304ac0e3378b89455c628f434d6065",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:51.180Z",
+    "seq": 10,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "30ec94f4f9d89aa80013b45a4141a9d3e84585cbe09489405cd6a1cdc79a4be1"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "30ec94f4f9d89aa80013b45a4141a9d3e84585cbe09489405cd6a1cdc79a4be1",
+     "eventSeq": 10,
+     "fingerprint": "fp2:2026-11:2275528ffc698ddcb78ec9ce710987b58dd2c28af242ca34743520bf2a616f61",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-1",
+     "source": "alpha-gateway"
+    },
+    "previous": "30ec94f4f9d89aa80013b45a4141a9d3e84585cbe09489405cd6a1cdc79a4be1",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:51.180Z",
+    "seq": 11,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "8cbc5ef8595ce143f4f3763db2dc4a1f8090f8131af5d34f59f3c786090ed276"
+   },
+   {
+    "payload": {
+     "actionId": "pay-1",
+     "ciphertext": "OPu4TD2fqVYkaDquQtZYGebITIS4pqruUGCfH8XCKzUlkA6fsw4iKH0Xo0Nb22aGrvAqVC71bYwcxEIb0xd6Ge27eSHgyglVeAjv583g/utM1H6J65qPrdPvU6T5MuyMz2aUT+A+nEvnYesuxPHoT9mQ958k3zlBBSeVQBjNDWAa1pZ32huKAhVEpCgu1czheUlXcnztFBYQjKKpu0KV04MdAd5LT6S3bgEjk31CaLLuvQkLiTDXK35pAZx5FWLXSpL873Uiz9cDFtzxxe7/lL5hFjKqP0gyRuNM85CsxNl44aIthgHXsFHC2dZ0IIu7hDFJHFV/5GeHQb8Wq2g1UfEerZIA4Mlvt55lQVJ5wJH5GRxQX7vZmzNeB7l+OAzb1FWEaE9O25Azw9PpHD7hDQygl9XLHJIWwEihzB5HOy9qc04rCn8oxKAj+/cBnAZdFkPSJqt0lkwcWUDre3+obR/ovD6EmzPF0Vq2sMrU+gdrCuHOSSEVTetZySK+SExawuc8IQFg1X9qf28cNkOYMhm+X7zcKYYhz9GrBYgJfJruG9kDDnh4MKi1pDSXP4e0ONvcT1JYTSbYg4dND1e/VwzZYN2s40arMp8kgAx3W9JDw9sFy0jGwQfiJndMs6PzrI+Z1BYuRuv2rP8tukP7LHa21SG/dihzMdwwfY0n+NQ/ydFE5+n74vRuErQOml/GqmohH3maOggkSG5svXV4XYtw+57fvlTVHehAxjFoIVzxy0dFCfX3EOONFup5fXpZ",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "uelBXGDIYk/POzK3",
+     "keyEpoch": "2026-11",
+     "keyId": "84c76458-f5e0-4e2e-b2df-b0414312ba2f",
+     "payloadCommitment": "6e38d727bfd0d1f2b1d418e5b919b1819cc315a882cb03a912ef3efb0ad5a71b",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.182Z",
+     "seq": 12,
+     "tag": "r6J7ZHpUf3wp811RIOS6PQ==",
+     "tenant": "alpha"
+    },
+    "previous": "8cbc5ef8595ce143f4f3763db2dc4a1f8090f8131af5d34f59f3c786090ed276",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:51.186Z",
+    "seq": 12,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "a3297cd4f4fc7c48b6f1d7c7dfccc56723c223cad7de7ab1e0bf2934db4569a9"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "a3297cd4f4fc7c48b6f1d7c7dfccc56723c223cad7de7ab1e0bf2934db4569a9",
+     "eventSeq": 12,
+     "fingerprint": "fp2:2026-11:977eea10b1d0cd4ec54cf72fc9ccde5714ea5ddddad043c808a59a66d6b78e90",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-1",
+     "source": "alpha-tool"
+    },
+    "previous": "a3297cd4f4fc7c48b6f1d7c7dfccc56723c223cad7de7ab1e0bf2934db4569a9",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:51.186Z",
+    "seq": 13,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "a62004793509e28396ae49dbe0d5d4179916c117c8ce1a67e37dab5309a1b1d0"
+   },
+   {
+    "payload": {
+     "actionId": "pay-2",
+     "ciphertext": "RhWUFJTA36oUgko52zBH1WbnqaowWSJ3ICT2rX8ETXnkkLM8B8eLwHdPMwhjUAoZViVbX/TSfxWY6SD9WGklYXj1pV6bcKcV2kAPyfGTSf0cjYdjCC6cmF2ckzI7HqrlhSEhfp9bI3XVvMg3y4CUVqWl77YuSMDFR1qeiykuyjvAsmPQK3Xsbv2T3myycuJHLlQaMHQp1SatCuYqFH1r1wr0N59bpkB18FByqF6E0UkieyCfAcpez/xACvPGCcclC9a9kK+tkdN1Un4dNfVHq+XQ0fW3GqXl220Fz0SOYnw5gixH+ARwUzvFj0B5RGJKD9QSO2ub6G5ZWmpIgThV4G/oP9ocFm3mCBAKkOXaxDm564N4vnHOHBeOJHZtNaUXHRuHjD0X4BU/rPH85cbjhhWiOWZ3OXvfjsQmHO+gHmFHVmX9LkS7g3lumZqHXZbWgvElniBwyl64Nf8v41IayKjPTBZFZjNM5K2WXEWqAnaa68YHnn2SCCC8NQT84yXDuoSOo1UgvdBDspkPVx+M5A+lrxzTyjEoM6lemDUMQ4fILG6rRKSaVSCaAa1c8EETEeNCgMLvPuwtZSBR9Ly8PWplsZA2u4/ErujMsOXMEsrfjBQqiPoMgJIHN2jnMDe208todGXYC8dNvRZ8VHDgVeDjyvhw9S1jwY9SiuzUk3Gu6026pA8J73LBz9LzbJAjgDbZQ37r+198597zQhcfSnz+IDw9UGUcH2E64fBH2onf4wYh633hm0M4Sos8TeGNiwcw3gN17B9QI3YJ4QH1Dx3HR4NTO0FRLTeAPi2DEZcBMgmwAVsuZUUShYMRTix2pxi5NcLjHOTMrQIfFU1o+1qM4OVr2brZsOxYFC7b/Anke6PimvRHiTiyiJgT+W2Re/bql7Ry9EW4ZYR2ADN1qLylw97HOsgz/+RcImhcvc0=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "TYWezCb2J2pGuqGk",
+     "keyEpoch": "2026-11",
+     "keyId": "88943acc-3119-44e5-b972-1aaa7f7e6544",
+     "payloadCommitment": "ebf07c43102e93935fa0a24820abf60d3de72851ea64c577c78771254fd58a7d",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.188Z",
+     "seq": 14,
+     "tag": "mBmfwDfR1JQWBVQmm0KL0w==",
+     "tenant": "alpha"
+    },
+    "previous": "a62004793509e28396ae49dbe0d5d4179916c117c8ce1a67e37dab5309a1b1d0",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:51.192Z",
+    "seq": 14,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "6167473e9bc194626d2957afb71ea79b88a7ed4960124b89ceb3034dec620450"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "6167473e9bc194626d2957afb71ea79b88a7ed4960124b89ceb3034dec620450",
+     "eventSeq": 14,
+     "fingerprint": "fp2:2026-11:a33471dc121b40d3000bb4d25f5047c87b0a628779d12b8fe588baeaf6546aab",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-2",
+     "source": "alpha-gateway"
+    },
+    "previous": "6167473e9bc194626d2957afb71ea79b88a7ed4960124b89ceb3034dec620450",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T00:10:51.193Z",
+    "seq": 15,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "6d00e97f19d20a4140446d46719b6c7286a10bb23312a7bdced25c1ce7c23f86"
+   },
+   {
+    "payload": {
+     "actionId": "pay-2",
+     "ciphertext": "HaMdK965zHAson5Ra0r6FEnwIZX5C1cin2B/baiC55xpngvnqqmBSbrJp5LB/Ipxioz/IQUUVsr9d3K2G4m4rmYERwO1j6Bzo46/c5s5hkpX8BjDcyBBJLwAkjiNJock51ZVgzAD3YV+788w+qP2QOx/tyDvd0xq38/qRUHTzAuv57qbLYFocM/8q6N+t8YfmguE1g91AKPR6oS48g4dp9p9a2r2XSkeOhg1B2gOj9QwYyGrcTGELcGRnEHcdn1raw6Bsm/rzR9Tv5EY+12qnL6wkxnr5snKCrqtHIufQ9DjhqySeS3AfA0MemmJRkGVOTwaJm47tQyRbsWedzbPM5PbD6vCjz0e+LjCNfcpRRpc82FvR9bQfZTytZ7mS3Jrby7zwI2lw9h5mkQo49275OCSrdag9QGw13S6D4vhMg+X5nkLV4vfAm5+i8Vth0M084CIN8V078cjVZF/Czqd3IS9JNT9ln9Q4DG1htl0cwwfu/VxMPZKFA3TnwiKlOP8v9zIyFSsemwZba74vL4q5O4ZdZn0Wchu6RWaU7T50PvXsSSnlmN4TLctP9oqT2Xt/KzjCtuiH2wJ2gWN8HFrzcTBJndAaSo2jw6nu+RLDziIl3gT6OrzB15QyBPqC0v323+T4sJRugjqdVZ9OqoAlMoPyu4n5AA3ArEbXA4fJ+/yR8MiQqWQK71eY4B8MzrOEJRVUR+/oEinxFXuc0BDA9KN/Fr3I1/uf6VEWnp0kkVXMDEgCplWV/kyiGoTJupV",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "mQuoHlkKgSpMZE5c",
+     "keyEpoch": "2026-11",
+     "keyId": "4d7d1f25-d968-40fd-82c0-ac2cfa07402c",
+     "payloadCommitment": "9e758fea94186e9d08306c9ec165f233e67ddb1c724771a7cf446d828de61706",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T00:10:51.195Z",
+     "seq": 16,
+     "tag": "B5YkgQ3df9kaLfRv61bRrQ==",
+     "tenant": "alpha"
+    },
+    "previous": "6d00e97f19d20a4140446d46719b6c7286a10bb23312a7bdced25c1ce7c23f86",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:51.198Z",
+    "seq": 16,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "95cdf20991fd3da077e31cc997ec377e4e59499119ebc3b1bde16ddcfaccca84"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "95cdf20991fd3da077e31cc997ec377e4e59499119ebc3b1bde16ddcfaccca84",
+     "eventSeq": 16,
+     "fingerprint": "fp2:2026-11:469543b82b5a9c910ec696c34ced49cd6e392935657226ed4465e010fa5fcd76",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-2",
+     "source": "alpha-tool"
+    },
+    "previous": "95cdf20991fd3da077e31cc997ec377e4e59499119ebc3b1bde16ddcfaccca84",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T00:10:51.199Z",
+    "seq": 17,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "b691a501805035a619c1a79a58abeb273201235309189861f729c18d58441993"
+   },
+   {
+    "payload": {
+     "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+     "analysisTime": "2026-10-08T00:10:51.203Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 4,
+      "totalFindings": 4,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:51.227Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AI_UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b2"
+       ],
+       "message": "관측 자산이 등록 목록에 없습니다. 미등록 후보이며 악성 확정이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AI_UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b4"
+       ],
+       "message": "관측 자산이 등록 목록에 없습니다. 미등록 후보이며 악성 확정이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b2"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b4"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      }
+     ],
+     "id": "77f9958b-4096-40c6-894a-016f41c1674f",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        2,
+        6
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "2e08f880df400d1996f895d7c0a0be1c2e65a04f4d5442d998dfae6b54b7d1ec",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "b691a501805035a619c1a79a58abeb273201235309189861f729c18d58441993",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:51.227Z",
+    "seq": 18,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "8d4c48b642c7bfaf23ffa3d459087a1ba6e0bfb05ebe56ff9f45042e5062dbec"
+   },
+   {
+    "payload": {
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+     "analysisTime": "2026-10-08T00:10:51.203Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:51.232Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      }
+     ],
+     "id": "34f46bcc-d631-434b-b60c-9c8481ee35e9",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        8
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "1625c14e75e65a8e4ea0357d7f999fd4b5c4b5d2916ddbc86dfca79aa774fc61",
+     "status": "evaluated",
+     "version": 1,
+     "worker": "analysis-worker"
+    },
+    "previous": "8d4c48b642c7bfaf23ffa3d459087a1ba6e0bfb05ebe56ff9f45042e5062dbec",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:51.232Z",
+    "seq": 19,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "53f5eee86b3aef491a68d90eda2c73b00642787f8f40cef15d002e6c8f1c3324"
+   },
+   {
+    "payload": {
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+     "analysisTime": "2026-10-08T00:10:51.203Z",
+     "authority": "not_observed",
+     "coverage": {
+      "returnedFindings": 2,
+      "totalFindings": 2,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:51.236Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-otlp/otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      }
+     ],
+     "id": "bf51b466-6822-49d5-92cb-71af7010cb19",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v1",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        4
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "fc98925db645e7145685f345371aaaf77d8abd6d61163cc403304913170bed3d",
+     "status": "evaluated",
+     "version": 1,
+     "worker": "analysis-worker"
+    },
+    "previous": "53f5eee86b3aef491a68d90eda2c73b00642787f8f40cef15d002e6c8f1c3324",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:51.236Z",
+    "seq": 20,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "05389d1e2d38c4e66fe2c12afe2d3822da06a3fc61cb842d02d147afba48c2ed"
+   },
+   {
+    "payload": {
+     "actionId": "pay-1",
+     "analysisTime": "2026-10-08T00:10:51.203Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 6,
+      "totalFindings": 6,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:51.241Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-tool/x-1"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "APPROVAL_REQUIREMENT_UNKNOWN",
+       "evidence": [
+        "alpha-tool/x-1"
+       ],
+       "message": "행동 당시 정책에서 건별 사람 승인 필요 여부를 확인할 수 없습니다",
+       "severity": "medium"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-gateway/d-1"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-tool/x-1"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      },
+      {
+       "code": "EXECUTION_AFTER_DENY",
+       "evidence": [
+        "alpha-tool/x-1",
+        "alpha-gateway/d-1"
+       ],
+       "message": "정책 결정 지점이 거부한 행동의 실행 기록이 이후에 있습니다. 실제 차단 효력과 우회 경로를 검토하세요",
+       "severity": "high"
+      }
+     ],
+     "id": "bbc6e857-a3ef-41d9-a90a-6e618c7037de",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v2",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        10,
+        12
+       ],
+       "exceptions": 0,
+       "relatedDecisions": [],
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "99834c4e04dbe8033ebfea0e4a11c830a45137ed7702eeab75d54ead80fbd7ee",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "05389d1e2d38c4e66fe2c12afe2d3822da06a3fc61cb842d02d147afba48c2ed",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:51.241Z",
+    "seq": 21,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "bb62157e82ea87c3efc27c53e96f9d476f25230d8c375280844033bb4285d22b"
+   },
+   {
+    "payload": {
+     "actionId": "pay-2",
+     "analysisTime": "2026-10-08T00:10:51.203Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 5,
+      "totalFindings": 5,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T00:10:51.245Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "UNREGISTERED_ASSET",
+       "evidence": [
+        "alpha-tool/x-2"
+       ],
+       "message": "미등록 AI 또는 도구 조합입니다",
+       "severity": "medium"
+      },
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-2"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "APPROVAL_REQUIREMENT_UNKNOWN",
+       "evidence": [
+        "alpha-tool/x-2"
+       ],
+       "message": "행동 당시 정책에서 건별 사람 승인 필요 여부를 확인할 수 없습니다",
+       "severity": "medium"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-gateway/d-2"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      },
+      {
+       "code": "LATE_EVIDENCE",
+       "evidence": [
+        "alpha-tool/x-2"
+       ],
+       "message": "행동 시각보다 5분 이상 늦게 접수된 증거입니다",
+       "severity": "low"
+      }
+     ],
+     "id": "2bcd512b-a276-499e-a957-9ca0d2dcc16e",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v2",
+      "inputs": {
+       "assets": 0,
+       "events": [
+        14,
+        16
+       ],
+       "exceptions": 0,
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "86386bcedc1f84115de995ffffbf06056130b051940d4d68871549896ff5c1ed",
+     "status": "evaluated",
+     "version": 2,
+     "worker": "analysis-worker"
+    },
+    "previous": "bb62157e82ea87c3efc27c53e96f9d476f25230d8c375280844033bb4285d22b",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T00:10:51.246Z",
+    "seq": 22,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "9730b450eb7f4fcc3903d3db6927dc4cecde2ea872dbcacd5b650a00c9b08bcb"
+   }
+  ],
+  "checkpoint": {
+   "format": "evidscope-checkpoint-v1",
+   "tenant": "alpha",
+   "count": 22,
+   "head": "9730b450eb7f4fcc3903d3db6927dc4cecde2ea872dbcacd5b650a00c9b08bcb",
+   "signature": "VNauAidJVpJdJUMpQNB1v/aPYreTyWaIubQEXpPcfcuMOHc2qQCBUDhFgHwztAGqjlTEoKKre0f2sAbtoMPDAQ=="
+  },
+  "limitations": [
+   "Minimized receipt evidence; no original prompt or response",
+   "Signature authenticates local vault, not truth of source claims",
+   "Pin public key and checkpoint out of band to detect replacement and rollback",
+   "Erasure covers live event keys and query copies; prior exports/backups need separate disposition"
+  ],
+  "disclosures": [
+   {
+    "seq": 2,
+    "event": {
+     "action": "chat",
+     "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+     "actor": "service:travel-agent",
+     "aiObservation": {
+      "assetRef": "otel-service:travel-agent",
+      "collector": {
+       "id": "evidscope-otlp-receiver",
+       "kind": "otlp",
+       "version": "otel-genai-map-1"
+      },
+      "correlation": {
+       "confidence": "exact",
+       "method": "trace"
+      },
+      "coverage": {
+       "mode": "metadata",
+       "reason": "metadata_only",
+       "status": "observed"
+      },
+      "model": "gpt-4o-2024-08-06",
+      "network": {
+       "destinationHost": "api.openai.com",
+       "destinationPort": 443
+      },
+      "provider": "openai",
+      "screening": {
+       "categories": [],
+       "model": "smartm2m-bdg/CipherGuard-V5.0-XLM-RoBERTa",
+       "processedChunks": 0,
+       "reason": "disabled",
+       "safety": "unknown",
+       "status": "off",
+       "totalChunks": null
+      },
+      "signals": [],
+      "span": {
+       "parentSpanId": "00f067aa0ba902b1",
+       "spanId": "00f067aa0ba902b2",
+       "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+      },
+      "timeBasis": "source_observed",
+      "usage": {
+       "inputTokens": 97,
+       "outputTokens": 52
+      },
+      "version": 2
+     },
+     "assurance": "authenticated_telemetry_report",
+     "clockUncertaintyMs": "unknown",
+     "destination": "api.openai.com",
+     "fingerprint": "fp2:2026-11:4f1f054463eb20b30aa03afde17f4f654d7fd099dc3ac1f66794953fc597a293",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b2",
+     "kind": "notice",
+     "late": true,
+     "model": "gpt-4o-2024-08-06",
+     "occurredAt": "2026-10-06T14:30:00.010Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.155Z",
+     "source": "alpha-otlp",
+     "sourceKind": "otlp",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "otel-genai",
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    "salt": "2a4ab0b94b1fd2746604df1f6004ce659c57463d82ce9fbbe2ce35c92dfce0a2"
+   },
+   {
+    "seq": 4,
+    "event": {
+     "action": "execute_tool",
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+     "actor": "travel-planner",
+     "assurance": "authenticated_telemetry_report",
+     "clockUncertaintyMs": "unknown",
+     "fingerprint": "fp2:2026-11:cc9cc5312ceb3f6843b4ccb98f50ed6874e57d211bad762264bc6a77d34a7475",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b3",
+     "kind": "self_report",
+     "late": true,
+     "occurredAt": "2026-10-06T14:30:00.905Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.156Z",
+     "resource": "get_weather",
+     "source": "alpha-otlp",
+     "sourceKind": "otlp",
+     "status": "failure",
+     "tenant": "alpha",
+     "tool": "get_weather",
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    "salt": "7943a408aee5e55faff91a0eb9745f19bad20058eb0df255b7d3ac9443e587e3"
+   },
+   {
+    "seq": 6,
+    "event": {
+     "action": "chat",
+     "actionId": "otel-trace:4bf92f3577b34da6a3ce929d0e0e4736",
+     "actor": "service:travel-agent",
+     "aiObservation": {
+      "assetRef": "otel-service:travel-agent",
+      "collector": {
+       "id": "evidscope-otlp-receiver",
+       "kind": "otlp",
+       "version": "otel-genai-map-1"
+      },
+      "correlation": {
+       "confidence": "exact",
+       "method": "trace"
+      },
+      "coverage": {
+       "mode": "metadata",
+       "reason": "metadata_only",
+       "status": "observed"
+      },
+      "model": "gpt-4o-2024-08-06",
+      "network": {
+       "destinationHost": "api.openai.com",
+       "destinationPort": 443
+      },
+      "provider": "openai",
+      "screening": {
+       "categories": [],
+       "model": "smartm2m-bdg/CipherGuard-V5.0-XLM-RoBERTa",
+       "processedChunks": 0,
+       "reason": "disabled",
+       "safety": "unknown",
+       "status": "off",
+       "totalChunks": null
+      },
+      "signals": [],
+      "span": {
+       "parentSpanId": "00f067aa0ba902b1",
+       "spanId": "00f067aa0ba902b4",
+       "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+      },
+      "timeBasis": "source_observed",
+      "usage": {
+       "inputTokens": 160,
+       "outputTokens": 31
+      },
+      "version": 2
+     },
+     "assurance": "authenticated_telemetry_report",
+     "clockUncertaintyMs": "unknown",
+     "destination": "api.openai.com",
+     "fingerprint": "fp2:2026-11:285fc9a6d203d5f7279c3de9817a86befb85b9d659ae55a9e7240c9e5ff6b783",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b4",
+     "kind": "notice",
+     "late": true,
+     "model": "gpt-4o-2024-08-06",
+     "occurredAt": "2026-10-06T14:30:01.910Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.156Z",
+     "source": "alpha-otlp",
+     "sourceKind": "otlp",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "otel-genai",
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    "salt": "8940cf001d8dbc4f158238a32f7a2398abb22ed2fa5a43207e6d29f46bd82925"
+   },
+   {
+    "seq": 8,
+    "event": {
+     "action": "invoke_agent",
+     "actionId": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+     "actor": "travel-planner",
+     "assurance": "authenticated_telemetry_report",
+     "clockUncertaintyMs": "unknown",
+     "fingerprint": "fp2:2026-11:37f622fb1e0dd08fb4b4a6511ebbef2b9544903517cc3b78deaaf9f159f65477",
+     "id": "otel:4bf92f3577b34da6a3ce929d0e0e4736:00f067aa0ba902b1",
+     "kind": "self_report",
+     "late": true,
+     "model": "gpt-4o",
+     "occurredAt": "2026-10-06T14:30:00.000Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.156Z",
+     "resource": "asst_5j66UpCpwteGg4YSxUnt7lPY",
+     "source": "alpha-otlp",
+     "sourceKind": "otlp",
+     "status": "success",
+     "tenant": "alpha",
+     "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    "salt": "6487961c9b3e5b8d0087acfe4f40d333af8058ddbe469b9ffb14ebbfcf447c29"
+   },
+   {
+    "seq": 10,
+    "event": {
+     "action": "refund",
+     "actionId": "pay-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "deny",
+     "decisionId": "dec-1",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:2275528ffc698ddcb78ec9ce710987b58dd2c28af242ca34743520bf2a616f61",
+     "id": "d-1",
+     "kind": "policy_decision",
+     "late": true,
+     "occurredAt": "2026-10-08T00:00:51.172Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:51.173Z",
+     "resource": "order-7",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-1"
+    },
+    "salt": "e5000e4d8e60bdc1562620d001be40301d441838bf5f674653dae7fef7c60d9e"
+   },
+   {
+    "seq": 12,
+    "event": {
+     "action": "refund",
+     "actionId": "pay-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:977eea10b1d0cd4ec54cf72fc9ccde5714ea5ddddad043c808a59a66d6b78e90",
+     "id": "x-1",
+     "kind": "execution",
+     "late": true,
+     "occurredAt": "2026-10-08T00:00:55.182Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.182Z",
+     "resource": "order-7",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-1"
+    },
+    "salt": "7869db60487fdb0a4a45f2cef5369de1d717f4f68cf8d8f348e9d11137925a8b"
+   },
+   {
+    "seq": 14,
+    "event": {
+     "action": "refund",
+     "actionId": "pay-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "allow",
+     "decisionId": "dec-2",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:a33471dc121b40d3000bb4d25f5047c87b0a628779d12b8fe588baeaf6546aab",
+     "id": "d-2",
+     "kind": "policy_decision",
+     "late": true,
+     "occurredAt": "2026-10-08T00:00:51.188Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T00:10:51.188Z",
+     "resource": "order-7",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-2"
+    },
+    "salt": "eac41de61d1a0ba1a189b9bcd2931911acf6f007c7a756e48b82052b912202f7"
+   },
+   {
+    "seq": 16,
+    "event": {
+     "action": "refund",
+     "actionId": "pay-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:469543b82b5a9c910ec696c34ced49cd6e392935657226ed4465e010fa5fcd76",
+     "id": "x-2",
+     "kind": "execution",
+     "late": true,
+     "occurredAt": "2026-10-08T00:00:55.195Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "receivedAt": "2026-10-08T00:10:51.195Z",
+     "resource": "order-7",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-2"
+    },
+    "salt": "37a718f48cbf3b2d4f3b525794e5332ed95b9e9b3c8b77eb5950a4356327596f"
+   }
+  ]
+ }
+}

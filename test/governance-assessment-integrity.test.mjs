@@ -1,18 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {mkdtempSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
 import {createService} from '../src/service.mjs';
 import {canonical} from '../src/crypto.mjs';
+import {tempDir} from './temp-dir.mjs';
 
 const system={id:'credit',name:'Synthetic credit',owner:'reviewer',purpose:'credit assistance',markets:['KR'],krRoles:['deployer'],generative:false,highImpact:'candidate'};
 const requirement={id:'KR-34-RISK',title:'Risk management'};
 const assessment={systemId:'credit',requirementId:requirement.id,applicability:'applicable',assessment:'sufficient',legalReview:'reviewed',control:'Synthetic review',owner:'reviewer',reason:'Evidence reviewed',nextReviewAt:'2099-01-01T00:00:00.000Z',evidence:[{type:'document',ref:'external-reference',version:'1'}]};
 async function fixture(t){
  const principals=['alpha','beta'].map(tenant=>({id:tenant+'-reviewer',tenant,role:'reviewer',token:tenant.repeat(40)}));
- const service=createService({dataDir:mkdtempSync(join(tmpdir(),'evidscope-assessment-')),key:generateKeyPairSync('ed25519').privateKey,config:{principals},requirements:[requirement]});t.after(()=>service.store.close());
+ const service=createService({dataDir:tempDir('evidscope-assessment-'),key:generateKeyPairSync('ed25519').privateKey,config:{principals},requirements:[requirement]});t.after(()=>service.store.close());
  const call=(path,body,tenant='alpha')=>service.handle(body===undefined?'GET':'POST',new URL(path,'http://local'),{authorization:'Bearer '+principals.find(p=>p.tenant===tenant).token},body===undefined?'':JSON.stringify(body));
  const store=service.store;for(const p of principals)await call('/api/governance/systems',system,p.tenant);
  const records=()=>canonical(store.db.prepare('SELECT tenant,seq,body,hash FROM ledger ORDER BY tenant,seq').all());

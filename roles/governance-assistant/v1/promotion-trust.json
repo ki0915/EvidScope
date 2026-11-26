@@ -1,0 +1,5 @@
+{
+ "schemaVersion": 1,
+ "note": "Ed25519 public keys of the people who may approve a governance-mapping adapter, each with the reviewer identity it signs as. Empty: nothing can be promoted. Add a key only through a reviewed commit; the private key stays with that person.",
+ "keys": []
+}

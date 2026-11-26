@@ -1,0 +1,3954 @@
+{
+ "format": "evidscope-test-fixture-v1",
+ "description": "Export and case report written by commit 8b3af6c (round 5 closed, before evidence packages): tenant alpha in three phases with registry, approvals, a human approval, a retention policy, a KR assessment with legal review, a reviewed case, a stop order and evaluations.",
+ "baseCommit": "8b3af6c",
+ "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA+Uxv+KuhajV1VVt1G2mX+Fz8nricYSJVG2ybYUWHyVM=\n-----END PUBLIC KEY-----\n",
+ "exportBundle": {
+  "format": "evidscope-export-v2",
+  "records": [
+   {
+    "payload": {
+     "createdAt": "2026-10-08T04:04:08.249Z",
+     "hash": "a0a137651298790ff5aca835813667e614edfd2fbdc5baacfd7412720f63421a",
+     "legalSourceCoverage": {
+      "automaticLegalVerdict": false,
+      "checkedAt": "2026-10-06",
+      "hash": "77644998723d1dd86d074f83702286f48c82d96b9ace8c10e13d5ea3b8af12fd",
+      "jurisdiction": "KR",
+      "limitations": [
+       "법률·시행령 원문 확인과 하위 고시·위원회 결정 확인은 별개입니다. 미확인은 부존재·적용 제외·법 위반 판정이 아닙니다.",
+       "개별 조치의 기술 근거 또는 사람의 충분성 평가가 확인되어도 한국법 전체 지원 완료를 의미하지 않습니다."
+      ],
+      "registeredRequirements": 18,
+      "requirementsHash": "ef06d09f863d6edd2723cd300a686cffa11c150ec605d11bf7c009cbc31b80a2",
+      "schemaVersion": 1,
+      "scope": "selected_ai_operator_and_public_user_governance_requirements",
+      "scopeDescription": "등록된 주요 사업자·공공 이용자의 거버넌스 의무를 검토하며 한국 AI 기본법 전체를 포괄하지 않습니다.",
+      "status": "source_verification_incomplete",
+      "unresolvedSources": [
+       {
+        "affectedRequirementIds": [
+         "KR-34-DOCUMENT",
+         "KR-34-EXPLAIN",
+         "KR-34-OVERSIGHT",
+         "KR-34-PROTECT",
+         "KR-34-RISK"
+        ],
+        "article": "법 제34조제1항제6호",
+        "checkedAt": "2026-10-06",
+        "id": "KR-34-1-6-COMMITTEE",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인"
+       },
+       {
+        "affectedRequirementIds": [
+         "KR-34-DOCUMENT",
+         "KR-34-EXPLAIN",
+         "KR-34-OVERSIGHT",
+         "KR-34-PROTECT",
+         "KR-34-RISK"
+        ],
+        "article": "법 제34조제2항",
+        "checkedAt": "2026-10-06",
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+       },
+       {
+        "affectedRequirementIds": [
+         "KR-31-1",
+         "KR-31-2",
+         "KR-31-3"
+        ],
+        "article": "시행령 제23조제4항제3호",
+        "checkedAt": "2026-10-06",
+        "id": "KR-DECREE-23-4-3-EXCEPTION",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "투명성 의무의 장관 고시 추가 예외 미확인"
+       },
+       {
+        "affectedRequirementIds": [
+         "KR-33"
+        ],
+        "article": "시행령 제25조제2항제5호",
+        "checkedAt": "2026-10-06",
+        "id": "KR-DECREE-25-2-5-CRITERIA",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "고영향 확인의 장관 고시 추가 판단 사항 미확인"
+       }
+      ],
+      "unverifiedDetailNoticeRequirementIds": [
+       "KR-31-1",
+       "KR-31-2",
+       "KR-31-3",
+       "KR-32-MONITOR",
+       "KR-32-RISK",
+       "KR-32-SUBMIT",
+       "KR-33",
+       "KR-34-DOCUMENT",
+       "KR-34-EXPLAIN",
+       "KR-34-OVERSIGHT",
+       "KR-34-PROTECT",
+       "KR-34-RISK",
+       "KR-35-IMPACT"
+      ],
+      "version": "evidscope-kr-legal-source-coverage-v1",
+      "wholeLawComplete": false
+     },
+     "legalSourceCoverageHash": "77644998723d1dd86d074f83702286f48c82d96b9ace8c10e13d5ea3b8af12fd",
+     "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "requirements": [
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 또는 생성형 AI 제품·서비스 제공 전.",
+       "article": "제31조제1항 / 시행령 제23조",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "고지 정책 및 버전",
+        "제공 전 고지 전달·렌더링 시험",
+        "대상 이용자 및 예외 검토"
+       ],
+       "exceptionConditions": [
+        "AI 활용 사실의 명백성: 의무별 전부 또는 일부 예외(시행령 제23조제4항제1호)",
+        "사업자 내부 업무 용도로만 사용: 실제 외부 제공 여부와 범위(제2호)",
+        "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-31-1",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "시행령 제23조제4항제3호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-DECREE-23-4-3-EXCEPTION",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "투명성 의무의 장관 고시 추가 예외 미확인"
+        }
+       ],
+       "limitations": "시행령 제23조제4항의 명백성·내부 업무 등 전부 또는 일부 예외는 근거와 범위를 따로 검토. 통지 이벤트만으로 읽음·이해를 입증하지 않음.",
+       "requirement": "고영향 또는 생성형 AI 기반 제품·서비스라는 사실을 이용자에게 사전에 알린다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "AI 사용 사전 고지",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 생성형 AI 또는 이를 이용한 제품·서비스 결과물 제공.",
+       "article": "제31조제2항 / 시행령 제23조제2항",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "출력 표시 정책",
+        "대표 출력 표시·기계판독 시험",
+        "안내 제공 증거"
+       ],
+       "exceptionConditions": [
+        "AI 활용 사실의 명백성: 의무별 전부 또는 일부 예외(시행령 제23조제4항제1호)",
+        "사업자 내부 업무 용도로만 사용: 실제 외부 제공 여부와 범위(제2호)",
+        "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-31-2",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "시행령 제23조제4항제3호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-DECREE-23-4-3-EXCEPTION",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "투명성 의무의 장관 고시 추가 예외 미확인"
+        }
+       ],
+       "limitations": "사전 고지와 결과물 표시는 별개. 표시 로그는 실제 렌더링·접근성·모든 출력의 표시 여부를 보장하지 않음. 시행령 예외 별도 검토.",
+       "requirement": "생성형 AI 결과물임을 표시한다. 기계 판독 방식을 택하면 안내 문구·음성 등으로 생성 사실을 1회 이상 알린다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "생성형 결과물 표시",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0004&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 실제와 구분하기 어려운 가상 결과물을 제공.",
+       "article": "제31조제3항 / 시행령 제23조제3항",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "결과물 유형·사실성 검토",
+        "고지·표시 접근성 시험",
+        "예술적 표현물 해당성 검토"
+       ],
+       "exceptionConditions": [
+        "AI 활용 사실의 명백성: 의무별 전부 또는 일부 예외(시행령 제23조제4항제1호)",
+        "사업자 내부 업무 용도로만 사용: 실제 외부 제공 여부와 범위(제2호)",
+        "장관 고시 추가 예외: 최종 현행 고시 미확인(제3호)"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-31-3",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "시행령 제23조제4항제3호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-DECREE-23-4-3-EXCEPTION",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "투명성 의무의 장관 고시 추가 예외 미확인"
+        }
+       ],
+       "limitations": "예술·창의적 표현물은 향유를 저해하지 않는 방식 가능. 이용자 조건을 고려. 자동으로 예외 판정하지 않음.",
+       "requirement": "실제와 구별하기 어려운 가상 음향·이미지·영상 등은 AI 생성 사실을 이용자가 명확히 인식하도록 알리거나 표시한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0031&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "사실적인 합성물의 명확한 고지",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0024&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+       "article": "제32조제1항제1호 / 시행령 제24조",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "연산량 및 대상성 검토",
+        "위험등록부",
+        "완화 시험과 잔여위험 평가"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-32-RISK",
+       "jurisdiction": "KR",
+       "limitations": "모든 AI에 적용하지 않음. 연산량·기술·위험 사실과 최종 고시 확인 필요. 외부 안전성 시험·문서·전문가 검토를 로그로 대체할 수 없음.",
+       "requirement": "대상 시스템의 수명주기 전반 위험을 식별·평가하고 완화한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "안전성 위험 식별·평가·완화",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0024&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+       "article": "제32조제1항제2호 / 시행령 제24조",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "안전사고 모니터링 범위",
+        "대응 절차·담당자",
+        "대응 훈련 및 사건 기록"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-32-MONITOR",
+       "jurisdiction": "KR",
+       "limitations": "모든 AI에 적용하지 않음. 연산량·기술·위험 사실과 최종 고시 확인 필요. 외부 안전성 시험·문서·전문가 검토를 로그로 대체할 수 없음. 외부 중단 등록은 실제 중단 확인과 구분.",
+       "requirement": "AI 관련 안전사고를 모니터링하고 대응하는 위험관리체계를 구축한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "안전사고 모니터링·대응 체계",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0024&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 시행령 제24조의 세 기준(학습 누적 연산량 10^26 FLOPs 이상, 최첨단 기술, 광범위하고 중대한 위험 우려)을 모두 충족하는 시스템.",
+       "article": "제32조제2항·제3항",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "이행 결과 자료",
+        "법무·책임자 검토",
+        "외부 제출 접수 증명"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-32-SUBMIT",
+       "jurisdiction": "KR",
+       "limitations": "제출 방식·시기 최종 고시 원문 미확인. 제출 준비를 지원하며 기관 자동 제출은 지원하지 않음. 내보내기를 제출 완료로 표시하지 않음.",
+       "requirement": "제32조제1항 이행 결과를 과학기술정보통신부장관에게 제출한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0032&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "안전성 이행 결과 제출",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. AI 또는 AI 제품·서비스 제공.",
+       "article": "제33조제1항 / 시행령 제25조",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "제품·서비스 목적·법 제2조제4호 활용 영역·영향 사실",
+        "생명·신체 안전·기본권 위험의 영향·중대성·빈도와 영역별 특수성",
+        "제공 전 검토 문서·담당자·시스템·모델·법령 버전",
+        "선택적 확인 요청: 개요서·학습용데이터 개요·활용 과정과 결과·참고 서류",
+        "기관 접수·회신·연장 문서·재확인 요청/결과(해당 시)"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-33",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "시행령 제25조제2항제5호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-DECREE-25-2-5-CRITERIA",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0025&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 확인의 장관 고시 추가 판단 사항 미확인"
+        }
+       ],
+       "limitations": "사전 검토 의무와 확인 요청 선택권을 구분. 한국 고영향과 EU 고위험을 동일시하지 않음. 자료 부족은 미확인. 확인 요청 없이도 사전 검토 의무는 남는다. 회신 지연·자료 부족을 자동 비고영향으로 판정하지 않는다.",
+       "optionalConfirmationProcedure": [
+        "시행령 제25조제1항 별지 요청서 및 4종 첨부자료",
+        "제3항 회신 30일; 사유와 기간을 문서 통지하며 한 번 30일 범위 연장",
+        "제4항 회신일로부터 10일 이내 이의에 대한 재확인 요청",
+        "제5항 재확인 요청일로부터 30일 이내 회신"
+       ],
+       "requirement": "AI 또는 AI 제품·서비스를 제공하기 전에 고영향 여부를 검토한다. 필요한 경우 장관에게 확인을 요청할 수 있다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0033&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "고영향 해당 여부 사전 검토",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제34조제1항제1호",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "위험관리 정책",
+        "책임조직",
+        "위험·통제 운영 평가"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-34-RISK",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "법 제34조제1항제6호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-1-6-COMMITTEE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "위원회 심의·의결 추가 사항 원문 미확인"
+        },
+        {
+         "article": "법 제34조제2항",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-2-DETAIL-NOTICE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+        }
+       ],
+       "limitations": "법 제34조제3항·시행령 제27조제5항·별표1 인정 요건을 사람이 검토. 최종 세부 고시 미확인. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다.",
+       "requirement": "고영향 AI의 위험관리방안을 수립하고 운영한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "supplierRelianceScope": [
+        "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+        "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+        "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+        "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+        "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+       ],
+       "title": "고영향 위험관리",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제34조제1항제2호",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "설명 정책",
+        "학습데이터 개요",
+        "설명 사례와 이용자 평가",
+        "별표1 제2호다목을 활용하는 대출심사는 신용정보법 제35조의2 설명 의무와 제36조의2제1항 설명 절차를 모두 실제 이행한 근거"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-34-EXPLAIN",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "법 제34조제1항제6호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-1-6-COMMITTEE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "위원회 심의·의결 추가 사항 원문 미확인"
+        },
+        {
+         "article": "법 제34조제2항",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-2-DETAIL-NOTICE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+        }
+       ],
+       "limitations": "내부 사고 과정 수집을 요구하지 않음. 도구 호출 로그만으로 설명가능성 충족 아님. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다.",
+       "otherLawRecognition": [
+        "시행령 별표1 제2호다목: 대출 심사에 해당하는 경우 신용정보법 제35조의2에 따른 설명 의무와 제36조의2제1항에 따른 설명 절차를 모두 이행한 범위",
+        "별표1 제7호 개인정보보호법 조치는 개인정보 처리·보호에 상응하는 범위만 검토; 전체 AI 조치의 자동 인정이 아님",
+        "개별 의무의 실제 이행과 대응 범위를 사람이 검토하고 금융사 명칭이나 서류 존재만으로 간주하지 않음"
+       ],
+       "requirement": "기술적으로 가능한 범위에서 최종결과·주요 기준·학습용데이터 개요 등에 관한 설명 방안을 수립·시행한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "supplierRelianceScope": [
+        "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+        "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+        "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+        "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+        "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+       ],
+       "title": "설명 방안",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제34조제1항제3호",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "보호 정책",
+        "문의·이의·피해 처리 절차",
+        "처리 실적 검토",
+        "별표1 제3호나목을 활용하는 대출심사는 금융소비자보호법 제10조 의무를 모두 실제 이행한 근거"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-34-PROTECT",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "법 제34조제1항제6호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-1-6-COMMITTEE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "위원회 심의·의결 추가 사항 원문 미확인"
+        },
+        {
+         "article": "법 제34조제2항",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-2-DETAIL-NOTICE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+        }
+       ],
+       "limitations": "고객 권리와 절차 적절성은 인간·전문가 평가가 필요. 개인정보 등 타법은 별도 검토. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다.",
+       "otherLawRecognition": [
+        "시행령 별표1 제3호나목: 대출 심사에 해당하는 경우 금융소비자보호법 제10조에 따른 의무를 모두 이행한 범위",
+        "별표1 제7호 개인정보보호법 조치는 개인정보 처리·보호에 상응하는 범위만 검토; 전체 AI 조치의 자동 인정이 아님",
+        "공급사 조치 활용(제27조제3항)과 다른 법령 이행 인정(제27조제5항)을 구분하고 실제 이행·대응 범위를 사람이 검토"
+       ],
+       "requirement": "이용자 보호 방안을 수립하고 운영한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "supplierRelianceScope": [
+        "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+        "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+        "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+        "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+        "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+       ],
+       "title": "이용자 보호",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제34조제1항제4호",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "감독 책임자·연락체계",
+        "권한·역량·운영 절차",
+        "실제 인간 검토·개입 기록"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-34-OVERSIGHT",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "법 제34조제1항제6호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-1-6-COMMITTEE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "위원회 심의·의결 추가 사항 원문 미확인"
+        },
+        {
+         "article": "법 제34조제2항",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-2-DETAIL-NOTICE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+        }
+       ],
+       "limitations": "자동 검토기 허용은 인간 감독이 아님. EvidScope 사건 검토만으로 업무 AI 감독 체계 전체를 입증하지 않음. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다. 모든 도구 실행에 사전 승인을 요구하는 조항이 아니다. 당시 조직 정책의 건별 승인 요구와 감독 체계를 분리한다.",
+       "requirement": "고영향 AI에 대해 사람이 관리·감독하도록 한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "supplierRelianceScope": [
+        "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+        "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+        "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+        "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+        "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+       ],
+       "title": "사람의 관리·감독",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제34조제1항제5호 / 시행령 제27조제1항·제2항",
+       "binding": "조건부 의무",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "제34조제1항 조치별 근거 문서 목록·버전·실제 파일 및 해시",
+        "5년 보관 계획·기한·접근통제·백업·복구 시험",
+        "게시4항목의 실제 게시 위치·내용·시점·접근성 확인",
+        "게시 제외된 영업비밀 항목·법적 근거·검토자와 공개 부분"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-34-DOCUMENT",
+       "jurisdiction": "KR",
+       "legalSourceGaps": [
+        {
+         "article": "법 제34조제1항제6호",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-1-6-COMMITTEE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "위원회 심의·의결 추가 사항 원문 미확인"
+        },
+        {
+         "article": "법 제34조제2항",
+         "checkedAt": "2026-10-06",
+         "id": "KR-34-2-DETAIL-NOTICE",
+         "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+         "status": "not_verified",
+         "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+        }
+       ],
+       "limitations": "5년은 이 조치 근거 문서의 규정이며 모든 원문 prompt·이벤트의 일률적 보존기간이 아님. 보관 정책 설정만으로 5년 운영 실적을 입증하지 않음. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다.",
+       "publicationException": "부정경쟁방지 및 영업비밀보호에 관한 법률 제2조제2호에 해당하는 사항만 게시에서 제외 가능; 제외 항목·근거·검토자를 기록하며 문서 보관 의무를 면제하지 않음",
+       "publicationItems": [
+        "위험관리정책·조직체계 등 위험관리방안 주요 내용(시행령 제27조제1항제1호)",
+        "설명 방안 주요 내용(제2호)",
+        "이용자 보호 방안(제3호)",
+        "관리·감독하는 사람의 성명과 연락처(제4호)"
+       ],
+       "requirement": "안전성·신뢰성 조치를 확인하는 문서를 작성하고 근거를 5년 보관한다. 시행령상 위험관리·설명·이용자보호·감독자 정보를 게시한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+       "supplierRelianceScope": [
+        "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+        "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+        "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+        "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+        "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+       ],
+       "title": "조치 문서·보관·게시",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0028&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsInfoP.do?lsId=015032"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+       "article": "제35조제1항 / 시행령 제28조",
+       "binding": "노력의무 및 평가 내용 요건",
+       "detailNoticeStatus": "not_verified",
+       "effectiveDate": "2026-07-21 (취약계층 후단); 기존 노력의무 2026-01-22",
+       "evidenceNeeded": [
+        "영향 가능 개인·집단 식별과 취약계층 특성(시행령 제28조제1항제1호)",
+        "영향받을 기본권 유형(제2호)",
+        "사회적·경제적 영향의 내용·범위(제3호)",
+        "AI 사용 행태(제4호)",
+        "정량·정성 지표 및 결과 산출 방식(제5호)",
+        "위험 예방·완화·손실 복구(제6호)",
+        "개선이 필요한 경우 이행계획(제7호)",
+        "제공 전 평가 추진·검토 기록 및 직접/제3자 실시 구분",
+        "제품·서비스 성격과 시행령 제1조의2 취약계층 해당성 검토"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-35-IMPACT",
+       "impactContentItems": [
+        "영향 가능 개인·집단 식별과 취약계층 특성(시행령 제28조제1항제1호)",
+        "영향받을 기본권 유형(제2호)",
+        "사회적·경제적 영향의 내용·범위(제3호)",
+        "AI 사용 행태(제4호)",
+        "정량·정성 지표 및 결과 산출 방식(제5호)",
+        "위험 예방·완화·손실 복구(제6호)",
+        "개선이 필요한 경우 이행계획(제7호)"
+       ],
+       "jurisdiction": "KR",
+       "limitations": "사전 평가 자체의 노력의무와 실시하는 평가의 내용 요건을 구분. 행동 로그는 부분 자료. 평가 세부 고시 최종본 미확인.",
+       "requirement": "고영향 AI 제품·서비스 제공 전 기본권 영향평가를 위해 노력한다. 평가에 제품·서비스 성격에 따른 인공지능취약계층 특성을 반영한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+       "title": "기본권 영향평가와 취약계층",
+       "verifiedAt": "2026-10-06",
+       "vulnerableGroupScope": [
+        "구직자 취업촉진 및 생활안정지원에 관한 법률 제2조제2호 수급자격자",
+        "국민기초생활 보장법 제2조제1호 수급권자 또는 제10호 차상위계층",
+        "농어업인 삶의 질 향상 및 농어촌지역 개발촉진에 관한 특별법 제3조제3호 농어업인등",
+        "다문화가족지원법 제2조제1호 다문화가족 구성원",
+        "북한이탈주민의 보호 및 정착지원에 관한 법률 제2조제1호 북한이탈주민",
+        "여성의 경제활동 촉진과 경력단절 예방법 제2조제1호 경력보유여성등",
+        "장애인복지법 제2조 장애인",
+        "한부모가족지원법 제5조 및 제5조의2 지원대상자",
+        "65세 이상인 사람",
+        "그 밖에 AI 제품·서비스 이용에 어려움이 있다고 중앙행정기관장 또는 지방자치단체장이 인정한 사람"
+       ]
+      },
+      {
+       "appliesWhen": "국가기관등이 고영향 AI 제품·서비스를 이용하려는 경우.",
+       "article": "제35조제2항",
+       "binding": "조건부 의무",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "공공기관 해당성",
+        "후보 제품 영향평가 비교",
+        "조달·선정 검토 기록"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-35-PUBLIC",
+       "jurisdiction": "KR",
+       "limitations": "민간 사업자 모두에게 동일한 강제 영향평가 의무를 부여하는 조항이 아님.",
+       "requirement": "국가기관등이 고영향 AI 제품·서비스를 이용하려면 영향평가를 실시한 제품·서비스를 우선 고려한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "국가기관등의 이용·조달 의무; AI제품·서비스 공급사업자에 해당하지 않는 단순 공공 이용자에게도 별도 검토",
+       "scopeConditions": [
+        "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+        "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+        "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+        "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+       ],
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031810855",
+       "title": "공공 이용 시 평가 제품 우선 고려",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치는 인공지능사업자. 법 제4조제2항·시행령 제2조의 국방·국가안보 전용 목적과 지정업무 적용 제외는 근거·실제 용도를 별도 검토. 고영향 인공지능을 제공하는 경우.",
+       "article": "제30조제3항",
+       "binding": "노력의무",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "제공 전 검·인증 추진 계획·신청·검토 기록",
+        "외부 검·인증 문서의 대상 시스템·모델·버전·범위",
+        "검·인증을 받지 못한 이유와 후속 노력의 검토"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-30-EFFORT",
+       "jurisdiction": "KR",
+       "limitations": "검·인증 결과 보유를 일률적인 강제 의무로 표시하지 않는다. EvidScope 증거 검증이나 서명은 외부 인증을 대신하지 않는다.",
+       "requirement": "고영향 인공지능 제공 전 안전성·신뢰성 검·인증 등을 받도록 노력한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "고영향 AI 사전 검·인증 노력",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "appliesWhen": "법 제2조제4호자목의 국가기관등이 고영향 인공지능을 이용하려는 경우. 단순 제품 이용과 인공지능사업자 해당성을 구별한다.",
+       "article": "제30조제4항",
+       "binding": "조건부 의무",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "국가기관등 해당성",
+        "조달 후보의 검·인증 대상·범위·유효성 비교",
+        "선정·우선 고려 근거와 담당자 판단"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-30-PUBLIC",
+       "jurisdiction": "KR",
+       "limitations": "검·인증 제품만 구매해야 한다는 금지 규정으로 바꾸지 않는다. 인증 적절성과 우선 고려 충분성은 사람이 검토한다.",
+       "requirement": "국가기관등이 고영향 인공지능을 이용하려면 검·인증 등을 받은 AI 기반 제품·서비스를 우선 고려한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "국가기관등의 이용·조달 의무; AI제품·서비스 공급사업자에 해당하지 않는 단순 공공 이용자에게도 별도 검토",
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0030&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "공공 이용 시 검·인증 AI 우선 고려",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0029&lsiSeq=288781&urlMode=lsScJoRltInfoR",
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0043&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치는 인공지능사업자. 법 제4조제2항·시행령 제2조의 국방·국가안보 전용 목적과 지정업무 적용 제외는 근거·실제 용도를 별도 검토. 국내 주소 또는 영업소가 없고 전년도 총매출 1조원 이상, AI서비스 부문 전년도 매출 100억원 이상, 전년도 말 기준 직전 3개월간 국내 이용자 일평균 100만명 이상, 법 제43조제1항제3호 과태료 부과 사실 중 하나에 해당. 매출은 전년도 평균환율로 원화 환산.",
+       "article": "제36조제1항·제2항·제3항 / 시행령 제29조",
+       "binding": "조건부 의무",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "국내 주소·영업소 부재와 사업자·국내 영향 사실",
+        "전년도 총매출·AI서비스 매출·평균환율 또는 국내 이용자 산정·해당 과태료 증빙",
+        "대리인의 국내 주소·영업소 및 서면 지정 문서",
+        "제36조제1항제1~3호 대리 범위·책임과 문서 점검 기록",
+        "과기정통부 신고·접수 증명"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-36-REPRESENTATIVE",
+       "jurisdiction": "KR",
+       "limitations": "1조·100억·100만·해당 과태료는 OR 조건이며 국내 주소·영업소 부재는 AND 조건이다. 다른 종류 과태료를 혼동하지 않는다. 내보내기나 내부 확인을 장관 신고로 인정하지 않는다. 대리인의 관련 위반은 지정 사업자의 행위로 간주된다.",
+       "requirement": "국내 주소 또는 영업소가 없는 대상 인공지능사업자는 국내에 주소 또는 영업소가 있는 대리인을 서면 지정하고 장관에게 신고한다. 대리 범위는 안전성 결과 제출, 고영향 확인 요청, 조치 이행 지원과 문서 최신성·정확성 점검이다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0036&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "국외 사업자의 국내대리인 지정·신고",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "additionalSourceUrls": [
+        "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0043&lsiSeq=282791&urlMode=lsScJoRltInfoR"
+       ],
+       "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치는 인공지능사업자. 법 제4조제2항·시행령 제2조의 국방·국가안보 전용 목적과 지정업무 적용 제외는 근거·실제 용도를 별도 검토. 제31조제2·3항, 제32조제1·2항 또는 제34조제1항 관련 조사·자료 요청 또는 제40조제3항 중지·시정명령을 받은 경우.",
+       "article": "제40조제1항·제2항·제3항 / 제43조제1항제3호",
+       "binding": "명령 수령 시 이행 의무",
+       "effectiveDate": "2026-01-22",
+       "evidenceNeeded": [
+        "기관 요청 또는 중지·시정명령 원문·발급기관·대상·수령·기한",
+        "당시 시스템·모델·정책·증거 버전",
+        "조사 자료 제출·접수 및 변경·중지의 독립 운영 결과",
+        "담당자 이행·충분성 검토와 후속 확인"
+       ],
+       "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+       "id": "KR-40-ORDER",
+       "jurisdiction": "KR",
+       "limitations": "제31조제1항 단독 고지 위반에 관한 과태료와 제40조 조사 대상 목록을 혼동하지 않는다. 조사 내용·방법·절차에는 행정조사기본법을 별도 적용한다. 내부 중지 요청 로그만으로 실제 중지나 기관 명령 이행을 증명하지 않는다.",
+       "requirement": "기관의 법정 사실조사와 자료 요청을 지원하고 실제 제40조제3항 중지·시정명령을 받은 경우 대상·기한·이행 결과를 대조한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+       "sourceTextStatus": "verified_statute_and_decree",
+       "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0040&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+       "title": "사실조사 자료와 중지·시정명령 이행",
+       "verifiedAt": "2026-10-06"
+      },
+      {
+       "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+       "article": "GOVERN 1.1, 1.5, 1.6, 2.1",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "책임자 및 인벤토리",
+        "규범·정책 목록",
+        "검토 주기"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "id": "NIST-GOVERN",
+       "jurisdiction": "International",
+       "limitations": "조직이 채택한 범위의 권고 매핑. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+       "requirement": "적용 규범과 책임을 문서화하고 AI 목록과 정기 검토를 관리한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "책임·정책·인벤토리",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+       "article": "MAP 1.1, 2.2",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "시스템 목적·시장·이용자",
+        "영향 평가",
+        "가정·한계"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "id": "NIST-MAP",
+       "jurisdiction": "International",
+       "limitations": "인벤토리만으로 사회적 맥락 평가를 대체하지 않음. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+       "requirement": "목적·이용자·영향과 사용 맥락, 지식 한계 및 인간 감독을 기록한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "사용 맥락과 한계",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+       "article": "MEASURE 1.1, 2.1, 2.4",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "시험 결과 및 기준",
+        "관측 범위",
+        "미측정 위험"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "id": "NIST-MEASURE",
+       "jurisdiction": "International",
+       "limitations": "관측 범위를 넘어 전체 가시성 백분율을 만들지 않음. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+       "requirement": "위험 지표와 시험 조건을 기록하고 운영 행동을 관측하며 측정하지 못한 위험을 명시한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "위험 측정과 미관측",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "조직이 AI RMF를 채택한 범위. 법률·계약으로 채택된 경우 해당 근거 별도 검토.",
+       "article": "MANAGE 1.2, 1.3, 1.4",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "보완 담당자·기한",
+        "처리 검토",
+        "잔여위험 수용 근거"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "id": "NIST-MANAGE",
+       "jurisdiction": "International",
+       "limitations": "이 기능은 조치 과제 관리이며 자동 실행 차단·권한 변경이 아님. 네 기능은 반복 적용하며 일률적 순서가 아님.",
+       "requirement": "평가에 따라 위험 우선순위·처리 계획을 정하고 잔여위험을 기록한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "위험 처리와 잔여위험",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "Article 2 관할과 provider 역할이 확인되고 자연인과 직접 상호작용하는 AI.",
+       "article": "Article 50(1), 50(5)",
+       "binding": "조건부 의무",
+       "effectiveDate": "2026-08-02",
+       "evidenceNeeded": [
+        "EU 관할·역할 판단",
+        "최초 상호작용 고지",
+        "접근성 시험"
+       ],
+       "framework": "Regulation (EU) 2024/1689 + 2026/1744",
+       "id": "EU-50-1",
+       "jurisdiction": "EU",
+       "limitations": "합리적인 이용자에게 명백한 경우 및 특정 법집행 예외 별도 검토. 전체 EU 의무를 포괄하지 않음.",
+       "requirement": "직접 상호작용하도록 설계된 AI의 provider는 사람이 AI와 상호작용함을 알 수 있도록 설계·개발한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+       "title": "사람과 상호작용하는 AI 고지",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "Article 2 관할과 합성 콘텐츠 생성 시스템의 provider 역할 확인.",
+       "article": "Article 50(2); 111(4), as amended by 2026/1744",
+       "binding": "조건부 의무",
+       "effectiveDate": "2026-08-02; 기존 시스템 전환 2026-12-02",
+       "evidenceNeeded": [
+        "시장 출시일",
+        "기계 판독 표시·검출 시험",
+        "콘텐츠별 기술 한계"
+       ],
+       "framework": "Regulation (EU) 2024/1689 + 2026/1744",
+       "id": "EU-50-2",
+       "jurisdiction": "EU",
+       "limitations": "기술적으로 가능한 범위와 편집 보조·입력 의미를 실질 변경하지 않는 경우 등 예외 검토. 2026-08-02 이전 출시 시스템은 111(4)에 따라 2026-12-02까지 전환. 한국 표시 방식과 동일하다고 보지 않음.",
+       "requirement": "합성 음성·이미지·영상·문자 생성 AI의 provider는 출력의 AI 생성·조작을 기계 판독하고 검출할 수 있도록 한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+       "title": "합성 콘텐츠의 기계 판독 표시",
+       "verifiedAt": "2026-09-08"
+      },
+      {
+       "appliesWhen": "deployer 역할 및 해당 기능 사용 범위. 법집행 등 예외 별도 검토.",
+       "article": "Article 50(3)",
+       "binding": "조건부 의무",
+       "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+       "evidenceNeeded": [
+        "기능·역할 확인",
+        "대상자 고지 화면",
+        "개인정보 처리 검토"
+       ],
+       "framework": "EU AI Act",
+       "frameworkVersion": "Article 50; consolidated amendment review pending",
+       "id": "EU-50-3",
+       "jurisdiction": "EU",
+       "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+       "requirement": "대상자에게 기능 운영을 알리는 통제와 근거를 검토한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+       "title": "생체 분류·감정 인식 고지",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "deployer의 딥페이크 생성·조작 이용. 예술·풍자·법집행 예외 별도 검토.",
+       "article": "Article 50(4)",
+       "binding": "조건부 의무",
+       "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+       "evidenceNeeded": [
+        "콘텐츠 종류",
+        "표시 화면",
+        "예외 판단 기록"
+       ],
+       "framework": "EU AI Act",
+       "frameworkVersion": "Article 50; consolidated amendment review pending",
+       "id": "EU-50-4-MEDIA",
+       "jurisdiction": "EU",
+       "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+       "requirement": "사실적인 합성·조작 콘텐츠의 공개 고지와 예외를 검토한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+       "title": "딥페이크 공개 고지",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "deployer 역할과 공개 목적. 인간 편집·책임 및 법집행 예외 검토.",
+       "article": "Article 50(4)",
+       "binding": "조건부 의무",
+       "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+       "evidenceNeeded": [
+        "게시 목적",
+        "고지 기록",
+        "편집 책임 검토"
+       ],
+       "framework": "EU AI Act",
+       "frameworkVersion": "Article 50; consolidated amendment review pending",
+       "id": "EU-50-4-TEXT",
+       "jurisdiction": "EU",
+       "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+       "requirement": "공익 정보를 제공하는 생성·조작 텍스트의 공개 고지를 검토한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+       "title": "공익 정보용 생성 텍스트 고지",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "해당 Article 50 고지 의무의 적용성이 확인된 범위.",
+       "article": "Article 50(5)",
+       "binding": "조건부 의무",
+       "effectiveDate": "적용일·개정 전환 조건 별도 검토",
+       "evidenceNeeded": [
+        "최초 노출 시험",
+        "접근성 시험"
+       ],
+       "framework": "EU AI Act",
+       "frameworkVersion": "Article 50; consolidated amendment review pending",
+       "id": "EU-50-5",
+       "jurisdiction": "EU",
+       "limitations": "공식 안내 페이지는 개정 반영 전임을 명시한다. 통합 원문·적용일·예외를 사람이 재검토해야 하며 자동 준수 판정을 발급하지 않는다.",
+       "requirement": "최초 상호작용 또는 노출 시 명확하고 접근 가능한 고지인지 확인한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "amendment_consolidation_unverified",
+       "sourceUrl": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+       "title": "고지 시점·접근성",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "조직이 채택한 자율 프레임워크 범위.",
+       "article": "GOVERN 6.1; MAP 4.1, 4.2",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "모델 revision·라이선스",
+        "학습 자료 사용 근거",
+        "제삼자 위험 검토"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "frameworkVersion": "1.0",
+       "id": "NIST-SUPPLY-CHAIN",
+       "jurisdiction": "International",
+       "limitations": "자율 프레임워크의 참고 매핑이며 법률 의무나 인증 판정이 아니다.",
+       "requirement": "제삼자 모델·데이터의 사용 조건, 버전과 위험 검토를 기록한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "official_guidance",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "모델·데이터 공급망 검토",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "조직이 채택한 자율 프레임워크 범위.",
+       "article": "MEASURE 2.7",
+       "binding": "자율 프레임워크",
+       "effectiveDate": "2023-01-26 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "격리·인젝션 시험",
+        "언어별 오류 평가",
+        "남은 위험과 담당자"
+       ],
+       "framework": "NIST AI RMF 1.0",
+       "frameworkVersion": "1.0",
+       "id": "NIST-SECURITY",
+       "jurisdiction": "International",
+       "limitations": "자율 프레임워크의 참고 매핑이며 법률 의무나 인증 판정이 아니다.",
+       "requirement": "AI 보안과 견고성의 시험 조건·결과·한계를 기록한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "official_guidance",
+       "sourceUrl": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+       "title": "보안·견고성 검증",
+       "verifiedAt": "2026-09-12"
+      },
+      {
+       "appliesWhen": "조직이 표준 도입을 검토하는 경우의 준비 기능.",
+       "article": "공개 소개 기반 준비 항목",
+       "binding": "준비 참고; 조항 매핑 아님",
+       "effectiveDate": "2023-12 발행; 법적 시행일 없음",
+       "evidenceNeeded": [
+        "조직 범위·정책",
+        "담당자와 위험 등록부",
+        "검토·개선 기록"
+       ],
+       "framework": "ISO/IEC 42001:2023 준비",
+       "frameworkVersion": "2023",
+       "id": "ISO-42001-READINESS",
+       "jurisdiction": "International",
+       "limitations": "표준 본문 미확보. 일반 준비 기록이며 ISO 조항 충족·인증을 뜻하지 않는다.",
+       "requirement": "조직 범위·정책·담당자·위험·검토·개선 기록을 연결한다.",
+       "reviewStatus": "draft_requires_human_review",
+       "sourceHash": "not_captured",
+       "sourceTextStatus": "public_overview_only",
+       "sourceUrl": "https://www.iso.org/standard/42001",
+       "title": "AI 경영시스템 준비 기록",
+       "verifiedAt": "2026-09-12"
+      }
+     ],
+     "requirementsHash": "ef06d09f863d6edd2723cd300a686cffa11c150ec605d11bf7c009cbc31b80a2",
+     "schemaVersion": 2
+    },
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "principal": "catalog-loader",
+    "recordedAt": "2026-10-08T04:04:08.250Z",
+    "seq": 1,
+    "tenant": "alpha",
+    "type": "catalog",
+    "hash": "c2312945713b8c6720586b9e07ac8dc4d71347de6deb767c0e2cd3daf0f2dfb7"
+   },
+   {
+    "payload": {
+     "approvals": {
+      "answer": {
+       "high": {
+        "approvers": 2,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       },
+       "low": {
+        "approvers": 1,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       },
+       "medium": {
+        "approvers": 1,
+        "exclude": [
+         "registrant",
+         "editor",
+         "owner"
+        ],
+        "roles": [
+         "reviewer",
+         "admin"
+        ]
+       }
+      },
+      "defaultLifetimeSeconds": 300,
+      "executionWindowSeconds": 300,
+      "intervalSeconds": 1,
+      "maxLifetimeSeconds": 900,
+      "unregisteredTier": "high"
+     },
+     "effectiveFrom": "2026-10-08T04:04:08.264Z",
+     "enforcement": "off",
+     "gates": {
+      "high": {},
+      "low": {},
+      "medium": {}
+     },
+     "id": "current",
+     "riskRules": [
+      {
+       "field": "tool",
+       "id": "tool-payment",
+       "op": "contains",
+       "tier": "high",
+       "values": [
+        "payment",
+        "transfer",
+        "wire",
+        "refund",
+        "payout"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-destructive",
+       "op": "contains",
+       "tier": "high",
+       "values": [
+        "delete",
+        "drop",
+        "truncate",
+        "shell",
+        "exec",
+        "deploy",
+        "sudo",
+        "admin"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-outbound",
+       "op": "contains",
+       "tier": "medium",
+       "values": [
+        "email",
+        "send",
+        "post",
+        "publish",
+        "message",
+        "upload"
+       ]
+      },
+      {
+       "field": "tool",
+       "id": "tool-write",
+       "op": "contains",
+       "tier": "medium",
+       "values": [
+        "write",
+        "update",
+        "create",
+        "insert",
+        "modify"
+       ]
+      },
+      {
+       "field": "dataCategory",
+       "id": "data-sensitive",
+       "op": "eq",
+       "tier": "high",
+       "values": [
+        "personal",
+        "sensitive",
+        "health",
+        "biometric",
+        "financial",
+        "credential",
+        "credentials",
+        "resident_registration_number",
+        "unique_identifier",
+        "location",
+        "minor"
+       ]
+      },
+      {
+       "field": "dataCategory",
+       "id": "data-internal",
+       "op": "eq",
+       "tier": "medium",
+       "values": [
+        "confidential",
+        "internal",
+        "customer"
+       ]
+      },
+      {
+       "field": "destination",
+       "id": "destination-external",
+       "op": "not_suffix",
+       "tier": "medium",
+       "values": [
+        ".internal",
+        ".local",
+        ".corp",
+        ".lan",
+        "localhost"
+       ]
+      }
+     ],
+     "stopPropagation": {
+      "enforcementPoints": [
+       "alpha-gateway"
+      ],
+      "windowSeconds": 10
+     },
+     "updatedAt": "2026-10-08T04:04:08.264Z",
+     "updatedBy": "alpha-admin",
+     "version": 1
+    },
+    "previous": "c2312945713b8c6720586b9e07ac8dc4d71347de6deb767c0e2cd3daf0f2dfb7",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T04:04:08.264Z",
+    "seq": 2,
+    "tenant": "alpha",
+    "type": "agent_registry_policy",
+    "hash": "7b32ff536a36c2e8bd1aa6ca0067dbab6d44e8ae29c1b0abe53bda738c7854dd"
+   },
+   {
+    "payload": {
+     "actor": "pay-agent",
+     "approvalRequired": true,
+     "destinations": [],
+     "id": "pay-asset",
+     "owner": "payments",
+     "policyVersion": "p1",
+     "purpose": "",
+     "tool": "payment_transfer",
+     "updatedAt": "2026-10-08T04:04:08.266Z",
+     "validFrom": "2026-01-01T00:00:00.000Z",
+     "version": "unknown"
+    },
+    "previous": "7b32ff536a36c2e8bd1aa6ca0067dbab6d44e8ae29c1b0abe53bda738c7854dd",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.267Z",
+    "seq": 3,
+    "tenant": "alpha",
+    "type": "asset",
+    "hash": "d4330d4983c57302f184e5dde5b6c7c76a03eedf037c161f63bf50aaf3016c85"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "created",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T04:04:08.270Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T04:04:08.270Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T04:04:08.270Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "draft",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 1
+    },
+    "previous": "d4330d4983c57302f184e5dde5b6c7c76a03eedf037c161f63bf50aaf3016c85",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.271Z",
+    "seq": 4,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "1c090bf3d195d1a24e64aa7ce279adb9db1574f104eccf03fe336033206c3d3c"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "draft",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:08.274Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "testing",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "a476e0a8-c804-4b8b-abd1-4055737d96e5",
+     "reason": "testing",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 1,
+     "requestedAt": "2026-10-08T04:04:08.274Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "to": "testing"
+    },
+    "previous": "1c090bf3d195d1a24e64aa7ce279adb9db1574f104eccf03fe336033206c3d3c",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.274Z",
+    "seq": 5,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "e0dda588b036cb00b23397e561ed6f67f1c583da3137cd067b15f2bc246f0bda"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T04:04:08.270Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T04:04:08.275Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "at": "2026-10-08T04:04:08.275Z",
+      "from": "draft",
+      "id": "a476e0a8-c804-4b8b-abd1-4055737d96e5",
+      "requestedBy": "alpha-reviewer",
+      "to": "testing"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T04:04:08.270Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "testing",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 2
+    },
+    "previous": "e0dda588b036cb00b23397e561ed6f67f1c583da3137cd067b15f2bc246f0bda",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.276Z",
+    "seq": 6,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "9a4dd4c2ca41d3b278514dfe40676c83eb6fbf33161c7b6e0f873f82cacec470"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:08.279Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "3b903663-0326-48d7-9a05-6e4e824550f2",
+     "reason": "approved",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T04:04:08.280Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "approved"
+    },
+    "previous": "9a4dd4c2ca41d3b278514dfe40676c83eb6fbf33161c7b6e0f873f82cacec470",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.280Z",
+    "seq": 7,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "5a2cb56951fa4b7c4f890065f52dffa6e4a443fb7ea520151862afb0d58fad85"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T04:04:08.284Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "testing",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:08.279Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "approved",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "3b903663-0326-48d7-9a05-6e4e824550f2",
+     "reason": "approved",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 2,
+     "requestedAt": "2026-10-08T04:04:08.280Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T04:04:08.282Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "approved"
+    },
+    "previous": "5a2cb56951fa4b7c4f890065f52dffa6e4a443fb7ea520151862afb0d58fad85",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.284Z",
+    "seq": 8,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "efa6f6ff91a53b301020d4b238447ea7d03e9150bf58c669825327e34a605c08"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T04:04:08.270Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T04:04:08.284Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T04:04:08.284Z",
+      "from": "testing",
+      "id": "3b903663-0326-48d7-9a05-6e4e824550f2",
+      "requestedBy": "alpha-reviewer",
+      "to": "approved"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T04:04:08.270Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "approved",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 3
+    },
+    "previous": "efa6f6ff91a53b301020d4b238447ea7d03e9150bf58c669825327e34a605c08",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.285Z",
+    "seq": 9,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "e48979800eb4da3d2751c729265b0397811ea47f343844cc24a765d12242c8ac"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:08.289Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "ecb77014-a452-4c21-8715-527b420d0d92",
+     "reason": "production",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T04:04:08.289Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "pending",
+     "to": "production"
+    },
+    "previous": "e48979800eb4da3d2751c729265b0397811ea47f343844cc24a765d12242c8ac",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.289Z",
+    "seq": 10,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "6c326090f6d66a13c4590be8bef1eaddd9095ab6ed1bb1505f76e0175fc58572"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalGate": {
+      "checkedAt": "2026-10-08T04:04:08.293Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "approvalRequired": true,
+     "editedBy": "alpha-reviewer",
+     "evidence": [],
+     "from": "approved",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:08.289Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "production",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "ecb77014-a452-4c21-8715-527b420d0d92",
+     "reason": "production",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 3,
+     "requestedAt": "2026-10-08T04:04:08.289Z",
+     "requestedBy": "alpha-reviewer",
+     "reviewReason": "ok",
+     "reviewedAt": "2026-10-08T04:04:08.291Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "status": "approved",
+     "to": "production"
+    },
+    "previous": "6c326090f6d66a13c4590be8bef1eaddd9095ab6ed1bb1505f76e0175fc58572",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.293Z",
+    "seq": 11,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "39944e358463e6ee43092d2fb81134725025a34168514c2ad56aee305043529a"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T04:04:08.270Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T04:04:08.293Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "approvedBy": "alpha-reviewer-2",
+      "at": "2026-10-08T04:04:08.293Z",
+      "from": "approved",
+      "id": "ecb77014-a452-4c21-8715-527b420d0d92",
+      "requestedBy": "alpha-reviewer",
+      "to": "production"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T04:04:08.270Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "production",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 4
+    },
+    "previous": "39944e358463e6ee43092d2fb81134725025a34168514c2ad56aee305043529a",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.294Z",
+    "seq": 12,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "39d02f086715288bab67288dfd7417dd13c31fd23bef651fa9c837ff48b5673e"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [],
+     "bindingMessage": "refund ap-1",
+     "change": "requested",
+     "decidedAt": null,
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T04:09:08.296Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T04:04:08.296Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 1
+    },
+    "previous": "39d02f086715288bab67288dfd7417dd13c31fd23bef651fa9c837ff48b5673e",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.300Z",
+    "seq": 13,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "27f6dfb23b2c3c3dd6e259a8781c56f1744c34269f5725e5c3397eb2ba8975a2"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "approvals": [],
+     "bindingMessage": "refund ap-2",
+     "change": "requested",
+     "decidedAt": null,
+     "decisionId": "ap-2",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T04:09:08.321Z",
+     "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T04:04:08.321Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-2",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "dd1ce0ec6ea1a1d453cf870d8a3a2161f19173860999a1b7af940f889f71134d",
+     "traceId": "t-ap-2",
+     "version": 1
+    },
+    "previous": "27f6dfb23b2c3c3dd6e259a8781c56f1744c34269f5725e5c3397eb2ba8975a2",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.325Z",
+    "seq": 14,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "643181abd9811961b0eadbb9fd5af85be6725dd8436da240e2e9e34bf8647d6a"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [
+      {
+       "at": "2026-10-08T04:04:08.327Z",
+       "by": "alpha-reviewer-2",
+       "reason": "checked",
+       "role": "reviewer"
+      }
+     ],
+     "bindingMessage": "refund ap-1",
+     "change": "approval_added",
+     "decidedAt": null,
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T04:09:08.296Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T04:04:08.296Z",
+     "requestedBy": "alpha-gateway",
+     "status": "pending",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 2
+    },
+    "previous": "643181abd9811961b0eadbb9fd5af85be6725dd8436da240e2e9e34bf8647d6a",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.329Z",
+    "seq": 15,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "f339dd3af1700bd7c362d91cdd356bdb50761b90d640e8bd8812783aafb28353"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "approvals": [
+      {
+       "at": "2026-10-08T04:04:08.327Z",
+       "by": "alpha-reviewer-2",
+       "reason": "checked",
+       "role": "reviewer"
+      },
+      {
+       "at": "2026-10-08T04:04:08.330Z",
+       "by": "alpha-admin",
+       "reason": "second look",
+       "role": "admin"
+      }
+     ],
+     "bindingMessage": "refund ap-1",
+     "change": "approved",
+     "decidedAt": "2026-10-08T04:04:08.330Z",
+     "decisionId": "ap-1",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": {
+      "notAfter": "2026-10-08T04:09:08.330Z",
+      "notBefore": "2026-10-08T04:04:08.330Z"
+     },
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T04:09:08.296Z",
+     "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": null,
+     "requestedAt": "2026-10-08T04:04:08.296Z",
+     "requestedBy": "alpha-gateway",
+     "status": "approved",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "b59961d646b0809f57ebf01502ada8cdf61e644c0b0a0c778e85c223ff715a68",
+     "traceId": "t-ap-1",
+     "version": 3
+    },
+    "previous": "f339dd3af1700bd7c362d91cdd356bdb50761b90d640e8bd8812783aafb28353",
+    "principal": "alpha-admin",
+    "recordedAt": "2026-10-08T04:04:08.331Z",
+    "seq": 16,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "5700c32ff0c94e1006478f270015e63db65d987e33a01b8663f8281641399ba4"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "approvals": [],
+     "bindingMessage": "refund ap-2",
+     "change": "refused",
+     "decidedAt": "2026-10-08T04:04:08.333Z",
+     "decisionId": "ap-2",
+     "eligibility": {
+      "approvers": 2,
+      "basis": {
+       "entryId": "pay-agent",
+       "entryState": "production",
+       "entryVersion": 4,
+       "policySource": "signed",
+       "policyVersion": 1
+      },
+      "exclude": [
+       "registrant",
+       "editor",
+       "owner"
+      ],
+      "excluded": [
+       "alpha-reviewer",
+       "payments"
+      ],
+      "roles": [
+       "reviewer",
+       "admin"
+      ],
+      "tier": "high"
+     },
+     "enforcementPointId": "gw-1",
+     "executionWindow": null,
+     "executionWindowSeconds": 300,
+     "expiresAt": "2026-10-08T04:09:08.321Z",
+     "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+     "intervalSeconds": 1,
+     "policyId": "payments.refund",
+     "policyVersion": "p1",
+     "refusal": {
+      "at": "2026-10-08T04:04:08.333Z",
+      "by": "alpha-reviewer-2",
+      "reason": "too high",
+      "role": "reviewer"
+     },
+     "requestedAt": "2026-10-08T04:04:08.321Z",
+     "requestedBy": "alpha-gateway",
+     "status": "refused",
+     "target": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-2",
+      "tool": "payment_transfer"
+     },
+     "targetDigest": "dd1ce0ec6ea1a1d453cf870d8a3a2161f19173860999a1b7af940f889f71134d",
+     "traceId": "t-ap-2",
+     "version": 2
+    },
+    "previous": "5700c32ff0c94e1006478f270015e63db65d987e33a01b8663f8281641399ba4",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.334Z",
+    "seq": 17,
+    "tenant": "alpha",
+    "type": "approval_request",
+    "hash": "a38be0b47a2ec93cf6f132f4907ea214c06b58cd8b368f933b817e6db057ac35"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "OJK61ugqwtuaTSDF/hyDRs0jCphbFEfzts0jFA5wqfbN6O7pk0yM03aQI0wHRNzo4EtCroOPHCt7KWGH8CTmZkGfJjuRFMOgDCIDSYiWFKoIS8+qhmOzKTGgqAdKsCbGr9KLw9faJU2j9VaWSmcvEeKpNzPtM1be9aF9FRFMyNx+TzqQZYTlKVkucL4BHaSjRm1uPZxzVXRrDFsiSQc72njTyYSZnLCmobT8a8ubdsIaxxtnSqWc5E20BiBkAsYURA90P9mis6caMMBEY1aCnyMaAPBG+X6jx+rQ1ao4yBrdktHtYg77bUm/Po3uf+hnn+S1MatuplJM6KemqCwTwQZPSY7jOR4mlaqegew2zLtnPhOOt3ClAhNQoxahQQUL/1n15t1qYHbkMT4R8hdyEx1OJLXfHgo8cMhmV//MzcDCHoF3YsLyR+2YiXeIAI2IMPr5HUIw0KOMfE1gY/QS82SqDpti5uQDis2pWatOB6XcBiarKq2gCww6KVbjuy4Cqjup9flfKnCTHdcaRhEKjJl4s087Md0zOrV3kpf46ICpsX05WIKP8kY8W6rhAzK/cjgHTjfXVsLgPhnEATfu9RKwA7g2a7T6lO0UqZehpGqHZQprQpAI8trj+A0qaYK6DwyFk1J5O6WugSIQBupSpAvDEYub66TnWZG6zyfCKY2++dv4XEbA6AzQTcBw2nr5mZZlLkOkWmCcd/aPvA1QstphSY1ZwxMhUQltfy31ALrjBbRfdxPJSei8RXhTAE0XMv6+dGgSeS3xq1HWY6UGbL8a+a69uB1bEgiXBGKQDL5/F7qoYX031rqnKicSY14wT29ZEdyRR56wwvVZW1/Onc+/kMb/1p5VG9brswAimRRnVIDxbodhZA1zKo09fFLH1DQ4ZL4iO42It8dIVjI9u89XY28Yy6xvWyE4Kaq/F3U=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "H5370HLK2aElnGKW",
+     "keyEpoch": "2026-11",
+     "keyId": "3d210780-78cb-4884-8da3-a8ca85b5aa9f",
+     "payloadCommitment": "4a90690682bdff1dca33a570a52bc523e2ea7b1b1e318ad76f5639b4b9a2b9aa",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.335Z",
+     "seq": 18,
+     "tag": "fLSChaeeMwswzr0LWhVcdg==",
+     "tenant": "alpha"
+    },
+    "previous": "a38be0b47a2ec93cf6f132f4907ea214c06b58cd8b368f933b817e6db057ac35",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.340Z",
+    "seq": 18,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "67efde9b13a15fabaf96aef646904ea8abcdb3a39b25bb49bb6a15bba469fbe7"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "67efde9b13a15fabaf96aef646904ea8abcdb3a39b25bb49bb6a15bba469fbe7",
+     "eventSeq": 18,
+     "fingerprint": "fp2:2026-11:40004d3b478ca761cae0a8750c6430b66385b892f5edeb88b8ceeb7909127dd7",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-ap-1",
+     "source": "alpha-gateway"
+    },
+    "previous": "67efde9b13a15fabaf96aef646904ea8abcdb3a39b25bb49bb6a15bba469fbe7",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.340Z",
+    "seq": 19,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "7cc4fd2a6557fafd9f7d2bc061cd83a4d656db42ee9c393e3239d5bb2d4c2b35"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "OgGKXyXvMfhQsg1esltgihYsJx32HHAihxiENky0IsnbZ3osINeNo5tjQNrZpYgs+oXqQ/IDgCta2ev2b6R8n0ZiOzHqOpxuO7lLYvN3cE/Mk1RJ1ro67V2WmZcazD1WNoOyt43GEhS+JL/23kX24dDU0Ew1mSkDTYaRmXnXkzOIbAZ7loaHNViHewHJ/lTjbv3GwsSsN8nqKqCz0hmudk4EsaGzvKGG64rLmu90T0GfaaPWQ8ahAUaiTIIMm8iGLAa/wPZoY04PGPSwAoN08ZC/Djl1wnnqx8wXrD7VdqlJCyFabwgml6jwpzb3l2cepEsVf7/25xOusqE+ys9MQBIbypmx8y2kDpS4FTQUEuF+5iiCj5AB95+h20e+c7goH9y1zqjwcZyt4PYBp/JdrUeihhOCNFPs7Kv5o40MxNng9cyjnCDqovecIUi12oSFxPjuV4GtuQANqn8azZsKAUJcckk16Bv0v0jMJh/IlLFRHn07Bl5rs7ow29+iQp0x3qyD9qkWvH9hSE78CTwkuNfUAqZfTUEBvMuPZeVPlZlviYsoBwfr3lP1FW7qnpRu7dWjbc29D9oBBiUg9mehLhr69fsAUshYVLib2Uuec73oouqLbHr2Ig4BXDHWYOOV/fyyMmZKzENbLgf6cdFNME6qislN44aa07D/6K1THnCmo9H2hGUlW5ScX8Ii45TnGfCL377++LxW1izgUFSpk33uzL5faGDd8wUPmTlkDY+QfD7g4I1QZffxTB//QDfo",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "OyNLAWZfRjvaEkyv",
+     "keyEpoch": "2026-11",
+     "keyId": "b57ff2ba-d2ec-462c-be98-b4f99f2b69fa",
+     "payloadCommitment": "d838e15b952925b0e885a2a4a1c9b9fa9eef0c1169a6415677bae6c4f0a45d55",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.342Z",
+     "seq": 20,
+     "tag": "ZupD4mYhx04l4ijN+ospug==",
+     "tenant": "alpha"
+    },
+    "previous": "7cc4fd2a6557fafd9f7d2bc061cd83a4d656db42ee9c393e3239d5bb2d4c2b35",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T04:04:08.345Z",
+    "seq": 20,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "e0304f797ff361e9cbcb66e9e8855ff51e54cd6763dc054aad70add66a8acf82"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "e0304f797ff361e9cbcb66e9e8855ff51e54cd6763dc054aad70add66a8acf82",
+     "eventSeq": 20,
+     "fingerprint": "fp2:2026-11:18097854f18e8309f5d0377ddc83107ba0c986c0ea0f064d3fbd91898cf782ab",
+     "format": "evidscope-event-receipt-v1",
+     "id": "i-ap-1",
+     "source": "alpha-agent"
+    },
+    "previous": "e0304f797ff361e9cbcb66e9e8855ff51e54cd6763dc054aad70add66a8acf82",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T04:04:08.345Z",
+    "seq": 21,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "8f39e2d0104b7f3d95318c1aa90e000d61a34c5f6d960cc74f98363add6615e2"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "IIGHhUi+a+b+tF4cTTRrvVmI0BgsjZHIZR1PypQiJOLNe81LOLTEl2ffJYrOuqpPsP/YJpF2N45oZz2A1WVTk9SgG6lfLPJcTQEI+7A+jLQW1ZSY/wQNbVWnrehNjCeeo/wknZKeT06RPsBc/Is02gh2JyrEslC8W+DP11nJogNBUwT/UwhHJBpanMLNpfN8e68YT0h5eEgD8LoAXwN6H3JhSQKTt3Kgg30V0V/jspAciFiDiVX2bbOIJdyCITgyvLyIEzeEaqh82T1Q6HzOTGT45+DZgUHC4Cu8gnvHmP3/tPlJhshstdfsdqcDpTgE/pjj+NQ1IkA+RIo0rR6ei1TU6GLvlyRiDEZcehZGAQDMgXCf92Lgn9AgxJ5vV78hxEodadAIzDWHQ84uvNluOmt2dKRPkdj5FGhC7FkW7MIPrq8+wRIwPmADW1i5odWZlo7bdUv3ZGAyPQ3OryKRU3n6FwcF++UYOenb6AvBqONhYFbTF6dvrchOWtChNS0D0FQKALfh/1zwNEqlTDNN+1yr3b0tMvdJdL1HSuSon+haxlqcp0C3tcBqShjMwWk58h871U+ggG8P+nK/gMh5udYsIBEqPkecuK2m87n62TOYB0mSAF4t43nVH44PVCRzfF0frKN6rz6Re3D2/KINxnja91+RiPJEVyJfl12m177xr4GJb6eLVZvYupOg5N2p9mq1FVUcRHZ9DOtJHZjsFu2ziSFVoLh6ucGS1vqZUk1Cm+/QjiPS7ycKcc15o+Mo",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "nQxordamnjtfEQxi",
+     "keyEpoch": "2026-11",
+     "keyId": "3ad2b719-459f-49f5-a1e3-a784f184b98b",
+     "payloadCommitment": "681de8f45484d30fd5709249a11ffdf2468cd6d9c2a8e99fc24b2cedf00529e8",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.364Z",
+     "seq": 22,
+     "tag": "wJsZ/s76xDcCuABJbXCd9Q==",
+     "tenant": "alpha"
+    },
+    "previous": "8f39e2d0104b7f3d95318c1aa90e000d61a34c5f6d960cc74f98363add6615e2",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T04:04:08.366Z",
+    "seq": 22,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "f011db697d1b65c99e3967e1f01ac0ef2c529de3dade506720a29a9cc4a8d025"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "f011db697d1b65c99e3967e1f01ac0ef2c529de3dade506720a29a9cc4a8d025",
+     "eventSeq": 22,
+     "fingerprint": "fp2:2026-11:5bd7638802f4686c24359b74ef8c68494667aa3e64435b62698dbd1808c9a26a",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-ap-1",
+     "source": "alpha-tool"
+    },
+    "previous": "f011db697d1b65c99e3967e1f01ac0ef2c529de3dade506720a29a9cc4a8d025",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T04:04:08.366Z",
+    "seq": 23,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "a36a49fc284ef002fddcb038b13cefc7ca815615c82098eef269ef44ffc29d4c"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "ciphertext": "ZPLDotnzjfBTzvWfx7shyoSOq66WIIVRD/8/Eq1wsJnL1wfWGzgMKcry9z5JJhwShR50IIw8OjBrlEMg8xQ6WutxNQ+W60Nl7RlVzIKg48CMzRuHknO4dtjGMA5UeAZh1vTaJgzj9n+NfY6DP0ryb02kh+PbxyRi3oY9w2cOLkNg91727GELQa7H0uvv8KnS0/C8QsMPjfyJI988G1UdJY+tAgEJIFiVengXgn5i+/54yLGuPObPMKBRpNwO8su5iOrrf+byHWZTxEfdTJZ/mMFENQKDVY74bVsYR+J7HzpMhL+FblbbGNT/HtkRR6cipfH+wP6BtYxa1JOeyb/NtgZcVgGeDBqi3GseKNF0Fl9Faxmxau/9AxG/vsOlTxG7hYjOP7z/zBVmsIiXNHwQAJub/YYXVkmBkziDz2FJm38L+iaQXslo5nr/rnxjw9rng9ziuP7p6z2ziNygF9E6Ed2/WqfLQjl4L4WMEGFmmslhVM5TX/mY27BAElqN5C1V3iu00bbQYNCWYk2ocGBnjAwMgwDqVqybYPDxjR/pj9Md8eN+ioBtFz8pAHe7Q8WlH59jHPfr4Xuw50YVuZZRP3Z2JM/lho/0jX5WVklbJVuZZSm8UJxipmd8AutnFvW/Ys5eyGRQy8qA17hp2BhSGa6jt96rbrIBW6OQ56tPFcdiMcUHGxV7pyhdh9g+giLmwTFcc0pQyXu6Xz5PIDwIxhZbXbqEhKpLTtCLUJIfJ8p1dJmGoiSZGW2dJEV20sUQI0dycbdVejSsLdOxmTm1JXX0CsWHonG0llN0C25memRHuK5PqQ+UVmFOrBFlpk3eJB1NZi/k5uWeYTt6SZt/+EPPotk42SOqWpSJRQAS38Lp8q3WPh/I4vEcgsT9w4PXrjFu4GZfzp3eDcotd4Sth7Wqm4oAVdUilbCqUQYCVbA=",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "nkByAwQz9EkpNH9Y",
+     "keyEpoch": "2026-11",
+     "keyId": "0c8dcbd9-924f-4a23-aec9-edb78654d364",
+     "payloadCommitment": "3b93f7d6b52149dafde3880da9f3f585a36d4d14c4e620a1eea8f4b9a0942ef7",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.368Z",
+     "seq": 24,
+     "tag": "XeT62gtMGHXRDPZONfZBqA==",
+     "tenant": "alpha"
+    },
+    "previous": "a36a49fc284ef002fddcb038b13cefc7ca815615c82098eef269ef44ffc29d4c",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.370Z",
+    "seq": 24,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7",
+     "eventSeq": 24,
+     "fingerprint": "fp2:2026-11:01f1454b6c75c1e8a9c8ede5b9b64430f6dc2d6223bd96e6a0301f9d0945debc",
+     "format": "evidscope-event-receipt-v1",
+     "id": "d-ap-2",
+     "source": "alpha-gateway"
+    },
+    "previous": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7",
+    "principal": "alpha-gateway",
+    "recordedAt": "2026-10-08T04:04:08.370Z",
+    "seq": 25,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "d24178ac9367a468e708cf1e1c77a9aae2aa42a63b539b2c6feb842bc66e543d"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "ciphertext": "U4aMPbUj5MfeRQlX6SXJACffb1WKs5Dfv6wng17OzwajKfP3QCH2+h21MAFE5keiDjEOql6ECT+0J0TxA9qa67EnSd+qUkwpLTPJQW8QzEpbgUN5DRFNPrNh8FfkBJyxNb0qBR4sGpoPlcCXW52l0Pmth7xWVU4EC6HbQDMIAqwVfWpEMo8xrkysIbJ4M0jALCcDaSf774wbBHDoMFBfZrkJsjq25iUDf1azK7T1jFGK+QuII4qsNqiVtRV361xQqqxEGlio9HFG4RPq5I063ficHUtuFjctKyV2dKTMVptGgctNiQPB1sl20RiKngey7zpbajoVk00dhc9/x7XqZNH5e1qviCZ3B62JhOa6Z1tsNje1zXqixV2rMBWXTN5t3mi/ZZLCHoDwqjM4l+4L5czsuVx/m+4IaKbVm8gn2j/GCqcRnRu1kymftNujglgDq0pyrqZcqaUwRr5Mu41AuYxqgOdl1ccVup0jYc3T6J2hTKWCoLfUiFUYyscS+zRNbADvPb5pJlXK9+v+TuINoQkQ4ud+Cg2xIseWYxKESiWe++I/ze9Y/mQHgfYZZK0CBdWeNYhGGdwvATX05RSeSdggGR6Bn9z+zKB+ltUGnmjgAGdbE+xxU67I+CKw0gvyHFBnW5enahLNfbAnI+eeBy6yHsi7LQfogkCAN/hwefkHcEyZ6FuNrtHL7kIQNclPDMBVAua652NJPAyLKtfYhRrDmt6Pr+92pxGtxA3EnlxC6lkgQAA++GhuypMITv23",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "CRr/TZ8OmWcHIGnx",
+     "keyEpoch": "2026-11",
+     "keyId": "9b987874-a935-4e8e-9d40-779984637532",
+     "payloadCommitment": "778f88ae8f3aa6dbbd9f2eee20524ec231ac8b336e5156f7ddf435a2e384221b",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.372Z",
+     "seq": 26,
+     "tag": "3I2Y6G9GBlxJzlF51a114g==",
+     "tenant": "alpha"
+    },
+    "previous": "d24178ac9367a468e708cf1e1c77a9aae2aa42a63b539b2c6feb842bc66e543d",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T04:04:08.373Z",
+    "seq": 26,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e",
+     "eventSeq": 26,
+     "fingerprint": "fp2:2026-11:3fab76a550b15969dd8418d5118a17801a3a7cc4454ea929db0b23ab14aec9ff",
+     "format": "evidscope-event-receipt-v1",
+     "id": "i-ap-2",
+     "source": "alpha-agent"
+    },
+    "previous": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e",
+    "principal": "alpha-agent",
+    "recordedAt": "2026-10-08T04:04:08.373Z",
+    "seq": 27,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "bd13cfebc158348e691361a587f35754f91bddcd3b5e79ad1bb542cd150def58"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "ciphertext": "kQciDuUQZeqFWaILG8N2k0Crdthc7gX1BGPek5APvSlV6kCWe+RUZjB84Tff81Cyqde8VEBGxMCAnGUZbpAEFV/PWsxfcCztN28Oh1Uwu4e12cdUECVrHKAKIouQiMZDX9MglxgcBLoiB4ES6Wd9AiCZ8Ww/a47lZNHMdU6ETSSvFdvvD3g6/5FPYTojd6gvqRbVqZ3HBlvqZv811Jpbu1BiPkxAURh3YUboU9wUXSzDz2QfssFveZA7T86Wlguam0rHb0V6DveQyWR26zN8Zl1j+Cn88hckaJ5rUL26fd3YSQr7iNdEprcuQkohDexaN8fVuCEeMNsbtKcj4Dtq6PDJy0q6sMKRUACyDWjHQtEs19fgnJ0ryaAZsbc82KOOZHOdzDsw7EnyYHwkqTHdv8B3tpoSLc5+ZhctY3ofmip09UiWNIGJS91DoSHI7/SHq71xputbZ+KM1kKrZ8/YJUwdRruSMWjdKbEUJ2+DXi/5/IpN4fAPtoaYx6Qeh4U291Dk/F26bDoXtoRqdgP6WBTl3j7ig6eotTLAKsXeTT7bzzhl9Tej2hk8TtjKFtJ4+cWWDcRedwRsm+cBQ5c1eiFOJwjN5D93C+QdH+hnA+EbzuMRFgcl0hmKc+S7svsBGcjWJqsYCo+nVk6RHaP53obP6TBR8WpjytUiZwqCgDiuBEPfFkFQYPP4nH1Gcy1B/JPuekHq0JzgTUh0wrwbnHyLcdINo7zJ9TNyW9XDTirx7Vp24mpnKsK5XxQ5XLVX",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "gJOS4cogEnu/z3w7",
+     "keyEpoch": "2026-11",
+     "keyId": "30c5f47a-bc9c-4dc5-9df8-beccecf1843c",
+     "payloadCommitment": "a1d6425d1d4187dcda951081b7b85824b8495a72b77eb92fdb1b9669fc9891dc",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.375Z",
+     "seq": 28,
+     "tag": "FA0v8NY+J8PvFlUkzYz1rw==",
+     "tenant": "alpha"
+    },
+    "previous": "bd13cfebc158348e691361a587f35754f91bddcd3b5e79ad1bb542cd150def58",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T04:04:08.376Z",
+    "seq": 28,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3",
+     "eventSeq": 28,
+     "fingerprint": "fp2:2026-11:86f4bf3bffd897c453fa8317b60dc042db739235cedf6509f892be7546111e4e",
+     "format": "evidscope-event-receipt-v1",
+     "id": "x-ap-2",
+     "source": "alpha-tool"
+    },
+    "previous": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3",
+    "principal": "alpha-tool",
+    "recordedAt": "2026-10-08T04:04:08.376Z",
+    "seq": 29,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "556eb0909dfa752e1e8901eb1f5ce67da451df0320b934e37c496524a3c8640c"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "ciphertext": "mo4Nb0xnKBjMNpWghM4QDuLMXNLRcHnGeqzPelG03niustww49yf5QrczcRQqKwXtFDYngwzzh9izU8qko/tlqOwGrVm5pk577wDCQ80zdvclG+Dkgx6wAATODlf1WKFPT+6GBHW6wTQyuTFkR9aH54vR5MI6n6j+vyQh8Aa0fX1+mYGfGIOCPkYhLDnv0POzdRSKUZumfvc+8VY0+R5cxg6OLgZW6hHmwJ5K+IM6z2RAY8e8wimjq3f/vKG3biuP4iahTfkX8jK52jS5PEKzPy3lWrmh+RtjyL3O87Y9y53T24LD0dVvpV1+1GCa7Z7e5dNnnUPU7jeV5im0P2t8Cx+M41S4Sztsv4jUAIJRhFoHo+syrI9rMFOeKt+IReh8t4JZn8GoSYIbszMODmvAaKCl+VplpFmSrUXo4c8R7BMgaNPFB2fCEnWs1W6FxVi1jLOlpEca0D7lWSkN95F6yuCzY9vexVx33fWq8X+lAcdct0orXXtfePqKU2K/2BXd1iNxXM9Iu+w/YHkVKla7oNHy2joThjDKmI19GIS6RilhCi62rGLkhGXfHBEzPAftPu5TwG5/voUJD8R7mcioesuaIqpE51VbVcFfDgStf69+3oZ4pU1k0XANqCczkW36ASgoUzTbIPVFFEHDg50VCgrFjsTZGdqdlOhZCB6MKzUk/wKi55HlvKMAqjORwbVuHHwKrIXLQaUgL8snd4aimFFE5u/wmU+LtOR/2flnKfRhVh11WnLz7prIXfQMj39uDP4ZSVOHC6Jv9Bmu4gPd6ectBb/r/mAQo3yPg81JG5tRzP0WJY/xsQkBFVDNsBw8KUaowKBXUzl8/KaoHR0Qp71pOJvnsmlZPWVMv76NvCqrPeW/cOgIg3ugOcjaiPnoHl6qe8VTMxfkgPjK0UPyM//V4r94/0LZeqD+mE+uiGARWUi7tIyQi0FEM9gYdzkGZljQMqsAHHzHbAL87fyEvUo6VYD93dGhCU8p1qBqe0X3fN3kXwH/NHcWTqS2437ISPRXFMExd6o4RWZmbIWskloqRJj01eK54wPmoIQwOrHIervNmSJFiHbXjn82opW/SIPMiyjND+uNRtRu52Tdw==",
+     "commitmentAlg": "evidscope/payload-commitment/v2",
+     "format": "evidscope-encrypted-event-v2",
+     "iv": "RAZFALjHTPMuDBC+",
+     "keyEpoch": "2026-11",
+     "keyId": "94c86f1e-baf7-432b-9b79-60061bbffc74",
+     "payloadCommitment": "9ed19fa37c9b736a83b616aabea9e685aa1560d41f7dd2d5071295237d039bf9",
+     "policyVersion": 0,
+     "retainUntil": "2026-11-07T04:04:08.378Z",
+     "seq": 30,
+     "tag": "yYPWH7ClPob9C5EvAbHYow==",
+     "tenant": "alpha"
+    },
+    "previous": "556eb0909dfa752e1e8901eb1f5ce67da451df0320b934e37c496524a3c8640c",
+    "principal": "alpha-authority",
+    "recordedAt": "2026-10-08T04:04:08.379Z",
+    "seq": 30,
+    "tenant": "alpha",
+    "type": "event",
+    "hash": "4c61116c45902628d4ed67246c7aa5450dd16880d4b5f0691e299201f7966ea4"
+   },
+   {
+    "payload": {
+     "basis": "source_ingest",
+     "eventHash": "4c61116c45902628d4ed67246c7aa5450dd16880d4b5f0691e299201f7966ea4",
+     "eventSeq": 30,
+     "fingerprint": "fp2:2026-11:9e6e0056277a73c8df19efb95f6d7e8df9ead5d3ad14130996ba564b17aeb636",
+     "format": "evidscope-event-receipt-v1",
+     "id": "h-ap-1",
+     "source": "alpha-authority"
+    },
+    "previous": "4c61116c45902628d4ed67246c7aa5450dd16880d4b5f0691e299201f7966ea4",
+    "principal": "alpha-authority",
+    "recordedAt": "2026-10-08T04:04:08.379Z",
+    "seq": 31,
+    "tenant": "alpha",
+    "type": "event_receipt",
+    "hash": "c08947d2349de5ca2605dd12e3e9168c4e88453f2c60327b36a6ea1bebaa9508"
+   },
+   {
+    "payload": {
+     "createdAt": "2026-10-08T04:04:08.387Z",
+     "id": "current",
+     "legalReview": "pending",
+     "purpose": "audit evidence",
+     "reason": "six months and more",
+     "retentionSeconds": 34560000,
+     "reviewer": "alpha-reviewer",
+     "scope": "new_minimized_event_payloads_only",
+     "version": 1
+    },
+    "previous": "c08947d2349de5ca2605dd12e3e9168c4e88453f2c60327b36a6ea1bebaa9508",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.387Z",
+    "seq": 32,
+    "tenant": "alpha",
+    "type": "retention_policy",
+    "hash": "4bd100e6c18614cbe63aee1cf2b2634045f1e3ddb184145550d887d20c89fb4d"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "analysisTime": "2026-10-08T04:04:08.390Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T04:04:08.398Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      }
+     ],
+     "id": "8a461c8f-2471-4f3e-85b8-c31839f1640c",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v3",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+         "version": 3
+        }
+       ],
+       "assets": 1,
+       "events": [
+        18,
+        20,
+        22,
+        30
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 4,
+        "policies": 1
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "4a931ce223ae840acb47eadaba7b1a9d579a14b90a4dc41dc8289989498c79e6",
+     "status": "evaluated",
+     "version": 4,
+     "worker": "analysis-worker"
+    },
+    "previous": "4bd100e6c18614cbe63aee1cf2b2634045f1e3ddb184145550d887d20c89fb4d",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T04:04:08.398Z",
+    "seq": 33,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "cfcd040dd92e806c9389f37bbc7de00a51efeb8ceb63e555cd60ddcb073ca957"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "analysisTime": "2026-10-08T04:04:08.390Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 3,
+      "totalFindings": 3,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T04:04:08.402Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+       "severity": "high"
+      }
+     ],
+     "id": "0e98c716-27c4-4f6c-bc03-4e08394e76cd",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v3",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+         "version": 2
+        }
+       ],
+       "assets": 1,
+       "events": [
+        24,
+        26,
+        28
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 4,
+        "policies": 1
+       },
+       "rules": []
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "be36ab13dc6688988b05f2d6fce3b5519c1020b5647fffb4982877059ebe393e",
+     "status": "evaluated",
+     "version": 3,
+     "worker": "analysis-worker"
+    },
+    "previous": "cfcd040dd92e806c9389f37bbc7de00a51efeb8ceb63e555cd60ddcb073ca957",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T04:04:08.402Z",
+    "seq": 34,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "7339cf49737dc931a1bc47c716738e7597b2fb9909d29cc0c763217bcbf011d3"
+   },
+   {
+    "payload": {
+     "affectedPeople": "unknown",
+     "aiBusinessOperator": true,
+     "artisticCreativeExpression": "unknown",
+     "biometricCategorisation": "unknown",
+     "broadSignificantRisk": "unknown",
+     "dataCategories": [],
+     "decisionInfluence": "unknown",
+     "defenceOrNationalSecurityOnly": false,
+     "designatedDefenceSecurityWork": "unknown",
+     "domain": "unknown",
+     "domesticDailyAverageUsersLast3Months": "unknown",
+     "domesticImpact": true,
+     "emotionRecognition": "unknown",
+     "euHighRisk": "unknown",
+     "euRoles": [
+      "deployer"
+     ],
+     "frontierTechnology": "unknown",
+     "generative": "unknown",
+     "governmentOrderPresent": "unknown",
+     "hasDomesticAddressOrOffice": "unknown",
+     "highImpact": "unknown",
+     "highImpactDomains": [],
+     "id": "pay-system",
+     "internalOnly": "unknown",
+     "krRoles": [
+      "deployer"
+     ],
+     "markets": [
+      "EU",
+      "KR"
+     ],
+     "modelId": "unknown",
+     "modelVersion": "unknown",
+     "name": "Refund assistant",
+     "owner": "payments",
+     "policyVersion": "unknown",
+     "previousYearAiRevenueKrw": "unknown",
+     "previousYearTotalRevenueKrw": "unknown",
+     "priorArticle43OrderFine": "unknown",
+     "providedAt": "2026-10-07T04:04:08.706Z",
+     "publicInstitution": "unknown",
+     "publicInterestText": "unknown",
+     "purpose": "refunds",
+     "realisticSyntheticMedia": "unknown",
+     "role": "unknown",
+     "schemaVersion": 4,
+     "seriousLifeSafetyRightsRisk": "unknown",
+     "status": "human_applicability_review_required",
+     "substantialModification": "unknown",
+     "suppliedModelVersion": "unknown",
+     "suppliedPurpose": "unknown",
+     "supplierId": "unknown",
+     "trainingCompute": "unknown",
+     "transparencyObvious": "unknown",
+     "updatedAt": "2026-10-08T04:04:08.706Z"
+    },
+    "previous": "7339cf49737dc931a1bc47c716738e7597b2fb9909d29cc0c763217bcbf011d3",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.707Z",
+    "seq": 35,
+    "tenant": "alpha",
+    "type": "system",
+    "hash": "373b12b8d15594d7da1c3fa2e51b238272e75d0b048a07cb032bf7222857b6b8"
+   },
+   {
+    "payload": {
+     "applicability": "unknown",
+     "applicabilityPolicyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+     "applicabilitySnapshot": {
+      "candidate": {
+       "decision": "human_review_required",
+       "missingFacts": [
+        "highImpact"
+       ],
+       "otherLawRecognitionReview": {
+        "automaticLegalVerdict": false,
+        "items": [],
+        "limitations": [
+         "입력한 이행 조치·문서 참조·검토자 선언은 원본 문서 복구·출처 인증·실제 이행 검증을 대체하지 않습니다.",
+         "대출 심사 범위를 별도로 검토합니다. 금융사 또는 개인신용평가라는 명칭만으로 대출 심사에 해당한다고 확정하지 않습니다.",
+         "공급사 조치 활용(시행령 제27조제3항)과 별개입니다. 다른 법령 인정은 해당 별표 항목과 대응 조치 범위를 사람이 검토하며 전체 제34조 책무를 자동 인정하지 않습니다.",
+         "개인정보보호법의 인정은 개인정보 처리·보호의 상응 범위이며 이 두 대출 검토 경로 또는 전체 AI 책무의 자동 대체가 아닙니다."
+        ],
+        "route": "other_law_recognition",
+        "schemaVersion": 1,
+        "source": {
+         "checkedAt": "2026-10-06",
+         "legalBasis": "법 제34조제3항 · 시행령 제27조제5항 · 별표1",
+         "sourceSha256": "8d25709613ecb05ead23c517f58b39c1e681a6f3d4bd47a8ba0edd09cc880ec8",
+         "sourceUrl": "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=168105389&bylClsCd=110201"
+        },
+        "status": "not_recorded",
+        "supplierReliance": false,
+        "supportsHumanAssessment": false
+       },
+       "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+       "reason": "관할·역할·예외와 사실관계를 사람이 확인해야 합니다",
+       "status": "unknown"
+      },
+      "policyVersion": "evidscope-applicability-2026-10-06-other-law-v1",
+      "requirementHash": "f2408fd14e61291475bbd513dc2f0d687e0325fdf1e1aea24e9800af7a6c07e8",
+      "requirementId": "KR-34-OVERSIGHT",
+      "schemaVersion": 1,
+      "systemHash": "b3192886244db571634e11aabc4585d7a71ef14305bbf1c1a5f65fe7fc948461",
+      "systemId": "pay-system"
+     },
+     "applicabilitySnapshotHash": "8dbec536c8336c01353d0a83d230a66a500d892ac956ff1ed88354adb56478c0",
+     "assessment": "insufficient",
+     "control": "approval queue",
+     "createdAt": "2026-10-08T04:04:08.711Z",
+     "evidence": [
+      {
+       "contentHash": "not_provided",
+       "notes": "",
+       "ref": "approval queue in production since 2026-01",
+       "type": "attestation",
+       "verification": "human_supplied_reference_not_fetched",
+       "version": "unknown"
+      }
+     ],
+     "id": "e6c59c53-3f0b-4ad5-a96e-7859110aa5a6",
+     "legalReview": "pending",
+     "nextReviewAt": "2099-01-01T00:00:00.000Z",
+     "owner": "payments",
+     "reason": "two-person approvals are recorded; oversight plan document not yet attached",
+     "requirementHash": "f2408fd14e61291475bbd513dc2f0d687e0325fdf1e1aea24e9800af7a6c07e8",
+     "requirementId": "KR-34-OVERSIGHT",
+     "requirementSnapshot": {
+      "additionalSourceUrls": [
+       "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0027&lsiSeq=288781&urlMode=lsScJoRltInfoR"
+      ],
+      "appliesWhen": "국내 시장 또는 이용자에게 영향을 미치고 법 제4조제2항 적용 제외에 해당하지 않는 인공지능사업자. 고영향 AI 또는 이를 이용한 제품·서비스를 제공하는 경우. 한국 고영향 여부와 사업자 역할을 사람이 검토.",
+      "article": "제34조제1항제4호",
+      "binding": "조건부 의무",
+      "detailNoticeStatus": "not_verified",
+      "effectiveDate": "2026-01-22",
+      "evidenceNeeded": [
+       "감독 책임자·연락체계",
+       "권한·역량·운영 절차",
+       "실제 인간 검토·개입 기록"
+      ],
+      "framework": "인공지능기본법 · 법률 제21311호 / 시행령 제36580호",
+      "id": "KR-34-OVERSIGHT",
+      "jurisdiction": "KR",
+      "legalSourceGaps": [
+       {
+        "article": "법 제34조제1항제6호",
+        "checkedAt": "2026-10-06",
+        "id": "KR-34-1-6-COMMITTEE",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "위원회 심의·의결 추가 사항 원문 미확인"
+       },
+       {
+        "article": "법 제34조제2항",
+        "checkedAt": "2026-10-06",
+        "id": "KR-34-2-DETAIL-NOTICE",
+        "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+        "status": "not_verified",
+        "title": "고영향 사업자 조치의 최종 구체화 고시 미확인"
+       }
+      ],
+      "limitations": "자동 검토기 허용은 인간 감독이 아님. EvidScope 사건 검토만으로 업무 AI 감독 체계 전체를 입증하지 않음. 법 제34조제1항제6호의 위원회 심의·의결 추가 사항은 현행 결정 원문을 별도 확인하며 미확인 사항을 이행 완료로 표시하지 않는다. 모든 도구 실행에 사전 승인을 요구하는 조항이 아니다. 당시 조직 정책의 건별 승인 요구와 감독 체계를 분리한다.",
+      "requirement": "고영향 AI에 대해 사람이 관리·감독하도록 한다.",
+      "reviewStatus": "draft_requires_human_review",
+      "roleBoundary": "법 제2조제7호의 실제 AI개발·제공 또는 AI제품·서비스 제공 역할을 확인. AI시스템의 단순 사용기관을 자동 이용사업자로 분류하지 않음",
+      "scopeConditions": [
+       "국내 시장 또는 이용자 영향(법 제4조제1항; 국외 행위도 포함)",
+       "실제 개발·제공·이용 역할과 인공지능사업자 해당성(법 제2조제7호; 공공 이용 의무는 별도)",
+       "국방·국가안보 전용 목적 및 시행령 제2조 지정업무의 적용 제외 근거",
+       "평가 기준일·제공 시점·법령 버전; 제공 시작이 시행 전이라는 이유만으로 계속 제공 의무를 자동 제외하지 않음"
+      ],
+      "sourceTextStatus": "verified_statute_and_decree",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0034&lsiSeq=282791&urlMode=lsScJoRltInfoR",
+      "supplierRelianceScope": [
+       "시행령 제27조제3항: 공급사가 실제 이행한 제34조제1항제1~3호 조치의 전부 또는 일부 범위만",
+       "제공받은 시스템·본래 목적/용도·중대한 기능 변경 없음의 증거와 사람 판단",
+       "사람 감독(제4호)·조치 문서 보관(제5호)은 자동 승계하지 않음",
+       "제27조제4항 자료 요청 가능 및 개발사업자의 협력 노력",
+       "다른 법령에 따른 이행조치 인정은 법 제34조제3항·시행령 제27조제5항·별표1에 별도 대조"
+      ],
+      "title": "사람의 관리·감독",
+      "verifiedAt": "2026-10-06"
+     },
+     "reviewer": "alpha-reviewer",
+     "systemHash": "b3192886244db571634e11aabc4585d7a71ef14305bbf1c1a5f65fe7fc948461",
+     "systemId": "pay-system"
+    },
+    "previous": "373b12b8d15594d7da1c3fa2e51b238272e75d0b048a07cb032bf7222857b6b8",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.712Z",
+    "seq": 36,
+    "tenant": "alpha",
+    "type": "assessment",
+    "hash": "7ce3712b09beb8466d87d7fd1a7771f9add0bad00f36fec3e0f71effbc751c8c"
+   },
+   {
+    "payload": {
+     "dueAt": "2099-01-01T00:00:00.000Z",
+     "id": "e6c59c53-3f0b-4ad5-a96e-7859110aa5a6",
+     "missingChecks": [
+      "oversight_plan",
+      "human_oversight_review"
+     ],
+     "orderTargets": [],
+     "owner": "payments",
+     "requirementId": "KR-34-OVERSIGHT",
+     "status": "open",
+     "systemId": "pay-system",
+     "technicalStatus": "typed_evidence_insufficient",
+     "title": "조항별 검증 가능한 이행 근거 보완"
+    },
+    "previous": "7ce3712b09beb8466d87d7fd1a7771f9add0bad00f36fec3e0f71effbc751c8c",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.712Z",
+    "seq": 37,
+    "tenant": "alpha",
+    "type": "governance_task",
+    "hash": "6d7ee78137aa9aad8ad678346da7d8ad599934c91721def723fd8a1b8f95f3fc"
+   },
+   {
+    "payload": {
+     "assessmentHash": "56950ac128289fc3c73b4f0cee6f2596ce016367abf746362e9950a7de30952a",
+     "assessmentId": "e6c59c53-3f0b-4ad5-a96e-7859110aa5a6",
+     "decision": "reviewed",
+     "id": "93a69a6b-1f86-4f26-9296-728452a02597",
+     "reason": "counsel read the assessment",
+     "requirementId": "KR-34-OVERSIGHT",
+     "reviewedAt": "2026-10-08T04:04:08.715Z",
+     "reviewedBy": "alpha-reviewer-2",
+     "systemId": "pay-system"
+    },
+    "previous": "6d7ee78137aa9aad8ad678346da7d8ad599934c91721def723fd8a1b8f95f3fc",
+    "principal": "alpha-reviewer-2",
+    "recordedAt": "2026-10-08T04:04:08.715Z",
+    "seq": 38,
+    "tenant": "alpha",
+    "type": "governance_legal_review",
+    "hash": "ee21db6636853aa42d4823889f64df640cc4094dbbd49a8da08474953a8fe5a7"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "comments": [],
+     "history": [
+      {
+       "action": "created",
+       "at": "2026-10-08T04:04:08.716Z",
+       "by": "alpha-reviewer"
+      }
+     ],
+     "id": "88632d20-ac68-4472-9c6e-47bf942517ca",
+     "owner": "audit-team",
+     "status": "open",
+     "tasks": [],
+     "title": "refused refund executed"
+    },
+    "previous": "ee21db6636853aa42d4823889f64df640cc4094dbbd49a8da08474953a8fe5a7",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:08.717Z",
+    "seq": 39,
+    "tenant": "alpha",
+    "type": "case",
+    "hash": "1fae3934ee8e330ddfa3bee6f2f2af14ad61a5e50098f1ffe162256f2f32aaf0"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "analysisVersion": {
+      "analyzed": 3,
+      "pending": false,
+      "version": 3
+     },
+     "caseId": "88632d20-ac68-4472-9c6e-47bf942517ca",
+     "checkpoint": {
+      "count": 39,
+      "format": "evidscope-checkpoint-v1",
+      "head": "1fae3934ee8e330ddfa3bee6f2f2af14ad61a5e50098f1ffe162256f2f32aaf0",
+      "signature": "JIYPfrMG1cZiBx/I5V1GWHN4kiEc9MeATzrcASJ5LfW0VkDrND9zuwm4bGgESSaFQd4NtHa+ydDx8xKYgdsSAg==",
+      "tenant": "alpha"
+     },
+     "conclusion": "confirmed_issue",
+     "contextHash": "2e7fd2a641ae1eea50512b06377a95bbdc6d9a99422c7549345733f261d08dea",
+     "createdAt": "2026-10-08T04:04:08.722Z",
+     "evaluationManifest": [
+      {
+       "id": "0e98c716-27c4-4f6c-bc03-4e08394e76cd",
+       "version": 3
+      }
+     ],
+     "evidence": [
+      {
+       "note": "execution after refusal",
+       "ref": "alpha-tool/x-ap-2",
+       "supports": "supports"
+      }
+     ],
+     "evidenceManifest": [
+      {
+       "hash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7",
+       "ref": "alpha-gateway/d-ap-2",
+       "seq": 24
+      },
+      {
+       "hash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e",
+       "ref": "alpha-agent/i-ap-2",
+       "seq": 26
+      },
+      {
+       "hash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3",
+       "ref": "alpha-tool/x-ap-2",
+       "seq": 28
+      }
+     ],
+     "id": "2b5cad92-8906-491b-9381-6171e627dcec",
+     "limitations": "payment system state not checked",
+     "nextReviewAt": "2026-10-09T04:04:08.721Z",
+     "reason": "the refund ran after the approval was refused",
+     "reviewedBy": "alpha-auditor",
+     "scope": "refund ap-2"
+    },
+    "previous": "1fae3934ee8e330ddfa3bee6f2f2af14ad61a5e50098f1ffe162256f2f32aaf0",
+    "principal": "alpha-auditor",
+    "recordedAt": "2026-10-08T04:04:08.723Z",
+    "seq": 40,
+    "tenant": "alpha",
+    "type": "case_decision",
+    "hash": "bba11c18fde6c43ee6db24413360c3c4429be4e1d623e725519030afc3facc7c"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "change": "issued",
+     "effectiveFrom": "2026-10-08T04:04:09.027Z",
+     "enforcementPoints": [
+      {
+       "basis": [
+        "decisions_seen",
+        "policy"
+       ],
+       "id": "alpha-gateway"
+      }
+     ],
+     "entryState": "production",
+     "evidence": [
+      {
+       "ref": "INC-9",
+       "type": "external",
+       "verification": "self_asserted"
+      }
+     ],
+     "id": "e494d557-dfb7-4c7c-8d8c-3c94ac07c3ae",
+     "issuedAt": "2026-10-08T04:04:09.027Z",
+     "issuedBy": "alpha-reviewer",
+     "propagation": {
+      "policySource": "signed",
+      "policyVersion": 1,
+      "windowSeconds": 10
+     },
+     "reason": "incident",
+     "registryVersion": 4,
+     "scope": "agent",
+     "status": "active",
+     "suspension": {
+      "transitionId": "496c057a-36fb-4932-8175-953ee3993ea5"
+     },
+     "target": {
+      "actors": [
+       "pay-agent"
+      ],
+      "sources": [
+       "alpha-agent"
+      ]
+     },
+     "tools": [],
+     "version": 1
+    },
+    "previous": "bba11c18fde6c43ee6db24413360c3c4429be4e1d623e725519030afc3facc7c",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:09.028Z",
+    "seq": 41,
+    "tenant": "alpha",
+    "type": "agent_stop_order",
+    "hash": "e25d5bd981b2b48bb8192fadc76d7f3dcb120145ae3cfe6eab5f132622b1dccc"
+   },
+   {
+    "payload": {
+     "agentId": "pay-agent",
+     "approvalRequired": false,
+     "editedBy": "alpha-reviewer",
+     "evidence": [
+      {
+       "ref": "INC-9",
+       "type": "external",
+       "verification": "self_asserted"
+      }
+     ],
+     "from": "production",
+     "gate": {
+      "checkedAt": "2026-10-08T04:04:09.030Z",
+      "conditions": [],
+      "met": true,
+      "policySource": "signed",
+      "policyVersion": 1,
+      "target": "suspended",
+      "tier": "high",
+      "unmet": []
+     },
+     "id": "496c057a-36fb-4932-8175-953ee3993ea5",
+     "reason": "incident",
+     "registeredBy": "alpha-reviewer",
+     "registryVersion": 4,
+     "requestedAt": "2026-10-08T04:04:09.029Z",
+     "requestedBy": "alpha-reviewer",
+     "status": "applied",
+     "stopOrderId": "e494d557-dfb7-4c7c-8d8c-3c94ac07c3ae",
+     "to": "suspended"
+    },
+    "previous": "e25d5bd981b2b48bb8192fadc76d7f3dcb120145ae3cfe6eab5f132622b1dccc",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:09.030Z",
+    "seq": 42,
+    "tenant": "alpha",
+    "type": "agent_transition",
+    "hash": "44e6b55d02a62a0cff17962d98be2ccf1627c660caa4949ece87673d7a8b8ddd"
+   },
+   {
+    "payload": {
+     "actors": [
+      "pay-agent"
+     ],
+     "assetIds": [],
+     "change": "transition",
+     "dataCategories": [],
+     "destinations": [],
+     "editedAt": "2026-10-08T04:04:08.270Z",
+     "editedBy": "alpha-reviewer",
+     "effectiveFrom": "2026-10-08T04:04:09.030Z",
+     "fingerprint": {},
+     "id": "pay-agent",
+     "lastTransition": {
+      "at": "2026-10-08T04:04:09.030Z",
+      "from": "production",
+      "id": "496c057a-36fb-4932-8175-953ee3993ea5",
+      "requestedBy": "alpha-reviewer",
+      "to": "suspended"
+     },
+     "models": [],
+     "name": "pay-agent",
+     "owner": "payments",
+     "purpose": "refunds",
+     "registeredAt": "2026-10-08T04:04:08.270Z",
+     "registeredBy": "alpha-reviewer",
+     "risk": {
+      "basisHash": "41b1441781be23230405e393524d6ebbf1f03795e1eaaf427d79a6614922902e",
+      "computed": "high",
+      "override": null,
+      "reasons": [
+       {
+        "field": "tool",
+        "rule": "tool-payment",
+        "tier": "high",
+        "value": "payment_transfer"
+       }
+      ],
+      "rulesHash": "3eeed52a11dd31f86f23ead81988363054ad0c8e2822c7e84592e9a72428ea51",
+      "tier": "high",
+      "tools": [
+       {
+        "name": "payment_transfer",
+        "tier": "high"
+       }
+      ]
+     },
+     "sources": [
+      "alpha-agent"
+     ],
+     "state": "suspended",
+     "systemId": null,
+     "tools": [
+      {
+       "enforcement": "required",
+       "name": "payment_transfer"
+      }
+     ],
+     "version": 5
+    },
+    "previous": "44e6b55d02a62a0cff17962d98be2ccf1627c660caa4949ece87673d7a8b8ddd",
+    "principal": "alpha-reviewer",
+    "recordedAt": "2026-10-08T04:04:09.031Z",
+    "seq": 43,
+    "tenant": "alpha",
+    "type": "agent_registry",
+    "hash": "5fc52fec87f7bde4a944370ce44e9b8f365c4b903787a60dd879203e90e8a270"
+   },
+   {
+    "payload": {
+     "actionId": "ap-1",
+     "analysisTime": "2026-10-08T04:04:09.033Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 1,
+      "totalFindings": 1,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T04:04:09.038Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-1"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      }
+     ],
+     "id": "21a321a5-9acc-4742-b144-dd64eea8968b",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_vlRJXQ7cvWQot2ID98gO58ZRAFk",
+         "version": 3
+        }
+       ],
+       "assets": 1,
+       "events": [
+        18,
+        20,
+        22,
+        30
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "77b831d4123fd961b6ba3e8270e55b809b179d04e752f0326ef2ac76a84d9b1f",
+     "status": "evaluated",
+     "version": 6,
+     "worker": "analysis-worker"
+    },
+    "previous": "5fc52fec87f7bde4a944370ce44e9b8f365c4b903787a60dd879203e90e8a270",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T04:04:09.038Z",
+    "seq": 44,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "912115ba10e02744fcc912a037ef00f68965bc53f2561d0fd2cf8de3447c55f8"
+   },
+   {
+    "payload": {
+     "actionId": "ap-2",
+     "analysisTime": "2026-10-08T04:04:09.033Z",
+     "authority": "unverified_or_mismatch",
+     "coverage": {
+      "returnedFindings": 3,
+      "totalFindings": 3,
+      "truncated": false
+     },
+     "createdAt": "2026-10-08T04:04:09.041Z",
+     "effect": "unconfirmed",
+     "findings": [
+      {
+       "code": "AUTHORITY_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+       "severity": "high"
+      },
+      {
+       "code": "HUMAN_APPROVAL_MISSING",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+       "severity": "medium"
+      },
+      {
+       "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+       "evidence": [
+        "alpha-tool/x-ap-2"
+       ],
+       "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+       "severity": "high"
+      }
+     ],
+     "id": "af8fa711-68c1-4c59-a1aa-ccdd92196397",
+     "limitations": [
+      "출처 인증은 내용의 진실성을 보증하지 않습니다",
+      "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+      "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+      "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+     ],
+     "replay": {
+      "engine": "evidscope-evaluate-v4",
+      "inputs": {
+       "approvals": [
+        {
+         "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+         "version": 2
+        }
+       ],
+       "assets": 1,
+       "events": [
+        24,
+        26,
+        28
+       ],
+       "exceptions": 0,
+       "registry": {
+        "entries": 5,
+        "policies": 1
+       },
+       "rules": [],
+       "stopOrders": {
+        "activations": [],
+        "orders": 1
+       }
+      },
+      "limits": {
+       "findings": 100,
+       "resultBytes": 1048576
+      }
+     },
+     "snapshotHash": "9da5e86b775bf18b8646f2fcbabe475a06d8546f77a77cafbad51e99213ee085",
+     "status": "evaluated",
+     "version": 5,
+     "worker": "analysis-worker"
+    },
+    "previous": "912115ba10e02744fcc912a037ef00f68965bc53f2561d0fd2cf8de3447c55f8",
+    "principal": "analysis-worker",
+    "recordedAt": "2026-10-08T04:04:09.041Z",
+    "seq": 45,
+    "tenant": "alpha",
+    "type": "evaluation",
+    "hash": "47893723a0d6e464e0464cf48642d6e1446c9dbafd557aede51296ebd4e8ad9a"
+   }
+  ],
+  "checkpoint": {
+   "format": "evidscope-checkpoint-v1",
+   "tenant": "alpha",
+   "count": 45,
+   "head": "47893723a0d6e464e0464cf48642d6e1446c9dbafd557aede51296ebd4e8ad9a",
+   "signature": "4oNma0a30Ykhk/2YFOcmeAaK+DEa23K/odiCZpKLo6oT4skjPTU8MuAclgJb6x4hEGZbtMXgMuDutgK/iGhuAg=="
+  },
+  "limitations": [
+   "Minimized receipt evidence; no original prompt or response",
+   "Signature authenticates local vault, not truth of source claims",
+   "Pin public key and checkpoint out of band to detect replacement and rollback",
+   "Erasure covers live event keys and query copies; prior exports/backups need separate disposition"
+  ],
+  "disclosures": [
+   {
+    "seq": 18,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "require_approval",
+     "decisionId": "ap-1",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:40004d3b478ca761cae0a8750c6430b66385b892f5edeb88b8ceeb7909127dd7",
+     "id": "d-ap-1",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:07.335Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.335Z",
+     "resource": "ap-1",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1"
+    },
+    "salt": "d8eeaba87c34c939915b140a8a3fd93b040eebffaac963dfb17c612feb912ddb"
+   },
+   {
+    "seq": 20,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_self_report",
+     "fingerprint": "fp2:2026-11:18097854f18e8309f5d0377ddc83107ba0c986c0ea0f064d3fbd91898cf782ab",
+     "id": "i-ap-1",
+     "kind": "intent",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:07.442Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.342Z",
+     "resource": "ap-1",
+     "source": "alpha-agent",
+     "sourceKind": "agent",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1"
+    },
+    "salt": "05ef038a2b712c5d8286bed2928774be08b28efbcfccdf3cfe9c10ab7cff5d1a"
+   },
+   {
+    "seq": 22,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:5bd7638802f4686c24359b74ef8c68494667aa3e64435b62698dbd1808c9a26a",
+     "id": "x-ap-1",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:08.364Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.364Z",
+     "resource": "ap-1",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1"
+    },
+    "salt": "94fbb881ec4e2cda9ae95e9ac54c973398941432ac5251ac9aa8925f3ce30309"
+   },
+   {
+    "seq": 24,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "decision": "require_approval",
+     "decisionId": "ap-2",
+     "enforcementPointId": "gw-1",
+     "engine": "opa",
+     "fingerprint": "fp2:2026-11:01f1454b6c75c1e8a9c8ede5b9b64430f6dc2d6223bd96e6a0301f9d0945debc",
+     "id": "d-ap-2",
+     "kind": "policy_decision",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:07.368Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.368Z",
+     "resource": "ap-2",
+     "source": "alpha-gateway",
+     "sourceKind": "enforcement",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-2"
+    },
+    "salt": "c6c3c330b5db8301e9bc3c094a0d66bdac48ca1fb834f4edbf7a6cb34d53abe6"
+   },
+   {
+    "seq": 26,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_self_report",
+     "fingerprint": "fp2:2026-11:3fab76a550b15969dd8418d5118a17801a3a7cc4454ea929db0b23ab14aec9ff",
+     "id": "i-ap-2",
+     "kind": "intent",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:07.472Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.372Z",
+     "resource": "ap-2",
+     "source": "alpha-agent",
+     "sourceKind": "agent",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-2"
+    },
+    "salt": "c05b4aaaccc3c08e11c6495aed40b5a1c4ad00ceece787abdeb880a7881ec08c"
+   },
+   {
+    "seq": 28,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-2",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:86f4bf3bffd897c453fa8317b60dc042db739235cedf6509f892be7546111e4e",
+     "id": "x-ap-2",
+     "kind": "execution",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:08.375Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.375Z",
+     "resource": "ap-2",
+     "source": "alpha-tool",
+     "sourceKind": "tool",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-2"
+    },
+    "salt": "768e50458df78e057b1257fcbdb2af4a41f376b24d4b7238b640fe39451a85b5"
+   },
+   {
+    "seq": 30,
+    "event": {
+     "action": "refund",
+     "actionId": "ap-1",
+     "actor": "pay-agent",
+     "assurance": "authenticated_service_record",
+     "fingerprint": "fp2:2026-11:9e6e0056277a73c8df19efb95f6d7e8df9ead5d3ad14130996ba564b17aeb636",
+     "id": "h-ap-1",
+     "kind": "human_approval",
+     "late": false,
+     "occurredAt": "2026-10-08T04:04:07.578Z",
+     "payload": {
+      "minimization": "allowlist_metadata_only",
+      "originalContentStored": false
+     },
+     "policyVersion": "p1",
+     "receivedAt": "2026-10-08T04:04:08.378Z",
+     "resource": "ap-1",
+     "reviewer": "alpha-reviewer-2",
+     "scope": {
+      "action": "refund",
+      "actor": "pay-agent",
+      "resource": "ap-1",
+      "tool": "payment_transfer"
+     },
+     "source": "alpha-authority",
+     "sourceKind": "authority",
+     "status": "success",
+     "tenant": "alpha",
+     "tool": "payment_transfer",
+     "traceId": "t-ap-1",
+     "validFrom": "2026-10-08T03:04:08.378Z",
+     "validUntil": "2026-10-08T05:04:08.378Z"
+    },
+    "salt": "3b25ad9454a33b86198c50c3e727813399def6c4cff0f6fb69c01c8dc3b92867"
+   }
+  ]
+ },
+ "caseReports": [
+  {
+   "format": "evidscope-case-report-v1",
+   "snapshot": {
+    "tenant": "alpha",
+    "exportedAt": "2026-10-08T04:04:09.050Z",
+    "exportedBy": "alpha-auditor",
+    "case": {
+     "actionId": "ap-2",
+     "comments": [],
+     "history": [
+      {
+       "action": "created",
+       "at": "2026-10-08T04:04:08.716Z",
+       "by": "alpha-reviewer"
+      }
+     ],
+     "id": "88632d20-ac68-4472-9c6e-47bf942517ca",
+     "owner": "audit-team",
+     "status": "open",
+     "tasks": [],
+     "title": "refused refund executed"
+    },
+    "action": {
+     "actionId": "ap-2",
+     "events": [
+      {
+       "action": "refund",
+       "actionId": "ap-2",
+       "actor": "pay-agent",
+       "assurance": "authenticated_service_record",
+       "decision": "require_approval",
+       "decisionId": "ap-2",
+       "enforcementPointId": "gw-1",
+       "engine": "opa",
+       "fingerprint": "fp2:2026-11:01f1454b6c75c1e8a9c8ede5b9b64430f6dc2d6223bd96e6a0301f9d0945debc",
+       "id": "d-ap-2",
+       "kind": "policy_decision",
+       "late": false,
+       "occurredAt": "2026-10-08T04:04:07.368Z",
+       "payload": {
+        "minimization": "allowlist_metadata_only",
+        "originalContentStored": false
+       },
+       "policyVersion": "p1",
+       "receivedAt": "2026-10-08T04:04:08.368Z",
+       "resource": "ap-2",
+       "source": "alpha-gateway",
+       "sourceKind": "enforcement",
+       "tenant": "alpha",
+       "tool": "payment_transfer",
+       "traceId": "t-ap-2",
+       "seq": 24,
+       "hash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7"
+      },
+      {
+       "action": "refund",
+       "actionId": "ap-2",
+       "actor": "pay-agent",
+       "assurance": "authenticated_self_report",
+       "fingerprint": "fp2:2026-11:3fab76a550b15969dd8418d5118a17801a3a7cc4454ea929db0b23ab14aec9ff",
+       "id": "i-ap-2",
+       "kind": "intent",
+       "late": false,
+       "occurredAt": "2026-10-08T04:04:07.472Z",
+       "payload": {
+        "minimization": "allowlist_metadata_only",
+        "originalContentStored": false
+       },
+       "policyVersion": "p1",
+       "receivedAt": "2026-10-08T04:04:08.372Z",
+       "resource": "ap-2",
+       "source": "alpha-agent",
+       "sourceKind": "agent",
+       "status": "success",
+       "tenant": "alpha",
+       "tool": "payment_transfer",
+       "traceId": "t-ap-2",
+       "seq": 26,
+       "hash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e"
+      },
+      {
+       "action": "refund",
+       "actionId": "ap-2",
+       "actor": "pay-agent",
+       "assurance": "authenticated_service_record",
+       "fingerprint": "fp2:2026-11:86f4bf3bffd897c453fa8317b60dc042db739235cedf6509f892be7546111e4e",
+       "id": "x-ap-2",
+       "kind": "execution",
+       "late": false,
+       "occurredAt": "2026-10-08T04:04:08.375Z",
+       "payload": {
+        "minimization": "allowlist_metadata_only",
+        "originalContentStored": false
+       },
+       "policyVersion": "p1",
+       "receivedAt": "2026-10-08T04:04:08.375Z",
+       "resource": "ap-2",
+       "source": "alpha-tool",
+       "sourceKind": "tool",
+       "status": "success",
+       "tenant": "alpha",
+       "tool": "payment_transfer",
+       "traceId": "t-ap-2",
+       "seq": 28,
+       "hash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3"
+      }
+     ],
+     "references": [],
+     "evaluations": [
+      {
+       "actionId": "ap-2",
+       "analysisTime": "2026-10-08T04:04:09.033Z",
+       "authority": "unverified_or_mismatch",
+       "coverage": {
+        "returnedFindings": 3,
+        "totalFindings": 3,
+        "truncated": false
+       },
+       "createdAt": "2026-10-08T04:04:09.041Z",
+       "effect": "unconfirmed",
+       "findings": [
+        {
+         "code": "AUTHORITY_MISSING",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+         "severity": "high"
+        },
+        {
+         "code": "HUMAN_APPROVAL_MISSING",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+         "severity": "medium"
+        },
+        {
+         "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+         "severity": "high"
+        }
+       ],
+       "id": "af8fa711-68c1-4c59-a1aa-ccdd92196397",
+       "limitations": [
+        "출처 인증은 내용의 진실성을 보증하지 않습니다",
+        "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+        "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+        "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+       ],
+       "replay": {
+        "engine": "evidscope-evaluate-v4",
+        "inputs": {
+         "approvals": [
+          {
+           "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+           "version": 2
+          }
+         ],
+         "assets": 1,
+         "events": [
+          24,
+          26,
+          28
+         ],
+         "exceptions": 0,
+         "registry": {
+          "entries": 5,
+          "policies": 1
+         },
+         "rules": [],
+         "stopOrders": {
+          "activations": [],
+          "orders": 1
+         }
+        },
+        "limits": {
+         "findings": 100,
+         "resultBytes": 1048576
+        }
+       },
+       "snapshotHash": "9da5e86b775bf18b8646f2fcbabe475a06d8546f77a77cafbad51e99213ee085",
+       "status": "evaluated",
+       "version": 5,
+       "worker": "analysis-worker"
+      },
+      {
+       "actionId": "ap-2",
+       "analysisTime": "2026-10-08T04:04:08.390Z",
+       "authority": "unverified_or_mismatch",
+       "coverage": {
+        "returnedFindings": 3,
+        "totalFindings": 3,
+        "truncated": false
+       },
+       "createdAt": "2026-10-08T04:04:08.402Z",
+       "effect": "unconfirmed",
+       "findings": [
+        {
+         "code": "AUTHORITY_MISSING",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "실행 시점의 독립 권한·정책·범위·요청/시도·모델 근거가 없거나 일치하지 않습니다",
+         "severity": "high"
+        },
+        {
+         "code": "HUMAN_APPROVAL_MISSING",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "당시 정책이 요구하는 건별 사람 승인의 시점·대상·요청/시도·모델 근거가 없거나 일치하지 않습니다. 자동 검토는 사람 승인이 아닙니다",
+         "severity": "medium"
+        },
+        {
+         "code": "EXECUTION_AFTER_APPROVAL_REFUSED",
+         "evidence": [
+          "alpha-tool/x-ap-2"
+         ],
+         "message": "사람이 거절한 승인 요청의 대상이 거절 이후 실행되었습니다 (승인 요청 apr_KqyfWPq8ic-UnWiD7CeJUln6SJM)",
+         "severity": "high"
+        }
+       ],
+       "id": "0e98c716-27c4-4f6c-bc03-4e08394e76cd",
+       "limitations": [
+        "출처 인증은 내용의 진실성을 보증하지 않습니다",
+        "출처가 제공한 요청·시도·모델 식별자에 근거하며 누락된 과거 메타데이터는 동일성을 증명하지 않습니다",
+        "시계 오차가 없는 과거 이벤트는 보고된 시각 순서를 사용하며 신뢰 시각 증명이 아닙니다",
+        "승인 대조는 수집된 증거에 한정하며 법적 인간 감독 충족 판정이 아닙니다"
+       ],
+       "replay": {
+        "engine": "evidscope-evaluate-v3",
+        "inputs": {
+         "approvals": [
+          {
+           "id": "apr_KqyfWPq8ic-UnWiD7CeJUln6SJM",
+           "version": 2
+          }
+         ],
+         "assets": 1,
+         "events": [
+          24,
+          26,
+          28
+         ],
+         "exceptions": 0,
+         "registry": {
+          "entries": 4,
+          "policies": 1
+         },
+         "rules": []
+        },
+        "limits": {
+         "findings": 100,
+         "resultBytes": 1048576
+        }
+       },
+       "snapshotHash": "be36ab13dc6688988b05f2d6fce3b5519c1020b5647fffb4982877059ebe393e",
+       "status": "evaluated",
+       "version": 3,
+       "worker": "analysis-worker"
+      }
+     ],
+     "analysis": {
+      "version": 5,
+      "analyzed": 5,
+      "pending": false
+     }
+    },
+    "review": {
+     "state": "stale",
+     "latestDecision": {
+      "actionId": "ap-2",
+      "analysisVersion": {
+       "analyzed": 3,
+       "pending": false,
+       "version": 3
+      },
+      "caseId": "88632d20-ac68-4472-9c6e-47bf942517ca",
+      "checkpoint": {
+       "count": 39,
+       "format": "evidscope-checkpoint-v1",
+       "head": "1fae3934ee8e330ddfa3bee6f2f2af14ad61a5e50098f1ffe162256f2f32aaf0",
+       "signature": "JIYPfrMG1cZiBx/I5V1GWHN4kiEc9MeATzrcASJ5LfW0VkDrND9zuwm4bGgESSaFQd4NtHa+ydDx8xKYgdsSAg==",
+       "tenant": "alpha"
+      },
+      "conclusion": "confirmed_issue",
+      "contextHash": "2e7fd2a641ae1eea50512b06377a95bbdc6d9a99422c7549345733f261d08dea",
+      "createdAt": "2026-10-08T04:04:08.722Z",
+      "evaluationManifest": [
+       {
+        "id": "0e98c716-27c4-4f6c-bc03-4e08394e76cd",
+        "version": 3
+       }
+      ],
+      "evidence": [
+       {
+        "note": "execution after refusal",
+        "ref": "alpha-tool/x-ap-2",
+        "supports": "supports"
+       }
+      ],
+      "evidenceManifest": [
+       {
+        "hash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7",
+        "ref": "alpha-gateway/d-ap-2",
+        "seq": 24
+       },
+       {
+        "hash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e",
+        "ref": "alpha-agent/i-ap-2",
+        "seq": 26
+       },
+       {
+        "hash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3",
+        "ref": "alpha-tool/x-ap-2",
+        "seq": 28
+       }
+      ],
+      "id": "2b5cad92-8906-491b-9381-6171e627dcec",
+      "limitations": "payment system state not checked",
+      "nextReviewAt": "2026-10-09T04:04:08.721Z",
+      "reason": "the refund ran after the approval was refused",
+      "reviewedBy": "alpha-auditor",
+      "scope": "refund ap-2"
+     },
+     "decisions": [
+      {
+       "actionId": "ap-2",
+       "analysisVersion": {
+        "analyzed": 3,
+        "pending": false,
+        "version": 3
+       },
+       "caseId": "88632d20-ac68-4472-9c6e-47bf942517ca",
+       "checkpoint": {
+        "count": 39,
+        "format": "evidscope-checkpoint-v1",
+        "head": "1fae3934ee8e330ddfa3bee6f2f2af14ad61a5e50098f1ffe162256f2f32aaf0",
+        "signature": "JIYPfrMG1cZiBx/I5V1GWHN4kiEc9MeATzrcASJ5LfW0VkDrND9zuwm4bGgESSaFQd4NtHa+ydDx8xKYgdsSAg==",
+        "tenant": "alpha"
+       },
+       "conclusion": "confirmed_issue",
+       "contextHash": "2e7fd2a641ae1eea50512b06377a95bbdc6d9a99422c7549345733f261d08dea",
+       "createdAt": "2026-10-08T04:04:08.722Z",
+       "evaluationManifest": [
+        {
+         "id": "0e98c716-27c4-4f6c-bc03-4e08394e76cd",
+         "version": 3
+        }
+       ],
+       "evidence": [
+        {
+         "note": "execution after refusal",
+         "ref": "alpha-tool/x-ap-2",
+         "supports": "supports"
+        }
+       ],
+       "evidenceManifest": [
+        {
+         "hash": "9adec27019aa3f4d5af246b36ca2798b77cb3887aa0370cd9d17705ee0a0bea7",
+         "ref": "alpha-gateway/d-ap-2",
+         "seq": 24
+        },
+        {
+         "hash": "d8d100371ae2df48e1aeacddad9cd16211ec3c8679122d196adbf02bcc7cab9e",
+         "ref": "alpha-agent/i-ap-2",
+         "seq": 26
+        },
+        {
+         "hash": "17b20cc81ebc280ffaa227a8d715109f45ce226ed42d761397901bc98ed2e8f3",
+         "ref": "alpha-tool/x-ap-2",
+         "seq": 28
+        }
+       ],
+       "id": "2b5cad92-8906-491b-9381-6171e627dcec",
+       "limitations": "payment system state not checked",
+       "nextReviewAt": "2026-10-09T04:04:08.721Z",
+       "reason": "the refund ran after the approval was refused",
+       "reviewedBy": "alpha-auditor",
+       "scope": "refund ap-2"
+      }
+     ],
+     "contextHash": "7bc52fbbda534bf4e22fe8424c6536286ea723ddb32e8c1c86669d65948df7cc"
+    },
+    "checkpoint": {
+     "format": "evidscope-checkpoint-v1",
+     "tenant": "alpha",
+     "count": 45,
+     "head": "47893723a0d6e464e0464cf48642d6e1446c9dbafd557aede51296ebd4e8ad9a",
+     "signature": "4oNma0a30Ykhk/2YFOcmeAaK+DEa23K/odiCZpKLo6oT4skjPTU8MuAclgJb6x4hEGZbtMXgMuDutgK/iGhuAg=="
+    },
+    "limitations": [
+     "수신된 최소 메타데이터와 외부 출처 보고를 검토합니다. 전체 AI 내부 사고·원문·실제 자료 이용은 확인하지 않습니다.",
+     "사람의 결론은 명시한 범위와 당시 증거에 한정됩니다. 법적 준수·인증·무사고 보증이 아닙니다.",
+     "보존 종료·늦은 증거·분석 변경·재검토 기한 도래 시 기존 결론의 재검토가 필요합니다.",
+     "이 서명은 EvidScope 서버가 이 보고서 문맥을 발급했다는 증명이며 외부 사실 확인·독립 시각 봉인·법적 결론 보증이 아닙니다.",
+     "전체 서명 원장과 독립 신뢰 기준점은 별도 /api/export로 확보해야 합니다. 공개키 지문은 신뢰할 수 있는 별도 경로로 대조하세요.",
+     "테넌트 이벤트 조회 사본과 이 사건·분석·인간 판단 사본을 서명 원장과 대조했습니다."
+    ]
+   },
+   "signature": "7la3lv5JwtC+7tZmGi6chKsfCt9J4jc7gVLa+omxaOI4kO24aDjVmsIo0wGXrlzzhJ+8ZNG9oO1eAqZaUB4sCA==",
+   "publicKeyFingerprint": "09849d3c9221b6b24bfcbd234520e869a29e55e923d126ecccd88cdcdfb51a11"
+  }
+ ]
+}

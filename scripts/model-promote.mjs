@@ -2,6 +2,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {assessComparisonReport} from './model-evaluate.mjs';
+export {promoteGovernanceCandidate,verifyPromotion} from '../src/governance-model.mjs';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function promoteCandidate(registry,report,approval){
  if(!assessComparisonReport(report).eligible)throw Error('candidate_evaluation_failed');
