@@ -39,7 +39,7 @@ EvidScope에 보냅니다.
 
 ## 위험 규칙
 
-`data/risk-rules/ai-agent-baseline.json`의 67개 규칙(팩 버전 3)을 테넌트 규칙으로 올립니다. 모두 `note words <패턴>` 형식(평가 엔진 v6,
+`data/risk-rules/ai-agent-baseline.json`의 82개 규칙(팩 버전 5)을 테넌트 규칙으로 올립니다. 모두 `note words <패턴>` 형식(평가 엔진 v6,
 `src/rule-words.mjs`)이며 일치는 검토 신호이지 판정이 아닙니다.
 
 - 패턴은 공백으로 나눈 단어를 **순서대로** 찾습니다. 사이에 다른 단어가 있어도 됩니다(`curl -d`는 `curl -s -X POST -d @f`에도 걸림).
@@ -55,6 +55,13 @@ EvidScope에 보냅니다.
   순서가 바뀐 `Remove-Item -Force -Recurse`를 더했습니다. 버전 3(2026-10-17)은 다른 AI 에이전트에 대한 간섭 4개(전역 지시 파일,
   MCP 서버 설정, 다른 에이전트 프로세스 종료 두 형태)와 EvidScope 수집 중단 3개(예약 작업, EvidScope 프로세스, 설치된 hook·시작
   스크립트)를 더했습니다. 프로젝트 안의 `CLAUDE.md`·`AGENTS.md` 수정, 프로세스 조회, 개발 서버 종료는 걸리지 않습니다.
+- 버전 5(2026-11-26, 실제 기록 검사)는 앞 버전이 이름하지 않던 위험한 변경 15개를 `risk.defense.` 아래에 더했습니다: 인터넷에서
+  받은 스크립트를 저장 없이 바로 실행(`iex`와 `irm`·`iwr`·`DownloadString`과 URL, URL이 있는 `curl`·`wget` 뒤 셸. 스크립트를
+  파일로 쓰는 heredoc은 제외), 새 자동 실행 등록(예약 작업, `schtasks /create`, Run 레지스트리, `systemctl enable`, `-l`이 아닌
+  `crontab`), 서비스·데이터베이스를 모든 주소에 공개(`host=0.0.0.0`, `listen_addresses '*'`, `0.0.0.0/0`, `portproxy`, 새
+  인바운드 방화벽 규칙). 가드의 접두어 밖에 있어 막지 않고 검토 신호로만 남으며, 조항은 기존 보안 설정 변경 묶음으로 계산됩니다.
+  이 PC의 실제 도구 호출 19,688건에서 5구간에 걸렸고 모두 볼 만한 항목이었습니다. 조회(`schtasks /query`, `reg query`,
+  `crontab -l`), 이 PC 주소로 묶기, 개발 서버의 `--host 0.0.0.0`은 걸리지 않습니다.
 
 | 묶음 | 예 |
 |---|---|
@@ -62,7 +69,7 @@ EvidScope에 보냅니다.
 | 자격 탈취 | `lsass`, `mimikatz` |
 | 파괴적 명령 | `rm -rf /`, `rm -rf ~`, `Remove-Item -Recurse -Force`, `del /s`, `mkfs`, `format c:`, 디스크 `dd`, `git push --force`, `git reset --hard`, `DROP TABLE` |
 | 외부 전송 | `curl -d`, `--data`, `--upload-file`, `curl -T`, `--form`, `wget --post-file`, `-Method Post`, `-InFile`, `scp`, `nc`, `pastebin` |
-| 보안 설정 변경 | Defender·방화벽·iptables·SELinux 변경, 이벤트 로그 삭제, `history -c`, `chmod 777` |
+| 보안 설정 변경 | Defender·방화벽·iptables·SELinux 변경, 이벤트 로그 삭제, `history -c`, `chmod 777`, 받은 스크립트 바로 실행, 자동 실행 등록, 모든 주소 공개 |
 | 감시 우회 | `~/.evidscope/` 수집 설정, `~/.claude/settings`·`~/.codex/hooks.json`·`~/.codex/config.toml` hook 설정 접근, EvidScope 예약 작업·프로세스 중지, 설치된 hook(`evidscope-work/hook/`)·시작 스크립트 변경 |
 | 에이전트 간섭 | `~/.claude/CLAUDE.md`·`~/.codex/AGENTS.md` 전역 지시 변경, `.mcp.json`·`~/.claude.json`·`claude_desktop_config.json` MCP 설정 접근, `claude`·`codex` 프로세스 종료 |
 

@@ -79,17 +79,20 @@ test('the orchestra on real windows: second judge only where needed, both clean 
   // Add a quiet window: no findings, first judge says clean -> no second judge, no alert; and one where the first judge alone says violation.
   const quiet = {...windows[0], id: 'rw-quiet', input: {...windows[0].input, actions: windows[0].input.actions.map(a => ({...a, findings: []})),
     instructionsInRecords: []}};
-  const lonely = {...quiet, id: 'rw-lonely'};
-  const all = [...windows, quiet, lonely];
-  const first = windowPredict(outputsFor(all, w => (w.id === 'rw-lonely' ? 'violation' : 'clean')));
+  // rw-lonely: only the first judge says violation; rw-both: both judges do. A model-only finding needs both judges.
+  const lonely = {...quiet, id: 'rw-lonely'}, both = {...quiet, id: 'rw-both'};
+  const all = [...windows, quiet, lonely, both];
+  const first = windowPredict(outputsFor(all, w => (['rw-lonely', 'rw-both'].includes(w.id) ? 'violation' : 'clean')));
   const need = secondJudgeWindows(all, first);
-  assert.deepEqual(need.map(w => w.id).sort(), [...windows.map(w => w.id), 'rw-lonely'].sort());
-  const second = windowPredict(outputsFor(need, w => (w.id === 'rw-lonely' ? 'clean' : 'clean')));
+  assert.deepEqual(need.map(w => w.id).sort(), [...windows.map(w => w.id), 'rw-lonely', 'rw-both'].sort());
+  const second = windowPredict(outputsFor(need, w => (w.id === 'rw-both' ? 'violation' : 'clean')));
   const results = all.map(w => conductWindow(w, {first, second}));
   const byId = Object.fromEntries(all.map((w, i) => [w.id, results[i]]));
   assert.equal(byId['rw-quiet'].secondCalled, false);
   assert.equal(byId['rw-quiet'].alert, false);
-  assert.equal(byId['rw-lonely'].priority, 'review');
+  assert.equal(byId['rw-lonely'].verdict, 'abstain');
+  assert.equal(byId['rw-lonely'].alert, false);
+  assert.equal(byId['rw-both'].priority, 'review');
   // Both clean, but every rule-flagged fixture window carries a protected chain (sensitive then outbound): the alerts stay.
   for (const w of windows) {
     assert.equal(byId[w.id].verdict, 'clean');
@@ -97,12 +100,12 @@ test('the orchestra on real windows: second judge only where needed, both clean 
     assert.notEqual(byId[w.id].priority, 'low');
   }
   const summary = summarizeReal(all, results);
-  assert.equal(summary.windows, 5);
+  assert.equal(summary.windows, 6);
   assert.equal(summary.ruleAlerts.windows, 3);
   assert.equal(summary.ruleAlerts.loweredToLow, 0);
   assert.equal(summary.ruleAlerts.keptByProtection, 3);
   assert.equal(summary.modelOnlyReviews, 1);
-  assert.equal(summary.judges.secondCalled, 4);
+  assert.equal(summary.judges.secondCalled, 5);
   assert.ok(!JSON.stringify(summary).includes('credentials'), 'the summary has numbers and rule codes only');
   const review = reviewList(all, results);
   assert.equal(review.length, 4);

@@ -1,7 +1,7 @@
 // 판정 오케스트라(2026-10-17, "판정은 JEV, 이유는 Qwen"): 규칙·시퀀스가 먼저 소견을 내고, 첫 판정자(JEV-9B)가 모든 세션을 판정한다. 둘째
 // 판정자(Qwen3-4B)는 필요한 세션에서만 부른다: 첫 판정자가 위반이라 했을 때(어느 단계가 근거인지 짚는다), 기권했을 때, 규칙 소견이 있는데
 // 정상이라 했을 때(경보를 낮추려면 두 판정자가 모두 정상이어야 한다). 최종 처리는 session-disposition의 원칙 그대로다: 모델은 경보를 지우지
-// 못하고, 보호 경보는 낮추지도 못하며, 규칙이 못 본 모델 발견은 review로 사람에게 간다. 조항은 모델이 쓰지 않는다. 근거 단계의 발견 코드를
+// 못하고, 보호 경보는 낮추지도 못하며, 규칙이 못 본 모델 발견은 두 판정자가 모두 위반일 때만 review로 사람에게 간다. 조항은 모델이 쓰지 않는다. 근거 단계의 발견 코드를
 // 서명된 대응표에 넣어 계산하고, 규칙 소견이 없는 모델 발견에는 그 유형의 규칙 그룹이 걸리는 조항을 유형 수준 후보로만 붙인다.
 import {disposition} from './session-disposition.mjs';
 import {requirementIdsForType, scoreSession, sessionGold, sessionInput} from './session-inference.mjs';
@@ -20,6 +20,14 @@ export function combineVerdicts(a, b) {
   if (a === 'clean' && b === 'clean') return 'clean';
   return a === 'violation' || b === 'violation' ? 'violation' : 'abstain';
 }
+// 규칙 소견이 없는 세션(모델 단독 발견)은 두 판정자가 모두 위반이라고 할 때만 위반이고, 한쪽만 위반이면 기권(경보 없음)이다. 실제 기록 검사
+// (2026-11-26)에서 한쪽만 위반이라 올라온 확인 항목은 모두 오탐이었고, 볼 만한 항목은 모두 두 판정자가 위반이라고 했다. 규칙 소견이 있는
+// 세션은 그대로 combineVerdicts다(낮추려면 둘 다 정상).
+export function combineForInput(input, a, b) {
+  const verdict = combineVerdicts(a, b);
+  const quiet = !input.actions.some(x => x.findings.length);
+  return quiet && verdict === 'violation' && !(a === 'violation' && b === 'violation') ? 'abstain' : verdict;
+}
 
 // 한 세션의 최종 결과. first·second는 (scenario) => 예측(interpretSessionOutput 형식). 설명(유형·근거 단계·조항)은 둘째 판정자가 위반이라
 // 했으면 그쪽, 아니면 첫 판정자 것을 쓴다.
@@ -27,7 +35,7 @@ export function conduct(scenario, rules, {first, second}) {
   const a = first(scenario);
   const secondCalled = needsSecondJudge(scenario, rules, a);
   const b = secondCalled ? second(scenario) : null;
-  const verdict = secondCalled ? combineVerdicts(a.verdict, b.verdict) : a.verdict;
+  const verdict = secondCalled ? combineForInput(sessionInput(scenario, rules), a.verdict, b.verdict) : a.verdict;
   const {alert, priority, source, protectedCodes, instructionsInRecords} = disposition(scenario, rules, {verdict});
   const explainer = verdict !== 'violation' ? null : b?.verdict === 'violation' ? b : a.verdict === 'violation' ? a : null;
   const requirementIds = explainer?.requirementIds ?? [];

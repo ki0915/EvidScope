@@ -113,7 +113,7 @@ test('commandWords reads a command as the shell does, and matchesWords (engine v
 });
 
 test('pack v4 names the programs of the guard and transfer rules by path and with a Windows extension too', () => {
-  assert.equal(pack.version, 4);
+  assert.ok(pack.version >= 4);
   for (const [event, id] of [[bash('schtasks.exe /change /tn EvidScope /disable'), 'risk.audit.evidscope-task'],
     [bash('C:\\Windows\\System32\\schtasks.exe /change /tn EvidScope /disable'), 'risk.audit.evidscope-task'],
     [bash('wevtutil.exe cl System'), 'risk.defense.clear-eventlog'], [bash('/usr/sbin/iptables -F'), 'risk.defense.iptables-flush'],

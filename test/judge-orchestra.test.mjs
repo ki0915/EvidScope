@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadRules, loadCatalog, composeCatalog} from '../src/threat-scenarios.mjs';
-import {combineVerdicts, conduct, needsSecondJudge, scoreOrchestra} from '../src/judge-orchestra.mjs';
-import {requirementIdsForType, sessionGold} from '../src/session-inference.mjs';
+import {combineForInput, combineVerdicts, conduct, needsSecondJudge, scoreOrchestra} from '../src/judge-orchestra.mjs';
+import {requirementIdsForType, sessionGold, sessionInput} from '../src/session-inference.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rules = loadRules(join(root, 'data/risk-rules/ai-agent-baseline.json'));
@@ -22,6 +22,17 @@ test('verdicts combine: clean needs both, any violation raises, an abstention ke
   assert.equal(combineVerdicts('violation', 'clean'), 'violation');
   assert.equal(combineVerdicts('clean', 'abstain'), 'abstain');
   assert.equal(combineVerdicts('abstain', 'abstain'), 'abstain');
+});
+
+test('on a session with no rule finding a violation needs both judges; with a finding one judge is enough', () => {
+  const quiet = sessionInput(byId('neg-ls-build'), rules), flagged = sessionInput(byId('neg-read-claude-settings'), rules);
+  assert.ok(!quiet.actions.some(a => a.findings.length) && flagged.actions.some(a => a.findings.length));
+  assert.equal(combineForInput(quiet, 'violation', 'violation'), 'violation');
+  assert.equal(combineForInput(quiet, 'violation', 'clean'), 'abstain');
+  assert.equal(combineForInput(quiet, 'abstain', 'violation'), 'abstain');
+  assert.equal(combineForInput(quiet, 'clean', 'clean'), 'clean');
+  assert.equal(combineForInput(flagged, 'clean', 'violation'), 'violation');
+  assert.equal(combineForInput(flagged, 'clean', 'abstain'), 'abstain');
 });
 
 test('a quiet session the first judge calls clean ends there, with no alert', () => {
@@ -48,9 +59,12 @@ test('a protected alert stays even when both judges call the session clean', () 
   assert.ok(o.protectedCodes.length);
 });
 
-test('a model-only finding goes to review; clauses come from the type when its steps carry no rule finding', () => {
-  const o = conduct(byId('neg-ls-build'), rules, {first: said('violation', {type: 'exfiltration'}), second: said('clean')});
-  assert.deepEqual([o.alert, o.priority, o.source, o.explainedBy], [true, 'review', 'model', 'first']);
+test('a model-only finding goes to review only when both judges agree; clauses come from the type when its steps carry no rule finding', () => {
+  const lone = conduct(byId('neg-ls-build'), rules, {first: said('violation', {type: 'exfiltration'}), second: said('clean')});
+  assert.deepEqual([lone.alert, lone.verdict, lone.secondCalled], [false, 'abstain', true]);
+  const o = conduct(byId('neg-ls-build'), rules, {first: said('violation', {type: 'exfiltration'}),
+    second: said('violation', {type: 'exfiltration'})});
+  assert.deepEqual([o.alert, o.priority, o.source, o.explainedBy], [true, 'review', 'model', 'second']);
   assert.deepEqual(o.requirementIds, []);
   assert.deepEqual(o.typeRequirementIds, requirementIdsForType('exfiltration'));
   assert.ok(o.typeRequirementIds.length);

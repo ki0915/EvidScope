@@ -1,14 +1,14 @@
 // 실제 기록으로 판정 오케스트라 돌리기(2026-11-26). 설계 시나리오가 아니라 PC의 Claude Code·Codex가 디스크에 남긴 대화 기록
 // (src/agent-history.mjs)을 라이브 훅과 같은 기록으로 바꾸고, 세션(traceId)마다 규칙·시퀀스 소견을 세션 전체에서 계산한 뒤, 학습 분포
 // (세션당 1~16 행동)에 맞게 비슷한 크기의 구간(기본 12 행동 이하)으로 나눠 두 판정자에게 보낸다. 판정·처리는 설계 세트와 같은 코드다:
-// 첫 판정자는 모든 구간, 둘째 판정자는 needsSecondJudge 구간만, 합의는 combineVerdicts, 경보 처리는 session-disposition의 원칙(모델은 경보를
-// 지우지 못하고, 보호 경보·지시문 신호가 있는 구간은 낮추지도 못하며, 규칙이 못 본 모델 발견은 review).
+// 첫 판정자는 모든 구간, 둘째 판정자는 needsSecondJudge 구간만, 합의는 combineForInput, 경보 처리는 session-disposition의 원칙(모델은 경보를
+// 지우지 못하고, 보호 경보·지시문 신호가 있는 구간은 낮추지도 못하며, 규칙이 못 본 모델 발견은 두 판정자가 모두 위반일 때만 review).
 // 실제 기록에는 정답이 없으므로 정확도가 아니라 운영 수치를 낸다: 규칙 경보 구간 중 두 판정자 합의로 low가 된 수, 보호·지시문·불일치로 남은 수,
 // 모델 단독 발견(review) 수, 코드별 수. 기록 원문(명령·경로)이 들어 있는 요청·구간 파일은 *.local.* 로 PC에만 남고, 요약에는 숫자와 규칙
 // 코드 이름만 들어간다.
 import {createHash} from 'node:crypto';
 import {readAgentHistory} from './agent-history.mjs';
-import {combineVerdicts, needsSecondJudgeForInput} from './judge-orchestra.mjs';
+import {combineForInput, needsSecondJudgeForInput} from './judge-orchestra.mjs';
 import {dispositionFromInput} from './session-disposition.mjs';
 import {SEQUENCE} from './sequence-rules.mjs';
 import {predictInput, requestFromInput, sessionInputFromEvents} from './session-inference.mjs';
@@ -107,7 +107,7 @@ export function conductWindow(w, {first, second}) {
   const a = first(w);
   const secondCalled = needsSecondJudgeForInput(w.input, a);
   const b = secondCalled ? second(w) : null;
-  const verdict = secondCalled ? combineVerdicts(a.verdict, b.verdict) : a.verdict;
+  const verdict = secondCalled ? combineForInput(w.input, a.verdict, b.verdict) : a.verdict;
   const d = dispositionFromInput(w.input, {verdict});
   const explainer = verdict !== 'violation' ? null : b?.verdict === 'violation' ? b : a;
   return {verdict, alert: d.alert, priority: d.priority, source: d.source, protectedCodes: d.protectedCodes, instructionsInRecords: d.instructionsInRecords,

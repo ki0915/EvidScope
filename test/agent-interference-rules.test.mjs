@@ -25,10 +25,10 @@ const added = ['risk.agent.global-instructions', 'risk.agent.mcp-config', 'risk.
   'risk.audit.evidscope-task', 'risk.audit.evidscope-stop', 'risk.audit.hook-script'];
 
 test('pack v3 adds seven rules of the words DSL to the sixty of version 2 (v4 keeps them, naming programs by path too)', () => {
-  assert.equal(pack.version, 4);
-  assert.equal(pack.rules.length, 67);
-  assert.deepEqual(pack.rules.slice(-7).map(r => r.id), added);
-  for (const r of pack.rules.slice(-7)) assert.ok(r.field === 'note' && r.op === 'words' && parseWords(r.value) && r.value.length <= 200, r.id);
+  assert.ok(pack.version >= 4, 'later versions keep these rules in place (v5 appends after them)');
+  assert.ok(pack.rules.length >= 67);
+  assert.deepEqual(pack.rules.slice(60, 67).map(r => r.id), added);
+  for (const r of pack.rules.slice(60, 67)) assert.ok(r.field === 'note' && r.op === 'words' && parseWords(r.value) && r.value.length <= 200, r.id);
   assert.deepEqual(pack.rules.filter(r => r.id.startsWith('risk.agent.')).map(r => r.group), Array(4).fill('agent_interference'));
   assert.deepEqual(classOf('risk.agent.kill-agent'), ['interfere']);
   assert.deepEqual(classOf('risk.audit.evidscope-task'), ['tamper']);
