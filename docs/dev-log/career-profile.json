@@ -1,6 +1,6 @@
 {
   "schema": "evidscope-career-profile/1",
-  "as_of": "2026-10-23",
+  "as_of": "2026-11-26",
   "project": {
     "name": "EvidScope",
     "one_liner": {
@@ -111,9 +111,9 @@
     {
       "key": "judge-models",
       "name": "판정 모델과 학습",
-      "entries": 29,
+      "entries": 30,
       "from": "2026-09-08",
-      "to": "2026-10-23",
+      "to": "2026-11-26",
       "record": "docs/dev-log/03-judge-models.md"
     },
     {
@@ -126,7 +126,7 @@
     }
   ],
   "status_counts": {
-    "done": 70,
+    "done": 71,
     "in_progress": 3,
     "planned": 0,
     "invalidated": 1,
@@ -136,7 +136,7 @@
     {
       "key": "ml_evaluation",
       "name": "모델 평가·게이트",
-      "count": 26,
+      "count": 27,
       "entries": [
         "EL-03",
         "AM-10",
@@ -163,6 +163,7 @@
         "JM-26",
         "JM-28",
         "JM-29",
+        "JM-30",
         "UX-07"
       ]
     },
@@ -232,6 +233,37 @@
       ]
     },
     {
+      "key": "decision_making",
+      "name": "의사결정·우선순위",
+      "count": 24,
+      "entries": [
+        "EL-02",
+        "EL-06",
+        "EL-14",
+        "EL-16",
+        "EL-18",
+        "EL-19",
+        "AM-01",
+        "AM-11",
+        "AM-13",
+        "JM-02",
+        "JM-06",
+        "JM-12",
+        "JM-14",
+        "JM-15",
+        "JM-16",
+        "JM-19",
+        "JM-23",
+        "JM-25",
+        "JM-26",
+        "JM-27",
+        "JM-28",
+        "JM-29",
+        "JM-30",
+        "UX-12"
+      ]
+    },
+    {
       "key": "security_architecture",
       "name": "보안 아키텍처",
       "count": 24,
@@ -260,36 +292,6 @@
         "JM-19",
         "UX-05",
         "UX-11"
-      ]
-    },
-    {
-      "key": "decision_making",
-      "name": "의사결정·우선순위",
-      "count": 23,
-      "entries": [
-        "EL-02",
-        "EL-06",
-        "EL-14",
-        "EL-16",
-        "EL-18",
-        "EL-19",
-        "AM-01",
-        "AM-11",
-        "AM-13",
-        "JM-02",
-        "JM-06",
-        "JM-12",
-        "JM-14",
-        "JM-15",
-        "JM-16",
-        "JM-19",
-        "JM-23",
-        "JM-25",
-        "JM-26",
-        "JM-27",
-        "JM-28",
-        "JM-29",
-        "UX-12"
       ]
     },
     {
@@ -403,6 +405,52 @@
       ]
     },
     {
+      "key": "detection_engineering",
+      "name": "탐지 엔지니어링",
+      "count": 16,
+      "entries": [
+        "EL-11",
+        "EL-22",
+        "AM-02",
+        "AM-04",
+        "AM-05",
+        "AM-06",
+        "AM-08",
+        "AM-10",
+        "AM-12",
+        "AM-13",
+        "AM-15",
+        "JM-09",
+        "JM-10",
+        "JM-12",
+        "JM-13",
+        "JM-30"
+      ]
+    },
+    {
+      "key": "operations",
+      "name": "운영·배포",
+      "count": 16,
+      "entries": [
+        "EL-01",
+        "EL-05",
+        "EL-08",
+        "EL-13",
+        "EL-21",
+        "AM-02",
+        "AM-04",
+        "AM-06",
+        "AM-09",
+        "AM-13",
+        "JM-16",
+        "JM-23",
+        "JM-30",
+        "UX-01",
+        "UX-10",
+        "UX-12"
+      ]
+    },
+    {
       "key": "standards_integration",
       "name": "표준·외부 도구 연동",
       "count": 16,
@@ -468,50 +516,6 @@
         "UX-06",
         "UX-08",
         "UX-09"
-      ]
-    },
-    {
-      "key": "detection_engineering",
-      "name": "탐지 엔지니어링",
-      "count": 15,
-      "entries": [
-        "EL-11",
-        "EL-22",
-        "AM-02",
-        "AM-04",
-        "AM-05",
-        "AM-06",
-        "AM-08",
-        "AM-10",
-        "AM-12",
-        "AM-13",
-        "AM-15",
-        "JM-09",
-        "JM-10",
-        "JM-12",
-        "JM-13"
-      ]
-    },
-    {
-      "key": "operations",
-      "name": "운영·배포",
-      "count": 15,
-      "entries": [
-        "EL-01",
-        "EL-05",
-        "EL-08",
-        "EL-13",
-        "EL-21",
-        "AM-02",
-        "AM-04",
-        "AM-06",
-        "AM-09",
-        "AM-13",
-        "JM-16",
-        "JM-23",
-        "UX-01",
-        "UX-10",
-        "UX-12"
       ]
     },
     {
@@ -624,7 +628,7 @@
     {
       "key": "privacy",
       "name": "개인정보·데이터 최소화",
-      "count": 13,
+      "count": 14,
       "entries": [
         "EL-03",
         "EL-08",
@@ -638,7 +642,8 @@
         "JM-01",
         "JM-06",
         "JM-16",
-        "JM-22"
+        "JM-22",
+        "JM-30"
       ]
     },
     {
@@ -748,6 +753,22 @@
       ]
     },
     {
+      "key": "statistics",
+      "name": "통계적 검증",
+      "count": 9,
+      "entries": [
+        "JM-07",
+        "JM-08",
+        "JM-12",
+        "JM-18",
+        "JM-25",
+        "JM-26",
+        "JM-28",
+        "JM-29",
+        "JM-30"
+      ]
+    },
+    {
       "key": "ai_collaboration",
       "name": "AI 협업 개발",
       "count": 8,
@@ -775,21 +796,6 @@
         "JM-08",
         "JM-09",
         "JM-10"
-      ]
-    },
-    {
-      "key": "statistics",
-      "name": "통계적 검증",
-      "count": 8,
-      "entries": [
-        "JM-07",
-        "JM-08",
-        "JM-12",
-        "JM-18",
-        "JM-25",
-        "JM-26",
-        "JM-28",
-        "JM-29"
       ]
     },
     {
@@ -831,7 +837,7 @@
   "tech": [
     {
       "name": "Node.js",
-      "count": 37,
+      "count": 38,
       "entries": [
         "EL-02",
         "EL-04",
@@ -869,12 +875,13 @@
         "JM-26",
         "JM-27",
         "JM-28",
+        "JM-30",
         "UX-06"
       ]
     },
     {
       "name": "JEV-9B",
-      "count": 13,
+      "count": 14,
       "entries": [
         "JM-17",
         "JM-18",
@@ -888,12 +895,13 @@
         "JM-26",
         "JM-27",
         "JM-28",
-        "JM-29"
+        "JM-29",
+        "JM-30"
       ]
     },
     {
       "name": "Qwen3-4B-Instruct-2507",
-      "count": 12,
+      "count": 13,
       "entries": [
         "JM-15",
         "JM-17",
@@ -906,7 +914,8 @@
         "JM-24",
         "JM-25",
         "JM-26",
-        "JM-29"
+        "JM-29",
+        "JM-30"
       ]
     },
     {
@@ -978,7 +987,7 @@
     },
     {
       "name": "Docker",
-      "count": 8,
+      "count": 9,
       "entries": [
         "EL-01",
         "EL-05",
@@ -987,7 +996,8 @@
         "JM-04",
         "JM-05",
         "JM-23",
-        "JM-29"
+        "JM-29",
+        "JM-30"
       ]
     },
     {
@@ -2613,6 +2623,13 @@
       ]
     },
     {
+      "name": "RTX 3080",
+      "count": 1,
+      "entries": [
+        "JM-30"
+      ]
+    },
+    {
       "name": "session-level scoring",
       "count": 1,
       "entries": [
@@ -3761,6 +3778,18 @@
       ],
       "en": [
         "Compared four popular small local models on the same tests and scorer, showing they catch only 15-68% of threats without training while the same 4B model rises from 47% to 91% after training on our dataset."
+      ]
+    },
+    {
+      "id": "JM-30",
+      "date": "2026-11-26",
+      "title": "실제 개발 기록으로 처음 판정해 보니: 경보 123개 중 24%만 낮추고, 규칙이 조용한 구간 166개를 위반이라고 함",
+      "title_en": "First run on real development records: the judges lowered only 24% of 123 rule alerts and called 166 rule-quiet windows violations",
+      "ko": [
+        "합성 시험 100%였던 두 판정 모델을 실제 개발 기록 1만 9천여 건에 처음 적용해, 경보 감소 24%와 규칙 밖 오탐 약 11%라는 운영 수치를 원문 유출 없이 측정했다."
+      ],
+      "en": [
+        "Ran the two judge models, 100% on synthetic tests, on 19.7k real development tool calls for the first time and measured, without moving record contents off the PC, that they lowered 24% of rule alerts and flagged about 11% of rule-quiet windows."
       ]
     },
     {
@@ -7150,6 +7179,42 @@
       "source": "작업 메모"
     },
     {
+      "id": "JM-30",
+      "name": "규칙 경보 구간 중 두 판정자 합의로 low가 된 비율",
+      "before": "설계 시험 정상 세션 200/200",
+      "after": "실제 기록 29/123 (24%)",
+      "unit": "구간",
+      "scope": "PC 실제 Claude Code 기록, 세션 73개",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-30",
+      "name": "규칙이 조용한 구간 중 모델이 위반이라고 한 구간(사람 확인 항목)",
+      "before": "설계 시험 정상 세션에서 0",
+      "after": "166/1,551 (약 11%), 세션 47개. 10월 문턱을 쓰면 218",
+      "unit": "구간",
+      "scope": "PC 실제 기록",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-30",
+      "name": "남은 경보 94개의 원인",
+      "before": "없음",
+      "after": "한 판정자라도 위반 91개(그중 JEV 정상·Qwen 위반 63개), 보호 경보 1개, 기권 2개",
+      "unit": "구간",
+      "scope": "PC 실제 기록, 문턱 없음",
+      "source": "작업 메모"
+    },
+    {
+      "id": "JM-30",
+      "name": "판정 시간",
+      "before": "설계 시험 500세션 JEV 약 7분",
+      "after": "1,674구간 JEV 24분 + 388구간 Qwen 18분",
+      "unit": "분",
+      "scope": "RTX 3080, 온도 조절 일시정지 포함",
+      "source": "작업 메모"
+    },
+    {
       "id": "UX-01",
       "name": "탭당 시간당 자동 조회 횟수",
       "before": "720",
@@ -7962,6 +8027,12 @@
       "decided_by": "joint"
     },
     {
+      "id": "JM-30",
+      "what": "src/real-sessions.mjs와 scripts/real-session-eval.mjs(prepare/second/score)를 만들고, 판정 입력·요청·해석·처리 함수가 이미 만든 입력에서도 돌게 고친 뒤, PC에서 JEV를 전 구간에, Qwen을 필요한 388구간에 돌려 10월 문턱과 문턱 없음 두 가지로 채점했다.",
+      "why": "설계 시험과 같은 코드로 실제 기록의 운영 수치(낮춘 경보, 남은 경보, 모델 단독 발견)를 처음 얻기 위해서다.",
+      "decided_by": "ai_agent"
+    },
+    {
       "id": "UX-01",
       "what": "자동 조회를 용도별 4단계 주기로 나누고, 응답이 끝난 뒤 다음 타이머를 시작하며, 실패 시 지수 백오프와 401/403 즉시 중단, 숨긴 탭·일시정지·화면 이탈·로그아웃에서는 조회를 멈추고 늦은 응답을 버린다.",
       "why": "감사 화면이 조회 자체로 감사 기록을 부풀리지 않게 하고, 실패·지연 상태를 정직하게 보여 주기 위해",
@@ -8746,6 +8817,18 @@
     {
       "id": "JM-29",
       "text": "같은 모델을 학습 전후로 같은 시험에 돌려 두면, 학습의 효과를 숫자 하나로 설명할 수 있다(Qwen3-4B 47% → 91%)."
+    },
+    {
+      "id": "JM-30",
+      "text": "합성 시험 100%와 외부 기록 60~80% 다음에, 실제 기록에서는 '정상인데 위반이라고 한 비율'이 운영 가능성을 정한다. 이 숫자는 실제 기록을 돌려 봐야만 나온다."
+    },
+    {
+      "id": "JM-30",
+      "text": "10월 설계 시험에서는 문턱이 판정을 바꾸지 않았지만, 실제 기록에서는 확인 항목을 166에서 218로 늘렸다. 문턱은 분포가 바뀌면 다시 골라야 한다."
+    },
+    {
+      "id": "JM-30",
+      "text": "처리 원칙을 먼저 만들어 둔 덕분에 모델이 약한 곳에서도 경보가 사라지지 않았다."
     },
     {
       "id": "UX-01",
@@ -9628,6 +9711,18 @@
     {
       "id": "JM-29",
       "text": "생각 모드를 켠 SmolLM3·MiniCPM5는 얼마나 달라질까?"
+    },
+    {
+      "id": "JM-30",
+      "text": "166개 중 실제로 확인할 가치가 있는 구간은 몇 개인가? 이 PC에는 보안 시험용으로 일부러 공격처럼 생긴 명령을 돌린 세션도 있다."
+    },
+    {
+      "id": "JM-30",
+      "text": "모델 단독 발견을 두 판정자 모두 위반이고 확신이 높을 때만 올리면 얼마나 줄어드는가?"
+    },
+    {
+      "id": "JM-30",
+      "text": "실제 정상 개발 기록을 PC 안에서 정상 예시로 학습하면 오탐이 줄어드는가?"
     },
     {
       "id": "UX-01",
