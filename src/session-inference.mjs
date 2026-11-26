@@ -72,8 +72,8 @@ export function catalogRequirementIds() {
 // 한 행동(actionId)을, 저장소가 하는 그대로 평가: 자기 이벤트 + 전체 retained에서 뽑은 관련 단계·콘텐츠 신호. withSequence=false면 시퀀스·콘텐츠
 // 입력을 빼서 규칙만 기준선을 만든다. 콘텐츠 입력은 세션에 화면 검사 기록이 있을 때만 생기므로(없으면 undefined), 콘텐츠 없는 세션은 엔진 v≤8로
 // 예전과 똑같이 읽힌다.
-function judge(actionId, retained, rules, now, {withSequence = true} = {}) {
-  const events = retained.filter(e => e.actionId === actionId);
+function judge(actionId, retained, rules, now, {withSequence = true, own} = {}) {
+  const events = own ?? retained.filter(e => e.actionId === actionId);
   const relatedSteps = withSequence ? relatedStepInput(events, retained, rules, matches) : undefined;
   const contentSignals = withSequence ? contentSignalInput(events, retained, rules, matches) : undefined;
   return evaluate(events, [], rules, [], now, {relatedSteps, contentSignals}).findings;
@@ -106,13 +106,19 @@ export function instructionsIn(...texts) {
 // (예전엔 뒤 기록이 앞을 덮었다). 프롬프트는 자기 행동이다. sessionId는 모델에 노출하지 않는다(라벨 누수 방지).
 // instructionsInRecords: 기록 텍스트에 모델을 향한 지시문 신호가 있는 행동의 actionId(위 "기록 속 지시문").
 export function sessionInput(scenario, rules, {t0 = T0} = {}) {
-  const events = buildScenarioEvents(scenario, {t0});
-  const now = t0 + NOW_OFFSET;
+  return sessionInputFromEvents(buildScenarioEvents(scenario, {t0}), rules, {tool: scenario.tool || 'claude-code', now: t0 + NOW_OFFSET});
+}
+// 같은 입력을 기록 묶음에서 만든다(설계 시나리오와 PC의 실제 기록이 함께 쓴다, src/real-sessions.mjs). events는 한 세션의 기록이고 seq가
+// 시간 순서다. 소견은 묶음 전체를 retained로 보고 계산하므로, 긴 세션을 나눠 판정할 때도 연쇄 소견은 세션 전체에서 나온다. context는 같은
+// 시간대의 다른 세션 기록이다: 저장소처럼 같은 행위자의 연쇄가 세션을 넘어 잡히게 retained에만 더하고, 행동 목록에는 넣지 않는다.
+export function sessionInputFromEvents(events, rules, {tool = 'claude-code', now, context = []} = {}) {
   const groups = new Map();
   for (const e of events) { if (!groups.has(e.actionId)) groups.set(e.actionId, []); groups.get(e.actionId).push(e); }
+  const retained = context.length ? [...events, ...context] : events;
   const actions = [];
   for (const [actionId, group] of groups) {
-    const findings = judge(actionId, events, rules, now).filter(f => THREAT.test(f.code)).map(f => ({code: f.code, severity: f.severity || 'unknown'}));
+    const findings = judge(actionId, retained, rules, now, {own: group}).filter(f => THREAT.test(f.code))
+      .map(f => ({code: f.code, severity: f.severity || 'unknown'}));
     const intent = group.find(e => e.kind === 'intent') || group[0];
     const content = group.find(e => e.action === 'content_screen');
     const note = [intent.note, intent !== content ? content?.note : null].filter(Boolean).join(' ') || null;
@@ -121,8 +127,7 @@ export function sessionInput(scenario, rules, {t0 = T0} = {}) {
       instructions: instructionsIn(intent.resource, intent.destination, note)});
   }
   actions.sort((a, b) => a.seq - b.seq);
-  return {tool: scenario.tool || 'claude-code', actionCount: actions.length, actions,
-    instructionsInRecords: actions.filter(a => a.instructions).map(a => a.actionId)};
+  return {tool, actionCount: actions.length, actions, instructionsInRecords: actions.filter(a => a.instructions).map(a => a.actionId)};
 }
 
 // 세션 입력을 사람이 읽는/프롬프트용 한 덩이 텍스트로. 모델은 이 요약과 소견을 보고 판정한다.
@@ -170,7 +175,10 @@ const clipText = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s);
 // stripFindings: 소견을 모두 뺀다. v2 모델은 소견을 지운 위협 세션(감사 탐침 A8)을 정상이라 했다. 규칙이 놓친 위협도 행동만 보고 잡도록, 학습
 // 일부와 견고성 시험을 이 형태로 본다. 골드 증적은 그대로다(같은 행동이 증적이고, 조항은 저장소가 가진 원래 소견에서 계산한다).
 export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false, stripFindings = false} = {}) {
-  const input = sessionInput(scenario, rules, {t0});
+  return promptFromInput(sessionInput(scenario, rules, {t0}), {maskCodes, stripFindings});
+}
+// 이미 만든 세션 입력(sessionInput·sessionInputFromEvents)에서 같은 프롬프트를.
+export function promptFromInput(input, {maskCodes = false, stripFindings = false} = {}) {
   const refs = new Map(input.actions.map((a, i) => [`a${i + 1}`, a.actionId]));
   const names = new Map();
   const name = code => {
@@ -187,10 +195,12 @@ export function sessionPrompt(scenario, rules, {t0 = T0, maskCodes = false, stri
 
 // 배치 러너 한 줄: 정확히 id/variant/messages/response_format/adapter + 디코딩 키(러너가 키 집합과 canonical 바이트를 검사한다).
 export function sessionRequest(scenario, rules, {variant = 'zero_shot', t0 = T0, maskCodes = false, stripFindings = false} = {}) {
+  return requestFromInput(scenario.id, sessionInput(scenario, rules, {t0}), {variant, maskCodes, stripFindings});
+}
+export function requestFromInput(id, input, {variant = 'zero_shot', maskCodes = false, stripFindings = false} = {}) {
   if (!Object.hasOwn(SESSION_VARIANTS, variant)) throw Error('session_variant_unknown');
-  const {messages} = sessionPrompt(scenario, rules, {t0, maskCodes, stripFindings});
-  return {id: scenario.id, variant, messages, response_format: llamaFormat(SESSION_OUTPUT_SCHEMA), adapter: SESSION_VARIANTS[variant],
-    ...SESSION_DECODING};
+  const {messages} = promptFromInput(input, {maskCodes, stripFindings});
+  return {id, variant, messages, response_format: llamaFormat(SESSION_OUTPUT_SCHEMA), adapter: SESSION_VARIANTS[variant], ...SESSION_DECODING};
 }
 export const sessionRequestLines = (scenarios, rules, opts) => scenarios.map(s => canonical(sessionRequest(s, rules, opts))).join('\n') + '\n';
 
@@ -239,13 +249,16 @@ export function interpretSessionOutput(content, refs = new Map(), {input, tokens
 // 출력 묶음({scenarioId: content})에서 scoreSessions가 쓸 예측 함수. logprobs({scenarioId: tokens})와 threshold(마이크로냇 정수)가 있으면, 판정
 // 점수가 문턱 아래이거나 점수를 못 매긴 답은 기권으로 바꾼다(modelVerdict에 원래 판정을 남긴다). 프롬프트는 채점 대상과 같아야 하므로 maskCodes와
 // stripFindings도 받는다(ref 순서는 같고, 조항은 원래 소견으로 계산한다).
-export const predictFromOutputs = (outputs, rules, {t0 = T0, logprobs, threshold, maskCodes = false, stripFindings = false} = {}) => s => {
-  const {refs, input} = sessionPrompt(s, rules, {t0, maskCodes, stripFindings});
-  const p = interpretSessionOutput(outputs[s.id], refs, {input, tokens: logprobs?.[s.id]});
+export const predictFromOutputs = (outputs, rules, {t0 = T0, logprobs, threshold, maskCodes = false, stripFindings = false} = {}) => s =>
+  predictInput(s.id, sessionInput(s, rules, {t0}), outputs, {logprobs, threshold, maskCodes, stripFindings});
+// 같은 해석을 이미 만든 세션 입력과 요청 id로(실제 기록의 한 구간, src/real-sessions.mjs).
+export function predictInput(id, input, outputs, {logprobs, threshold, maskCodes = false, stripFindings = false} = {}) {
+  const {refs} = promptFromInput(input, {maskCodes, stripFindings});
+  const p = interpretSessionOutput(outputs[id], refs, {input, tokens: logprobs?.[id]});
   if (threshold === undefined || p.verdict === 'abstain') return p;
   return p.score !== null && p.score >= threshold ? p
     : {...p, verdict: 'abstain', type: null, requirementIds: [], evidenceActionIds: [], modelVerdict: p.verdict};
-};
+}
 
 // 기권 문턱 고르기(검증 세트에서만; 평가 세트로 고르면 그 점수는 주장할 수 없다). 후보 문턱은 관측된 판정 점수들. 각 문턱에서 답한 세션의 판정
 // 정확도와 답한 비율을 재고, 정확도가 target 이상인 문턱 중 가장 많이 답하는 것을 고른다(reached: true). 없으면 가장 정확한 문턱(reached: false).

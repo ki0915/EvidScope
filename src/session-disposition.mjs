@@ -20,7 +20,11 @@ export function protectedFinding(code, action) {
 // review|null), source(rules|model|both), modelOpinion, protectedCodes(모델이 낮출 수 없었던 코드), instructionsInRecords(지시문 신호가 있던
 // 행동: 비어 있지 않으면 모델의 정상으로 낮추지 않는다).
 export function disposition(scenario, rules, model) {
-  const input = sessionInput(scenario, rules), instructionsInRecords = input.instructionsInRecords;
+  return dispositionFromInput(sessionInput(scenario, rules), model);
+}
+// 이미 만든 세션 입력(sessionInputFromEvents, 실제 기록의 한 구간 등)에 같은 원칙을.
+export function dispositionFromInput(input, model) {
+  const instructionsInRecords = input.instructionsInRecords;
   const findings = input.actions.flatMap(a => a.findings.map(f => ({...f, action: a.action})));
   const verdict = model?.verdict ?? 'abstain';
   if (!findings.length) {

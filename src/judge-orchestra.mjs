@@ -12,6 +12,8 @@ const hasFindings = (scenario, rules) => sessionInput(scenario, rules).actions.s
 export function needsSecondJudge(scenario, rules, first) {
   return first?.verdict !== 'clean' || hasFindings(scenario, rules);
 }
+// 같은 판단을 이미 만든 세션 입력에서(실제 기록의 한 구간, src/real-sessions.mjs).
+export const needsSecondJudgeForInput = (input, first) => first?.verdict !== 'clean' || input.actions.some(a => a.findings.length);
 
 // 두 판정의 합의: 둘 다 정상일 때만 정상, 하나라도 위반이면 위반, 나머지(기권이 섞인 경우)는 기권이라 규칙 경보가 그대로 남는다.
 export function combineVerdicts(a, b) {
