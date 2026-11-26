@@ -83,5 +83,6 @@ if (cmd === 'prepare') {
   print(summary);
 } else {
   fail('usage: real-session-eval.mjs prepare --out DIR [--agent A] [--since ISO] [--until ISO] [--window N] [--no-sidechains]'
-    + ' | second --dir DIR --first PREFIX [--first-threshold N] | score --dir DIR --first PREFIX --second PREFIX [--first-threshold N] [--second-threshold N] [--name NAME]');
+    + ' | second --dir DIR --first PREFIX [--first-threshold N]'
+    + ' | score --dir DIR --first PREFIX --second PREFIX [--first-threshold N] [--second-threshold N] [--name NAME]');
 }

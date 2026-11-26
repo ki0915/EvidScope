@@ -38,7 +38,11 @@ export function sessionsFromCalls(calls, {agent}) {
 // 동시에 돌던 세션의 단계도 소견 계산에 넣는다(행동 목록에는 넣지 않는다).
 export function withContext(sessions) {
   const all = sessions.flatMap(s => s.events.map(e => ({e, t: Date.parse(e.occurredAt), trace: s.traceId}))).sort((a, b) => a.t - b.t);
-  const firstAtOrAfter = t => { let lo = 0, hi = all.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (all[mid].t < t) lo = mid + 1; else hi = mid; } return lo; };
+  const firstAtOrAfter = t => {
+    let lo = 0, hi = all.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (all[mid].t < t) lo = mid + 1; else hi = mid; }
+    return lo;
+  };
   return sessions.map(s => {
     if (!s.events.length) return {...s, context: []};
     const times = s.events.map(e => Date.parse(e.occurredAt)), from = Math.min(...times) - SEQUENCE.windowMs, to = Math.max(...times) + SEQUENCE.windowMs;
